@@ -1,5 +1,7 @@
-\documentstyle{book}
+%documentstyle{book}
+\documentclass{book}
 
+\usepackage{graphicx}
 
 \begin{document}
 
@@ -11,13 +13,14 @@ It can be hard to evaluate what the size of a data structure should be. If it is
 
 The size of a data structure is the number of bytes needed to represent it. The \textit{health} of a data structure tells you the purpose for those bytes. What are the bytes accomplishing? Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead.  Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. If the amount of overhead is high, the representation is bloated, and the data structure is unhealthy. In other words, a healthy data structure is one with a low overhead.
 
-Figure\ref{fig:eight-byte-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per characgter. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. 
+Figure\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per characgter. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. 
 
 \begin{figure}
   \centering
-  %\includegraphics[width=0.25\textwidth]{}
-  \caption{An eight byte string}
-  \label{fig:eight-byte-string}
+  \includegraphics[width=.90\textwidth]{Figures/eight-char-string.pdf}
+  %\includegraphics{eight-char-string}
+  \caption{An eight character string}
+  \label{fig:eight-char-string}
 \end{figure}
 
 
@@ -25,11 +28,10 @@ To understand why there is so much overhead, it is useful to dig deeper into its
 \begin{itemize}
 \item \textit{Object overhead} is overhead imposed by the JVM. Each object has a header that the JVM needs to manage storage allocation and garbage collection. 
 \item \textit{Pointers} are the glue of data structures, and are a main source of overhead.  
-\item \textit{Bookkeeping fields} are numeric and Boolean values, which cannot be counted as data, since they store information about the representation, not real application data.
-\item \textit{Alignment overhead} ensures that primitive data starts at proper byte and word boundaries.  
+\item \textit{Bookkeeping fields} are numeric and Boolean values, which cannot be counted as data, since they store information about the representation, not real application data.  
 \end{itemize}
 
-A Java string consists of two objects: a {\tt String} object that serves as a wrapper, and a {\tt char} array object to hold the actual characters. The {\tt String} object itself is entirely overhead, containing no real data. Two objects means there are two object header and is a pointer the two objects together. Additionally, a {\tt String} object includes several bookkeeping fields, such as the length of the string. Finally, the {\tt String} object needs four bytes of alignment.   Adding all of this together, the overhead cost is 48 bytes, which is 75\% of the total eight-character string.  The exact number of bytes depends on the particular JVM because the size of object headers varies and alignment rules differ, but the variability is small.  
+A Java string consists of two objects: a {\tt String} object that serves as a wrapper, and a {\tt char} array object to hold the actual characters. The {\tt String} object itself is entirely overhead, containing no real data. Two objects means there are two object header and is a pointer the two objects together. Additionally, a {\tt String} object includes several bookkeeping fields, such as the length of the string. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total eight-character string. The memory health is 25\%.  These numbers vary depending on the particular JVM, but not significantly.  
 
 If you were to design a string representation from scratch, 20\% overhead might seem a reasonable target. For a string in Java to have only 20\% overhead, it would need to be 96 characters long. Fortunately, the overhead cost of a string is fixed, so its relative importance shrinks for longer strings. However, it is not always possible to amortize data structure overhead costs, as discussed in Section~\ref{scalability}.  
 
@@ -41,7 +43,7 @@ It is useful to have a diagram notation to illustrate more complex examples, as 
 
 \begin{figure}
   \centering
-  %\includegraphics[width=0.25\textwidth]{}
+  \includegraphics[width=0.9\textwidth]{Figures/content-schematic}
   \caption{A content schematic}
   \label{fig:content-schematic}
 \end{figure}
@@ -56,7 +58,7 @@ Content schematics are a little like UML diagrams, since they represent a schema
   
 \begin{figure}
   \centering
- % \includegraphics[width=0.25\textwidth]{}
+  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-relationship}
   \caption{A content schematic of a map from 10K \texttt{Strings} to 10K \texttt{Doubles}.}
   \label{fig:content-schematic-relationship}
 \end{figure}
@@ -77,8 +79,8 @@ A content schematic for a 100-entry map of doubles using TreeMap is shown in Fig
 
 \begin{figure}
   \centering
- % \includegraphics[width=0.25\textwidth]{}
-  \caption{A content schematic for a \texttt{TreeMap} of \texttt{Doubles}}
+  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-treemap-doubles}
+  \caption{Solution 1: \texttt{TreeMap} of \texttt{Doubles}}
   \label{fig:content-schematic-treemap-doubles}
 \end{figure} 
  
@@ -179,7 +181,7 @@ Figure~\ref{fig:content-schematic-arrays-doubles}.  The overhead consists of two
 
 \begin{figure}
   \centering
- % \includegraphics[width=0.25\textwidth]{}
+  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-arrays-doubles}
   \caption{Content Schematic for arrays of \texttt{doubles}}
   \label{fig:content-schematic-arrays-doubles}
 \end{figure}
@@ -191,11 +193,24 @@ In this example, there is a tradeoff between ease of programming and memory effi
 \section{Scalability}
 \label{scalability}
 
-The example in Section~\ref{section:mapofdoubles} deals with a relatively small amount of data.  There are only 100 entries in the map of doubles.  Maybe if solution is scaled up to say 10,000 entries, the high cost of the first \texttt{TreeMap} solution will be amortized away, and you will be just fine. Unfortunately, a 10,000 entry \texttt{TreeMap} is still at 82\% overhead. The reason here is that the overhead costs are per entry costs, and they are high.  So whenever you add an entry, this adds two \texttt{Doubles}, with all their boxing costs, and a 40 byte \texttt{TreeMap\$Entry} object. Each entry costs 88 bytes, and only 18\% of that cost is actual data. So in effect, this design  is not only bloated, but it also does not scale. It is constantly bloated.
+The example in Section~\ref{section:mapofdoubles} deals with a relatively small amount of data.  There are only 100 entries in the map of doubles.  Maybe if the solution is scaled up to say 10,000 entries, the high cost of the first \texttt{TreeMap} solution will be amortized away, and you will be just fine. Unfortunately, a 10,000 entry \texttt{TreeMap} is still at 82\% overhead. The reason here is that the overhead costs are per entry costs, and they are high.  So whenever you add an entry, this adds two \texttt{Doubles}, with all their boxing costs, and a 40 byte \texttt{TreeMap\$Entry} object. Each entry costs 88 bytes, and only 18\% of that cost is actual data. So in effect, this design  is not only bloated, but it also does not scale. It is constantly bloated. 
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-treemap}
+  \caption{Health Measure for TreeMap Solution Shows Poor Scalability}
+  \label{fig:scalable-health-treemap}
+\end{figure}
 
-The memory health concept can be used to gauge scalability, which parts of our design are scalable and which parts are not scalable. The bar graphs below show how the three solutions from Section ~\ref{section:mapofdoubles} scale as the number of entries increase. Each bar is split into two parts: the percentage of overhead and the percentage of data.  For the \texttt{TreeMap} solution, when there are only a few entries, the overhead is actually 88\% overhead, since the fixed cost of the \texttt{TreeMap} is significant. Very quickly this fixed cost gets amortized away. After that, there is a constant per entry overhead after that. 
+The memory health concept can be used to gauge scalability, which parts of our design are scalable and which parts are not scalable. The bar graph in Figure~\ref{fig:scalable-health-treemap} shows how the \texttt{TreeMap} solution from Section ~\ref{section:mapofdoubles} scales as the number of entries increase. Each bar is split into two parts: the percentage of overhead and the percentage of data.  When there are only a few entries, the overhead is 88\%, since the fixed cost of the \texttt{TreeMap} is significant. Very quickly this fixed cost is amortized away. After that, there is a constant per entry overhead of 82\%. With this information, it is possible to predict how much memory a data structure will occupy for a given input size. For a map with 1M entries, the overhead would be 89MB, and the total cost would be 105MB.
 
-With the two \texttt{double} array design, there is only fixed overhead, a container object and two object headers. Once the fixed cost amortizes, which happens quickly, the overhead goes down to 0. You really are just paying for pure data here.
+With the two \texttt{double} array design, there is only fixed overhead, a container object and two object headers, which is 4\% for 100 entries, as shown in Figure~\ref{fig:scalable-health-array}. Once the fixed cost is amortized, which happens quickly, the overhead goes down to 0. You really are just paying for pure data here.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-array}
+  \caption{Health Measure for Array Solution Shows Perfect Scalability}
+  \label{fig:scalable-health-array}
+\end{figure}
 
 Knowledge of data structure scalability is very valuable early in the design process. Too often, performance problems are addressed late in the process, when they are much harder to address. By measuring the memory health of your design early on, and understanding its scalability, you can avoid costly redesigns later on.  
 
