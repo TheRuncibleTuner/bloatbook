@@ -165,9 +165,9 @@ The content schematic for 100 entries is shown
 in Figure~\ref{fig:content-schematic-arraylist-pairs}.
 \begin{figure}
   \centering
- % \includegraphics[width=0.25\textwidth]{}
+ \includegraphics[width=0.9\textwidth]{Figures/content-schematic-arraylist-doubles}
   \caption{A content schematic for an \texttt{ArrayList} of \texttt{Pairs}}
-  \label{fig:content-schematic-arraylist-pairs}
+  \label{fig:content-schematic-arraylist-doubles}
 \end{figure} 
 
 This solution is cheaper than the \texttt{TreeMap} solution for two reasons. First, the doubles are not boxed. The 100 entries requires only 100 \texttt{Pair} objects. The \texttt{TreeMap} solution requires 200 objects to store all of the keys and values as boxed \texttt{Doubles}. This means that there are at least 100 fewer object headers in the \texttt{ArrayList} solution. Secondly, the per-entry cost of an \texttt{ArrayList} is much smaller than the per-entry cost of a \texttt{TreeMap}. Instead of 40 bytes per entry, the cost is 4 bytes per entry for an \texttt{ArrayList}. This is because an \texttt{ArrayList}, not surprisingly, stores its entries in an array. The incremental cost of an entry is a single pointer. 
@@ -199,6 +199,13 @@ The example in Section~\ref{section:mapofdoubles} deals with a relatively small 
   \includegraphics[width=0.9\textwidth]{Figures/scalable-health-treemap}
   \caption{Health Measure for TreeMap Solution Shows Poor Scalability}
   \label{fig:scalable-health-treemap}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-arraylist}
+  \caption{Health Measure for ArrayList Solution Shows Good Scalability}
+  \label{fig:scalable-health-arraylist}
 \end{figure}
 
 The memory health concept can be used to gauge scalability, which parts of our design are scalable and which parts are not scalable. The bar graph in Figure~\ref{fig:scalable-health-treemap} shows how the \texttt{TreeMap} solution from Section ~\ref{section:mapofdoubles} scales as the number of entries increase. Each bar is split into two parts: the percentage of overhead and the percentage of data.  When there are only a few entries, the overhead is 88\%, since the fixed cost of the \texttt{TreeMap} is significant. Very quickly this fixed cost is amortized away. After that, there is a constant per entry overhead of 82\%. With this information, it is possible to predict how much memory a data structure will occupy for a given input size. For a map with 1M entries, the overhead would be 89MB, and the total cost would be 105MB.
