@@ -5,16 +5,21 @@
 
 \begin{document}
 
-\chapter{Memory Health}
+\chapter{The Memory Health Approach}
 
-It can be hard to evaluate what the size of a data structure should be. If it is consuming a large amout of memory, is this a problem or not?  Memory health is a way to measure how efficiently a data structure uses memory. Memory health is independent of size: a small structure can be unhealthy, and a large structure can be healthy. A healthy data structure will generally scale well, while unhealthy data structures are often the root causes of memory footprint problems. The examples in this book discuss both memory size and memory health.\footnote{All measurements are from the J9 JVM.}
+A data structure may be big, but how do you know if it is too big? This chapter introduces the memory health approach, a way to gauge how efficiently a data structure uses memory. Java developers often have to piece together many smaller objects to build a single data structure. Memory health is a way to understand the overhead introduced in each object, the impact of connecting these objects into larger data structures, and, finally, how a data structure scales as it grows. Using this approach can provide valuable feedback into each step of your data modeling process.
 
-\section{What is Memory Health}
+As a programmer, you have to be concerned with both the size of your data structures and their health. Memory health is independent of size: a small structure can be unhealthy, and a large structure can be healthy. A healthy data structure will generally scale well, while unhealthy data structures are often the root causes of memory footprint problems. 
 
-The size of a data structure is the number of bytes needed to represent it. The \textit{health} of a data structure tells you the purpose for those bytes. What are the bytes accomplishing? Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead.  Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. If the amount of overhead is high, the representation is bloated, and the data structure is unhealthy. In other words, a healthy data structure is one with a low overhead.
+%The examples .
 
-Figure\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per characgter. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. 
+\section{Data or Overhead?}
 
+The size of a data structure is the number of bytes it occupies. The \textit{health} of a data structure tells you what these bytes are accomplishing. Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead. Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. A healthy data structure, from a space standpoint, is one with a low overhead.  Sometimes there are tradeoffs; a memory bloated design may be necessary for performance. Oftentimes, with a little attention to detail, you can achieve high-performing designs with low memory overhead %(gary to fix).
+
+Figure\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has an overhead, or \emph{bloat factor}, of 75\%.   %add margin note
+
+%add alignment
 \begin{figure}
   \centering
   \includegraphics[width=.90\textwidth]{Figures/eight-char-string.pdf}
@@ -26,16 +31,16 @@ Figure\ref{fig:eight-char-string} illustrates the memory costs for an eight-char
 
 To understand why there is so much overhead, it is useful to dig deeper into its different sources:  
 \begin{itemize}
-\item \textit{Object overhead} is overhead imposed by the JVM. Each object has a header that the JVM needs to manage storage allocation and garbage collection. 
-\item \textit{Pointers} are the glue of data structures, and are a main source of overhead.  
-\item \textit{Bookkeeping fields} are numeric and Boolean values, which cannot be counted as data, since they store information about the representation, not real application data.  
+\item \textit{JVM overhead.} Each object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
+\item \textit{Pointers}. Both null and non-null pointers glue objects together into data structures.   
+\item \textit{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
 \end{itemize}
 
-A Java string consists of two objects: a {\tt String} object that serves as a wrapper, and a {\tt char} array object to hold the actual characters. The {\tt String} object itself is entirely overhead, containing no real data. Two objects means there are two object header and is a pointer the two objects together. Additionally, a {\tt String} object includes several bookkeeping fields, such as the length of the string. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total eight-character string. The memory health is 25\%.  These numbers vary depending on the particular JVM, but not significantly.  
+Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers (12 bytes) and alignment costs plus a pointer gluing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields (12 bytes), such as a saved copy of its hashcode computation. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total eight-character string. The actual data occupies only 25\%. These numbers vary depending on the particular JVM, but not significantly.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}  
 
-If you were to design a string representation from scratch, 20\% overhead might seem a reasonable target. For a string in Java to have only 20\% overhead, it would need to be 96 characters long. Fortunately, the overhead cost of a string is fixed, so its relative importance shrinks for longer strings. However, it is not always possible to amortize data structure overhead costs, as discussed in Section~\ref{scalability}.  
+If you were to design a string representation from scratch, 20\% overhead might seem a reasonable target.  The overhead cost of a string is fixed, so its relative importance shrinks for longer strings. Unfortunately, for a string to have only 20\% overhead, it would need to be 96 characters long. As bad as this seems, for some data structures it is not even possible to amortize away overhead costs, as discussed in Section~\ref{scalability}.  
 
-\texttt{String}s, of course, are pervasive, so their proper management is critical for the memory health of the entire program. This is a big topic that will come up again later.
+\texttt{String}s, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of strings in Java, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
 
 \section{Data Structure Cost Notation}
 
