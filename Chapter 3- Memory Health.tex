@@ -13,7 +13,7 @@ As a programmer, you have to be concerned with both the size of your data struct
 
 %The examples .
 
-\section{Data or Overhead?}
+\section{Memory Health: Distinguishing Data from Overhead}
 
 The size of a data structure is the number of bytes it occupies. The \textit{health} of a data structure tells you what these bytes are accomplishing. Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead. Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. A healthy data structure, from a space standpoint, is one with a low overhead.  Sometimes there are tradeoffs; a memory bloated design may be necessary for performance. Oftentimes, with a little attention to detail, you can achieve high-performing designs with low memory overhead %(gary to fix).
 
@@ -36,15 +36,20 @@ To understand why there is so much overhead, it is useful to dig deeper into its
 \item \textit{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
 \end{itemize}
 
+\textbf{Example: An 8-Character String.}
+
 Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers (12 bytes) and alignment costs plus a pointer gluing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields (12 bytes), such as a saved copy of its hashcode computation. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total eight-character string. The actual data occupies only 25\%. These numbers vary depending on the particular JVM, but not significantly.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}  
 
 If you were to design a string representation from scratch, 20\% overhead might seem a reasonable target.  The overhead cost of a string is fixed, so its relative importance shrinks for longer strings. Unfortunately, for a string to have only 20\% overhead, it would need to be 96 characters long. As bad as this seems, for some data structures it is not even possible to amortize away overhead costs, as discussed in Section~\ref{scalability}.  
 
 \texttt{String}s, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of strings in Java, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
 
-\section{Data Structure Cost Notation}
+\section{Entities and Collections}
 
-It is useful to have a diagram notation to illustrate more complex examples, as a way of talking about a data structure and how it uses memory. Figure~\ref{fig:content-schematic} shows the basic elements of a \textit{content schematic}. A content schematic summarizes the cost breakdown of a data structure.
+When you are designing a data structure to accomplish a task, you design classes to represent application entities, and choose collections in which to store them. Small choices you make in both cases can make a big difference in memory costs. For example, the choice of the initial capacity of a collection can make or break the scalability of your design. The memory health approach looks at entities and collections separately, since there are different kinds of choices and pitfalls in each.
+
+----------
+[It is useful to have a diagram notation to illustrate more complex examples, as a way of talking about a data structure and how it uses memory. Figure~\ref{fig:content-schematic} shows the basic elements of a \textit{content schematic}. A content schematic summarizes the cost breakdown of a data structure.
 
 \begin{figure}
   \centering
@@ -59,28 +64,29 @@ In Figure~\ref{fig:content-schematic}, there are two \texttt{Collection}s which 
 	
 The entities in a content schematic are abstracted from the actual data structure objects. A box may be hiding other objects that help implement the entity. For example, the \texttt{String} entity in Figure~\ref{fig:content-schematic} represents both \texttt{String} and \texttt{char} array objects. The name of an entity is the name of the top object. Entities also summarize objects of the same type that are repeated in a data structure.  The \texttt{String} entity in Figure~\ref{fig:content-schematic} represents the 10 \texttt{String}s in the two \texttt{Collection}s. The memory cost of an entity is the sum over all of its objects. This summarization removes clutter and helps understanding. 
 
-Content schematics are a little like UML diagrams, since they represent a schematic of entities and relationships. Unlike UML diagrams, relationships are elevated to be entities, rather than edges. The reason is that in a language like Java, implementation of the relationship itself is often a big cause of expense, so it is important to make that visible. A very common pattern is to implement relationships as collections. Figure~\ref{fig:content-schematic-relationship} shows a map from 10K \texttt{Strings} to 10K \texttt{Doubles}, which is implemented by a \texttt{HashMap}. You can compute the memory health as an exercise.
+Content schematics are a little like UML diagrams, since they represent a schematic of entities and relationships. Unlike UML diagrams, relationships are elevated to be entities, rather than edges. The reason is that in a language like Java, implementation of the relationship itself is often a big cause of expense, so it is important to make that visible. A very common pattern is to implement relationships as collections. Figure~\ref{fig:content-schematic-relationship} shows a map from 10K \texttt{Strings} to 10K \texttt{Doubles}, which is implemented by a \texttt{HashMap}. You can compute the memory health as an exercise.]
   
-\begin{figure}
-  \centering
-  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-relationship}
-  \caption{A content schematic of a map from 10K \texttt{Strings} to 10K \texttt{Doubles}.}
-  \label{fig:content-schematic-relationship}
-\end{figure}
+%\begin{figure}
+%  \centering
+%  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-relationship}
+%  \caption{A content schematic of a map from 10K \texttt{Strings} to 10K \texttt{Doubles}.}
+ % \label{fig:content-schematic-relationship}
+%\end{figure}
 
 
-\section{Example: Sorted Map of Doubles}
-\label{section:mapofdoubles}
 
-Consider the following problem. The first phase of a program needs to read in a map of doubles to doubles, so that a second program phase can retrieve the map entries in sorted order by key. The details of this second phase are not important here. This scenario is an example of a very common more general pattern:
- 
-\textit{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
- 
-The problem is to design a data structure to store this map of doubles. A regular \texttt{HashMap} is not a good choice here, since it is not possible to keep the map entries sorted in a \textit{HashMap}. This section describes are three designs for a map of doubles with 100 entries. These designs have vastly different memory health characteristics. For each of these designs, the amount of actual data is the same. A double is eight bytes, each entry has two doubles, so 100 entries occupies 1.6KB. The difference is in the overhead.
+%\section{Example: Sorted Map of Doubles}
+%\label{section:mapofdoubles}
 
-\textbf{Solution 1.} The first idea that leaps forward is to use a \texttt{TreeMap}. Conveniently, the Java \texttt{TreeMap} class is a map that maintains its entries in sorted order, so this appears to be a perfect choice. The only problem is the memory cost.
+Consider the following problem. A monitoring program collects samples from a distributed system. Each sample it collects consists of a timestamp and a value, each represented as a double. The samples arrive out of order. The task is to display samples in chronological order, after all of the data has been collected. The solution requires a data structure to store the samples.  
+%\textit{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
 
-A content schematic for a 100-entry map of doubles using TreeMap is shown in Figure~\ref{fig:content-schematic-treemap-doubles}.  The total cost of this data structure is 8.5KB. Since there is only 1.6KB of data, the overhead is 7KB, which is 82\%. What is costing so much?
+This section describes the first of three designs for this data structure, which associates a value with each timestamp. For now, assume there are 100 samples. Each design has vastly different memory health characteristics. For each of these designs, the amount of actual data is the same. A double consumes eight bytes, each sample has two doubles, so 100 samples occupies 1.6KB of actual data. Any difference in size among the designs will be in the overhead.
+
+A map is a convenient way to store key-value pairs. A regular \texttt{HashMap} only solves part of the problem. To display the samples in chronological order, the entries have to be sorted. 
+The first idea that leaps forward is to use a \texttt{TreeMap}. A \texttt{TreeMap} is a map that maintains its entries in sorted order, so this appears to be a perfect choice. The only problem is the memory cost.
+
+An entity-collection diagram for a 100-entry map of doubles using TreeMap is shown in Figure~\ref{fig:content-schematic-treemap-doubles}.  The total cost of this data structure is 8.5KB. Since there is only 1.6KB of data, the overhead is 7KB, which is 82\%. What is costing so much?
 
 \begin{figure}
   \centering
