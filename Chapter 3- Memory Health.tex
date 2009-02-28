@@ -1,11 +1,48 @@
-%documentstyle{book}
 \documentclass{book}
+
+\usepackage{fullpage}
+
+%\usepackage{wrapfig}
+%\usepackage{float}
+%  \floatstyle{ruled}
+%  \newfloat{callout}{thp}{lop}
+%  \floatname{callout}{Things To Remember}
+
+\usepackage{color}
+\definecolor{Light}{gray}{.95}
+
+\usepackage{amsthm}
+{
+  \theoremstyle{definition}
+  \newtheorem{example}{Example}
+}
 
 \usepackage{graphicx}
 
+
+%%
+%% begin: the callout command
+\newcommand{\callout}[2]{\vspace{3mm}
+\begin{center}
+\fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
+    \textbf{\large Things To Remember --- #1}
+    \hfill\par
+    \hrule
+    \vspace{2mm}
+#2
+  \end{minipage}}
+\end{center}
+\vspace{3mm}
+}
+%% end: the callout command
+%%
+
+% two chapters will precede the one here now
+\setcounter{chapter}{2}
+
 \begin{document}
 
-\chapter{The Memory Health Approach}
+\chapter{Memory Health}
 
 A data structure may be big, but how do you know if it is too big? This chapter introduces the memory health approach, a way to gauge how efficiently a data structure uses memory. Java developers often have to piece together many smaller objects to build a single data structure. Memory health is a way to understand the overhead introduced in each object, the impact of connecting these objects into larger data structures, and, finally, how a data structure scales as it grows. Using this approach can provide valuable feedback into each step of your data modeling process.
 
@@ -13,54 +50,81 @@ As a programmer, you have to be concerned with both the size of your data struct
 
 %The examples .
 
-\section{Memory Health: Distinguishing Data from Overhead}
+\section{Distinguishing Data from Overhead}
 
-The size of a data structure is the number of bytes it occupies. The \textit{health} of a data structure tells you what these bytes are accomplishing. Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead. Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. A healthy data structure, from a space standpoint, is one with a low overhead.  Sometimes there are tradeoffs; a memory bloated design may be necessary for performance. Oftentimes, with a little attention to detail, you can achieve high-performing designs with low memory overhead %(gary to fix).
+The size of a data structure is the number of bytes it occupies. The \emph{health} of a data structure tells you what these bytes are accomplishing. Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead. Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. A healthy data structure, from a space standpoint, is one with a low overhead.  Sometimes there are tradeoffs; a memory bloated design may be necessary for performance. Oftentimes, with a little attention to detail, you can achieve high-performing designs with low memory overhead %(gary to fix).
 
-Figure\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has an overhead, or \emph{bloat factor}, of 75\%.   %add margin note
+Figure~\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has an overhead, or \emph{bloat factor}, of 75\%.   %add margin note
 
-%add alignment
+\callout{The Memory Bloat Factor}{
+    An important metric for evaluating the health of a data model
+    design is the fraction of overhead in occurences of that data
+    model. The \emph{memory bloat factor}, or simly \emph{bloat
+      factor}, is this ratio of overhead to total size. In Java, it is
+    all too easy to design a data model with a bloat factor well in
+    excess of 50\%; this would mean over half of your heap is devoted to things unrelated to the data your application cares about.
+}
+
+% TODO: add alignment
 \begin{figure}
   \centering
-  \includegraphics[width=.90\textwidth]{Figures/eight-char-string.pdf}
+  \includegraphics[width=.50\textwidth]{Figures/eight-char-string.pdf}
   %\includegraphics{eight-char-string}
-  \caption{An eight character string}
+  \caption{An eight character string in Java 6.}
   \label{fig:eight-char-string}
 \end{figure}
 
 
 To understand why there is so much overhead, it is useful to dig deeper into its different sources:  
 \begin{itemize}
-\item \textit{JVM overhead.} Each object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
-\item \textit{Pointers}. Both null and non-null pointers glue objects together into data structures.   
-\item \textit{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
+\item \emph{JVM overhead.} Each object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
+\item \emph{Pointers}. Both null and non-null pointers glue objects together into data structures.   
+\item \emph{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
 \end{itemize}
 
-\textbf{Example: An 8-Character String.}
+\begin{example}[An 8-Character String.]
 
-Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers (12 bytes) and alignment costs plus a pointer gluing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields (12 bytes), such as a saved copy of its hashcode computation. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total eight-character string. The actual data occupies only 25\%. These numbers vary depending on the particular JVM, but not significantly.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}  
+Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, at 12 bytes each, alignment costs, plus the pointer gluing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields, such as a saved copy of its hashcode computation, that consume a total of 12 bytes. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total space consumed by an eight-character string. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}
+\end{example}
 
-If you were to design a string representation from scratch, 20\% overhead might seem a reasonable target.  The overhead cost of a string is fixed, so its relative importance shrinks for longer strings. Unfortunately, for a string to have only 20\% overhead, it would need to be 96 characters long. As bad as this seems, for some data structures it is not even possible to amortize away overhead costs, as discussed in Section~\ref{scalability}.  
+If you were to design a string representation from scratch, 20\%
+overhead might seem a reasonable target. For a data type of such
+central importance, it is important to obtain a low overhead.
+Unfortunately, for a string to have only 20\% overhead, it would need
+to be 96 characters long. As bad as this seems, this string
+representation does at least have the benefit that it amortizes away
+its overhead, for large enough strings --- the overhead cost is a
+fixed 48 bytes.  For some data structures it is not possible to
+amortize away overhead costs, as discussed in
+Section~\ref{scalability}.
 
-\texttt{String}s, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of strings in Java, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
+Strings, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of strings in Java, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
 
 \section{Entities and Collections}
 
 When you are designing a data structure to accomplish a task, you design classes to represent application entities, and choose collections in which to store them. Small choices you make in both cases can make a big difference in memory costs. For example, the choice of the initial capacity of a collection can make or break the scalability of your design. The memory health approach looks at entities and collections separately, since there are different kinds of choices and pitfalls in each.
 
-----------
-[It is useful to have a diagram notation to illustrate more complex examples, as a way of talking about a data structure and how it uses memory. Figure~\ref{fig:content-schematic} shows the basic elements of a \textit{content schematic}. A content schematic summarizes the cost breakdown of a data structure.
+\callout{The Entity-Collection (EC) Diagram}{
+  It is useful to have a diagram notation to illustrate more complex
+  examples, as a way of talking about a data structure and how it uses
+  memory. Figure~\ref{fig:content-schematic} shows the basic elements
+  of an EC Diagram. This diagram summarizes the cost breakdown
+  of a data structure.
 
-\begin{figure}
-  \centering
-  \includegraphics[width=0.9\textwidth]{Figures/content-schematic}
-  \caption{A content schematic}
-  \label{fig:content-schematic}
-\end{figure}
+%\begin{figure}
+%  \centering
+\begin{center}
+  \includegraphics[width=0.15\textwidth]{Figures/content-schematic}
+\end{center}
+%  \caption{A content schematic}
+%  \label{fig:content-schematic}
+%\end{figure}
 	
 EC diagrams are a little like UML diagrams, since they represent a schematic of entities and relationships. Unlike UML diagrams, relationships are elevated to be entities, rather than edges. The reason is that in a language like Java, implementation of the relationship itself is often a big cause of expense, so it is important to make that visible. A very common pattern is to implement relationships as collections. 
 
-There are two types of boxes, or entities, in a content schematic. Octagons represent collection infrastructure, and rectangles represent all other entities. An edge from a collection to a rectangular entity indicates membership of the entity in the collection. The notation \textit{xN }inside each entity means there are \textit{N} instances of the entity. The expression \textit{xN = M} bytes means that there are \textit{N} instances occupying \textit{M} bytes of memory. An edge in a content schematic is labeled with the average fanout from the source entity to the target entity.
+\indent There are two types of boxes, or entities, in a content schematic. Octagons represent collection infrastructure, and rectangles represent all other entities. An edge from a collection to a rectangular entity indicates membership of the entity in the collection. The notation $xN$ inside each entity means there are $N$ instances of the entity. The expression \emph{xN = M} bytes means that there are \emph{N} instances occupying \emph{M} bytes of memory. An edge in a content schematic is labeled with the average fanout from the source entity to the target entity.
+%\caption{--- The Entity-Collection (EC) Diagram}
+}
 
 In Figure~\ref{fig:content-schematic}, there are two \texttt{Collection}s which together occupy 200 bytes, and ten \texttt{String}s occupy 880 bytes. There are on average five elements contained in each of the two \texttt{Collection}. Since the overhead of a \texttt{String} is 48 bytes and there are 10 \texttt{String}s, the total overhead is 480 bytes or 55\%. Data occupies 400 bytes, so the average \texttt{String} length is 10. The two \texttt{Collection}s are pure overhead, so the total overhead of this data structure is 680 bytes, or 63\%.
 	
@@ -79,7 +143,7 @@ The entities in a content schematic are abstracted from the actual data structur
 %\label{section:mapofdoubles}
 
 Consider the following problem. A monitoring program collects samples from a distributed system. Each sample it collects consists of a timestamp and a value, each represented as a double. The samples arrive out of order. The task is to display samples in chronological order, after all of the data has been collected. The solution requires a data structure to store the samples.  
-%\textit{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
+%\emph{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
 
 This section describes the first of three designs for this data structure, which associates a value with each timestamp. For now, assume there are 100 samples. Each design has vastly different memory health characteristics. For each of these designs, the amount of actual data is the same. A double consumes eight bytes, each sample has two doubles, so 100 samples occupies 1.6KB of actual data. Any difference in size among the designs will be in the overhead.
 
@@ -90,7 +154,7 @@ To understand the costs of this design, it is helpful to construct an Entity-Col
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-treemap-doubles}
+  \includegraphics[width=0.4\textwidth]{Figures/content-schematic-treemap-doubles}
   \caption{Solution 1: \texttt{TreeMap} of \texttt{Doubles}}
   \label{fig:content-schematic-treemap-doubles}
 \end{figure} 
@@ -178,7 +242,7 @@ The content schematic for 100 entries is shown
 in Figure~\ref{fig:content-schematic-arraylist-pairs}.
 \begin{figure}
   \centering
- \includegraphics[width=0.9\textwidth]{Figures/content-schematic-arraylist-doubles}
+ \includegraphics[width=0.175\textwidth]{Figures/content-schematic-arraylist-doubles}
   \caption{A content schematic for an \texttt{ArrayList} of \texttt{Pairs}}
   \label{fig:content-schematic-arraylist-doubles}
 \end{figure} 
@@ -194,7 +258,7 @@ Figure~\ref{fig:content-schematic-arrays-doubles}.  The overhead consists of two
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{Figures/content-schematic-arrays-doubles}
+  \includegraphics[width=0.4\textwidth]{Figures/content-schematic-arrays-doubles}
   \caption{Content Schematic for arrays of \texttt{doubles}}
   \label{fig:content-schematic-arrays-doubles}
 \end{figure}
@@ -209,14 +273,14 @@ In this example, there is a tradeoff between ease of programming and memory effi
 The example in Section~\ref{section:mapofdoubles} deals with a relatively small amount of data.  There are only 100 entries in the map of doubles.  Maybe if the solution is scaled up to say 10,000 entries, the high cost of the first \texttt{TreeMap} solution will be amortized away, and you will be just fine. Unfortunately, a 10,000 entry \texttt{TreeMap} is still at 82\% overhead. The reason here is that the overhead costs are per entry costs, and they are high.  So whenever you add an entry, this adds two \texttt{Doubles}, with all their boxing costs, and a 40 byte \texttt{TreeMap\$Entry} object. Each entry costs 88 bytes, and only 18\% of that cost is actual data. So in effect, this design  is not only bloated, but it also does not scale. It is constantly bloated. 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-treemap}
+  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-treemap}
   \caption{Health Measure for TreeMap Solution Shows Poor Scalability}
   \label{fig:scalable-health-treemap}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-arraylist}
+  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-arraylist}
   \caption{Health Measure for ArrayList Solution Shows Good Scalability}
   \label{fig:scalable-health-arraylist}
 \end{figure}
@@ -227,7 +291,7 @@ With the two \texttt{double} array design, there is only fixed overhead, a conta
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{Figures/scalable-health-array}
+  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-array}
   \caption{Health Measure for Array Solution Shows Perfect Scalability}
   \label{fig:scalable-health-array}
 \end{figure}
