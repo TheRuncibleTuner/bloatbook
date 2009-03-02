@@ -104,12 +104,17 @@ Strings, in particular short strings, are pervasive. It is important to be aware
 
 When you are designing a data structure to accomplish a task, you design classes to represent application entities, and choose collections in which to store them. Small choices you make in both cases can make a big difference in memory costs. For example, the choice of the initial capacity of a collection can make or break the scalability of your design. The memory health approach looks at entities and collections separately, since there are different kinds of choices and pitfalls in each.
 
-\callout{The Entity-Collection (EC) Diagram}{
-  It is useful to have a diagram notation to illustrate more complex
-  examples, as a way of talking about a data structure and how it uses
-  memory. Figure~\ref{fig:content-schematic} shows the basic elements
-  of an EC Diagram. This diagram summarizes the cost breakdown
-  of a data structure.
+\callout{The Entity-Collection (EC) Diagram}{To better understand the
+  health of complex data structures, it is useful to have a diagram
+  notation that spells out the impacts of your collection choices.
+  Think of an EC diagram as a modified form of an Entity-Relation (ER)
+  diagram, where you summarize all implementation details, like the
+  attributes of your entities, in a single number: the space occupied
+  by those attributes.
+
+  Figure~\ref{fig:content-schematic} shows the basic elements
+  of an EC Diagram.
+% This diagram summarizes the cost breakdown of a data structure.
 
 %\begin{figure}
 %  \centering
@@ -120,7 +125,14 @@ When you are designing a data structure to accomplish a task, you design classes
 %  \label{fig:content-schematic}
 %\end{figure}
 	
-EC diagrams are a little like UML diagrams, since they represent a schematic of entities and relationships. Unlike UML diagrams, relationships are elevated to be entities, rather than edges. The reason is that in a language like Java, implementation of the relationship itself is often a big cause of expense, so it is important to make that visible. A very common pattern is to implement relationships as collections. 
+
+ since they represent a
+schematic of entities and relationships. Unlike UML diagrams,
+relationships are elevated to be entities, rather than edges. The
+reason is that in a language like Java, implementation of the
+relationship itself is often a big cause of expense, so it is
+important to make that visible. A very common pattern is to implement
+relationships as collections.
 
 \indent There are two types of boxes, or entities, in a content schematic. Octagons represent collection infrastructure, and rectangles represent all other entities. An edge from a collection to a rectangular entity indicates membership of the entity in the collection. The notation $xN$ inside each entity means there are $N$ instances of the entity. The expression \emph{xN = M} bytes means that there are \emph{N} instances occupying \emph{M} bytes of memory. An edge in a content schematic is labeled with the average fanout from the source entity to the target entity.
 %\caption{--- The Entity-Collection (EC) Diagram}
@@ -308,6 +320,5 @@ You can define more sophisticated health metrics. There are different kinds of o
 
 
 When you are developing a large application, closing your eyes to quantitative considerations and thinking everything is going to be fine is not a good option. Nevertheless, you should not throw out all the Java libraries and write everything yourself. Taking the time to measure the cost and health of your data design can pinpoint problems early on. It can also prevent unnecessary optimizations that gain little or nothing. You should perform thought experiments, use limit cases to understand optimal designs, and make back-of-the-envelope calculations.  This requires more work, possibly more prototyping, but the effort will likely pays off. Subsequent chapters discuss more techniques for precise estimation of memory health, and provide the data and overhead costs of common primitives and collections needed to perform estimations. 
-
 
 \end{document}
