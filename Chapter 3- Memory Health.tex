@@ -23,18 +23,19 @@
 \setlength{\calloutparindent}{\parindent}
 %%
 %% begin: the callout command
-\newcommand{\callout}[2]{\vspace{3mm}
+\newcommand{\callout}[3]{\label{#1}\vspace{3mm}
 \begin{center}
 \fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
-    \textbf{\large Things To Remember --- #1}
+    \textbf{\large Things To Remember~\ref{#1} --- #2}
     \hrule
     \vspace{2mm}
 \setlength{\parindent}{\calloutparindent}
-#2
+#3
   \end{minipage}}
 \end{center}
 \vspace{3mm}
 }
+\newcommand{\thingstoremember}[1]{Things To Remember~\ref{#1}}
 %% end: the callout command
 %%
 
@@ -57,7 +58,7 @@ The size of a data structure is the number of bytes it occupies. The \emph{healt
 
 Figure~\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has an overhead, or \emph{bloat factor}, of 75\%.   %add margin note
 
-\callout{The Memory Bloat Factor}{
+\callout{callout:memory-bloat-factor}{The Memory Bloat Factor}{
     An important metric for evaluating the health of a data model
     design is the fraction of overhead in occurences of that data
     model. The \emph{memory bloat factor}, or simly \emph{bloat
@@ -83,8 +84,7 @@ To understand why there is so much overhead, it is useful to dig deeper into its
 \item \emph{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
 \end{itemize}
 
-\begin{example}[An 8-Character String.]
-
+\begin{example}[An 8-Character String]
 Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, at 12 bytes each, alignment costs, plus the pointer gluing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields, such as a saved copy of its hashcode computation, that consume a total of 12 bytes. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total space consumed by an eight-character string. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}
 \end{example}
 
@@ -109,81 +109,93 @@ represent application entities, and choose collections in which to
 store them. Seemingly small choices you make in both cases can have a
 big impact in memory bloat. For example, the choice of the initial
 capacity of a collection can make or break the scalability of your
-design. The memory health approach looks at entities and collections
-separately, since there are different kinds of choices and pitfalls in
-each.
+design. 
+%The memory health approach looks at entities and collections
+%separately, since there are different kinds of choices and pitfalls in
+%each.
 
-\callout{The Entity-Collection (EC) Diagram}{To better understand the
-  health of complex data structures, it is useful to have a diagram
-  notation that spells out the impacts of your collection choices.
-  Think of an EC diagram as a cousin to an Entity-Relation (ER)
-  diagram, one that exposes just the right level of implementation
-  detail to help you calculate the memory bloat factor of a complex
-  data structure.
+To help with this task of designing complex, and healthy, models, you
+will find it helpful to construct an Entity-Collection (EC) Diagram
+for your data model.  \thingstoremember{callout:ec-diagram} presents
+the detailed structure of an EC diagram.  It is important to remember
+that the entities in an EC diagram are abstracted from the actual data
+structure objects. A box may be hiding other objects that help
+implement the entity. For example, a \texttt{String} entity in will
+represent both the string data type and the underlying character
+array.
+
+\callout{callout:ec-diagram}{The Entity-Collection (EC) Diagram}{To
+  better understand the health of complex data structures, it is
+  useful to have a diagram notation that spells out the impacts of
+  your collection choices.  Think of an EC diagram as a cousin to an
+  Entity-Relation (ER) diagram, one that exposes just the right level
+  of implementation detail to help you calculate the memory bloat
+  factor of a complex data structure.
 
 \begin{center}
   \includegraphics[width=0.7\textwidth]{Figures/ec-diagram-callout}
 \end{center}
 
 In an EC diagram, there are two types of boxes, octagons and
-rectangles. Each summarizes the implementation details of portion of a
-data structure.  Octagons represent collection infrastructure, and
-rectangles represent the entities of your application.
+rectangles. Each box summarizes the implementation details of portion
+of a data structure.  Octagons represent collection infrastructure,
+and rectangles represent the entities of your application.
 
-It is important to remember that an EC diagram represents the {\em
-  containment} structure of your data model. So, an edge from a
-collection to a rectangular entity indicates membership of the entity
-in the collection. This also means that, if a certain type of
-collection or entity is used in multiple ways in the same data
-structure, then this type will appear in multiple locations --- one
-for each location in the data structure in which that type is used.
+An EC diagram represents the {\em containment} structure of your data
+model. So, an edge from a collection to a rectangular entity indicates
+membership of the entity in the collection. This also means that, if a
+certain type of collection or entity is used in multiple ways in the
+same data structure, then this type will appear in multiple locations
+--- one for each location in the data structure in which that type is
+used.
 
 The notation $x N = M$ inside each node means there are a total of $N$
 instances of that type in that location in the data structure, and in
 total these instances occupy $M$ bytes of memory. Each edge in a
 content schematic is labeled with the average fanout from the source
 entity to the target entity.
-\label{callout:ec-diagram}
 %\caption{--- The Entity-Collection (EC) Diagram}
-}
 
-Notice how an EC diagram summarizes away some of the details that an
-ER diagram shows, and shows some implementation details than an ER
-diagram does not include.  An EC diagram summarizes away the
-attributes of your entities into a single number: the space occupied
-by those attributes. Rather than represent relations, an EC diagram
-represents collection choices; where an ER diagram would show a single
-relation node for an M-to-N relation, an EC diagram would have a node
-for however many collections are necessary to implement this relation
---- typically two.
+%Notice how an EC diagram summarizes away some of the details that an
+%ER diagram shows, and shows some implementation details than an ER
+%diagram does not include.
+%The EC diagram represents collection choices, rather than the
+%relations they implement.
+%where an ER diagram would show a single relation node for an M-to-N
+%relation, 
+Where an ER or UML diagram would show the attributes of each entity,
+but ignore the implementation costs, an EC diagram summarizes the
+total cost in the single sizing number shown in each node. Where they
+would show relations, an EC diagram would have a node for however many
+collections are necessary to implement this relation --- typically
+two.
+%Unlike UML diagrams, relationships are elevated to be entities, rather
+%than edges. The reason is that in a language like Java, implementation
+%of the relationship itself is often a big cause of expense, so it is
+%important to make that visible. A very common pattern is to implement
+%relationships as collections. 
+ }
 
-Unlike UML diagrams, relationships are elevated to be entities, rather
-than edges. The reason is that in a language like Java, implementation
-of the relationship itself is often a big cause of expense, so it is
-important to make that visible. A very common pattern is to implement
-relationships as collections.
+%%%% this is the old Collection of Strings example
+%In Figure~\ref{fig:content-schematic}, there are two
+%\texttt{Collection}s which together occupy 200 bytes, and ten
+%\texttt{String}s occupy 880 bytes. There are on average five elements
+%contained in each of the two \texttt{Collection}. Since the overhead
+%of a \texttt{String} is 48 bytes and there are 10 \texttt{String}s,
+%the total overhead is 480 bytes or 55\%. Data occupies 400 bytes, so
+%the average \texttt{String} length is 10. The two \texttt{Collection}s
+%are pure overhead, so the total overhead of this data structure is 680
+%bytes, or 63\%.
 
-In Figure~\ref{fig:content-schematic}, there are two
-\texttt{Collection}s which together occupy 200 bytes, and ten
-\texttt{String}s occupy 880 bytes. There are on average five elements
-contained in each of the two \texttt{Collection}. Since the overhead
-of a \texttt{String} is 48 bytes and there are 10 \texttt{String}s,
-the total overhead is 480 bytes or 55\%. Data occupies 400 bytes, so
-the average \texttt{String} length is 10. The two \texttt{Collection}s
-are pure overhead, so the total overhead of this data structure is 680
-bytes, or 63\%.
-	
-The entities in an EC diagram are abstracted from the actual data
-structure objects. A box may be hiding other objects that help
-implement the entity. For example, the \texttt{String} entity in
-Figure~\ref{fig:content-schematic} represents both \texttt{String} and
-\texttt{char} array objects. The name of an entity is the name of the
-top object. Entities also summarize objects of the same type that are
-repeated in a data structure.  The \texttt{String} entity in
-Figure~\ref{fig:content-schematic} represents the 10 \texttt{String}s
-in the two \texttt{Collection}s. The memory cost of an entity is the
-sum over all of its objects. This summarization removes clutter and
-helps understanding.
+
+
+% The name of an entity is the name of the top object. Entities also
+% summarize objects of the same type that are repeated in a data
+% structure. The \texttt{String} entity in
+% Figure~\ref{fig:content-schematic} represents the 10 \texttt{String}s
+% in the two \texttt{Collection}s. The memory cost of an entity is the
+% sum over all of its objects. This summarization removes clutter and
+% helps understanding.
 
 %\begin{figure}
 %  \centering
@@ -197,10 +209,18 @@ helps understanding.
 %\section{Example: Sorted Map of Doubles}
 %\label{section:mapofdoubles}
 
-Consider the following problem. A monitoring program collects samples from a distributed system. Each sample it collects consists of a timestamp and a value, each represented as a double. The samples arrive out of order. The task is to display samples in chronological order, after all of the data has been collected. The solution requires a data structure to store the samples.  
+ \begin{example}[Constructing an EC Diagram for a Monitoring System]
+   A monitoring program collects samples from a distributed
+   system. Each sample it collects consists of a timestamp and a
+   value, each represented as a double. The samples arrive out of
+   order. The task is to display samples in chronological order, after
+   all of the data has been collected. The solution requires a data
+   structure to store the samples. The EC diagram can help you to
+   understand the health of alternative implementations of this model.
+\end{example}
 %\emph{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
 
-This section describes the first of three designs for this data structure, which associates a value with each timestamp. For now, assume there are 100 samples. Each design has vastly different memory health characteristics. For each of these designs, the amount of actual data is the same. A double consumes eight bytes, each sample has two doubles, so 100 samples occupies 1.6KB of actual data. Any difference in size among the designs will be in the overhead.
+The remainder of this section describes three designs for this data structure, which associates a value with each timestamp. For now, assume there are 100 samples. Each design has vastly different memory health characteristics. For each of these designs, the amount of actual data is the same. A double consumes eight bytes, each sample has two doubles, so 100 samples occupies 1.6KB of actual data. Any difference in size among the designs will be in the overhead.
 
 A map is a convenient way to store key-value pairs. A regular \texttt{HashMap} only solves part of the problem. To display the samples in chronological order, the entries have to be sorted. 
 The first idea that leaps forward is to use a \texttt{TreeMap}. A \texttt{TreeMap} is a map that maintains its entries in sorted order, so this appears to be a perfect choice. The only problem is the memory cost.
