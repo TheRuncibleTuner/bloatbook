@@ -19,16 +19,17 @@
 
 \usepackage{graphicx}
 
-
+\newlength{\calloutparindent}
+\setlength{\calloutparindent}{\parindent}
 %%
 %% begin: the callout command
 \newcommand{\callout}[2]{\vspace{3mm}
 \begin{center}
 \fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
     \textbf{\large Things To Remember --- #1}
-    \hfill\par
     \hrule
     \vspace{2mm}
+\setlength{\parindent}{\calloutparindent}
 #2
   \end{minipage}}
 \end{center}
@@ -102,45 +103,87 @@ Strings, in particular short strings, are pervasive. It is important to be aware
 
 \section{Entities and Collections}
 
-When you are designing a data structure to accomplish a task, you design classes to represent application entities, and choose collections in which to store them. Small choices you make in both cases can make a big difference in memory costs. For example, the choice of the initial capacity of a collection can make or break the scalability of your design. The memory health approach looks at entities and collections separately, since there are different kinds of choices and pitfalls in each.
+A String is an example of a relatively simple data structure.  When
+modeling a more complex data structure, you design classes to
+represent application entities, and choose collections in which to
+store them. Seemingly small choices you make in both cases can have a
+big impact in memory bloat. For example, the choice of the initial
+capacity of a collection can make or break the scalability of your
+design. The memory health approach looks at entities and collections
+separately, since there are different kinds of choices and pitfalls in
+each.
 
 \callout{The Entity-Collection (EC) Diagram}{To better understand the
   health of complex data structures, it is useful to have a diagram
   notation that spells out the impacts of your collection choices.
-  Think of an EC diagram as a modified form of an Entity-Relation (ER)
-  diagram, where you summarize all implementation details, like the
-  attributes of your entities, in a single number: the space occupied
-  by those attributes.
+  Think of an EC diagram as a cousin to an Entity-Relation (ER)
+  diagram, one that exposes just the right level of implementation
+  detail to help you calculate the memory bloat factor of a complex
+  data structure.
 
-  Figure~\ref{fig:content-schematic} shows the basic elements
-  of an EC Diagram.
-% This diagram summarizes the cost breakdown of a data structure.
-
-%\begin{figure}
-%  \centering
 \begin{center}
-  \includegraphics[width=0.15\textwidth]{Figures/content-schematic}
+  \includegraphics[width=0.7\textwidth]{Figures/ec-diagram-callout}
 \end{center}
-%  \caption{A content schematic}
-%  \label{fig:content-schematic}
-%\end{figure}
-	
 
- since they represent a
-schematic of entities and relationships. Unlike UML diagrams,
-relationships are elevated to be entities, rather than edges. The
-reason is that in a language like Java, implementation of the
-relationship itself is often a big cause of expense, so it is
-important to make that visible. A very common pattern is to implement
-relationships as collections.
+In an EC diagram, there are two types of boxes, octagons and
+rectangles. Each summarizes the implementation details of portion of a
+data structure.  Octagons represent collection infrastructure, and
+rectangles represent the entities of your application.
 
-\indent There are two types of boxes, or entities, in a content schematic. Octagons represent collection infrastructure, and rectangles represent all other entities. An edge from a collection to a rectangular entity indicates membership of the entity in the collection. The notation $xN$ inside each entity means there are $N$ instances of the entity. The expression \emph{xN = M} bytes means that there are \emph{N} instances occupying \emph{M} bytes of memory. An edge in a content schematic is labeled with the average fanout from the source entity to the target entity.
+It is important to remember that an EC diagram represents the {\em
+  containment} structure of your data model. So, an edge from a
+collection to a rectangular entity indicates membership of the entity
+in the collection. This also means that, if a certain type of
+collection or entity is used in multiple ways in the same data
+structure, then this type will appear in multiple locations --- one
+for each location in the data structure in which that type is used.
+
+The notation $x N = M$ inside each node means there are a total of $N$
+instances of that type in that location in the data structure, and in
+total these instances occupy $M$ bytes of memory. Each edge in a
+content schematic is labeled with the average fanout from the source
+entity to the target entity.
+\label{callout:ec-diagram}
 %\caption{--- The Entity-Collection (EC) Diagram}
 }
 
-In Figure~\ref{fig:content-schematic}, there are two \texttt{Collection}s which together occupy 200 bytes, and ten \texttt{String}s occupy 880 bytes. There are on average five elements contained in each of the two \texttt{Collection}. Since the overhead of a \texttt{String} is 48 bytes and there are 10 \texttt{String}s, the total overhead is 480 bytes or 55\%. Data occupies 400 bytes, so the average \texttt{String} length is 10. The two \texttt{Collection}s are pure overhead, so the total overhead of this data structure is 680 bytes, or 63\%.
+Notice how an EC diagram summarizes away some of the details that an
+ER diagram shows, and shows some implementation details than an ER
+diagram does not include.  An EC diagram summarizes away the
+attributes of your entities into a single number: the space occupied
+by those attributes. Rather than represent relations, an EC diagram
+represents collection choices; where an ER diagram would show a single
+relation node for an M-to-N relation, an EC diagram would have a node
+for however many collections are necessary to implement this relation
+--- typically two.
+
+Unlike UML diagrams, relationships are elevated to be entities, rather
+than edges. The reason is that in a language like Java, implementation
+of the relationship itself is often a big cause of expense, so it is
+important to make that visible. A very common pattern is to implement
+relationships as collections.
+
+In Figure~\ref{fig:content-schematic}, there are two
+\texttt{Collection}s which together occupy 200 bytes, and ten
+\texttt{String}s occupy 880 bytes. There are on average five elements
+contained in each of the two \texttt{Collection}. Since the overhead
+of a \texttt{String} is 48 bytes and there are 10 \texttt{String}s,
+the total overhead is 480 bytes or 55\%. Data occupies 400 bytes, so
+the average \texttt{String} length is 10. The two \texttt{Collection}s
+are pure overhead, so the total overhead of this data structure is 680
+bytes, or 63\%.
 	
-The entities in a content schematic are abstracted from the actual data structure objects. A box may be hiding other objects that help implement the entity. For example, the \texttt{String} entity in Figure~\ref{fig:content-schematic} represents both \texttt{String} and \texttt{char} array objects. The name of an entity is the name of the top object. Entities also summarize objects of the same type that are repeated in a data structure.  The \texttt{String} entity in Figure~\ref{fig:content-schematic} represents the 10 \texttt{String}s in the two \texttt{Collection}s. The memory cost of an entity is the sum over all of its objects. This summarization removes clutter and helps understanding. 
+The entities in an EC diagram are abstracted from the actual data
+structure objects. A box may be hiding other objects that help
+implement the entity. For example, the \texttt{String} entity in
+Figure~\ref{fig:content-schematic} represents both \texttt{String} and
+\texttt{char} array objects. The name of an entity is the name of the
+top object. Entities also summarize objects of the same type that are
+repeated in a data structure.  The \texttt{String} entity in
+Figure~\ref{fig:content-schematic} represents the 10 \texttt{String}s
+in the two \texttt{Collection}s. The memory cost of an entity is the
+sum over all of its objects. This summarization removes clutter and
+helps understanding.
 
 %\begin{figure}
 %  \centering
