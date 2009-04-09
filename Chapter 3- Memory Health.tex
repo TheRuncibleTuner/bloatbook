@@ -46,9 +46,9 @@
 
 \chapter{Memory Health}
 
-A data structure may be big, but how do you know if it is too big? This chapter introduces the concept of memory health, a way to gauge how efficiently a data structure uses memory. Java developers often have to piece together many smaller objects to build a single data structure. Memory health is a way to understand the overhead introduced in each object, the impact of connecting these objects into larger data structures, and, finally, how a data structure scales as it grows. Understanding memory health can provide valuable insight into each step of the data modeling process.
+A data structure may be big, but how do you know if it is too big? This chapter introduces the concept of memory health, a way to gauge how efficiently a data structure uses memory. Java developers often have to piece together many smaller objects to build a single data structure. Memory health is a way to understand the overhead introduced in each object, the impact of connecting these objects into larger data structures, and, finally, how a data structure scales as the amount of data it holds grows. Understanding memory health can provide valuable insight into each step of the data modeling process.
 
-Later chapters show how to estimate both the size and health of data designs. Both of these are important. Memory health is independent of size: a small structure can be unhealthy, and a large structure can be healthy. A healthy data structure will generally scale well, while unhealthy data structures are often the root causes of memory footprint problems. 
+Later chapters show how to estimate both the size and health of data structure designs. Both of these are important. Memory health is independent of size: a small structure can be unhealthy, and a large structure can be healthy. A healthy data structure will generally scale well, while unhealthy data structures are often the root causes of memory footprint problems. 
 
 %The examples .
 
@@ -59,7 +59,7 @@ The size of a data structure is the number of bytes it occupies. The \emph{healt
 In Java, it is all too easy to design a data structure that is bloated by a factor of more than 50\%; this means that over half of the heap is devoted to things unrelated to the data that the application cares about. To understand why there is so much overhead, it is useful to dig deeper into its different sources:  
 \begin{itemize}
 \item \emph{JVM overhead.} Each object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
-\item \emph{Pointers}. Both null and non-null pointers glue objects together into data structures.   
+\item \emph{Pointers}. Pointers glue objects together into data structures. Pointers can be null or non-null.   
 \item \emph{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
 \end{itemize}
 
@@ -70,22 +70,20 @@ In Java, it is all too easy to design a data structure that is bloated by a fact
     model. The \emph{memory bloat factor}, or simply \emph{bloat
       factor}, is the ratio of overhead to total size. 
 }
-
 % TODO: add alignment
 \begin{figure}
   \centering
-  \includegraphics[width=.50\textwidth]{Figures/eight-char-string.pdf}
+  \includegraphics[width=.70\textwidth]{Figures/chapter3/eight-char-string.pdf}
   %\includegraphics{eight-char-string}
   \caption{An eight character string in Java 6.}
   \label{fig:eight-char-string}
 \end{figure}
 
 \begin{example}[An 8-Character String]
-Figure~\ref{fig:eight-char-string} illustrates the memory costs for an eight-character Java string. You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has a \emph{bloat factor} of 75\%.  
+ You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has a \emph{bloat factor} of 75\%. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high. (Unless otherwise noted, all measurements in this book are from the 32-bit IBM Java 6 JVM.)
 
-Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, at 12 bytes each, alignment costs, plus the pointer glueing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields, such as a saved copy of its hashcode computation, that consume a total of 12 bytes. Adding all of this together, the overhead is 48 bytes, which is 75\% of the total space consumed by an eight-character string. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high.\footnote{All measurements are from the 32-bit IBM Java 6 JVM.}
+Figure~\ref{fig:eight-char-string} shows why the bloat factor is so high. Strings have all three kinds of overhead -- JVM overhead, pointers, and bookkeeping fields. Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, plus the pointer glueing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields: its hashcode computation, length, and substring offset. Adding all of this together, the overhead is 48 bytes.  
 \end{example}
-
 If you were to design a string representation from scratch, 20\%
 overhead might seem a reasonable target. For a data type of such
 central importance, it is important to obtain a low overhead.
@@ -97,7 +95,7 @@ fixed 48 bytes.  For some data structures it is not possible to
 amortize away overhead costs, as discussed in
 Section~\ref{scalability}.
 
-Strings, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of strings in Java, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
+Strings, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of Java strings, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
 
 \section{Entities and Collections}
 
@@ -114,18 +112,18 @@ design.
 
 To help understand the health of more complex data structures, it is
 useful to have a diagram notation that spells out the impacts of various choices.  An Entity-Collection (EC) diagram is a cousin to an Entity-Relation (ER) diagram, that exposes just the right level of implementation detail to help calculate the memory bloat
-factor of a complex data structure. As its name implies, an EC diagram shows the entities and collections of a design. It is important to remember that the entities and collections in the diagram are abstracted from the actual data structure objects. A diagram box may be hiding other objects that help implement the entity or collection. For example, a \texttt{String} entity in will represent both the \texttt{String} object and its underlying character
-array.
+factor of a complex data structure. As its name implies, an EC diagram shows the entities and collections of a design. It is important to remember that the entities and collections in the diagram are abstracted from the actual data structure objects. A diagram box may be hiding other objects that help implement the entity or collection. For example, a diagram box for a \texttt{String} entity represents both the \texttt{String} object and its underlying character
+array. 
 
 \callout{callout:ec-diagram}{The Entity-Collection (EC) Diagram}{
 
 \begin{center}
-  \includegraphics[width=0.7\textwidth]{Figures/ec-diagram-callout}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/content-schematic}
 \end{center}
 
-In an EC diagram, there are two types of boxes, octagons and
-rectangles. Each box summarizes the implementation details of portion
-of a data structure.  Octagons represent collection infrastructure,
+In an EC diagram, there are two types of boxes, pentagons and
+rectangles. Each box summarizes the implementation details of a portion
+of a data structure.  Pentagons represent collection infrastructure,
 and rectangles represent the entities of your application.
 
 An EC diagram represents the {\em containment} structure of your data
@@ -197,7 +195,7 @@ collections are necessary to implement this relation.
 
  \begin{example}[A Monitoring System]
    A monitoring program collects samples from a distributed
-   system. Each sample it collects consists of a timestamp and a
+   system. Each sample it collects consists of a unique timestamp and a
    value, each represented as a double. The samples arrive out of
    order. The task is to display samples in chronological order, after
    all of the data has been collected. The solution requires a data
@@ -206,80 +204,78 @@ collections are necessary to implement this relation.
 %\emph{Load-and-Use Behavior Pattern:} load data in one phase, use the data in the next phase.
 
 
-A map is a convenient way to store key-value pairs. A regular \texttt{HashMap} only solves part of the monitoring system problem. To display the samples in chronological order, the entries have to be sorted. 
+A map is a convenient way to store these timestamp-value pairs. A regular \texttt{HashMap} only solves part of the monitoring system problem. To be able to display the samples in chronological order, the entries have to be sorted by timestamp. 
 The first idea that leaps forward is to use a \texttt{TreeMap}. A \texttt{TreeMap} is a map that maintains its entries in sorted order, so this appears to be a perfect choice. The only problem is the memory cost.
 
-An EC diagram of a \texttt{TreeMap} storing 100 samples is shown in Figure~\ref{fig:content-schematic-treemap-doubles}.  This diagram gives a schematic view of the \texttt{TreeMap} and the entities it contains, along with their costs. The diagram shows that the total cost of this data structure is 8.5KB.  Since there is only 1.6KB of data, the overhead is 7KB, which is 82\%.  
+An EC diagram of a \texttt{TreeMap} storing 100 samples is shown in Figure~\ref{fig:content-schematic-treemap-doubles}.  This diagram gives a schematic view of the \texttt{TreeMap} and the entities it contains, along with their costs. The total cost, obtained by adding up the entity and collection costs, is 6,048 bytes. The real data consumes only 1,600 bytes of this, since a double occupies 8 bytes and there are 200 of them. Therefore, the bloat factor is 74\%.  
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{Figures/content-schematic-treemap-doubles}
-  \caption{Solution 1: \texttt{TreeMap} of \texttt{Doubles}}
+  %\includegraphics[width=0.4\textwidth]{Figures/treemap-doubles}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/treemap-doubles}
+  \caption{EC Diagram for 100 samples stored in a \texttt{TreeMap}}
   \label{fig:content-schematic-treemap-doubles}
 \end{figure} 
  
-Looking at the individual parts of the EC diagram can provide some insight into the source of this overhead. First, the double values are stored in \texttt{Double} objects. This is because the standard Java collections API operates only on \texttt{Object}s, not scalars, forcing you to box your scalars before putting them in a collection. Even with Java's autoboxing, the compiler still generates a boxed scalar in order to store a value in a standard collection.  A single instance of a \texttt{Double} object is 24 bytes. Since the data is only 8 bytes,  33\% of a \texttt{Double} object is actual data, and 67\% overhead. This is a high price for a basic data type. 
+Looking at the individual parts of the EC diagram can provide some insight into the source of this overhead. First, the sample timestamps and values are stored as \texttt{Double} objects. This is because the standard Java collection APIs take only \texttt{Object}s as parameters, not scalars, forcing you to box your scalars before putting them in a collection. Even with Java's autoboxing, the compiler still generates a boxed scalar in order to store a value in a standard collection.  A single instance of a \texttt{Double} object is 24 bytes, so 200 \texttt{Doubles} occupy 4,800 bytes. Since the data is only 1,600 bytes,  33\% of the \texttt{Double} objects is actual data, and 67\% is overhead. This is a high price for a basic data type. 
 
 %A double occupies eight bytes, each sample has two doubles, so 100 samples occupy 1.6KB of actual data  -- put this into the diagramf
 
 %Move this later? At best, the overhead will be 67\% if the doubles are boxed.
 
-The next surprise is that the \texttt{TreeMap} infrastructure by itself consumes a whopping 3.9KB of memory. All of this is overhead. What is taking up so much space? A \texttt{TreeMap}, like every other collection in Java, has a wrapper object, the \texttt{TreeMap} object itself, along with other internal objects that implement the collection functionality. Each type of collection in the standard library has a different kind of infrastructure, some are built from arrays, some from separate entry objects, and some use a combination of both. --- stopped here --- In the case of \texttt{TreeMap}, for each entry, there is a separate \texttt{Treemap\$Entry} object. This is typical of collections. A typical collection has a fixed overhead, in this case it is 48 bytes, and a per-entry overhead cost, in this case it is 40 bytes per entry. These 40 bytes include five pointer fields, in addition to other sources of overhead. This relatively high per-entry cost makes \texttt{TreeMap} a particularly expensive collection. The costs of other collections are given in Chapter 7.
- 
-Using a \texttt{TreeMap} is not necessarily a wrong design. It depends on whether that 82\% overhead is buying something useful. In this example, the main thing it is buying is the ability of \texttt{TreeMap} to maintain a sorted order while randomly inserting and deleting elements. It constantly maintains a sorted order. If you need something to be in sorted order during the load phase, or maybe you have a real time monitor that is constantly being updated, and you need to look at it in that order, then \texttt{TreeMap} is a great data structure.  But if you do not need this functionality, there are other data structures that could accomplish the same thing more cheaply. In this example, the sorted order is only needed during the second phase, after all the data is loaded. The load-and-use behavior can be exploited to choose a cheaper representation.
+The \texttt{TreeMap} infrastructure occupies an additional 1,248 bytes of memory. All of this is overhead. What is taking up so much space?  \texttt{TreeMap}, like every other collection in Java, has a wrapper object, the \texttt{TreeMap} object itself, along with other internal objects that implement the collection functionality. Each type of collection in the standard library has a different kind of infrastructure, some are built from arrays, some from separate entry objects, and some use a combination of both. Internally, \texttt{TreeMap} is a self-balancing search tree. The tree nodes maintain pointers to parents and siblings.  In newer releases of Java 6, each node in the tree can store up to 16 key-value pairs in two arrays.  The relatively large size of these nodes and arrays makes \texttt{TreeMap} a particularly memory-inefficient collection. The costs of other common collections, that use less memory than \texttt{TreeMap}, are given in Chapter 7.
+%    there is a separate \texttt{Treemap\$Entry} object. This is typical of collections. A typical collection has a fixed overhead, in this case it is 48 bytes, and a per-entry overhead cost, in this case it is 40 bytes per entry. These 40 bytes include five pointer fields, in addition to other sources of overhead. 
 
-Of course, the other nice thing about \texttt{TreeMap} is that it can be pulled off the shelf. But maybe there are other collection classes that are available, or maybe there are other kinds of collection classes that can be put together. This does not mean that programmers should be writing their own collections, but there are some cases where you can slap a thin wrapper over something that already exists.
+Using a \texttt{TreeMap} is not \textit{apriori} a bad design. It depends on whether the overhead is buying something useful. \texttt{TreeMap} has a high memory cost because it maintains its entries in sorted order while they are being randomly inserted and deleted. It constantly maintains a sorted order. If you need this capability, for instance, if you have a real time monitor that is constantly being updated, and you need to look at the data in order, then \texttt{TreeMap} is a great data structure.  But if you do not need this capability, there are other data structures that could provide sorted-map functionality with less memory consumption. In this example, the data needs to be sorted only after data collection is complete. There is an initial load phase followed by a use phase. The sorted order is only needed during the second phase, after all the data is loaded. This load-and-use behavior is a common pattern, and it can be exploited to choose a more memory-efficient representation.
 
+Of course, another nice aspect of \texttt{TreeMap} is that it can be pulled off the shelf. It would be ideal if there were another collection that provides just the needed functionality. If not, maybe there is a way to easily extend another collection class by adding a thin wrapper around it. Writing your own collection class from scratch should rarely be necessary, and is not recommended.
 
-\section{Two Space-Efficient Designs}
+\section{Two Memory-Efficient Designs}
 \label{better-designs} 
 
-For the purpose of comparison, this section describes two other designs to represent the monitoring system samples. Like the \texttt{TreeMap} solution, each design associates a value with each timestamp. Note that for 100 samples, there is always 1.6KB of actual data. Any difference in size among different designs will be in the overhead.
+This section describes two other data structure designs to store the monitoring system samples. These designs use less memory and do not maintain sorted order while the data is being loaded. This is not a problem, since the data can be sorted after loading. 
 
-The next design uses a more efficient data structure than \texttt{TreeMap}. The sorted order is not maintained when the data is being loaded, but this is not a problem. This design stores the double map in an \texttt{ArrayList}, where each entry is a pair of doubles. There is a bit more programming required to implement this solution, but it is not excessive. Fortunately, the Java standard \texttt{Collections} class has some useful static methods, namely, a \texttt{sort} method and a \texttt{binarySearch} method. Each of these can take an \texttt{ArrayList} and a \texttt{Comparable} as parameters. This design requires writing a new class:
+The next design stores the samples in an \texttt{ArrayList}, where each entry is a \texttt{Sample} object containing a timestamp and value. Both of these are primitive \texttt{double} fields of \texttt{Sample}.  There is a bit more code that has to be written, but it is not excessive. Fortunately, the standard Java \texttt{Collections} class has some useful static methods so that new sort and search algorithms do not have to be implemented. The \texttt{sort} and \texttt{binarySearch} methods from \texttt{Collections} each can take an \texttt{ArrayList} and a \texttt{Comparable} object as parameters. To take advantage of these methods, the new \texttt{Sample} class has to implement the \texttt{Comparable} interface, so that two sample timestamps can be compared:  
 
 \ttfamily
 \begin{verbatim}
    
-    public class Pair implements Comparable<Pair> {{
+    public class Sample implements Comparable<Sample> {
 
-        private double key;
+        private double timestamp;
         private double value;
 	
-        public Pair(double d1, double d2) {
-            key = d1;
+        public Sample(double d1, double d2) {
+            timestamp = d1;
             value = d2;
         }
 	
-        public double getKey() {
-            return key;
+        public double getTimestamp() {
+            return timestamp;
         }
 	
         public double getValue() {
             return value;
-	      }
+        }
 	      
-	      public int compareTo(Pair p) {
-            return Double.compare(key, p.getKey());	
+        public int compareTo(Sample s) {
+            return Double.compare(timestamp, s.getTimestamp());	
         }
     }
 
 \end{verbatim}
 \normalfont
-
-Additionally, there needs to be a wrapper class, to implement map operations. This wrapper can either implement the Java \texttt{Map} interface, or something similar. Here is a skeleton showing the \texttt{get} method for this wrapper class:
-
+Additionally, the \texttt{ArrayList} needs to be stored in a wrapper class that implements map operations. Here are two methods, \texttt{get} and \texttt{sort}, of a wrapper class \texttt{Samples} that implements the \texttt{Map} interface. 
 \ttfamily
 \begin{verbatim}
-    public class DoubleMap implements java.util.Map<Double, Double> {
+    public class Samples implements java.util.Map<Double, Double> {
 
-        private ArrayList<Pair> ar = new ArrayList<Pair>();
+        private ArrayList<Sample> ar = new ArrayList<Sample>();
         ....
 		
-        /* Parameter O is a Double, returns Double */
-        public Double get(Double key) {
-            Pair p = new Pair(key.doubleValue(), 0.0);
-            int result = Collections.binarySearch(ar, p);
+        public Double get(Double timestamp) {
+            Sample sample = new Sample(timestamp.doubleValue(), 0.0);
+            int result = Collections.binarySearch(ar, sample);
             if (result < 0) return null;
             return new Double(ar.get(result).getValue());
         }
@@ -290,67 +286,69 @@ Additionally, there needs to be a wrapper class, to implement map operations. Th
     }
     
 \end{verbatim}
-\normalfont   
-
+\normalfont 
+  
 The EC diagram for 100 entries is shown in Figure~\ref{fig:content-schematic-arraylist-pairs}.
 \begin{figure}
   \centering
- \includegraphics[width=0.175\textwidth]{Figures/content-schematic-arraylist-doubles}
-  \caption{A content schematic for an \texttt{ArrayList} of \texttt{Pairs}}
-  \label{fig:content-schematic-arraylist-doubles}
+ \includegraphics[width=0.7\textwidth]{Figures/chapter3/arraylist-doubles}
+  \caption{EC Diagram for 100 samples stored in an \texttt{ArrayList} of \texttt{Samples}}
+  \label{fig:content-schematic-arraylist-pairs}
 \end{figure} 
+This design uses less memory and has better health than the \texttt{TreeMap} design. The memory cost is reduced from 6,048 to 3,664 bytes, and the overhead is reduced from 74\% to 56\%.  There are two reasons for this improvement. First, the timestamps and values are not boxed. They are stored as primitive double fields in each \texttt{Sample}. This reduces the number of objects needed to store the actual data from 200 to 100. Fewer objects means fewer object headers, which is significant in this case. Secondly, an \texttt{ArrayList} has lower infrastructure cost than a \texttt{TreeMap}. \texttt{ArrayList} is one of the most memory-efficient Java collections. It is implemented using a wrapper object and an array of pointers. This is much more compact than the heavy-weight \texttt{TreeMap}. 
 
-This solution is cheaper than the \texttt{TreeMap} solution for two reasons. First, the doubles are not boxed. The 100 entries requires only 100 \texttt{Pair} objects. The \texttt{TreeMap} solution requires 200 objects to store all of the keys and values as boxed \texttt{Doubles}. This means that there are at least 100 fewer object headers in the \texttt{ArrayList} solution. Secondly, the per-entry cost of an \texttt{ArrayList} is much smaller than the per-entry cost of a \texttt{TreeMap}. Instead of 40 bytes per entry, the cost is 4 bytes per entry for an \texttt{ArrayList}. This is because an \texttt{ArrayList}, not surprisingly, stores its entries in an array. The incremental cost of an entry is a single pointer. 
+While this is a big improvement, 56\% ovehead still seems high. Over half the memory is being wasted. How hard is it to get rid of this overhead completely? Eliminating overhead means eliminating objects altogether. This is not a recommended practice, unless memory is extremely tight, and there is no other choice. It is none-the-less an interesting exercise to compare a best case design with the other designs. The most space-efficient design uses two parallel arrays of doubles. One array stores all of the sample timestamps, and the second stores all of the values. These array can be stored in a wrapper class that implements a map interface.
 
-The last alternative is an optimal, no-overhead solution. Eliminating overhead requires eliminating objects altogether. This is not a recommended practice, unless memory is extremely tight, and there is no other choice. It is none the less interesting to compare this best case solution with the others. It uses two parallel arrays of doubles. One array stores all of the keys, and the second stores all of the values. You need to encapsulate these arrays in a wrapper object, to provide an object façade.
-
-In addition to forsaking objects, this design requires a bit more code, but, again, it is not excessive. Like the \texttt{Collections} class, The Java \texttt{Arrays} class has \texttt{sort} and  \texttt{binarySearch} methods that can be pulled off the shelf. However, these methods apply only to a single array. If you sort the keys, you lose the association between the keys and their corresponding values. You can use an extra temporary array to get around this problem. The solution is left as an exercise.
- 
-The EC diagram for two arrays of 100 doubles is shown in 
-Figure~\ref{fig:content-schematic-arrays-doubles}.  The overhead consists of two object headers, which is 2\% of the total structure (probably more with the wrapper -- add).
+This design requires a bit more code, but, again, it is not excessive. Like the \texttt{Collections} class, the \texttt{Arrays} class provides static \texttt{sort} and  \texttt{binarySearch} methods. However, these methods apply only to a single array. If you sort the timestamp array, you will lose the association between the timestamps and their corresponding values. You can use an extra temporary array to get around this problem. The implementation is left as an exercise. The EC diagram for this design using two double arrays is shown in 
+Figure~\ref{fig:content-schematic-arrays-doubles}. The overhead is only 4\%. 
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{Figures/content-schematic-arrays-doubles}
-  \caption{Content Schematic for arrays of \texttt{doubles}}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/array-doubles}
+  \caption{EC Diagram for 100 samples stored in two parallel arrays}
   \label{fig:content-schematic-arrays-doubles}
 \end{figure}
 
-Another option is to use one data structure in the first phase, and copy it into a second data structure for the second phase. For example, the \texttt{ArrayList} solution could be used for the first phase, and the \texttt{double} array solution for the second phase.
-
-In this example, there is a tradeoff between ease of programming and memory efficiency. More code is needed for solution 2, and even more code for solution 3. However, in many cases, memory efficient designs are just as easy to implement as inefficient designs.
+For the three designs presented, there is a tradeoff between ease of programming and memory efficiency. More programming is needed as the design becomes more memory efficient. However, in many cases, memory efficient designs are just as easy to implement as inefficient designs. When there are two distinct execution phases, as in this example, the data structure can be trimmed after the first phase, to eliminate empty space reserved for growth. Another option is to use one data structure in the first phase, and copy it into a second data structure for the second phase. This approach can sometimes be a good compromise between ease-of-programming and memory efficiency.
  
 \section{Scalability}
 \label{scalability}
 
-The example in Section~\ref{section:mapofdoubles} deals with a relatively small amount of data.  There are only 100 entries in the map of doubles.  Maybe if the solution is scaled up to say 10,000 entries, the high cost of the first \texttt{TreeMap} solution will be amortized away, and you will be just fine. Unfortunately, a 10,000 entry \texttt{TreeMap} is still at 82\% overhead. The reason here is that the overhead costs are per entry costs, and they are high.  So whenever you add an entry, this adds two \texttt{Doubles}, with all their boxing costs, and a 40 byte \texttt{TreeMap\$Entry} object. Each entry costs 88 bytes, and only 18\% of that cost is actual data. So in effect, this design  is not only bloated, but it also does not scale. It is constantly bloated. 
+The evaluation of the three monitoring system designs was based on only 100 samples. In a real scenario, a monitoring system might have to handle hundreds of thousands, or millions, of samples. Stress testing is usually performed late in a development cycle, when it is very costly to fix a memory footprint problem. Using a memory health approach, it possible to predict how well a data structure design will scale much earlier.
+ 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-treemap}
-  \caption{Health Measure for TreeMap Solution Shows Poor Scalability}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/scalable-health-treemap}
+  \caption{Health Measure for the \texttt{TreeMap} Design Shows Poor Scalability}
   \label{fig:scalable-health-treemap}
 \end{figure}
+The basic question for predicting scalability is what happens to the bloat factor as a data structure grows. The \texttt{TreeMap} design has 74\% overhead with 100 samples. With 100,000 samples, maybe the high overhead will be amortized away, that is, maybe this design will scale well, even if it is inefficient for small data sizes. The bar graph in Figure~\ref{fig:scalable-health-treemap} shows how the \texttt{TreeMap} design scales as the number of samples increase. Each bar is split into two parts: the percentage of overhead and the percentage of data. For a single sample, the overhead is 98\%! As more samples are added, the bloat factor drops to 70\%. Unfortunately, with 200,000 samples, and 300,000 samples, the bloat factor is still 70\%. The \texttt{TreeMap} design is not only bloated, but it also does not scale. It is constantly bloated.
+
+To understand why this happens, recall that the infrastructure of \texttt{TreeMap} is made up of nodes, with two 16-element arrays hanging off of each node. As samples are added, the infrastructure grows, since new nodes and arrays are being created. Also, each additional sample has its own overhead, namely the JVM overhead in each \texttt{Double} object. When the \texttt{TreeMap} becomes large enough, the \textit{per-entry overhead} dominates, and hovers around 70\%. The bloat factor is larger when the \texttt{TreeMap} is small. The initial \texttt{TreeMap} infrastructure, which is a fixed cost, is relatively big. The \texttt{TreeMap} wrapper object alone is 48 bytes. This initial fixed cost is quickly amortized away as samples are added. 
+
+\callout{callout:fixed-and-per-entry-costs}{Fixed vs Per-Entry Overhead}{
+The memory overhead of a collection can be classified as either \textit{fixed} or \textit{per-entry}. Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as the collection grows. Per-entry overhead depends on the number of entries stored in the collection. Collections with a large per-entry overhead do not scale well, since per-entry costs cannot be amortized away as the collection grows. 
+}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-arraylist}
-  \caption{Health Measure for ArrayList Solution Shows Good Scalability}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/scalable-health-arraylist}
+  \caption{Health Measure for the \texttt{ArrayList} Design }
   \label{fig:scalable-health-arraylist}
 \end{figure}
 
-The memory health concept can be used to gauge scalability, which parts of our design are scalable and which parts are not scalable. The bar graph in Figure~\ref{fig:scalable-health-treemap} shows how the \texttt{TreeMap} solution from Section ~\ref{section:mapofdoubles} scales as the number of entries increase. Each bar is split into two parts: the percentage of overhead and the percentage of data.  When there are only a few entries, the overhead is 88\%, since the fixed cost of the \texttt{TreeMap} is significant. Very quickly this fixed cost is amortized away. After that, there is a constant per entry overhead of 82\%. With this information, it is possible to predict how much memory a data structure will occupy for a given input size. For a map with 1M entries, the overhead would be 89MB, and the total cost would be 105MB.
+Figure~\ref{fig:scalable-health-arraylist} shows similar data for the \texttt{ArrayList} design. Like the \texttt{TreeMap} design, there is a fixed overhead, which is significant when the \texttt{ArrayList} is small. As the \texttt{ArrayList} grows, the fixed overhead is amortized away, but there is still a per-entry cost of 56\%, that remains constant. 
 
-With the two \texttt{double} array design, there is only fixed overhead, a container object and two object headers, which is 4\% for 100 entries, as shown in Figure~\ref{fig:scalable-health-array}. Once the fixed cost is amortized, which happens quickly, the overhead goes down to 0. You really are just paying for pure data here.
+For the last design that uses arrays, there is only fixed overhead, namely, the \texttt{Samples} object and JVM overhead for the arrays. There is no per-entry overhead at all. Figure~\ref{fig:scalable-health-array} shows the initial 80\% fixed overhead is quickly amortized away. When more samples are added, the bloat factor becomes 0. The samples themselves are pure data.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{Figures/scalable-health-array}
-  \caption{Health Measure for Array Solution Shows Perfect Scalability}
+  \includegraphics[width=0.7\textwidth]{Figures/chapter3/scalable-health-array}
+  \caption{Health Measure for the Array-Based Design Shows Perfect Scalability}
   \label{fig:scalable-health-array}
 \end{figure}
 
-Knowledge of data structure scalability is very valuable early in the design process. Too often, performance problems are addressed late in the process, when they are much harder to address. By measuring the memory health of your design early on, and understanding its scalability, you can avoid costly redesigns later on.  
-
+This analysis helps predict the memory requirements for large sample sizes. Suppose the monitoring system needs to process 10 million samples. The data alone takes up 160MB.  The graphs shown in this section can be used to quickly calculate how much memory you will need. For the \texttt{TreeMap} design, the overhead cost is 70\%, so you will need 533MB to store the samples. For the \texttt{ArrayList} design, you will need 363MB. For the \texttt{array} design, you will need only 160MB. As these numbers show, the design choice can make a huge difference.
 
 \section{Summary}
 
