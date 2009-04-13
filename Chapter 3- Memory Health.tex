@@ -235,7 +235,7 @@ Of course, another nice aspect of \texttt{TreeMap} is that it can be pulled off 
 
 This section describes two other data structure designs to store the monitoring system samples. These designs use less memory and do not maintain sorted order while the data is being loaded. This is not a problem, since the data can be sorted after loading. 
 
-The next design stores the samples in an \texttt{ArrayList}, where each entry is a \texttt{Sample} object containing a timestamp and value. Both of these are primitive \texttt{double} fields of \texttt{Sample}.  There is a bit more code that has to be written, but it is not excessive. Fortunately, the standard Java \texttt{Collections} class has some useful static methods so that new sort and search algorithms do not have to be implemented. The \texttt{sort} and \texttt{binarySearch} methods from \texttt{Collections} each can take an \texttt{ArrayList} and a \texttt{Comparable} object as parameters. To take advantage of these methods, the new \texttt{Sample} class has to implement the \texttt{Comparable} interface, so that two sample timestamps can be compared:  
+The first design stores the samples in an \texttt{ArrayList}, where each entry is a \texttt{Sample} object containing a timestamp and value. Both of these are primitive \texttt{double} fields of \texttt{Sample}.  There is a bit more code that has to be written, but it is not excessive. Fortunately, the standard Java \texttt{Collections} class has some useful static methods so that new sort and search algorithms do not have to be implemented. The \texttt{sort} and \texttt{binarySearch} methods from \texttt{Collections} each can take an \texttt{ArrayList} and a \texttt{Comparable} object as parameters. To take advantage of these methods, the new \texttt{Sample} class has to implement the \texttt{Comparable} interface, so that two sample timestamps can be compared:  
 
 \ttfamily
 \begin{verbatim}
@@ -352,12 +352,14 @@ This analysis helps predict the memory requirements for large sample sizes. Supp
 
 \section{Summary}
 
-This chapter introduced the concept of memory health as a way thinking about the memory efficiency of a data design. How much of your design is real data, and how much is an artifact of the way you are representing it. The answer will show you how much room for improvement there is, and if in fact you are paying a reasonable price for what you are getting.
+When you are developing a large application, closing your eyes to quantitative considerations and thinking everything is going to be fine is risky. Taking the time to measure the cost and health of your data design can pinpoint problems early on. This chapter described three conceptual tools to help evaluate the memory-efficiency of a design.
+\begin{itemize}
+\item The \textsl{memory bloat factor} measures how much of your design is real data, and how much is an artifact of the way you are representing it. This metric tells you how much room for improvement there is, and if in fact you are paying a reasonable price for what you are getting.
+\item Complex data structures are built up from data entities and collections of these entities.   The \textsl{Entity-Collection (EC) Diagram} shows the costs associated with the different parts of a complex data structure. These diagrams help you to compare the memory efficiency of different representation choices.
+\item By classifying the overhead of a collection as either \textsl{fixed} or \textsl{per-entry}, you can predict how much memory you will need to store very large collections. Being able to predict scalability is critical to meeting the requirements of larges applications. 
+\end{itemize}
+These are the basic tools used in the rest of this book. To estimate the cost of an entity, you will need to know how many bytes each primitive type needs, what is the pointer size, and what the JVM overhead is. You will learn how to estimate the cost of entities in Chapter 4. To estimate scalability, you will need to know what the fixed and per-entry costs are for the collection classes you are using. These are given in Chapter 7.
 
-Memory health is defined here simply as low overhead cost. Each byte is classified as data or overhead. 
-You can define more sophisticated health metrics. There are different kinds of overhead, and you can dissect and measure it in a variety of ways. For example, you can measure empty array slots or different classes of pointers. Memory health is treated more formally in [reference paper].
-
-
-When you are developing a large application, closing your eyes to quantitative considerations and thinking everything is going to be fine is not a good option. Nevertheless, you should not throw out all the Java libraries and write everything yourself. Taking the time to measure the cost and health of your data design can pinpoint problems early on. It can also prevent unnecessary optimizations that gain little or nothing. You should perform thought experiments, use limit cases to understand optimal designs, and make back-of-the-envelope calculations.  This requires more work, possibly more prototyping, but the effort will likely pays off. Subsequent chapters discuss more techniques for precise estimation of memory health, and provide the data and overhead costs of common primitives and collections needed to perform estimations. 
+%Nevertheless, you should not throw out all the Java libraries and write everything yourself.  It can also prevent unnecessary optimizations that gain little or nothing. You should perform thought experiments, use limit cases to understand optimal designs, and make back-of-the-envelope calculations.  This requires more work, possibly more prototyping, but the effort will likely pays off. Subsequent chapters discuss more techniques for precise estimation of memory health, and provide the data and overhead costs of common primitives and collections needed to perform estimations. 
 
 \end{document}
