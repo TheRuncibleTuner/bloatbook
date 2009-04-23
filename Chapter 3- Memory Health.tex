@@ -85,8 +85,7 @@ In Java, it is all too easy to design a data structure that is bloated by a fact
 Figure~\ref{fig:eight-char-string} shows why the bloat factor is so high. Strings have all three kinds of overhead -- JVM overhead, pointers, and bookkeeping fields. Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, plus the pointer glueing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields: a length and an offset, which have meaning only when this string is the result of a substring operation, and a saved hashcode. Adding all of this together, the overhead is 48 bytes.  
 \end{example}
 If you were to design a string from scratch, 20\%
-overhead might seem a reasonable target. For a data type of such
-central importance, it is important to obtain a low overhead.
+overhead might seem a reasonable target. For such a common data type, it is important to obtain a low overhead.
 Unfortunately, for a string to have only 20\% overhead with its current implementation, it would need
 to be 96 characters long. As bad as this seems, this string
 representation does at least have the benefit that it amortizes away
