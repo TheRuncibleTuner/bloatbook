@@ -89,7 +89,7 @@ overhead might seem a reasonable target. For such a common data type, it is impo
 Unfortunately, for a string to have only 20\% overhead with its current implementation, it would need
 to be 96 characters long. As bad as this seems, this string
 representation does at least have the benefit that it amortizes away
-its overhead, for large enough strings --- the overhead cost is always 48 bytes, so overhead of a string approaches 0\% for larger and larger strings.  For some data structures it is not possible to
+its overhead. The overhead cost is always 48 bytes, so overhead of a string approaches 0\% for larger and larger strings.  For some data structures it is not possible to
 amortize away overhead costs, as discussed in
 Section~\ref{scalability}.
 
