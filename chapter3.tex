@@ -1,48 +1,3 @@
-\documentclass{book}
-
-\usepackage{fullpage}
-
-%\usepackage{wrapfig}
-%\usepackage{float}
-%  \floatstyle{ruled}
-%  \newfloat{callout}{thp}{lop}
-%  \floatname{callout}{Things To Remember}
-
-\usepackage{color}
-\definecolor{Light}{gray}{.95}
-
-\usepackage{amsthm}
-{
-  \theoremstyle{definition}
-  \newtheorem{example}{Example}
-}
-
-\usepackage{graphicx}
-
-\newlength{\calloutparindent}
-\setlength{\calloutparindent}{\parindent}
-%%
-%% begin: the callout command
-\newcommand{\callout}[3]{\label{#1}\vspace{3mm}
-\begin{center}
-\fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
-    \textbf{\large Things To Remember~\ref{#1} --- #2}
-    \hrule
-    \vspace{2mm}
-\setlength{\parindent}{\calloutparindent}
-#3
-  \end{minipage}}
-\end{center}
-\vspace{3mm}
-}
-\newcommand{\thingstoremember}[1]{Things To Remember~\ref{#1}}
-%% end: the callout command
-%%
-
-% two chapters will precede the one here now
-\setcounter{chapter}{2}
-
-\begin{document}
 
 \chapter{Memory Health}
 
@@ -363,5 +318,3 @@ When you are developing a large application, closing your eyes to quantitative c
 These are the basic tools used in the rest of this book. To estimate the cost of an entity, you will need to know how many bytes each primitive type needs, what is the pointer size, and what the JVM overhead is. You will learn how to estimate the cost of entities in Chapter 4. To estimate scalability, you will need to know what the fixed and per-entry costs are for the collection classes you are using. These are given in Chapter 7.
 
 %Nevertheless, you should not throw out all the Java libraries and write everything yourself.  It can also prevent unnecessary optimizations that gain little or nothing. You should perform thought experiments, use limit cases to understand optimal designs, and make back-of-the-envelope calculations.  This requires more work, possibly more prototyping, but the effort will likely pays off. Subsequent chapters discuss more techniques for precise estimation of memory health, and provide the data and overhead costs of common primitives and collections needed to perform estimations. 
-
-\end{document}

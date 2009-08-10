@@ -1,0 +1,54 @@
+\documentclass{book}
+
+\usepackage{fullpage}
+
+%\usepackage{wrapfig}
+%\usepackage{float}
+%  \floatstyle{ruled}
+%  \newfloat{callout}{thp}{lop}
+%  \floatname{callout}{Things To Remember}
+
+\usepackage{color}
+\definecolor{Light}{gray}{.95}
+
+\usepackage{amsthm}
+{
+  \theoremstyle{definition}
+  \newtheorem{example}{Example}
+}
+
+\usepackage{graphicx}
+
+\newcounter{ttr}
+\setcounter{ttr}{1}
+
+\newlength{\calloutparindent}
+\setlength{\calloutparindent}{\parindent}
+%%
+%% begin: the callout command
+\newcommand{\callout}[3]{\label{#1}\vspace{3mm}
+\begin{center}
+\fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
+    \textbf{\large Things To Remember~\arabic{ttr} --- #2}
+    \hrule
+    \vspace{2mm}
+\setlength{\parindent}{\calloutparindent}
+#3
+  \end{minipage}}
+\end{center}
+\vspace{3mm}
+\addtocounter{ttr}{1}
+}
+\newcommand{\thingstoremember}[1]{Things To Remember~\ref{#1}}
+%% end: the callout command
+%%
+
+\begin{document}
+
+% two chapters will precede the one here now
+\setcounter{chapter}{2}
+
+\input{chapter3}
+\input{chapter4}
+
+\end{document}

@@ -1,49 +1,3 @@
-\documentclass{book}
-
-\usepackage{fullpage}
-
-%\usepackage{wrapfig}
-%\usepackage{float}
-%  \floatstyle{ruled}
-%  \newfloat{callout}{thp}{lop}
-%  \floatname{callout}{Things To Remember}
-
-\usepackage{color}
-\definecolor{Light}{gray}{.95}
-
-\usepackage{amsthm}
-{
-  \theoremstyle{definition}
-  \newtheorem{example}{Example}
-}
-
-\usepackage{graphicx}
-
-\newlength{\calloutparindent}
-\setlength{\calloutparindent}{\parindent}
-%%
-%% begin: the callout command
-\newcommand{\callout}[3]{\label{#1}\vspace{3mm}
-\begin{center}
-\fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
-    \textbf{\large Things To Remember~\ref{#1} --- #2}
-    \hrule
-    \vspace{2mm}
-\setlength{\parindent}{\calloutparindent}
-#3
-  \end{minipage}}
-\end{center}
-\vspace{3mm}
-}
-\newcommand{\thingstoremember}[1]{Things To Remember~\ref{#1}}
-%% end: the callout command
-%%
-
-% two chapters will precede the one here now
-\setcounter{chapter}{3}
-
-\begin{document}
-
 \chapter{Delegation}
 
 An important design decision when modeling data is how many Java classes to use to represent an entity. At one extreme, all of the attributes of an entity are represented by a single class, resulting in a coarse-grained design. At the other extreme, a main entity class delegates functionality to other classes, resulting in a fine-grained design.  Delegation is a very popular pattern because of the flexibility it provides. 
@@ -87,7 +41,7 @@ Boxed scalars, which are objects with a single primitive data type field, are th
 There is a simple rule that holds for boxed scalars. The size of the object is obtained by summing the size of the header and the data, and then rounding it up to the nearest multiple of 8. The generalization of this rule gives you a good way to estimate the size of any object. Often, this estimate turns out to be the real object size, but not always.
  
 \callout{callout:minimum-size-estimation-rule}{Minimum-Size Estimate Rule}{
-    Let $Header$ be the size of an object header required by the JVM, and $Alignment$ be the object alignment. That is, every object must be allocated at an address which is a multiple of $Alignment$. To estimate the minimum size of an object 1) sum up the sizes of all of its fields, including fields from superclasses, 2) add $Header$ to this sum, and 3) round the result up to the next multiple of $Alignment$. The estimate is exact if the JVM packs and rearranges fields to fit into the smallest space. Otherwise, the actual size can be bigger than the estimated size.
+    Let $Header: /gsa/yktgsa/projects/n/nickm-cvs/cvs_repos/papers/bloatbook/Attic/chapter4.tex,v 1.1 2009/08/10 19:06:24 nickm Exp $ be the size of an object header required by the JVM, and $Alignment$ be the object alignment. That is, every object must be allocated at an address which is a multiple of $Alignment$. To estimate the minimum size of an object 1) sum up the sizes of all of its fields, including fields from superclasses, 2) add $Header: /gsa/yktgsa/projects/n/nickm-cvs/cvs_repos/papers/bloatbook/Attic/chapter4.tex,v 1.1 2009/08/10 19:06:24 nickm Exp $ to this sum, and 3) round the result up to the next multiple of $Alignment$. The estimate is exact if the JVM packs and rearranges fields to fit into the smallest space. Otherwise, the actual size can be bigger than the estimated size.
 }
 
 \begin{example}[Simple employee class.]
@@ -105,7 +59,7 @@ Consider an \texttt{Employee} class with all primitive fields:
 			}
 \end{verbatim}
 \normalfont
-Assume both $Header$ and $Alignment$ are 8 bytes. To apply the minimum-size estimate rule to \texttt{Employee} first add the primitive field sizes 4+1+8+2+4 (=19), then add in the header size 8 (=27), and then round to the next multiple of 8. The result is 32 bytes.  If the header is 12 bytes, the estimated size is also 32 bytes, since 19+12 is 31, which again rounds up to 32. 
+Assume both $Header: /gsa/yktgsa/projects/n/nickm-cvs/cvs_repos/papers/bloatbook/Attic/chapter4.tex,v 1.1 2009/08/10 19:06:24 nickm Exp $ and $Alignment$ are 8 bytes. To apply the minimum-size estimate rule to \texttt{Employee} first add the primitive field sizes 4+1+8+2+4 (=19), then add in the header size 8 (=27), and then round to the next multiple of 8. The result is 32 bytes.  If the header is 12 bytes, the estimated size is also 32 bytes, since 19+12 is 31, which again rounds up to 32. 
 \end{example}
 
 How accurate are these estimates for the two JVMs?  For the Sun JVM, an \texttt{Employee} object is exactly 32 bytes. The minimum-size estimate rule works well here, since the Sun JVM does a good job packing fields. For the IBM JVM, the real size of an \texttt{Employee} object is 40 bytes, not 32. The IBM JVM does not pack fields that are less than 4 bytes. In other words, the IBM JVM aligns all fields on 4 byte boundaries. When an object has several fields that are less than 4 bytes, such as booleans and chars, the minimum-size estimate rule can underestimate its size. For the Sun JVM, the bloat factor is 46\%. For the IBM JVM, the bloat factor is 53\%. 
@@ -113,7 +67,7 @@ How accurate are these estimates for the two JVMs?  For the Sun JVM, an \texttt{
 A modified version of the minimum-size estimate rule, where fields are never less than 4 bytes, works better for the IBM JVM. To apply this modified rule to \texttt{Employee}, first add the field sizesa 4+4+8+4+4 (=24), add in the IBM JVM header size 12 (=36), and then round up the result to 40 bytes.
 
 \callout{callout:word-aligned-estimation-rule}{Word-Aligned Estimate Rule}{
-    Let $Header$ be the size of an object header required by the JVM, and $Alignment$ be the object alignment. To estimate the size of an object 1) sum up the sizes of all of its fields including superclass fields, \textsl{assuming each field is aligned on a 4-byte boundary} 2) add $Header$ to this sum, and 3) round the result up to the next multiple of $Alignment$. 
+    Let $Header: /gsa/yktgsa/projects/n/nickm-cvs/cvs_repos/papers/bloatbook/Attic/chapter4.tex,v 1.1 2009/08/10 19:06:24 nickm Exp $ be the size of an object header required by the JVM, and $Alignment$ be the object alignment. To estimate the size of an object 1) sum up the sizes of all of its fields including superclass fields, \textsl{assuming each field is aligned on a 4-byte boundary} 2) add $Header: /gsa/yktgsa/projects/n/nickm-cvs/cvs_repos/papers/bloatbook/Attic/chapter4.tex,v 1.1 2009/08/10 19:06:24 nickm Exp $ to this sum, and 3) round the result up to the next multiple of $Alignment$. 
 }
 
 Understanding the memory costs and scalability of a data model starts with understanding the cost of each object type. For this purpose, there are simple rules for obtaining pretty accurate estimates. The \texttt{Employee} example shows that object sizes may be different with different JVMs and different versions of the same JVM.
@@ -307,6 +261,3 @@ So just lets talk a little about what this means for 64-bit JVMs. People are bus
 
 
 \section{Summary}
-
-
-\end{document}
