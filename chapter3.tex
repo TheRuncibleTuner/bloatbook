@@ -8,6 +8,7 @@ Later chapters show how to estimate both the size and health of data structure d
 %The examples .
 
 \section{Distinguishing Data from Overhead}
+\label{sec:bloat-def}
 
 The size of a data structure is the number of bytes it occupies. The \emph{health} of a data structure tells you what these bytes are accomplishing. Is the memory being spent on something important?  A very useful way to classify bytes is as either data or overhead. Bytes classified as data represent the real data intrinsic to your program. All other bytes are overhead of the particular representation you have chosen for that data. A healthy data structure, from a space standpoint, is one with a low overhead.  Sometimes there are tradeoffs; a larger design may be necessary for performance. Sometimes, though, choosing a design with lower memory overhead actually improves performance.
 
