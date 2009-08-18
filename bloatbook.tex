@@ -1,6 +1,6 @@
-\documentclass{book}
+\documentclass[a5]{book}
 
-\usepackage{fullpage}
+%\usepackage{fullpage}
 
 %\usepackage{wrapfig}
 %\usepackage{float}
@@ -45,11 +45,34 @@
 
 \begin{document}
 
-% two chapters will precede the one here now
-\setcounter{chapter}{2}
+%% PART 1
+\input{part1}
+\input{chapter1}
+\input{chapter2}
+\input{chapter3}
 
-%\input{chapter3}
+
+%% PART 2
+\input{part2}
 \input{chapter4}
+\input{chapter5}
+\input{chapter6}
+
+
+%% PART 3
+\input{part3}
+\input{chapter7}
+\input{chapter8}
+\input{chapter9}
+
+
+%% PART 4
+\input{part4}
+\input{chapter10}
+\input{chapter11}
+\input{chapter12}
+
+
 \bibliography{bloat}
 %\bibliographystyle{abbrv}
 \bibliographystyle{unsrt}
