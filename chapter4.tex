@@ -1,13 +1,11 @@
 \chapter{Delegation}
 
-An important design decision when modeling data is how many Java classes to use to represent an entity. At one extreme, all of the attributes of an entity are represented by a single class, resulting in a coarse-grained design. At the other extreme, a main entity class delegates functionality to other classes, resulting in a fine-grained design.  Delegation is a very popular pattern because of the flexibility it provides. 
-
-Programmers rarely think about memory costs when deciding how to model entities. Yet, the choices made at this design stage impact memory costs significantly. Coarse-grained designs may result in many objects with unused fields. While delegation is sometimes a way to avoid this problem, overly fine-grained data models can result in poor memory health from excessive object header overhead. This chapter explains how to evaluate object granularity design choices from a memory perspective. It begins with the costs of basic objects, and works up to examples from real applications.
+An important design decision when modeling data is how many Java classes to use to represent an entity. The choices made at this design stage can impact memory costs significantly. At one extreme, all of the attributes of an entity may be stored in a single class. At the other extreme, a main entity class may delegate many of its attributes to other classes, resulting in a fine-grained design. Delegation is a very popular pattern because of the flexibility it provides. It is also one of the few ways Java allows you to reuse existing classes. Yet, overly fine-grained data models can result in poor memory health. This chapter explains how to evaluate the granularity of a design design from a memory perspective. It begins with the costs of basic objects, and shows how they add in real applications.
   
 \section{The Cost of Objects}
 \label{sec:CostOfObjects}
 
-There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JVM, not the programmer, manages storage, and the JVM has freedom to implement its own policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate is usually sufficient for making intelligent choices among design alternatives. You need to know just a few basics, starting with the size of the Java primitive types. These are given in Table~\ref{tab:primitive-sizes}.
+There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JVM, not the programmer, manages storage, and the JVM has freedom to implement its own policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the size of the Java primitive types. These are given in Table~\ref{tab:primitive-sizes}.
 \begin{table}
   \centering
  \includegraphics[width=.50\textwidth]{Figures/chapter4/primitive-byte-sizes.pdf}
@@ -16,9 +14,9 @@ There is no Java library method that returns the size of an object. This is by d
   \label{tab:primitive-sizes}
 \end{table}
 
-Objects are much bigger. First, the JVM and the garbage collector require an object header that stores information such as the object's class, a lock, and an identity hashcode. For array objects, the header has an additional integer to store the number of array elements. Secondly, the hardware imposes alignment costs. The hardware may require 2-byte, 4-byte, or 8-byte alignment, depending on the type of the data. For example, integers are usually aligned on a 4-byte boundary, and some hardware might require a double to be aligned on an 8-byte boundary. A JVM may impose additional alignment requirements. This overhead is significant, especially if the object does not have much data in it.
+Objects are bigger than the sum of their fields. First, the JVM allocates a header with each object that stores information such as the object's class and various flags. For array objects, the header has an additional integer to store the number of array elements. Secondly, the hardware imposes alignment costs. The hardware may require 2-byte, 4-byte, or 8-byte alignment, depending on the type of the data. For example, integers are usually aligned on a 4-byte boundary, and some hardware might require a double to be aligned on an 8-byte boundary. Popular JVMs impose additional alignment requirements. This overhead is significant, especially if the object does not have much data in it.
 
-The object header sizes and alignment costs vary depending on the JVM. To illustrate this variability, Table~\ref{tab:object-overhead} gives the costs for both the SUN Java 6 (update 14) JVM and the IBM Java 6 (J9 SR4) JVM. These costs are for 32-bit architectures. It is important to keep in mind that these costs are for specific JVM releases only, and are subject to change in future releases.
+Object header sizes and alignment costs vary depending on the JVM. Table~\ref{tab:object-overhead} gives the costs for both the SUN Java 6 (update 14) JVM and the IBM Java 6 (J9 SR4) JVM. These costs are for 32-bit architectures. It is important to keep in mind that these costs are for specific JVM releases only, and are subject to change in future releases.
 \begin{table}
   \centering
  \includegraphics[width=.70\textwidth]{Figures/chapter4/object-overhead.pdf}
@@ -28,7 +26,7 @@ The object header sizes and alignment costs vary depending on the JVM. To illust
 \end{table} 
    %The Sun JVM allocates 8 bytes per object header, and the IBM JVM allocates 12 bytes per header. 
  
-Boxed scalars, which are objects with a single primitive data type field, are the simplest kind of  object. For both JVMs, a boxed scalar is at least 16 bytes. Since both JVMs allocate objects on 8-byte boundaries, the size of an object must be a multiple of 8. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed scalars.
+Boxed scalars, which are objects with a single primitive data type field, are the simplest kind of  object. For both the Sun and IBM JVMs, a boxed scalar is at least 16 bytes. Since both JVMs allocate objects on 8-byte boundaries, the size of an object must be a multiple of 8. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed scalars.
 
 \begin{table}
   \centering
@@ -37,10 +35,10 @@ Boxed scalars, which are objects with a single primitive data type field, are th
   \caption{The sizes of boxed scalar objects.}
   \label{tab:boxed-scalar-sizes}
 \end{table} 
-
-There is a simple rule that holds for boxed scalars. The size of the object is obtained by summing the size of the header and the data, and then rounding it up to the nearest multiple of 8. The generalization of this rule gives you a good way to estimate the size of any object. Often, this estimate turns out to be the real object size, but not always.
+Just like for boxed scalars, the minimum  size of any object can be obtained by summing the size of the header and the data, and then rounding it up to the nearest multiple of 8 (which JVM???).  
  
-\callout{callout:minimum-size-estimation-rule}{Minimum-Size Estimate Rule}{
+\callout{callout:minimum-size-estimation-rule}{Estimating Minimum Size}{
+MORE SCHEMATIC...
     Let \textit{Header} be the size of an object header required by the JVM, and \textit{Alignment} be the object alignment. That is, every object must be allocated at an address which is a multiple of $Alignment$. To estimate the minimum size of an object 1) sum up the sizes of all of its fields, including fields from superclasses, 2) add \textit{Header} to this sum, and 3) round the result up to the next multiple of \textit{Alignment}. The estimate is exact if the JVM packs and rearranges fields to fit into the smallest space. Otherwise, the actual size can be bigger than the estimated size.
 }
 
@@ -51,20 +49,32 @@ Consider an \texttt{Employee} class with all primitive fields:
 \begin{verbatim} 
 
 			class Employee {
-        int hoursPerWeek;
-        boolean exempt;
-        double salary;
-        char jobCode;
-        int yearsOfService;
+        int hoursPerWeek;        // 4 bytes
+        boolean exempt;          // 1 byte
+        double salary;           // 8 bytes
+        char jobCode;            // 2 bytes
+        int yearsOfService;      // 4 bytes
 			}
 \end{verbatim}
 \normalfont
-Assume both \textit{Header} and \textit{Alignment} are 8 bytes. To apply the minimum-size estimate rule to \texttt{Employee} first add the primitive field sizes 4+1+8+2+4 (=19), then add in the header size 8 (=27), and then round to the next multiple of 8. The result is 32 bytes.  If the header is 12 bytes, the estimated size is also 32 bytes, since 19+12 is 31, which again rounds up to 32. 
+Assume both \textit{Header} and \textit{Alignment} are 8 bytes. To apply the minimum-size rule to \texttt{Employee} first add the primitive field sizes 4+1+8+2+4 (=19), then add in the header size 8 (=27), and then round to the next multiple of 8. The result is 32 bytes.  If the header is 12 bytes, the estimated size is also 32 bytes, since 19+12 is 31, which again rounds up to 32. 
 \end{example}
 
 How accurate are these estimates for the two JVMs?  For the Sun JVM, an \texttt{Employee} object is exactly 32 bytes. The minimum-size estimate rule works well here, since the Sun JVM does a good job packing fields. For the IBM JVM, the real size of an \texttt{Employee} object is 40 bytes, not 32. The IBM JVM does not pack fields that are less than 4 bytes. In other words, the IBM JVM aligns all fields on 4 byte boundaries. When an object has several fields that are less than 4 bytes, such as booleans and chars, the minimum-size estimate rule can underestimate its size. 
 
 A modified version of the minimum-size estimate rule, where fields are never less than 4 bytes, works better for the IBM JVM. To apply this modified rule to \texttt{Employee}, first add the field sizesa 4+4+8+4+4 (=24), add in the IBM JVM header size 12 (=36), and then round up the result to 40 bytes.
+\ttfamily
+\begin{verbatim} 
+
+			class Employee {
+        int hoursPerWeek;        // 3 bytes
+        boolean exempt;          //  byte
+        double salary;           // 8 bytes
+        char jobCode;            // 2 bytes
+        int yearsOfService;      // 4 bytes
+			}
+\end{verbatim}
+\normalfont
 
 \callout{callout:word-aligned-estimation-rule}{Word-Aligned Estimate Rule}{
     Let \textit{Header} be the size of an object header required by the JVM, and \textit{Alignment} be the object alignment. To estimate the size of an object 1) sum up the sizes of all of its fields including superclass fields, \textsl{assuming each field is aligned on a 4-byte boundary} 2) add \textit{Header} to this sum, and 3) round the result up to the next multiple of \textit{Alignment}. 
@@ -121,12 +131,12 @@ A comparion of this mult-object employee with the original \texttt{Employee} obj
 
 In the spirit of keeping things simple, Java does not allow you to nest objects inside other objects, to build a single object out of other objects. You cannot nest an array inside an object, and you cannot store objects directly in an array.  You can only point to other objects. Even the basic data type \texttt{String} consists of two objects. This means that delegation is pervasive in Java programs, and it is difficult to avoid a high level of delegation overhead. Single inheritance is the only language feature that can be used instead of delegation to compose two object, but single inheritance has limited flexibility.  In contrast, C++ has many different ways to compose objects. C++ has single and multiple inheritance, union types, and variation. C++ allows you to have \texttt{struct} fields, you can put arrays inside of structs, and you can also have an array of structs.  
 
-Because of the design of Java, there is a basic delegation cost that is hard to eliminate. It is the cost of object-oriented programming in Java. Programmers need to be aware of it, even if they cannot remove it. While it is hard to avoid this basic delegation cost, it is important not to make things a lot worse. 
+Because of the design of Java, there is a basic delegation cost that is hard to eliminate. It is the cost of object-oriented programming in Java. While it is hard to avoid this basic delegation cost, it is important not to make things a lot worse, as discussed in the next section. 
 
 \section{Fine-Grained Data Models}
 \label{fine-grained-data-models}
 
-The Java language makes it hard to avoid delegation. Programmer choices also impact delegation costs.  The current software engineering culture tends to promote delegation, and for good reasons. Delegation provides a loose coupling of objects, making refactoring and reuse easier. Replacing inheritance by delegation is often recommended, especially if the base class has a lot of extra baggage that the subclass does not need. In languages with single inheritance, once you have used up your inheritance in your single inheritance hierarchy, it becomes hard to refactor your code. Therefore, delegation can be more flexible than inheritance for implementing polymorphism. However, overusing delegation results in an overly fine-grained data model with many small classes. Fine-grained data models can be expensive both in execution time and memory space. 
+The Java language makes it hard to avoid delegation. Programmer choices also impact delegation costs.  The current software engineering culture tends to promote delegation, and for good reasons. Delegation provides a loose coupling of objects, making refactoring and reuse easier. Replacing inheritance by delegation is often recommended, especially if the base class has extra fields and methods that the subclass does not need. In languages with single inheritance, once you have used up your inheritance slot, it becomes hard to refactor your code. Therefore, delegation can be more flexible than inheritance for implementing polymorphism. However, overly fine-grained data models can be expensive both in execution time and memory space. 
 
 There is no simple rule that can always be applied to decide when to use delegation. Each situation has to be evaluated in context, and there may be tradeoffs among different goals. To make an informed decision, it is important to know what the costs are.
 
