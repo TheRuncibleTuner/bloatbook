@@ -49,7 +49,16 @@
 
 \begin{document}
 
+\frontmatter
 \maketitle
+
+\include{preface}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\mainmatter
 
 %% PART 1
 \input{part1}
@@ -78,6 +87,7 @@
 \input{chapter11}
 \input{chapter12}
 
+\backmatter
 
 \bibliography{bloat}
 %\bibliographystyle{abbrv}
