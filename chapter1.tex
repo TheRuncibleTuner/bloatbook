@@ -1,1 +1,21 @@
 \chapter{Introduction}
+
+
+Talk about "`costly"' -- what do we mean?
+
+Define entity, class, object, data structure.  
+
+Measuring objects in a heap -- instance of time-- in the heap.
+
+Platforms.
+
+In spite of the fact that computers are now equipped with gigabytes of memory, Java developers face an uphill battle getting their applications to fit in memory. Compared to other languages, Java space costs are high, even for the most basic building blocks. This makes it all the more important for developers to be aware of memory costs. Java heaps are not just big, but are often bloated, with as much as 80\% of memory devoted to overhead. While developers have much guidance for good design in other aspects of software engineering, there are few educational resources available to help developers achieve space-efficient designs. Memory bloat can have a serious impact on development schedules and on the scalability of deployed systems. Fortunately, bloated designs are not an inevitable consequence of object-oriented development.
+This book is a practical, systematic, and comprehensive guide to memory-conscious programming in Java. It walks though numerous examples taken from real applications, illustrating common design problems that lead to memory bloat, and looks inside the Java collection classes and runtime. It details a methodology for programmers to follow. Our aim is to empower developers to avoid pitfalls, make informed tradeoffs, and to show how dramatic improvements in memory efficiency are sometimes possible with a little care. There are four major sections.
+Section 1 introduces an important theme that runs through the book: the health of a data design is the fraction of memory devoted to actual data vs. various kinds of infrastructure. This can be helpful for gauging the appropriateness of a design choice, and for comparing alternatives. It can also be a powerful tool for recognizing scaling problems early.
+Section 2 covers the choices developers face when creating their physical data models, such as whether to delegate data to separate classes, whether to introduce subclasses, and how to represent sparse data and relationships. These choices are looked at from a memory cost perspective. This section also covers how the JVM manages objects and its cost implications for different designs.  
+Section 3 is devoted to collections. Collection choices are at the heart of the ability of large data structures to scale. This section covers, through examples, various design choices that can be made based on data usage patterns (e.g. load vs. access), properties of the data (e.g. sparseness, degree of fan-out), context (e.g. nested structures) and constraints (e.g. uniqueness).  We look closely at the Java collection classes, their cost in different situations, and some of their undocumented assumptions. We also look at some alternatives to the Java collection classes. 
+Section 4 covers the topic of object lifetime management, a common source of inefficiency, as well as bugs. This section examines the costs of both short-lived temporaries and long-lived structures, such as caches and pools.  We explain the Java mechanisms available for managing object lifetime, such as ThreadLocal storage, weak and soft references, and the basic workings of the garbage collector. Finally, we present techniques for avoiding common errors such as memory leaks and drag.
+
+2. Target Audience
+There are several target audiences. The book is primarily aimed at Java developers (experienced and novice alike), especially framework and applications developers, who are faced with decisions every day that will have impact down the line in system test and production. It is also aimed at technical managers and testers, who need to make sure that Java software meets its performance requirements. It should be of interest to computer science students, software engineering professors, and researchers, working on processes, tools, and runtimes, who would like to gain a better understanding of memory usage patterns in real-world Java applications. Basic knowledge of Java is assumed.
+
