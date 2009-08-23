@@ -1,1 +1,125 @@
-\chapter{Short-lived Objects}
+\chapter{The Long and the Short of It}
+
+Every object created by your application lives for an interval of time from its creation to the point
+that the Java runtime gets around to collecting it. For some subset of an object's {\em actual} lifetime,
+your application will make use of its fields.
+An object's {\em natural} lifetime is defined by the interval of time between its first and last necessary use.
+You needn't explicitly free objects, and in that way a managed language such as Java is a big step up from C.
+However, despite the promises of automatic memory management, when programming in Java it is essential 
+to know whether your application needs an object to live a long time, or,
+if not, when you expect it to die. 
+Then, you can plan how to implement the right policy by combining
+the tools that Java provides with other lifetime management strategies, implemented on top of Java.   
+  
+\section{Understanding Natural Lifetime}
+
+%%%%% cite drag paper here?
+Application bugs and any performance optimizations you perform 
+can alter the actual lifetime of objects to be different
+from their natural lifetime.
+A cache is a performance optimization that holds on to a data structure after the current operation is finished
+with it, in the hope that
+other operations
+in the near future will reuse it. The expense of re-fetching data from external data sources and recomputing the in-memory
+structure can often be amortized, at the expense of lengthening the lifetime of these data structures and thereby
+very likely increasing peak memory consumption.
+A memory leak bug is the result of mistakenly retaining references to objects that the application no longer
+needs. The lifetime of these leaked objects will be, by accident, infinite, even though their natural lifetime, their
+interval during which they are used, is not. 
+
+In the cases where correctness requires that the actual lifetime of an object match its natural lifetime,
+you can use a variety of mechanisms to ensure that this is the case. Doing so is often tricky, because the built-in mechanisms that the Java language
+and runtime
+provide for managing object lifetime do not align with many of the common use cases. You must assume the burden of
+lifetime management and it is important to avoid
+the common pitfalls.
+
+%In other cases, there is some flexibility, and one can either extend
+%or shorten the actual lifetime of an object, to trade off time and space costs.  
+ 
+
+%actual lifetime may be different from natural lifetime, for performance reasons
+
+
+Many objects are created and then only needed for some interval of time.  
+For example, your application may have phases. In each phase, it creates many objects which are scoped to that phase: these objects are created
+after the phase has begun, and are no  
+
+
+the remaining duration of a run.
+
+
+if scopes don't coincide with lifetime
+
+\begin{table}
+\centering
+\begin{tabular}{|l|l|} \hline
+long-lived & needed forever \\ \hline 
+correlated lifetime & \shortstack{needed for a period\\ 
+scoped to a phase/request\\
+correlated with an object (annotations)\\
+correlated with need}\\ \hline
+reusable & maybe i'll need it later \\ \hline
+\end{tabular}
+\end{table}
+
+
+\begin{table}
+\centering
+\begin{tabular}{|l|l|} \hline
+\em mechanism & \\ \hline \hline
+stack & \\ \hline 
+static & \\ \hline
+thread-local & \\ \hline
+soft & \\ \hline
+weak & \\ \hline
+phantom/finalizers & \\ \hline
+memory mapping & via \texttt{java.nio} \\ \hline 
+object serialization & \\ \hline
+\end{tabular}
+\caption{Built-in lifetime management mechanisms.}
+\label{tab:builtin-lifetime-management}
+\end{table}
+
+\begin{table}
+\centering
+\begin{tabular}{|l|l|} \hline
+\em mechanism & \\ \hline \hline
+resource pool & \\ \hline
+cache & \\ \hline
+sharing pool & (interning)\\ \hline
+memoization & \\ \hline
+backing store &(externalized memo) \\ \hline
+non-OO & (column orientation) \\ \hline 
+\end{tabular}
+\caption{Lifetime management mechanisms not provided by the Java language that one must implement.}
+\label{tab:software-lifetime-management}
+\end{table}
+
+
+\section{Pitfalls}
+
+\begin{itemize}
+\item leaks
+\item drags
+\item oops doesn't fit in memory!!
+\item oops marshalling costs dwarf real work!!
+\item using too complicated a mechansim to maintain correlation
+\item by lengthening lifetime, you can create a contention problem
+	e.g. converter stored in synchronized thread local
+	e.g. concurrent cache
+\item sometimes (overhead of lifetime management) weak references are relatively expensive to data
+\item make sure you bound size of cache to a reasonable number (hard to get right)
+\end{itemize}
+
+
+%% OLD STUFF NMM 20090820
+%\section{Request Scoping}
+%\section{Correlated Lifetime}
+%\paragraph{Weak and Soft references in Java}
+%\section{Memory Leaks and Drag}
+%\section{Examples}
+%\subsection{Transient Near-Copies}
+%\subsubsection{String Canonicalization}
+%\subsection{Temporary Collections}
+%\subsection{Facilitators}
