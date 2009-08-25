@@ -10,7 +10,9 @@
 %  \newfloat{callout}{thp}{lop}
 %  \floatname{callout}{Things To Remember}
 
+\usepackage{xspace}
 \usepackage{multirow}
+\usepackage{subfigure}
 
 \usepackage{color}
 \definecolor{Light}{gray}{.95}
@@ -22,6 +24,10 @@
 }
 
 \usepackage{graphicx}
+
+%%% CODE MACRO
+\newcommand{\code}[1]{{\tt #1\xspace}}
+
 
 \newcounter{ttr}
 \setcounter{ttr}{1}

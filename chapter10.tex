@@ -1,55 +1,40 @@
-\chapter{The Long and the Short of It}
+\chapter{Natural Lifetime}
 
-Every object created by your application lives for an interval of time from its creation to the point
-that the Java runtime gets around to collecting it. For some subset of an object's {\em actual} lifetime,
-your application will make use of its fields.
-An object's {\em natural} lifetime is defined by the interval of time between its first and last necessary use.
-You needn't explicitly free objects, and in that way a managed language such as Java is a big step up from C.
-However, despite the promises of automatic memory management, when programming in Java it is essential 
-to know whether your application needs an object to live a long time, or,
-if not, when you expect it to die. 
-Then, you can plan how to implement the right policy by combining
-the tools that Java provides with other lifetime management strategies, implemented on top of Java.   
-  
-\section{Understanding Natural Lifetime}
+Every object created by your application lives for an interval of time from its
+creation to the point that the Java runtime gets around to collecting it. For
+some subset of an object's {\em actual} lifetime, your application will make use
+of its fields. An object's {\em natural} lifetime is defined by the interval of
+time between its first and last necessary use. %%%%% cite drag paper here?
+It is important to appreciate this distinction, between natural and actual
+lifetime, so that you can implement your code in a way that avoids bugs and
+performs well in the case when not everything fits into the Java heap.
 
-%%%%% cite drag paper here?
-Application bugs and any performance optimizations you perform 
-can alter the actual lifetime of objects to be different
-from their natural lifetime.
-A cache is a performance optimization that holds on to a data structure after the current operation is finished
-with it, in the hope that
-other operations
-in the near future will reuse it. The expense of re-fetching data from external data sources and recomputing the in-memory
-structure can often be amortized, at the expense of lengthening the lifetime of these data structures and thereby
-very likely increasing peak memory consumption.
-A memory leak bug is the result of mistakenly retaining references to objects that the application no longer
-needs. The lifetime of these leaked objects will be, by accident, infinite, even though their natural lifetime, their
-interval during which they are used, is not. 
-
-In the cases where correctness requires that the actual lifetime of an object match its natural lifetime,
-you can use a variety of mechanisms to ensure that this is the case. Doing so is often tricky, because the built-in mechanisms that the Java language
-and runtime
-provide for managing object lifetime do not align with many of the common use cases. You must assume the burden of
-lifetime management and it is important to avoid
-the common pitfalls.
-
-%In other cases, there is some flexibility, and one can either extend
-%or shorten the actual lifetime of an object, to trade off time and space costs.  
- 
-
-%actual lifetime may be different from natural lifetime, for performance reasons
+The Java runtime takes care of some of these issues, but leaves a great many in
+your hands. In Java, you needn't explicitly free objects, and in that way a
+managed language is a big step up from a language like C. However, despite the
+promises of automatic memory management, when programming in Java it is essential
+to know whether your  application needs an object to live forever, or, if not,
+when you expect it to  die. With these thoughts in mind, you can plan how to
+implement the right lifetime policies, and do so without introducing memory
+leaks or performance  problems. You will need to combine the tools that Java
+provides with other  strategies, implemented on top of Java.
 
 
-Many objects are created and then only needed for some interval of time.  
-For example, your application may have phases. In each phase, it creates many objects which are scoped to that phase: these objects are created
-after the phase has begun, and are no  
+\section{Planning out Object Lifetime}
 
+\begin{figure}
+	\centering
+	\subfigure[The lifecycle of a typical object and its data.]{
+		\includegraphics[width=\textwidth]{Figures/object-lifecycle}
+	}
+	\subfigure[The lifecycle of the data  that is loaded from
+	disk three times, and the objects that store it.]{
+		\includegraphics[width=\textwidth]{Figures/object-lifecycle2}
+	}
+	\caption{Examples of Natural and Actual lifetimes.}
+	\label{fig:typical-lifecycle}
+\end{figure}
 
-the remaining duration of a run.
-
-
-if scopes don't coincide with lifetime
 
 \begin{table}
 \centering
@@ -63,6 +48,43 @@ reusable & maybe i'll need it later \\ \hline
 \end{tabular}
 \end{table}
 
+\section{Objects Needed Forever}
+
+Created and used for the remaining duration of a run.
+
+
+\section{Correlated Lifetime}
+
+Many objects are created and then only needed for some interval of time. For
+example, say your application is a transaction processing system implemented as
+a Java Enterprise Edition web application. In this case, most objects
+created within the scope of a servlet request will not, and for correctness
+reasons {\em must not}, survive the request; they are not used by the 
+application after the request has completed, and will, in the absence of bugs,
+be collected as soon as is convenient for the runtime. In this example, the
+lifetime of objects during a request are {\em correlated} with a method
+invocation: when the servlet \code{doGet} or \code{doPut} (etc.) invocations
+return, those correlated objects had better be garbage collectible.
+
+The same is true for a great many objects created by the application, not just
+at the large granularity of a servlets. For example,
+
+In many cases, the built-in mechanisms 
+
+\section{Delayed-Deletion}
+
+A cache is a performance optimization that holds on to a data structure after the
+current operation is finished with it, in the hope that other operations in the
+near future will reuse it. The expense of re-fetching data from external data
+sources and recomputing the in-memory structure can often be amortized, at the
+expense of stretching the lifetime of these data structures. By increasing the
+actual lifetime on an object you will very likely increase peak memory
+consumption.
+
+
+
+
+%if scopes don't coincide with lifetime
 
 \begin{table}
 \centering
@@ -97,20 +119,6 @@ non-OO & (column orientation) \\ \hline
 \end{table}
 
 
-\section{Pitfalls}
-
-\begin{itemize}
-\item leaks
-\item drags
-\item oops doesn't fit in memory!!
-\item oops marshalling costs dwarf real work!!
-\item using too complicated a mechansim to maintain correlation
-\item by lengthening lifetime, you can create a contention problem
-	e.g. converter stored in synchronized thread local
-	e.g. concurrent cache
-\item sometimes (overhead of lifetime management) weak references are relatively expensive to data
-\item make sure you bound size of cache to a reasonable number (hard to get right)
-\end{itemize}
 
 
 %% OLD STUFF NMM 20090820
