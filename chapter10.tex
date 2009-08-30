@@ -25,11 +25,11 @@ provides with other  strategies, implemented on top of Java.
 \begin{figure}
 	\centering
 	\subfigure[The lifecycle of a typical object and its data.]{
-		\includegraphics[width=\textwidth]{Figures/object-lifecycle}
+		\includegraphics[width=0.8\textwidth]{Figures/object-lifecycle}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
-		\includegraphics[width=\textwidth]{Figures/object-lifecycle2}
+		\includegraphics[width=0.8\textwidth]{Figures/object-lifecycle2}
 	}
 	\caption{Examples of Natural and Actual lifetimes.}
 	\label{fig:typical-lifecycle}
@@ -63,7 +63,7 @@ reasons {\em must not}, survive the request; they are not used by the
 application after the request has completed, and will, in the absence of bugs,
 be collected as soon as is convenient for the runtime. In this example, the
 lifetime of objects during a request are {\em correlated} with a method
-invocation: when the servlet \code{doGet} or \code{doPut} (etc.) invocations
+invocation: when the servlet \class{doGet} or \class{doPut} (etc.) invocations
 return, those correlated objects had better be garbage collectible.
 
 The same is true for a great many objects created by the application, not just
