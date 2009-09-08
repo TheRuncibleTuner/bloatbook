@@ -11,13 +11,15 @@ performs well in the case when not everything fits into the Java heap.
 
 The Java runtime takes care of some of these issues, but leaves a great many in
 your hands. In Java, you needn't explicitly free objects, and in that way a
-managed language is a big step up from a language like C. However, despite the
-promises of automatic memory management, when programming in Java it is essential
-to know whether your  application needs an object to live forever, or, if not,
-when you expect it to  die. With these thoughts in mind, you can plan how to
-implement the right lifetime policies, and do so without introducing memory
-leaks or performance  problems. You will need to combine the tools that Java
-provides with other  strategies, implemented on top of Java.
+managed language is a big step up from a language like C. However, the the
+promise of automatic memory management, that it frees you from the burden of
+managing memory, doesn't play out as well in practice. When programming in Java
+it is important to think through whether your application needs an object to live
+forever, or, if not, when you expect it to die. With these thoughts in mind, you
+can plan how to  implement the right lifetime policies. You have to be careful
+to do so without introducing memory leaks or performance problems. This entails
+combining the tools that Java  provides with other strategies, implemented on
+top of Java.
 
 
 \section{Planning out Object Lifetime}
@@ -47,6 +49,19 @@ correlated with need}\\ \hline
 reusable & maybe i'll need it later \\ \hline
 \end{tabular}
 \end{table}
+
+% correlated with need: as soon as last user goes away, remove his stuff 
+% share common expressions to save space, but using strong references -> memory
+% leak; plugins in eclipse go away when all views
+% sharing pool 
+
+% weak ref keys -> annotation
+% weak ref values -> sharing pool
+
+% soft ref values -> caching
+
+% annotation by map lookup
+
 
 \section{Objects Needed Forever}
 
