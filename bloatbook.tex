@@ -1,7 +1,13 @@
 \documentclass[a5]{book}
 
+\usepackage{booktabs,colortbl}
+
+
 \usepackage{hyperref} \hypersetup{pdfauthor={Nick Mitchell, Edith
     Schonberg, Gary Sevitsky},pdftitle={Memory Conscious Java Programming},linkcolor=black,colorlinks=true}
+\def\chapterautorefname{Chapter}
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
     
 %\usepackage{fullpage}
 %\usepackage{wrapfig}
@@ -23,11 +29,16 @@
   \newtheorem{example}{Example}
 }
 
+
+\usepackage{listings}
+\lstset{language=Java,basicstyle=\footnotesize,tabsize=4,captionpos=b,columns=flexible,breaklines,frame=single,backgroundcolor=\color{Light}}
+
+
 \usepackage{graphicx}
 
 %%% CODE MACRO
 \newcommand{\class}[1]{{\tt #1\xspace}}
-
+\newcommand{\code}[1]{\class #1}
 
 \newcounter{ttr}
 \setcounter{ttr}{1}

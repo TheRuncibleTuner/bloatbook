@@ -8,7 +8,19 @@ An important design decision when modeling data is how many Java classes to use 
 There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JRE, not the programmer, manages storage, and the JRE has freedom to implement its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the size of the Java primitive types. These are given in Table~\ref{tab:primitive-sizes}.
 \begin{table}
   \centering
- \includegraphics[width=.50\textwidth]{Figures/chapter4/primitive-byte-sizes.pdf}
+%\includegraphics[width=.50\textwidth]{Figures/chapter4/primitive-byte-sizes.pdf}
+\begin{tabular}{lc} \toprule
+	Primitive type & Number of bytes \\ \midrule
+	boolean, byte & 1 \\
+%	byte & 1 \\ \midrule
+	char, short & 2 \\
+	%short & 2 \\ \midrule
+	int, float & 4 \\
+%	float & 4 \\ \midrule
+	long, double & 8 \\
+%	double & 8 \\
+	\bottomrule
+\end{tabular}
  % \includegraphics{eight-char-string}
   \caption{The sizes of Java primitive types}
   \label{tab:primitive-sizes}
@@ -30,7 +42,7 @@ Boxed scalars, which are objects with a single primitive data type field, are th
 
 \begin{table}
   \centering
- \includegraphics[width=.70\textwidth]{Figures/chapter4/boxed-scalar-sizes.pdf}
+\includegraphics[width=.70\textwidth]{Figures/chapter4/boxed-scalar-sizes.pdf}
  % \includegraphics{eight-char-string}
   \caption{The sizes of boxed scalar objects.}
   \label{tab:boxed-scalar-sizes}
