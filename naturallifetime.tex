@@ -4,9 +4,9 @@ Every object created by your application lives for an interval of time from its
 creation to the point that the Java runtime gets around to collecting it. For
 some subset of an object's {\em actual} lifetime, your application will make use
 of its fields. An object's {\em natural} lifetime is defined by the interval of
-time between its first and last necessary use. %%%%% cite drag paper here? It is
-important to understand this distinction, between natural and actual lifetime, so
-that you can implement your code in a way that avoids bugs and performs well in
+time between its first and last necessary use. %cite drag paper here?
+It is important to understand this distinction, between natural and actual
+lifetime, so that you can implement your code in a way that avoids bugs and performs well in
 the case when not everything fits into the Java heap.
 
 The Java runtime helps manage some aspects of these management tasks, but leaves
@@ -25,12 +25,28 @@ die. With these thoughts in mind, you can plan how to  implement the right
 lifetime policies. This entails combining the tools that Java  provides with
 other strategies, implemented on top of Java.
 
-\section{Common Categories of Natural Lifetime}
+\section{Data and Object Lifetime}
+
+The lifetime of 
+An object's lifetime spans its creation, use,
+
+\autoref{fig:typical-lifecycle}
+
+For example,
+\lstset{frame=none}
+\begin{lstlisting}
+	new SimpleDataFormat().parse(string, new ParsePosition(0));
+\end{lstlisting}
+\lstset{frame=tb}
 
 \begin{figure}
 	\centering
 	\subfigure[The lifecycle of a typical object and its data.]{
-		\includegraphics[width=0.9\textwidth]{Figures/object-lifecycle}
+		\includegraphics[width=0.95\textwidth]{Figures/object-lifecycle}
+	}
+	\subfigure[A situation where there are long periods between uses of an
+	object's data.]{
+		\includegraphics[width=0.95\textwidth]{Figures/object-lifecycle-lulls}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
@@ -40,6 +56,7 @@ other strategies, implemented on top of Java.
 	\label{fig:typical-lifecycle}
 \end{figure}
 
+\section{Common Categories of Natural Lifetime}
 
 \begin{table}
 \centering
@@ -87,31 +104,55 @@ when it is needed in the near future.
     	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
         \bottomrule
     \end{tabular}
-	\caption{}
-	\label{}
+	\caption{Elements of programming for which Java's built-in mechanisms don't
+	provide great support.}
+	\label{tab:things-java-does-not-do}
 \end{table}
 
 
 \section{Temporary Objects}
 \label{temporary-lifetime}
 
-If your application is like every other Java application ever written, it creates
-a large number of temporary objects. Temporary objects are those that you create
-to glue code together. They help to bridge one protocol with another. They enable
-code reuse: as long as you can convert your data layout into a form that an API
-requires, then you can reuse the functionality it provide. A great many of these
-structures serve the role of a kind of lubricant, making it easy for you to write
-code that ties together the separately written parts of your code base and reuses
-standard libraries as much as possible. These are objects that are not a
-fundamental necessity of what you're trying to accomplish, but a necessary
-penalty one must pay when developing in the large.
+If your application is like most Java applications, it creates a large number of
+temporary objects. They hold data that will only be used for a very short
+interval of time. For example, you populate a \class{StringBuffer}, turn it into
+a \class{String}, and print the string to a log file. The point at which all of
+these objects, the strings and character arrays, are no longer used is only
+shortly after they are constructed. These objects serve as transient homes for
+your data, as it makes its way through the frameworks and libraries you depend
+on. Temporaries are often necessary to bridge separately developed code and
+enable code reuse: as long as you can convert your data layout into a form that
+an API requires, then you can reuse the functionality it provides.
 
-A common example of this is the sequence of operations performed to parse and
-manipulate data coming and going to the outside world. 
+In many cases, you need do nothing special to manage the temporary objects your
+application creates. After all, generational garbage collectors these days do a
+very good job digesting a large volume of temporary objects. In a generational
+garbage collector, the JVM places temporary objects in a separate heap, and
+thus it need only process the newly created objects during its routine scan.
+Unfortunately, in Java it is pretty easy to create a high volume of temporary
+objects. Say your application 
+fills it the temporary heap ever second. In this case, based on the common
+speeds of garbage collectors, your application could easily spend over 20\% of its time
+collecting garbage.
+Is it difficult to fill up the temporary heap once per second? Typical
+temporary heap sizes run around 128 megabytes. Say your application is a serves
+a peak of 1000 requests per second, and creates objects of around 50 bytes each.
+Then it need only create around 2500 temporaries per request. 
+
+
+%A great many of these
+%temporary structures serve the role of a kind of lubricant, making it easy for
+%you to write code that ties together the separately written parts of your code
+%base and reuses standard libraries as much as possible. Often, these are
+%objects that are not a fundamental necessity of what you're trying to
+%accomplish. If
+%you had the freedom to code highly specialized implementations of the important
+%cases, from scratch, many of these temporary structures would be unnecessary.
+
+\begin{example}[How Easy it is to Create Lots of Temporary Objects]
+A common example of temporaries is parsing
+and manipulating data coming from the outside world. 
 % to the wire?
-
-\begin{example}{Temporary Objects}
-
 Consider the code in \autoref{TempExampleCode}. This code starts in
 the \code{main} method by splitting the input string into two substrings. So
 far, the code has created four objects (one \class{String} and one character
@@ -127,7 +168,7 @@ the expense of creating temporary \class{ParsePosition} objects!).
 
 
 
-\begin{lstlisting}[float,caption=An example that constructs 8 temporary
+\begin{lstlisting}[float,caption=Code that constructs 8 temporary
 objects to handle two dates.,label=TempExampleCode]
 void main(String xy) {
 	doWork(xy.substring(0,10), xy.substring(10));
@@ -209,37 +250,6 @@ consumption.
 
 %if scopes don't coincide with lifetime
 
-\begin{table}
-\centering
-\begin{tabular}{|l|l|} \hline
-\em mechanism & \\ \hline \hline
-stack & \\ \hline 
-static & \\ \hline
-thread-local & \\ \hline
-soft & \\ \hline
-weak & \\ \hline
-phantom/finalizers & \\ \hline
-memory mapping & via \texttt{java.nio} \\ \hline 
-object serialization & \\ \hline
-\end{tabular}
-\caption{Built-in lifetime management mechanisms.}
-\label{tab:builtin-lifetime-management}
-\end{table}
-
-\begin{table}
-\centering
-\begin{tabular}{|l|l|} \hline
-\em mechanism & \\ \hline \hline
-resource pool & \\ \hline
-cache & \\ \hline
-sharing pool & (interning)\\ \hline
-memoization & \\ \hline
-backing store &(externalized memo) \\ \hline
-non-OO & (column orientation) \\ \hline 
-\end{tabular}
-\caption{Lifetime management mechanisms not provided by the Java language that one must implement.}
-\label{tab:software-lifetime-management}
-\end{table}
 
 
 

@@ -31,7 +31,8 @@
 
 
 \usepackage{listings}
-\lstset{language=Java,basicstyle=\footnotesize,tabsize=4,captionpos=b,columns=flexible,breaklines,frame=single,backgroundcolor=\color{Light}}
+\lstset{language=Java,basicstyle=\footnotesize\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
+\newenvironment{inlinelisting}{\begin{verbatim}}{\end{verbatim}}
 
 
 \usepackage{graphicx}

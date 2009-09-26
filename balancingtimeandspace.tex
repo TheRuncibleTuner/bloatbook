@@ -1,6 +1,23 @@
-\chapter{Balancing Time and Space}
+\section{Balancing Time and Space}
 \label{balance-time-and-space}
 
 sometimes we extend lifetime to optimize (for time)
 
 sometimes we shorten lifetime to optimize (for space)
+
+
+
+\begin{table}
+\centering
+\begin{tabular}{|l|l|} \hline
+\em mechanism & \\ \hline \hline
+resource pool & \\ \hline
+cache & \\ \hline
+sharing pool & (interning)\\ \hline
+memoization & \\ \hline
+backing store &(externalized memo) \\ \hline
+non-OO & (column orientation) \\ \hline 
+\end{tabular}
+\caption{Lifetime management mechanisms not provided by the Java language that one must implement.}
+\label{tab:software-lifetime-management}
+\end{table}
