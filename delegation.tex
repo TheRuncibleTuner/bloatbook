@@ -163,7 +163,7 @@ The minimum size of an \texttt{EmployeeWithDelegation} object is 32 bytes:
 While an instance of the \texttt{EmployeeWithDelegation} class is a single 32 byte object, an entire employee, including name, salary, and start date consists of five objects. Two of these objects are used to store the name. (Recall from Section~\ref{sec:bloat-def} that a string is represented by a wrapper \texttt{String} object and a \texttt{char} array.) The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}. 
  \begin{figure}
   \centering
- \includegraphics[width=.60\textwidth]{Figures/chapter4/employee-status.pdf}
+ \includegraphics[width=.80\textwidth]{Figures/chapter4/employee-status.pdf}
  % \includegraphics{eight-char-string}
   \caption{The memory layout for an employee ``John Doe".}
   \label{fig:employee-status}
@@ -225,7 +225,7 @@ Here are class definitions for an emergency contact, written in a highly delegat
 \normalfont
  \begin{figure}
   \centering
- \includegraphics[width=.70\textwidth]{Figures/chapter4/employee-status-fine-grained.pdf}
+ \includegraphics[width=\textwidth]{Figures/chapter4/employee-status-fine-grained.pdf}
  % \includegraphics{eight-char-string}
   \caption{The memory layout for an employee with an emergency contact.}
   \label{fig:employee-status-fine-grained}
@@ -273,7 +273,7 @@ This change eliminates an object from Figure~\ref{fig:employee-status-fine-grain
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size and the bloat factor have been reduced.
  \begin{figure}
   \centering
- \includegraphics[width=.70\textwidth]{Figures/chapter4/refactored-fine-grain.pdf}
+ \includegraphics[width=\textwidth]{Figures/chapter4/refactored-fine-grain.pdf}
  % \includegraphics{eight-char-string}
   \caption{Memory layout for refactored emergency contact.}
   \label{fig:refactored-fine-grain}
