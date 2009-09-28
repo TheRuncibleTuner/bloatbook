@@ -52,15 +52,35 @@ Boxed scalars, which are objects with a single primitive data type field, are th
     	& & \multicolumn{3}{c}{Sun Java 6 (u14)} & \multicolumn{3}{c}{IBM Java 6
     	(SR4)} \\ \cmidrule(r){3-5} \cmidrule(l){6-8}
     	%
-    	Class & \shortstack[c]{Data\\Size} & Header & \shortstack{Align-\\ment
+    	Class & \shortstack[c]{Data\\size} & Header & \shortstack{Align-\\ment
     	fill} & \shortstack[c]{Total\\bytes} & Header & \shortstack{Align-\\ment
-    	fill} & \shortstack[c]{Total\\bytes} \\ \midrule {\small Boolean, Byte} &
-    	1 & 8 & 7 & 16 & 12 & 3 & 16 \\ {\small Character, Short} & 2 & 8 & 6 & 16 & 12 & 1 & 16 \\
-    	{\small Integer, Float} & 4 & 8 & 4 & 16 & 12 & 0 & 16 \\
-    	{\small Long, Double} & 8 & 8 & 0 & 16 & 12 & 4& 24 \\
+    	fill} & \shortstack[c]{Total\\bytes}
+    	\\ \midrule 
+    	%
+    	{Boolean,} & \multirow{2}{*}{1} & \multirow{2}{*}{8} & \multirow{2}{*}{7} &
+    	\multirow{2}{*}{16} & \multirow{2}{*}{12} & \multirow{2}{*}{3} &
+    	\multirow{2}{*}{16}
+    	\\
+    	Byte & \\ \addlinespace
+    	%
+    	Character, & \multirow{2}{*}{2} & \multirow{2}{*}{8} & \multirow{2}{*}{6}
+    	& \multirow{2}{*}{16} & \multirow{2}{*}{12} & \multirow{2}{*}{1} &
+    	\multirow{2}{*}{16} \\
+    	Short & \\ \addlinespace
+    	%
+    	Integer, & \multirow{2}{*}{4} & \multirow{2}{*}{8} & \multirow{2}{*}{4} &
+    	\multirow{2}{*}{16} & \multirow{2}{*}{12} & \multirow{2}{*}{0} &
+    	\multirow{2}{*}{16}
+    	\\
+    	Float & \\ \addlinespace
+    	%
+    	Long, & \multirow{2}{*}{8} & \multirow{2}{*}{8} & \multirow{2}{*}{0} &
+    	\multirow{2}{*}{16} & \multirow{2}{*}{12} & \multirow{2}{*}{4} &
+    	\multirow{2}{*}{24} \\
+    	Double & \\
 		\bottomrule
 	\end{tabular}
-  \caption{The sizes of boxed scalar objects.}
+  \caption{The sizes of boxed scalar objects, in bytes.}
   \label{tab:boxed-scalar-sizes}
 \end{table}
  
@@ -144,7 +164,7 @@ While an instance of the \texttt{EmployeeWithDelegation} class is a single 32 by
   \centering
  \includegraphics[width=.60\textwidth]{Figures/chapter4/employee-status.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an employee ``John Doe"}
+  \caption{The memory layout for an employee ``John Doe".}
   \label{fig:employee-status}
 \end{figure}
 
@@ -308,9 +328,9 @@ Consider what happens to the 8-character string from Section~\ref{sec:bloat-def}
 \end{example} 
  \begin{figure}
   \centering
- \includegraphics[width=.70\textwidth]{Figures/chapter4/8-char-string-64-bit.pdf}
+ \includegraphics[width=0.6\textwidth]{Figures/chapter4/8-char-string-64-bit.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an 8 character string by a 64-bit JRE}
+  \caption{The memory layout for an 8 character string by a 64-bit JRE.}
   \label{fig:8-char-string-64-bit}
 \end{figure}
 
