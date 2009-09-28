@@ -5,12 +5,12 @@ An important design decision when modeling data is how many Java classes to use 
 \section{The Cost of Objects}
 \label{sec:CostOfObjects}
 
-There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JRE, not the programmer, manages storage, and the JRE has freedom to implement its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the size of the Java primitive types. These are given in Table~\ref{tab:primitive-sizes}.
+There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JRE, not the programmer, manages storage, and the JRE has the freedom to implement its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the number of bytes needed to store primitive data types. These sizes are defined in the Java language specification~\cite{}, and are given in Table~\ref{tab:primitive-sizes}.
 \begin{table}
   \centering
 %\includegraphics[width=.50\textwidth]{Figures/chapter4/primitive-byte-sizes.pdf}
 \begin{tabular}{lc} \toprule
-	Primitive type & Number of bytes \\ \midrule
+	Primitive data type & Number of bytes \\ \midrule
 	boolean, byte & 1 \\
 %	byte & 1 \\ \midrule
 	char, short & 2 \\
@@ -22,70 +22,53 @@ There is no Java library method that returns the size of an object. This is by d
 	\bottomrule
 \end{tabular}
  % \includegraphics{eight-char-string}
-  \caption{The sizes of Java primitive types}
+  \caption{The number of bytes needed to store primitive data}
   \label{tab:primitive-sizes}
 \end{table}
 
-Objects are bigger than the sum of their fields. First, the JRE allocates a header with each object that stores information such as the object's class, an identity hashcode, a monitor used for locking, and various flags. For array objects, the header has an additional integer to store the number of array elements. Secondly, the hardware imposes alignment costs. The hardware may require 2-byte, 4-byte, or 8-byte alignment, depending on the type of the data. For example, integers are usually aligned on a 4-byte boundary, and some hardware might require a double to be aligned on an 8-byte boundary. Popular JREs require objects themselves to be aligned on address boundaries. Altogether, this overhead is significant, especially if the object does not have much data in it.
-
-Object header sizes and alignment costs vary depending on the JRE. Table~\ref{tab:object-overhead} gives the costs for both the SUN Java 6 (update 14) JRE and the IBM Java 6 (J9 SR4) JRE. These costs are for 32-bit architectures. It is important to keep in mind that these costs are for specific JRE releases only, and are subject to change in future releases.
+Objects are bigger than the sum of their fields, and object sizes depend on the specific JRE implementation. First, the JRE allocates a header with each object that stores information such as the object's class, an identity hashcode, a monitor used for locking, and various flags. For array objects, the header has an additional integer to store the number of array elements. Secondly, JREs require objects to be aligned on address boundaries. To illustrate how implementations may differ, Table~\ref{tab:object-overhead} gives costs for two JREs, SUN Java 6 (update 14) and IBM Java 6 (J9 SR4) JRE. It is important to keep in mind that these costs are for 32-bit architectures, and JRE-specific costs are subject to change in future releases.
 \begin{table}
   \centering
  \includegraphics[width=.70\textwidth]{Figures/chapter4/object-overhead.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The sizes of boxed scalar objects.}
+  \caption{Object overhead for both the Sun and IBM JREs.}
   \label{tab:object-overhead}
 \end{table} 
    %The Sun JVM allocates 8 bytes per object header, and the IBM JVM allocates 12 bytes per header. 
- 
-Boxed scalars, which are objects with a single primitive data type field, are the simplest kind of  object. Since both JREs allocate objects on 8-byte boundaries, the size of an object must be a multiple of 8. For both the Sun and IBM JREs, a boxed scalar is at least 16 bytes.  Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed scalars.
+   
+Boxed scalars, which are objects with a single primitive data type field, are the simplest kind of  object. Since both the Sun and IBM JREs allocate objects on 8-byte boundaries, the size of an object must be a multiple of 8. For both JREs, a boxed scalar is at least 16 bytes.  Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed scalars.
 
 \begin{table}
   \centering
 \includegraphics[width=.70\textwidth]{Figures/chapter4/boxed-scalar-sizes.pdf}
- % \includegraphics{eight-char-string}
   \caption{The sizes of boxed scalar objects.}
   \label{tab:boxed-scalar-sizes}
-\end{table} 
-Just like for boxed scalars, the minimum  size of any object can be obtained by summing the size of the header and the data, and then rounding it up to the nearest multiple of the object alignment.  
+\end{table}
  
-\callout{callout:minimum-size-estimation-rule}{Estimating Using the Estimating Minimum}{
-    Let 
-%\begin{verbatim}
-    	\textit{header} = the object header size and 
-    	\textit{alignment} = the object alignment.
-%\end{verbatim} 
-The minimum size of an object is $(\sum s_f) + header$, rounded up to the next multiple of \textit{alignment}, where $s_f$ ranges over the primitive sizes of all fields in the object's class and superclasses.  The minimum size of an object is its true size if the JRE packs and rearranges fields to fit into the smallest space.
-}
-
+For objects with more than one primitive data field, computing object sizes is a bit more complicated. The hardware often imposes alignment restrictions on specific data types, for example, requiring integer fields to be aligned on 4 byte boundaries. Field alignment can introduce more padding.
+ 
 \begin{example}[Simple employee class.]
-Consider a \texttt{SimpleEmployee} class with all primitive fields. The comments show the primitive type sizes:
-
-\ttfamily
-\begin{verbatim} 
-
-			class SimpleEmployee {
+Consider a \texttt{SimpleEmployee} class with all primitive fields. The comments show the primitive data size of each field:
+\begin{verbatim}
+      class SimpleEmployee {
         int hoursPerWeek;        // 4 bytes 
         boolean exempt;          // 1 bytes
         double salary;           // 8 bytes
         char jobCode;            // 2 bytes
-        int yearsOfService;      // 4 bytes
-			}
+        int yearsOfService;      // 4 bytes	
+}
 \end{verbatim}
-\normalfont
-For the Sun JRE, both \textit{header} and \textit{alignment} are equal to 8, and the minimum size of a \texttt{SimpleEmployee} object is 32 bytes:
-\begin{verbatim}
-                (4+1+8+2+4) + 8 = 27, rounds up to 32
-\end{verbatim} 
-For the IBM JRE, \textit{header} is 12, \textit{aligment} is 8, and the minimum size is again 32 bytes:
-\begin{verbatim}
-                (4+1+8+2+4) + 12 = 31, rounds up to 32
-\end{verbatim} 
+If the fields are laid out one after the other the \texttt{double} field \texttt{salary} would begin on a 5-byte boundary, which is not allowed. Either the \texttt{exempt} field must be padded, or the fields must be rearranged to fill in the empty spaces. The specific JRE implementation may differ.
 \end{example}
-How accurate are these estimates?  For the Sun JRE, a \texttt{SimpleEmployee} object is exactly 32 bytes. The Sun JRE does a good job packing fields. For the IBM JRE, the real size is 40 bytes, not 32. It turns out that the IBM JRE makes all fields either 4 or 8 bytes in non-array objects.  Here is the \texttt{SimpleEmployee} class with field sizes adjusted for the IBM JRE. 
+The Sun JRE does a good job rearranging and packing fields, so that you can assume each field is the size needed to store its primitive data type. With the Sun JRE, the size of a \texttt{SimpleEmployee} object is 32 bytes:
+\begin{verbatim}
+                      fields   + header          round up    
+                   (4+1+8+2+4) +   8     =  27      32
+\end{verbatim} 
+
+In contrast, the IBM JRE makes all fields in non-array objects either 4 or 8 bytes.  Here is the \texttt{SimpleEmployee} class with field sizes adjusted for the IBM JRE. 
 \ttfamily
 \begin{verbatim} 
-
 			class SimpleEmployee {
         int hoursPerWeek;        // 4 bytes
         boolean exempt;          // 4 byte
@@ -95,13 +78,23 @@ How accurate are these estimates?  For the Sun JRE, a \texttt{SimpleEmployee} ob
 			}
 \end{verbatim}
 \normalfont
-Now, the size of a \texttt{SimpleEmployee} object is:
+The size of a \texttt{SimpleEmployee} object with the IBM JRE is 40 bytes:
 \begin{verbatim}
-            (4+4+8+4+4) + 12 = 36, rounds up to 40
+               fields   +  header          round up
+            (4+4+8+4+4) +   12   = 36,       40
 \end{verbatim}
-Note that for arrays, the size of an array object is always the minimum size -- the IBM JRE, like the Sun JRE, packs the data fields on byte boundaries.
+For arrays, both the Sun and IBM JRE pack the data fields on byte boundaries.
+\callout{callout:minimum-size-estimation-rule}{Estimating Object Sizes}{
+The size of an object can be estimated as follows:
+\begin{enumerate}
+\item Add up the sizes of all of the fields in the object's class and all of its superclasses.
+\item Add the size of the object header to the result.
+\item Round up the result to the next multiple of the object alignment.
+\end{enumerate}
+The object header size, the object alignment, and the sizes of the fields depend on the JRE. For example, the JRE may pack fields to obtain the minimum possible size (e.g. Sun), or align fields on word boundaries (e.g. IBM). Array fields are always packed.
+}
 
-For objects with primitive data only, the bloat factor decreases as the object size increases. The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun JRE, the bloat factors for the boxed scalars with one field range from 94\% for a \texttt{Boolean} down to 50\% for a \texttt{Double}.  The bloat factor for a \texttt{SimpleEmployee} is 46\%.  The bloat factor for an array of 100 \texttt{int}s is insignificant. This is not the case for objects with other kinds of overhead, like pointers.
+When objects are small, For objects with primitive data only, the bloat factor decreases as the object size increases. The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun JRE, the bloat factors for the boxed scalars with one field range from 94\% for a \texttt{Boolean} down to 50\% for a \texttt{Double}.  The bloat factor for a \texttt{SimpleEmployee} is 46\%.  The bloat factor for an array of 100 \texttt{int}s is insignificant. This is not the case for objects with other kinds of overhead, like pointers.
 
 \section{The Cost of Delegation}
 
