@@ -22,15 +22,22 @@ There is no Java library method that returns the size of an object. This is by d
 	\bottomrule
 \end{tabular}
  % \includegraphics{eight-char-string}
-  \caption{The number of bytes needed to store primitive data}
+  \caption{The number of bytes needed to store primitive data.}
   \label{tab:primitive-sizes}
 \end{table}
 
 Objects are bigger than the sum of their fields, and object sizes depend on the specific JRE implementation. First, the JRE allocates a header with each object that stores information such as the object's class, an identity hashcode, a monitor used for locking, and various flags. For array objects, the header has an additional integer to store the number of array elements. Secondly, JREs require objects to be aligned on address boundaries. To illustrate how implementations may differ, Table~\ref{tab:object-overhead} gives costs for two JREs, SUN Java 6 (update 14) and IBM Java 6 (J9 SR4) JRE. It is important to keep in mind that these costs are for 32-bit architectures, and JRE-specific costs are subject to change in future releases.
 \begin{table}
   \centering
- \includegraphics[width=.70\textwidth]{Figures/chapter4/object-overhead.pdf}
+ %\includegraphics[width=.70\textwidth]{Figures/chapter4/object-overhead.pdf}
  % \includegraphics{eight-char-string}
+ \begin{tabular}{lll} \toprule
+ 	& Sun Java 6 (u14) & IBM Java 6 (SR4) \\ \midrule
+ 	Object Header size & 8 bytes & 12 bytes \\
+ 	Array Header size & 12 bytes & 16 bytes \\
+ 	Object alignment & 8 byte boundary & 8 byte boundary \\
+ 	\bottomrule
+ \end{tabular}
   \caption{Object overhead for both the Sun and IBM JREs.}
   \label{tab:object-overhead}
 \end{table} 
@@ -40,7 +47,19 @@ Boxed scalars, which are objects with a single primitive data type field, are th
 
 \begin{table}
   \centering
-\includegraphics[width=.70\textwidth]{Figures/chapter4/boxed-scalar-sizes.pdf}
+%\includegraphics[width=.70\textwidth]{Figures/chapter4/boxed-scalar-sizes.pdf}
+	\begin{tabular}{lccccccc} \toprule
+    	& & \multicolumn{3}{c}{Sun Java 6 (u14)} & \multicolumn{3}{c}{IBM Java 6
+    	(SR4)} \\ \cmidrule(r){3-5} \cmidrule(l){6-8}
+    	%
+    	Class & \shortstack[c]{Data\\Size} & Header & \shortstack{Align-\\ment
+    	fill} & \shortstack[c]{Total\\bytes} & Header & \shortstack{Align-\\ment
+    	fill} & \shortstack[c]{Total\\bytes} \\ \midrule {\small Boolean, Byte} &
+    	1 & 8 & 7 & 16 & 12 & 3 & 16 \\ {\small Character, Short} & 2 & 8 & 6 & 16 & 12 & 1 & 16 \\
+    	{\small Integer, Float} & 4 & 8 & 4 & 16 & 12 & 0 & 16 \\
+    	{\small Long, Double} & 8 & 8 & 0 & 16 & 12 & 4& 24 \\
+		\bottomrule
+	\end{tabular}
   \caption{The sizes of boxed scalar objects.}
   \label{tab:boxed-scalar-sizes}
 \end{table}
