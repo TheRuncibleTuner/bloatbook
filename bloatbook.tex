@@ -32,7 +32,8 @@
 
 \usepackage{listings}
 \lstset{language=Java,basicstyle=\footnotesize\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
-\newenvironment{inlinelisting}{\begin{verbatim}}{\end{verbatim}}
+\lstnewenvironment{shortlisting}{\lstset{frame=none}}{\lstset{frame=tb}}
+%\lstnewenvironment{longlisting}{}{}
 
 
 \usepackage{graphicx}

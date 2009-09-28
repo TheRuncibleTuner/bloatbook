@@ -1,55 +1,67 @@
 \chapter{The Lifetime of Objects}
 
+It would be great if programmers could be in charge only of hooking together and
+populating their data structures, leaving the JVM responsible for the details of
+object allocation and reclamation. The Java runtime does indeed help manage some
+aspects of these management tasks, but leaves a good deal of work in your hands.
+In Java, you needn't explicitly free objects, and in that way a managed language
+is a big step up from a language like C. However, the ultimate promise of
+automatic memory management, that you can create objects without regard for messy
+details of storage management, doesn't play out ideally in practice. Unless you
+are careful, your program will suffer from bugs such as memory leaks, and suffer
+from poor performance. Sometimes, your objects don't easily fit into the limits
+of a single Java process, and you need to manage, explicitly, shuttling them in
+and out of the Java heap.
+
+When programming in Java it is important to plan out the lifetime of your
+objects. Your application needs some objects to live forever and it needs the
+rest to die a timely death. This often requires careful design on your part, both
+to avoid bugs and so that your application performs well in the case when not
+everything fits into the Java heap. Designing a lifetime management strategy
+usually requires that you take the tools that Java provides, and combine them
+with other strategies implemented on top of Java.
+
+\section{Data and Object Lifetime}
 Every object created by your application lives for an interval of time from its
 creation to the point that the Java runtime gets around to collecting it. For
 some subset of an object's {\em actual} lifetime, your application will make use
 of its fields. An object's {\em natural} lifetime is defined by the interval of
 time between its first and last necessary use. %cite drag paper here?
-It is important to understand this distinction, between natural and actual
-lifetime, so that you can implement your code in a way that avoids bugs and performs well in
-the case when not everything fits into the Java heap.
 
-The Java runtime helps manage some aspects of these management tasks, but leaves
-a great deal of the work in your hands. In Java, you needn't explicitly free
-objects, and in that way a managed language is a big step up from a language like
-C. However, the promise of automatic memory management, that it frees you from
-the burden of managing memory, doesn't play out as well in practice. Unless you
-are careful, your program will suffer from bugs such as memory leaks, and suffer
-from poor performance. Sometimes, your objects don't easily fit into the limits
-of a single Java process, and you need to manage, explicitly, shuttling
-them in and out of the Java heap.
+In a \emph{well-behaved} application, 
+an object's lifetime spans its allocation, use, and the short period, after its
+last use, during whch the JVM takes control and eventually relcaims the
+space.
+\autoref{fig:typical-lifecycle1} illustrates the lifecycle of a typical object
+in a well behaved application.
 
-When programming in Java it is important to think through whether your
-application needs an object to live forever, or, if not, when you expect it to
-die. With these thoughts in mind, you can plan how to  implement the right
-lifetime policies. This entails combining the tools that Java  provides with
-other strategies, implemented on top of Java.
-
-\section{Data and Object Lifetime}
-
-The lifetime of 
-An object's lifetime spans its creation, use,
-
-\autoref{fig:typical-lifecycle}
-
-For example,
-\lstset{frame=none}
-\begin{lstlisting}
-	new SimpleDataFormat().parse(string, new ParsePosition(0));
-\end{lstlisting}
-\lstset{frame=tb}
+For example, consider this snippet of code, which
+shows a easy way to parse a date.
+\begin{shortlisting}
+	for (String string : inputList) {
+		new SimpleDataFormat().parse(string, new ParsePosition(0));
+	}
+\end{shortlisting}
+Given a date that is
+represented as a string, it will produce a \class{java.util.Date}. In doing so,
+objects are created. Some are these are obvious, because the programmer who
+wrote this called \code{new} twice. Many more are created by the standard
+libraries to finish the task, include a calendar object and number of arrays. 
 
 \begin{figure}
 	\centering
 	\subfigure[The lifecycle of a typical object and its data.]{
-		\includegraphics[width=0.95\textwidth]{Figures/object-lifecycle}
+	\label{fig:typical-lifecycle1}
+			\includegraphics[width=0.95\textwidth]{Figures/object-lifecycle}
 	}
 	\subfigure[A situation where there are long periods between uses of an
 	object's data.]{
+	\label{fig:typical-lifecycle2}
 		\includegraphics[width=0.95\textwidth]{Figures/object-lifecycle-lulls}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
+	\label{fig:typical-lifecycle3}
 		\includegraphics[width=0.9\textwidth]{Figures/object-lifecycle2}
 	}
 	\caption{Examples of Natural and Actual lifetimes.}
@@ -60,20 +72,20 @@ For example,
 
 \begin{table}
 \centering
-	\begin{tabular}{lp{0.3\textwidth}p{0.35\textwidth}}
+	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
 	\toprule  & Lifetime Property & Example \\ \midrule
 	\autoref{temporary-lifetime}  & {Temporary} & new
-	\class{SimpleDateFormat} to parse every date
+	parser for every date
 	\\
 	\autoref{forever-lifetime} & {Needed Forever} & product catalog
 	\\
-	\autoref{correlated-lifetime-1} & {Need Correlated with Another Object}
+	\autoref{correlated-lifetime-1} & {Correlated with Object}
 	& object annotations
 	\\
-	\autoref{correlated-lifetime-2} & {Need Correlated with Phase} &
-	abstract syntaxt tree used only during parsing
+	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
+	DOM used only parsing
 	\\
-	\autoref{deferred-deletion} & {Not Needed Now, but Deferred Deletion} &
+	\autoref{deferred-deletion} & {Deferred Deletion} &
 	session state \\
 %period\\ scoped to a phase/request\\
 %correlated with an object (annotations)\\
@@ -168,12 +180,10 @@ the expense of creating temporary \class{ParsePosition} objects!).
 
 
 
-\begin{lstlisting}[float,caption=Code that constructs 8 temporary
-objects to handle two dates.,label=TempExampleCode]
+\begin{lstlisting}[float,caption=Code that constructs 8 temporary objects to handle two dates.,label=TempExampleCode]
 void main(String xy) {
 	doWork(xy.substring(0,10), xy.substring(10));
-}
-	
+}	
 void doWork(String x, String y) {
 	doRemoveProcedureCall(parse(x));
 	doRemoveProcedureCall(parse(y));
