@@ -22,18 +22,22 @@ usually requires that you take the tools that Java provides, and combine them
 with other strategies implemented on top of Java.
 
 \section{Data and Object Lifetime}
-Every object created by your application lives for an interval of time from its
-creation to the point that the Java runtime gets around to collecting it. For
-some subset of an object's {\em actual} lifetime, your application will make use
-of its fields. An object's {\em natural} lifetime is defined by the interval of
-time between its first and last necessary use. %cite drag paper here?
+%Every object created by your application lives for an interval of time from its
+%creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
+%interval of time between its first and last necessary use. %cite drag paper
+%here?
 
 In a \emph{well-behaved} application, 
 an object's lifetime spans its allocation, use, and the short period, after its
 last use, during whch the JVM takes control and eventually relcaims the
 space.
-\autoref{fig:typical-lifecycle1} illustrates the lifecycle of a typical object
-in a well behaved application.
+For
+some subset of an object's {\em actual} lifetime, your application will make
+use of the data stored in its fields.
+After the last use of this object's fields, 
+
+Figure~\ref{fig:typical-lifecycle1} illustrates the lifecycle of a typical
+object in a well behaved application.
 
 For example, consider this snippet of code, which
 shows a easy way to parse a date.
@@ -47,6 +51,45 @@ represented as a string, it will produce a \class{java.util.Date}. In doing so,
 objects are created. Some are these are obvious, because the programmer who
 wrote this called \code{new} twice. Many more are created by the standard
 libraries to finish the task, include a calendar object and number of arrays. 
+
+\begin{figure}
+	\centering
+	\subfigure[Limbo.]{
+		\includegraphics[width=\textwidth]{Figures/lifetime/states}
+	}
+	\subtable[When an object exits limbo.]{
+		\begin{tabular}{ll} \toprule
+        	referenced by  & condition when object exits limbo
+        	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+        	%
+        	field of \class{java.lang.ref.SoftReference} & approximately
+        	LRU$^{**}$
+        	\\
+        	%
+        	field of \class{java.lang.ref.WeakReference} & upon next garbage
+        	collection
+        	\\
+        	%
+        	any other object's field & 
+        	\emph{never} --- memory leak
+        	\\
+        	%
+        	local variable & when enclosing method returns
+        	\\
+        	%
+        \bottomrule \addlinespace
+        \end{tabular}
+	}
+	\caption{An object enters a kind of limbo, after its last use.
+	Programmers have to be careful that their objects exit limbo in a
+	timely fashion. When an object exits limbo is under programmer
+	control: depending on how it is referenced, it will be reclaimed
+	under certain rules, or may be part of a memory leak. $^{**}$Note: Great care
+	is needed when using soft references; see the text for more details.
+	%older JREs	use very poor heuristics for handling soft references; see the
+	% body for more detail.
+	}
+\end{figure}
 
 \begin{figure}
 	\centering
