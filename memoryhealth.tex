@@ -35,7 +35,7 @@ In Java, it is all too easy to design a data structure that is bloated by a fact
   \label{fig:eight-char-string}
 \end{figure}
 
-\begin{example}[An 8-Character String]
+\begin{example}{An 8-Character String}
  You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has a \emph{bloat factor} of 75\%. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high. (Unless otherwise noted, all measurements in this book are from the 32-bit IBM Java 6 JVM.)
 
 Figure~\ref{fig:eight-char-string} shows why the bloat factor is so high. Strings have all three kinds of overhead -- JVM overhead, pointers, and bookkeeping fields. Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, plus the pointer glueing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields: a length and an offset, which have meaning only when this string is the result of a substring operation, and a saved hashcode. Adding all of this together, the overhead is 48 bytes.  
@@ -147,7 +147,7 @@ collections implementing this relation.
 %\section{Example: Sorted Map of Doubles}
 %\label{section:mapofdoubles}
 
- \begin{example}[A Monitoring System]
+ \begin{example}{A Monitoring System}
    A monitoring program collects samples from a distributed
    system. Each sample it collects consists of a unique timestamp and a
    value, each represented as a double. The samples arrive out of

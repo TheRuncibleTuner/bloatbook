@@ -95,7 +95,7 @@ The size of an object can be estimated as follows:
 The object header size, the object alignment, and the sizes of the fields depend on the JRE. For example, the JRE may pack fields to obtain the minimum possible size (e.g. Sun), or align fields on word boundaries (e.g. IBM). Array data is always packed.
 }
  
-\begin{example}[Simple employee class.]
+\begin{example}{Simple employee class}
 Consider a \texttt{SimpleEmployee} class with all primitive fields. The comments show the primitive data size of each field:
 \begin{verbatim}
       class SimpleEmployee {
@@ -109,9 +109,9 @@ Consider a \texttt{SimpleEmployee} class with all primitive fields. The comments
 If the fields are laid out one after the other with no fill, then the \texttt{double} field \texttt{salary} would begin on a 5-byte boundary, which is not allowed. Either the \texttt{exempt} field must be padded, or the fields must be rearranged to fill in the empty spaces. To estimate the size of a \texttt{SimpleEmployee}, you need to know which of these implementation strategies the JRE uses. It turns out that the Sun and IBM use different strategies.
 \end{example}
 The Sun JRE does a good job rearranging and packing fields, so you can assume each field is the size of its primitive data type. The size of a \texttt{SimpleEmployee} object is 32 bytes:
-\begin{verbatim}               
-          8 header bytes + (4+1+8+2+4) bytes  =  27 bytes, rounds up to 32
-\end{verbatim} 
+\begin{verbatim2}               
+8 header bytes + (4+1+8+2+4) bytes = 27 bytes, rounds up to 32
+\end{verbatim2} 
 
 In contrast, with the IBM JRE, all fields in non-array objects are either 4 or 8 bytes.  Here is the \texttt{SimpleEmployee} class with field sizes adjusted accordingly. 
 \ttfamily
@@ -126,20 +126,20 @@ In contrast, with the IBM JRE, all fields in non-array objects are either 4 or 8
 \end{verbatim}
 \normalfont
 With the IBM JRE, the size of a \texttt{SimpleEmployee} is 40 bytes:
-\begin{verbatim}
-            12 header bytes + (4+4+8+4+4) bytes = 36, rounds up to 40
-\end{verbatim}
+\begin{verbatim2}
+12 header bytes + (4+4+8+4+4) bytes = 36, rounds up to 40
+\end{verbatim2}
 For arrays, the data is always packed with no spaces. For example, here is a formula that estimates the size of an array of 100 \texttt{chars}:
-\begin{verbatim}
-             header + 100*2, rounded up to a multiple of the alignment
-\end{verbatim}
+\begin{verbatim2}
+header + 100*2, rounded up to a multiple of the alignment
+\end{verbatim2}
 
 When objects are small, For objects with primitive data only, the bloat factor decreases as the object size increases. The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun JRE, the bloat factors for the boxed scalars with one field range from 94\% for a \texttt{Boolean} down to 50\% for a \texttt{Double}.  The bloat factor for a \texttt{SimpleEmployee} is 46\%.  The bloat factor for an array of 100 \texttt{int}s is insignificant. This is not the case for objects with other kinds of overhead, like pointers.
 
 \section{The Cost of Delegation}
 
 The \texttt{Employee} class is not a very realistic example, since it has only primitive fields. Usually, a class has some fields that are objects.  In Java, a field of type \texttt{ObjectType} is implemented using \textit{delegation}, that is, the field stores a reference to another object of type \texttt{ObjectType}. On 32-bit architectures, a pointer is 4 bytes. You can calculate the size of any object as described in in Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field. Unless otherwise stated, the following examples assume the Sun JRE. 
-\begin{example}[Employee class with delegation]
+\begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An employee now has a name, which is a \texttt{String}, and a start date, which is a \texttt{Date}. The type of \texttt{salary} has been changed from \texttt{double} to \texttt{BigDecimal}. \texttt{BigDecimal} avoids potential roundoff errors.
 \ttfamily
 \begin{verbatim} 
@@ -155,9 +155,9 @@ Here is a more realistic employee class with several reference fields. An employ
 \end{verbatim}
 \normalfont
 The minimum size of an \texttt{EmployeeWithDelegation} object is 32 bytes:
-\begin{verbatim}
-                (4+4+4+4+1+2+4) + 8 = 31, rounds up to 32 bytes
-\end{verbatim} 
+\begin{verbatim2}
+(4+4+4+4+1+2+4) + 8 = 31, rounds up to 32 bytes
+\end{verbatim2}
 \end{example}
 
 While an instance of the \texttt{EmployeeWithDelegation} class is a single 32 byte object, an entire employee, including name, salary, and start date consists of five objects. Two of these objects are used to store the name. (Recall from Section~\ref{sec:bloat-def} that a string is represented by a wrapper \texttt{String} object and a \texttt{char} array.) The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}. 
@@ -182,7 +182,7 @@ The Java language makes it hard to avoid delegation. Programmer choices also imp
 
 There is no simple rule that can always be applied to decide when to use delegation. Each situation has to be evaluated in context, and there may be tradeoffs among different goals. To make an informed decision, it is important to know what the costs are.
 
-\begin{example}[Employee emergency contact] 
+\begin{example}{Employee emergency contact} 
 Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 \end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
@@ -285,7 +285,7 @@ When many objects are used to represent one logical concept, this is an indicati
 
 As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
 
-\begin{example}[Keeping track of updates] 
+\begin{example}{Keeping track of updates} 
 
 A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
 \ttfamily
@@ -323,9 +323,8 @@ The solution in Figure~\ref{fig:big-base-class} provides a very fine granularity
 \section{64-bit Architectures}
 
 If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
-\begin{example}[8-character string] 
+\begin{example}{8-character string} 
 Consider what happens to the 8-character string from Section~\ref{sec:bloat-def} in a 64-bit JRE. The memory layout is shown in Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
-
 \end{example} 
  \begin{figure}
   \centering
