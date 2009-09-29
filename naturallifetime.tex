@@ -21,76 +21,104 @@ everything fits into the Java heap. Designing a lifetime management strategy
 usually requires that you take the tools that Java provides, and combine them
 with other strategies implemented on top of Java.
 
-\section{Data and Object Lifetime}
+\section{The Lifecycle of an Object}
 %Every object created by your application lives for an interval of time from its
 %creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
 %interval of time between its first and last necessary use. %cite drag paper
 %here?
 
-In a \emph{well-behaved} application, 
-an object's lifetime spans its allocation, use, and the short period, after its
-last use, during whch the JVM takes control and eventually relcaims the
-space.
-For
-some subset of an object's {\em actual} lifetime, your application will make
-use of the data stored in its fields.
-After the last use of this object's fields, 
-
-Figure~\ref{fig:typical-lifecycle1} illustrates the lifecycle of a typical
+In a \emph{well-behaved} application, an object's lifetime spans its allocation,
+use, and the short period, after its last use, during whch the JVM takes control
+and eventually reclaims the space. For some subset of an object's {\em actual}
+lifetime, that is the time from creation to reclamation, your application will
+make use of the data stored in its fields.
+\autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
 object in a well behaved application.
 
-For example, consider this snippet of code, which
-shows a easy way to parse a date.
+\begin{figure}
+	\includegraphics[width=0.9\textwidth]{Figures/object-lifecycle}
+	\caption{A timeline of the life of an object.}
+	\label{fig:typical-lifecycle}
+\end{figure}
+
+\begin{example}{Parsing a Date} Consider a loop that 
+shows a easy way to parse a list of dates.
 \begin{shortlisting}
 	for (String string : inputList) {
-		new SimpleDataFormat().parse(string, new ParsePosition(0));
+		ParsePosition pos = new ParsePosition(0);
+		SimpleDateFormat parser = new SimpleDateFormat();
+		System.out.println(parser.parse(string, pos));
 	}
 \end{shortlisting}
-Given a date that is
-represented as a string, it will produce a \class{java.util.Date}. In doing so,
-objects are created. Some are these are obvious, because the programmer who
-wrote this called \code{new} twice. Many more are created by the standard
-libraries to finish the task, include a calendar object and number of arrays. 
+For each iteration of this loop, this code takes a date that is represented as a
+string and produces a standard Java \class{Date} object. In doing so, a number of
+objects are created. Two of these are easy to see, in the two \code{new} calls
+that create the parse position and date parser objects. The programmer who wrote
+this created two objects, but many more are created by the standard libraries to
+finish the task. These include a calendar object, number of arrays, and the
+\class{Date} itself. None of these objects are used beyond the iteration of the
+loop in which they were created. Within one iteration, they are created, almost
+immediately used, and then enter a state of \emph{limbo}.
+
+\callout{limbo}{Objects in Limbo}{
+In limbo, an object will never be used again, or at least not for long time, but
+the JRE doesn't yet know that this is the case. The object hangs
+around, taking up space in the Java heap until the point when it exits limbo.}
+
+The \code{pos} object represents to the parser the position within the
+input string to begin parsing. The implementation of the \code{parse} method
+uses it early on in the process of parsing. Despite being unused for the
+remainder of the parsing, the JRE does not know this until the current
+iteration of the loop has finished. This time in limbo also includes the
+entirety of the call to \code{System.out.println}, an operation entirely
+unrelated to the creation or use of the parse position object. Once the current
+loop iteration finishes, these two objects will exit limbo, and become garbage
+collectible.
+\end{example}
+
+The point at which an object exits its limbo depends upon how it is referenced
+by other objects.
 
 \begin{figure}
 	\centering
-	\subfigure[Limbo.]{
+	\subfigure[After its last use, an object enters a kind of limbo.]{
 		\includegraphics[width=\textwidth]{Figures/lifetime/states}
 	}
-	\subtable[When an object exits limbo.]{
+	\subtable[Rules for exiting limbo.]{
 		\begin{tabular}{ll} \toprule
         	referenced by  & condition when object exits limbo
         	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
         	%
-        	field of \class{java.lang.ref.SoftReference} & approximately
+        	field of \class{SoftReference} & approximately
         	LRU$^{**}$
         	\\
         	%
-        	field of \class{java.lang.ref.WeakReference} & upon next garbage
+        	field of \class{WeakReference} & next garbage
         	collection
         	\\
         	%
-        	any other object's field & 
-        	\emph{never} --- memory leak
+        	local variable & next collection after enclosing method
+        	returns
         	\\
         	%
-        	local variable & when enclosing method returns
+        	field of any other object & 
+        	when that object exits limbo %(could be \emph{never} --- memory leak)
         	\\
         	%
         \bottomrule \addlinespace
         \end{tabular}
 	}
-	\caption{An object enters a kind of limbo, after its last use.
-	Programmers have to be careful that their objects exit limbo in a
-	timely fashion. When an object exits limbo is under programmer
-	control: depending on how it is referenced, it will be reclaimed
-	under certain rules, or may be part of a memory leak. $^{**}$Note: Great care
-	is needed when using soft references; see the text for more details.
+	\caption{The point when an object exits limbo depends on 
+	decisions under programmer control: it depends on how the object is
+	referenced. $^{**}$Note: Care is needed when using soft references.
 	%older JREs	use very poor heuristics for handling soft references; see the
 	% body for more detail.
+	%, it will be reclaimed
+	%under certain rules, or may be part of a memory leak
 	}
 \end{figure}
 
+\begin{comment}
 \begin{figure}
 	\centering
 	\subfigure[The lifecycle of a typical object and its data.]{
@@ -110,6 +138,7 @@ libraries to finish the task, include a calendar object and number of arrays.
 	\caption{Examples of Natural and Actual lifetimes.}
 	\label{fig:typical-lifecycle}
 \end{figure}
+\end{comment}
 
 \section{Common Categories of Natural Lifetime}
 
