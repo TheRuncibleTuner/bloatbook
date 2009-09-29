@@ -84,8 +84,8 @@ by other objects.
 	\subfigure[After its last use, an object enters a kind of limbo.]{
 		\includegraphics[width=\textwidth]{Figures/lifetime/states}
 	}
-	\subtable[Rules for exiting limbo.]{
-		\begin{tabular}{ll} \toprule
+	\subtable[Rules for exiting limbo. $^{**}$Note: Care is needed when using soft
+	references.]{ \begin{tabular}{ll} \toprule
         	referenced by  & condition when object exits limbo
         	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
         	%
@@ -110,7 +110,7 @@ by other objects.
 	}
 	\caption{The point when an object exits limbo depends on 
 	decisions under programmer control: it depends on how the object is
-	referenced. $^{**}$Note: Care is needed when using soft references.
+	referenced.
 	%older JREs	use very poor heuristics for handling soft references; see the
 	% body for more detail.
 	%, it will be reclaimed
