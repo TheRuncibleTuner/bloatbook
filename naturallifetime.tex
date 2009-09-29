@@ -101,10 +101,14 @@ by other objects.
         	returns
         	\\
         	%
-        	field of any other object & 
+        	instance field of any other object & 
         	when that object exits limbo %(could be \emph{never} --- memory leak)
         	\\
         	%
+        	static field of any other object &
+        	when that class is unloaded (likely never)
+        	%
+        	\\ 
         \bottomrule \addlinespace
         \end{tabular}
 	}
