@@ -5,7 +5,11 @@ An important design decision when modeling data is how many Java classes to use 
 \section{The Cost of Objects}
 \label{sec:CostOfObjects}
 
-There is no Java library method that returns the size of an object. This is by design. Unlike systems languages like C, a Java programmer is not supposed to know either the size of an object or how it is laid out in memory. The JRE, not the programmer, manages storage, and the JRE has the freedom to implement its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the number of bytes needed to store primitive data types. These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
+There is no Java library method that returns the size of an object. This is by
+design. Unlike systems languages like C, a Java programmer is not supposed to
+know either the size of an object or how it is laid out in memory. The \jre,
+not the programmer, manages storage, and the \jre has the freedom to implement
+its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the number of bytes needed to store primitive data types. These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
 \begin{table}
   \centering
 %\includegraphics[width=.50\textwidth]{Figures/chapter4/primitive-byte-sizes.pdf}
@@ -26,7 +30,16 @@ There is no Java library method that returns the size of an object. This is by d
   \label{tab:primitive-sizes}
 \end{table}
 
-Objects are bigger than the sum of their fields, and their size depends on the specific JRE implementation. The JRE allocates a header with each object that stores information such as the object's class, an identity hashcode, a monitor used for locking, and various flags. For array objects, the header has an additional integer to store the number of array elements. Additionally,  the JRE requires objects to be aligned on specific address boundaries, for example, addresses that are multiples of 8. To illustrate how implementations may differ, Table~\ref{tab:object-overhead} gives object header and alignment costs for two JREs, SUN Java 6 (update 14) and IBM Java 6 (SR4), both for for 32-bit architectures.
+Objects are bigger than the sum of their fields, and their size depends on the
+specific \jre implementation. The \jre allocates a header with each object that
+stores information such as the object's class, an identity hashcode, a monitor
+used for locking, and various flags. For array objects, the header has an
+additional integer to store the number of array elements. Additionally,  the
+\jre requires objects to be aligned on specific address boundaries, for
+example, addresses that are multiples of 8. To illustrate how implementations
+may differ, Table~\ref{tab:object-overhead} gives object header and alignment
+costs for two \jres, SUN Java 6 (update 14) and IBM Java 6 (SR4), both for for
+32-bit architectures.
 \begin{table}
   \centering
  %\includegraphics[width=.70\textwidth]{Figures/chapter4/object-overhead.pdf}
@@ -38,12 +51,16 @@ Objects are bigger than the sum of their fields, and their size depends on the s
  	Object alignment & 8 byte boundary & 8 byte boundary \\
  	\bottomrule
  \end{tabular}
-  \caption{Object overhead for both the Sun and IBM JREs.}
+  \caption{Object overhead for both the Sun and IBM \jres.}
   \label{tab:object-overhead}
 \end{table} 
    %The Sun JVM allocates 8 bytes per object header, and the IBM JVM allocates 12 bytes per header. 
    
-The simplest objects are the boxed scalars, which are objects with a single primitive data type field. Since both the Sun and IBM JREs allocate objects on 8-byte boundaries and object headers are at least 8 bytes, a boxed scalar is at least 16 bytes. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed scalars for both JREs.
+The simplest objects are the boxed scalars, which are objects with a single
+primitive data type field. Since both the Sun and IBM \jres allocate objects on
+8-byte boundaries and object headers are at least 8 bytes, a boxed scalar is at
+least 16 bytes. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed
+scalars for both \jres.
 
 \begin{table}
   \centering
@@ -92,8 +109,9 @@ The size of an object can be estimated as follows:
 \item Add the size of the object header to the result.
 \item Round up the result to the next multiple of the object alignment.
 \end{enumerate}
-The object header size, the object alignment, and the sizes of the fields depend on the JRE. For example, the JRE may pack fields to obtain the minimum possible size (e.g. Sun), or align fields on word boundaries (e.g. IBM). Array data is always packed.
-}
+The object header size, the object alignment, and the sizes of the fields
+depend on the \jre. For example, the \jre may pack fields to obtain the minimum
+possible size (e.g. Sun), or align fields on word boundaries (e.g. IBM). Array data is always packed. }
  
 \begin{example}{Simple employee class}
 Consider a \class{SimpleEmployee} class with all primitive fields. The comments
@@ -112,16 +130,17 @@ If the fields are laid out one after the other with no fill, then the
 not allowed. Either the \class{exempt} field must be padded, or the fields must
 be rearranged to fill in the empty spaces. To estimate the size of a
 \class{SimpleEmployee}, you need to know which of these implementation
-strategies the JRE uses. It turns out that the Sun and IBM use different strategies.
+strategies the \jre uses. It turns out that the Sun and IBM use different
+strategies.
 \end{example}
-The Sun JRE does a good job rearranging and packing fields, so you can assume
+The Sun \jre does a good job rearranging and packing fields, so you can assume
 each field is the size of its primitive data type. The size of a
 \class{SimpleEmployee} object is 32 bytes:
 \begin{verbatim2}               
 8 header bytes + (4+1+8+2+4) bytes = 27 bytes, rounds up to 32
 \end{verbatim2} 
 
-In contrast, with the IBM JRE, all fields in non-array objects are either 4 or
+In contrast, with the IBM \jre, all fields in non-array objects are either 4 or
 8 bytes.  Here is the \class{SimpleEmployee} class with field sizes adjusted
 accordingly.
 \begin{verbatim2} 
@@ -133,7 +152,7 @@ class SimpleEmployee {
     int yearsOfService;      // 4 bytes
 }
 \end{verbatim2}
-With the IBM JRE, the size of a \class{SimpleEmployee} is 40 bytes:
+With the IBM \jre, the size of a \class{SimpleEmployee} is 40 bytes:
 \begin{verbatim2}
 12 header bytes + (4+4+8+4+4) bytes = 36, rounds up to 40
 \end{verbatim2}
@@ -146,7 +165,7 @@ header + 100*2, rounded up to a multiple of the alignment
 When objects are small, For objects with primitive data only, the bloat factor
 decreases as the object size increases. The overhead cost consists of a fixed
 object header cost and a bounded alignment cost, which are amortized when the
-object is big.  For example, for the Sun JRE, the bloat factors for the boxed
+object is big.  For example, for the Sun \jre, the bloat factors for the boxed
 scalars with one field range from 94\% for a \class{Boolean} down to 50\% for a
 \class{Double}.  The bloat factor for a \class{SimpleEmployee} is 46\%.  The
 bloat factor for an array of 100 \code{int}s is insignificant. This is not the
@@ -159,7 +178,9 @@ primitive fields. Usually, a class has some fields that are objects.  In Java,
 a field of type \class{ObjectType} is implemented using \textit{delegation},
 that is, the field stores a reference to another object of type
 \class{ObjectType}. On 32-bit architectures, a pointer is 4 bytes. You can
-calculate the size of any object as described in in Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field. Unless otherwise stated, the following examples assume the Sun JRE.
+calculate the size of any object as described in in
+Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field.
+Unless otherwise stated, the following examples assume the Sun \jre.
 \begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An
 employee now has a name, which is a \class{String}, and a start date, which is a
@@ -381,17 +402,20 @@ problem, it may not be possible to be this casual with memory. Also, an alternat
 
 If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
 \begin{example}{8-character string} 
-Consider what happens to the 8-character string from Section~\ref{sec:bloat-def} in a 64-bit JRE. The memory layout is shown in Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
+Consider what happens to the 8-character string from
+Section~\ref{sec:bloat-def} in a 64-bit \jre. The memory layout is shown in
+Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
 \end{example} 
  \begin{figure}
   \centering
  \includegraphics[width=0.6\textwidth]{Figures/chapter4/8-char-string-64-bit.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an 8 character string by a 64-bit JRE.}
+  \caption{The memory layout for an 8 character string by a 64-bit \jre.}
   \label{fig:8-char-string-64-bit}
 \end{figure}
 
-In reality, things are not so bad. Both the Sun and the IBM JREs have implemented a scheme for compressing addresses that avoids this code size blowup, provided that the heap is less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers. During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa. 
+In reality, things are not so bad. Both the Sun and the IBM \jres have
+implemented a scheme for compressing addresses that avoids this code size blowup, provided that the heap is less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers. During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa.
 
 Address compression is available in the Sun Java 6 (update 14) release, enabled with the option -XX:+UseCompressedOops. It is available in IBM Java 6 J9 SR 4 with the option -Xcompressedrefs.
 
@@ -400,7 +424,11 @@ Address compression is available in the Sun Java 6 (update 14) release, enabled 
 %An entity is modeled by a set of interrelated classes. This chapter describes how to estimate the size of an instantiated entity, using rules for estimating the size of basic objects. During the modeling process, programmers choose how many classes to define.
 The decision to delegate functionality to another object sometimes involves making a tradeoff between flexibility and memory cost. You need to decide how much flexibility is really needed, and you also need to be aware of the actual memory costs. This chapter provides the basic knowledge for estimating memory costs. 
 \begin{itemize}
-\item An object size depends on the object header size, field alignment, object alignment, and pointer size. These can vary, depending on the JRE and the hardware. The minimum size of an object is the sum of the header and the field type sizes, rounded up to the alignment boundary. This is a good way to estimate objects for the Sun JRE.
+\item An object size depends on the object header size, field alignment, object
+alignment, and pointer size. These can vary, depending on the \jre and the
+hardware. The minimum size of an object is the sum of the header and the field
+type sizes, rounded up to the alignment boundary. This is a good way to
+estimate objects for the Sun \jre.
 \end{itemize}
 If you need the exact size of objects, there are various tools available. A list of resources is provided in the Appendix.
 
