@@ -1,8 +1,8 @@
 \chapter{The Lifetime of Objects}
 
 It would be great if programmers could be in charge only of hooking together and
-populating their data structures, leaving the JVM responsible for the details of
-object allocation and reclamation. The Java runtime does indeed help manage some
+populating their data structures, leaving the \jre responsible for the details
+of object allocation and reclamation. The Java runtime does indeed help manage some
 aspects of these management tasks, but leaves a good deal of work in your hands.
 In Java, you needn't explicitly free objects, and in that way a managed language
 is a big step up from a language like C. However, the ultimate promise of
@@ -28,8 +28,8 @@ with other strategies implemented on top of Java.
 %here?
 
 In a \emph{well-behaved} application, an object's lifetime spans its allocation,
-use, and the short period, after its last use, during whch the JVM takes control
-and eventually reclaims the space. For some subset of an object's {\em actual}
+use, and the short period, after its last use, during whch the \jre takes
+control and eventually reclaims the space. For some subset of an object's {\em actual}
 lifetime, that is the time from creation to reclamation, your application will
 make use of the data stored in its fields.
 \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
@@ -62,13 +62,13 @@ immediately used, and then enter a state of \emph{limbo}.
 
 \callout{limbo}{Objects in Limbo}{
 In limbo, an object will never be used again, or at least not for long time, but
-the JRE doesn't yet know that this is the case. The object hangs
+the \jre doesn't yet know that this is the case. The object hangs
 around, taking up space in the Java heap until the point when it exits limbo.}
 
 The \code{pos} object represents to the parser the position within the
 input string to begin parsing. The implementation of the \code{parse} method
 uses it early on in the process of parsing. Despite being unused for the
-remainder of the parsing, the JRE does not know this until the current
+remainder of the parsing, the \jre does not know this until the current
 iteration of the loop has finished. This time in limbo also includes the
 entirety of the call to \code{System.out.println}, an operation entirely
 unrelated to the creation or use of the parse position object. Once the current
@@ -76,21 +76,36 @@ loop iteration finishes, these two objects will exit limbo, and become garbage
 collectible.
 \end{example}
 
-The point at which an object exits its limbo depends upon how it is referenced
-by other objects.
-
 \begin{figure}
 	\centering
-	\subfigure[After its last use, an object enters a kind of limbo.]{
-		\includegraphics[width=\textwidth]{Figures/lifetime/states}
-	}
-	\subtable[Rules for exiting limbo. $^{**}$Note: Care is needed when using soft
-	references.]{ \begin{tabular}{ll} \toprule
-        	referenced by  & condition when object exits limbo
-        	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+	\includegraphics[width=\textwidth]{Figures/lifetime/states}
+	\caption{After its last use, an object enters a kind of limbo.}
+		\label{fig:limbo-exit}
+\end{figure}
+
+The point at which an object exits its limbo depends upon how it is referenced by
+other objects. One can always assure that an object exits limbo by overwriting
+all references to that variable; if it is no longer referenced at all, then it
+will exit limbo immediately. For example, a common way to do this is by assigning
+references to the value \code{null}. This is tricky in many cases, because it may
+not be easy to know where all those references emanate from. Who is to say that,
+when one calls the \code{parse} method of a \class{SimpleDateFormat} object, that
+it does not squirrel away a reference to the \class{ParsePosition} passed as a
+parameter? The API contract for \code{parse} makes no such claims, one way or the
+other. This is certainly calls to mind the worst of the days of explicitly
+managing memory in a language like C.
+
+
+\begin{table}
+\centering
+	\begin{tabular}{ll} \toprule referenced by  & condition when object exits
+limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+			%
+			nothing & immediately
         	%
+        	\\
         	field of \class{SoftReference} & approximately
-        	LRU$^{**}$
+        	LRU%$^{**}$
         	\\
         	%
         	field of \class{WeakReference} & next garbage
@@ -109,18 +124,29 @@ by other objects.
         	when that class is unloaded (likely never)
         	%
         	\\ 
-        \bottomrule \addlinespace
-        \end{tabular}
-	}
-	\caption{The point when an object exits limbo depends on 
-	decisions under programmer control: it depends on how the object is
-	referenced.
-	%older JREs	use very poor heuristics for handling soft references; see the
+        \bottomrule
+    \end{tabular}
+	\caption{When, or
+	even whether, an object exits limbo depends upon how your program references
+	it.
+%	The point when an object exits limbo depends on 
+	%decisions under programmer control: it depends on how the object is
+	%referenced.
+	%older {\jre}s	use very poor heuristics for handling soft references; see the
 	% body for more detail.
 	%, it will be reclaimed
 	%under certain rules, or may be part of a memory leak
 	}
-\end{figure}
+	\label{tab:limbo-exit}
+\end{table}
+
+Still, one can't always rely on automatic mechanisms to guide an object out of
+limbo in a timely fashion.
+\autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
+illustrate how an object may exit limbo. If, as in the \class{ParsePosition}
+or \class{SimpleDateFormat} objects from our example, the object is referenced
+only by a local variable of a method
+
 
 \begin{comment}
 \begin{figure}
@@ -215,7 +241,7 @@ an API requires, then you can reuse the functionality it provides.
 In many cases, you need do nothing special to manage the temporary objects your
 application creates. After all, generational garbage collectors these days do a
 very good job digesting a large volume of temporary objects. In a generational
-garbage collector, the JVM places temporary objects in a separate heap, and
+garbage collector, the \jre places temporary objects in a separate heap, and
 thus it need only process the newly created objects during its routine scan.
 Unfortunately, in Java it is pretty easy to create a high volume of temporary
 objects. Say your application 
