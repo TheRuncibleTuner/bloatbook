@@ -1,5 +1,7 @@
 \documentclass[a5]{book}
 
+\usepackage{comment}
+
 \usepackage{booktabs,colortbl}
 
 
@@ -24,11 +26,42 @@
 \definecolor{Light}{gray}{.95}
 
 \usepackage{amsthm}
-{
-  \theoremstyle{definition}
-  \newtheorem{example}{Example}
+%{
+  %\theoremstyle{definition}
+  %\newtheorem{example}{Example}
+  %\newenvironment{example}[1]{\textbf{Example: #1}}{}
+  
+%\newcounter{Examplecount}[chapter]
+%\setcounter{Examplecount}{1}
+\newenvironment{example}[1]
+{% This is the begin code
+%\stepcounter{Examplecount}
+ % \arabic{chapter}.\arabic{Examplecount}
+\vspace{3mm}%
+\hrule height \heavyrulewidth%
+\nopagebreak%
+\vspace{1mm}%
+\nopagebreak\noindent\textbf{Example: #1}~~%
 }
+{% This is the end code
+\qed%
+\vspace{2mm}%
+\hrule height \heavyrulewidth%
+\vspace{5mm}%
+}
+  
+%}
 
+\usepackage{verbatim}
+\newenvironment{verbatim2}
+{%
+\quote
+\verbatim
+}
+{%
+\endverbatim
+\endquote
+}
 
 \usepackage{listings}
 \lstset{language=Java,basicstyle=\footnotesize\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
@@ -54,7 +87,7 @@
 \fcolorbox{black}{Light}{\begin{minipage}{0.85\textwidth}
     %\textbf{\large Things To Remember~\arabic{ttr} --- #2}
     \textbf{\large #2}
-    \vspace{0.3mm}
+    \vspace{0.5mm}
     \hrule height \heavyrulewidth
     \vspace{2mm}
 \setlength{\parindent}{\calloutparindent}
