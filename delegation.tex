@@ -96,71 +96,98 @@ The object header size, the object alignment, and the sizes of the fields depend
 }
  
 \begin{example}{Simple employee class}
-Consider a \texttt{SimpleEmployee} class with all primitive fields. The comments show the primitive data size of each field:
-\begin{verbatim}
-      class SimpleEmployee {
-        int hoursPerWeek;        // 4 bytes 
-        boolean exempt;          // 1 bytes
-        double salary;           // 8 bytes
-        char jobCode;            // 2 bytes
-        int yearsOfService;      // 4 bytes	
+Consider a \class{SimpleEmployee} class with all primitive fields. The comments
+show the primitive data size of each field:
+\begin{verbatim2}
+class SimpleEmployee {
+    int hoursPerWeek;        // 4 bytes 
+    boolean exempt;          // 1 bytes
+    double salary;           // 8 bytes
+    char jobCode;            // 2 bytes
+    int yearsOfService;      // 4 bytes	
 }
-\end{verbatim}
-If the fields are laid out one after the other with no fill, then the \texttt{double} field \texttt{salary} would begin on a 5-byte boundary, which is not allowed. Either the \texttt{exempt} field must be padded, or the fields must be rearranged to fill in the empty spaces. To estimate the size of a \texttt{SimpleEmployee}, you need to know which of these implementation strategies the JRE uses. It turns out that the Sun and IBM use different strategies.
+\end{verbatim2}
+If the fields are laid out one after the other with no fill, then the
+\class{double} field \class{salary} would begin on a 5-byte boundary, which is
+not allowed. Either the \class{exempt} field must be padded, or the fields must
+be rearranged to fill in the empty spaces. To estimate the size of a
+\class{SimpleEmployee}, you need to know which of these implementation
+strategies the JRE uses. It turns out that the Sun and IBM use different strategies.
 \end{example}
-The Sun JRE does a good job rearranging and packing fields, so you can assume each field is the size of its primitive data type. The size of a \texttt{SimpleEmployee} object is 32 bytes:
+The Sun JRE does a good job rearranging and packing fields, so you can assume
+each field is the size of its primitive data type. The size of a
+\class{SimpleEmployee} object is 32 bytes:
 \begin{verbatim2}               
 8 header bytes + (4+1+8+2+4) bytes = 27 bytes, rounds up to 32
 \end{verbatim2} 
 
-In contrast, with the IBM JRE, all fields in non-array objects are either 4 or 8 bytes.  Here is the \texttt{SimpleEmployee} class with field sizes adjusted accordingly. 
-\ttfamily
-\begin{verbatim} 
-			class SimpleEmployee {
-        int hoursPerWeek;        // 4 bytes
-        boolean exempt;          // 4 byte
-        double salary;           // 8 bytes
-        char jobCode;            // 4 bytes
-        int yearsOfService;      // 4 bytes
-			}
-\end{verbatim}
-\normalfont
-With the IBM JRE, the size of a \texttt{SimpleEmployee} is 40 bytes:
+In contrast, with the IBM JRE, all fields in non-array objects are either 4 or
+8 bytes.  Here is the \class{SimpleEmployee} class with field sizes adjusted
+accordingly.
+\begin{verbatim2} 
+class SimpleEmployee {
+    int hoursPerWeek;        // 4 bytes
+    boolean exempt;          // 4 byte
+    double salary;           // 8 bytes
+    char jobCode;            // 4 bytes
+    int yearsOfService;      // 4 bytes
+}
+\end{verbatim2}
+With the IBM JRE, the size of a \class{SimpleEmployee} is 40 bytes:
 \begin{verbatim2}
 12 header bytes + (4+4+8+4+4) bytes = 36, rounds up to 40
 \end{verbatim2}
-For arrays, the data is always packed with no spaces. For example, here is a formula that estimates the size of an array of 100 \texttt{chars}:
+For arrays, the data is always packed with no spaces. For example, here is a
+formula that estimates the size of an array of 100 \code{chars}:
 \begin{verbatim2}
 header + 100*2, rounded up to a multiple of the alignment
 \end{verbatim2}
 
-When objects are small, For objects with primitive data only, the bloat factor decreases as the object size increases. The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun JRE, the bloat factors for the boxed scalars with one field range from 94\% for a \texttt{Boolean} down to 50\% for a \texttt{Double}.  The bloat factor for a \texttt{SimpleEmployee} is 46\%.  The bloat factor for an array of 100 \texttt{int}s is insignificant. This is not the case for objects with other kinds of overhead, like pointers.
+When objects are small, For objects with primitive data only, the bloat factor
+decreases as the object size increases. The overhead cost consists of a fixed
+object header cost and a bounded alignment cost, which are amortized when the
+object is big.  For example, for the Sun JRE, the bloat factors for the boxed
+scalars with one field range from 94\% for a \class{Boolean} down to 50\% for a
+\class{Double}.  The bloat factor for a \class{SimpleEmployee} is 46\%.  The
+bloat factor for an array of 100 \code{int}s is insignificant. This is not the
+case for objects with other kinds of overhead, like pointers.
 
 \section{The Cost of Delegation}
 
-The \texttt{Employee} class is not a very realistic example, since it has only primitive fields. Usually, a class has some fields that are objects.  In Java, a field of type \texttt{ObjectType} is implemented using \textit{delegation}, that is, the field stores a reference to another object of type \texttt{ObjectType}. On 32-bit architectures, a pointer is 4 bytes. You can calculate the size of any object as described in in Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field. Unless otherwise stated, the following examples assume the Sun JRE. 
+The \class{Employee} class is not a very realistic example, since it has only
+primitive fields. Usually, a class has some fields that are objects.  In Java,
+a field of type \class{ObjectType} is implemented using \textit{delegation},
+that is, the field stores a reference to another object of type
+\class{ObjectType}. On 32-bit architectures, a pointer is 4 bytes. You can
+calculate the size of any object as described in in Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field. Unless otherwise stated, the following examples assume the Sun JRE.
 \begin{example}{Employee class with delegation}
-Here is a more realistic employee class with several reference fields. An employee now has a name, which is a \texttt{String}, and a start date, which is a \texttt{Date}. The type of \texttt{salary} has been changed from \texttt{double} to \texttt{BigDecimal}. \texttt{BigDecimal} avoids potential roundoff errors.
-\ttfamily
-\begin{verbatim} 
-			class EmployeeWithDelegation {
-        int hoursPerWeek;           // 4 bytes
-        String name;                // 4 bytes
-        BigDecimal salary;          // 4 bytes
-        Date startDate;             // 4 bytes
-        boolean exempt;             // 1 byte
-        char jobCode;               // 2 bytes
-        int yearsOfService;         // 4 bytes
-			}
-\end{verbatim}
-\normalfont
-The minimum size of an \texttt{EmployeeWithDelegation} object is 32 bytes:
+Here is a more realistic employee class with several reference fields. An
+employee now has a name, which is a \class{String}, and a start date, which is a
+\class{Date}. The type of \class{salary} has been changed from \code{double}
+to \class{BigDecimal}. \class{BigDecimal} avoids potential roundoff errors.
+\begin{verbatim2} 
+class EmployeeWithDelegation {
+    int hoursPerWeek;           // 4 bytes
+    String name;                // 4 bytes
+    BigDecimal salary;          // 4 bytes
+    Date startDate;             // 4 bytes
+    boolean exempt;             // 1 byte
+    char jobCode;               // 2 bytes
+    int yearsOfService;         // 4 bytes
+}
+\end{verbatim2}
+The minimum size of an \c{EmployeeWithDelegation} object is 32 bytes:
 \begin{verbatim2}
 (4+4+4+4+1+2+4) + 8 = 31, rounds up to 32 bytes
 \end{verbatim2}
 \end{example}
 
-While an instance of the \texttt{EmployeeWithDelegation} class is a single 32 byte object, an entire employee, including name, salary, and start date consists of five objects. Two of these objects are used to store the name. (Recall from Section~\ref{sec:bloat-def} that a string is represented by a wrapper \texttt{String} object and a \texttt{char} array.) The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}. 
+While an instance of the \class{EmployeeWithDelegation} class is a single 32
+byte object, an entire employee, including name, salary, and start date
+consists of five objects. Two of these objects are used to store the name.
+(Recall from Section~\ref{sec:bloat-def} that a string is represented by a
+wrapper \class{String} object and a \class{char} array.) The memory layout for
+a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{Figures/chapter4/employee-status.pdf}
@@ -169,9 +196,22 @@ While an instance of the \texttt{EmployeeWithDelegation} class is a single 32 by
   \label{fig:employee-status}
 \end{figure}
 
-A comparion of a \texttt{EmployeeWithDelegation} object with a \texttt{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that the size has increased from 32 to 144 bytes, and the bloat factor has increased from 46\% to 65\%. There is more information stored in the new version, so it is no surprise that it is bigger. The increase in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional object headers, a pointer for each delegated object, and empty pointer slots for uninitialized object fields. Delegation may also force additional alignment costs, since each new delegated object has to be aligned to an 8-byte boundary. 
+A comparion of a \class{EmployeeWithDelegation} object with a
+\class{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that
+the size has increased from 32 to 144 bytes, and the bloat factor has increased from 46\% to 65\%. There is more information stored in the new version, so it is no surprise that it is bigger. The increase in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional object headers, a pointer for each delegated object, and empty pointer slots for uninitialized object fields. Delegation may also force additional alignment costs, since each new delegated object has to be aligned to an 8-byte boundary.
 
-In the spirit of keeping things simple, Java does not allow you to nest objects inside other objects, to build a single object out of other objects. You cannot nest an array inside an object, and you cannot store objects directly in an array.  You can only point to other objects. Even the basic data type \texttt{String} consists of two objects. This means that delegation is pervasive in Java programs, and it is difficult to avoid a high level of delegation overhead. Single inheritance is the only language feature that can be used instead of delegation to compose two object, but single inheritance has limited flexibility.  In contrast, C++ has many different ways to compose objects. C++ has single and multiple inheritance, union types, and variation. C++ allows you to have \texttt{struct} fields, you can put arrays inside of structs, and you can also have an array of structs.  
+In the spirit of keeping things simple, Java does not allow you to nest objects
+inside other objects, to build a single object out of other objects. You cannot
+nest an array inside an object, and you cannot store objects directly in an
+array.  You can only point to other objects. Even the basic data type
+\class{String} consists of two objects. This means that delegation is pervasive
+in Java programs, and it is difficult to avoid a high level of delegation
+overhead. Single inheritance is the only language feature that can be used
+instead of delegation to compose two object, but single inheritance has limited
+flexibility.  In contrast, C++ has many different ways to compose objects. C++
+has single and multiple inheritance, union types, and variation. C++ allows you
+to have \code{struct} fields, you can put arrays inside of structs, and you can
+also have an array of structs.
 
 Because of the design of Java, there is a basic delegation cost that is hard to eliminate it. This is the cost of object-oriented programming in Java. While it is hard to avoid this basic delegation cost, it is important not to make things a lot worse, as discussed in the next section. 
 
@@ -187,42 +227,38 @@ Suppose an emergency contact is needed for each employee. An emergency contact i
 \end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
 
-\ttfamily
-\begin{verbatim} 
-			class EmployeeWithEmergencyContact {
-        ...
-        EmergencyContact contact;
-			}
+\begin{verbatim2} 
+class EmployeeWithEmergencyContact {
+    ...
+    EmergencyContact contact;
+}
 			
-			class EmergencyContact {
-        ContactPerson contact;
-        ContactMethod preferredContact;
-			}
+class EmergencyContact {
+    ContactPerson contact;
+    ContactMethod preferredContact;
+}
 			
-			class ContactPerson {
-        String name;
-        String relation;
-        EmailAddress email;
-        PhoneNumber phone;
-        PhoneNumber cell;
-        PhoneNumber work;
-			}
+class ContactPerson {
+    String name;
+    String relation;
+    EmailAddress email;
+    PhoneNumber phone;
+    PhoneNumber cell;
+    PhoneNumber work;
+}
 			
-			class ContactMethod {
-        ContactPerson owner;
-			}
+class ContactMethod {
+    ContactPerson owner;
+}
 			
-			class PhoneNumber extends ContactMethod {
-			  byte[] phone;
-			}
+class PhoneNumber extends ContactMethod {
+    byte[] phone;
+}
 			
-			class EmailAddress extends ContactMethod {
-        String address;
-			}
-			
-			
-\end{verbatim}
-\normalfont
+class EmailAddress extends ContactMethod {
+    String address;
+}
+\end{verbatim2}
  \begin{figure}
   \centering
  \includegraphics[width=\textwidth]{Figures/chapter4/employee-status-fine-grained.pdf}
@@ -232,44 +268,51 @@ Here are class definitions for an emergency contact, written in a highly delegat
 \end{figure}
 The memory layout for a sample employee is shown in Figure~\ref{fig:employee-status-fine-grained}. There are 15 objects used to store emergency contact information, with a bloat factor of 77\%, which seems excessive. The objects are all small, containing only one or two meaningful fields, which is a symptom of an overly fine grained data model. Also, all of the data is at the bottom of object chains, 4 to 5 objects long. Refactoring can flatten this structure somewhat, undoing a few of the delegation.
 
-One object that looks superfluous is \texttt{EmergencyContact}, which encapsulates the contact person and the preferred contact method.  
-Reversing this delegation involves inlining the fields of the \texttt{EmergencyContact} class into other classes, and eliminating the \texttt{EmergencyContact} class. Here are the refactored classes:
-\ttfamily
-\begin{verbatim}
-	class EmployeeWithEmergencyContact {
-        ...
-        ContactPerson contact;
-			}
+One object that looks superfluous is \class{EmergencyContact}, which
+encapsulates the contact person and the preferred contact method. Reversing
+this delegation involves inlining the fields of the \class{EmergencyContact}
+class into other classes, and eliminating the \class{EmergencyContact} class.
+Here are the refactored classes:
+\begin{verbatim2}
+class EmployeeWithEmergencyContact {
+    ...
+    ContactPerson contact;
+}
 			
-			class ContactPerson {
-        String name;
-        String relation;
-        EmailAddress email;
-        PhoneNumber phone;
-        PhoneNumber cell;
-        PhoneNumber work;
-        ContactMethod preferredContact;
-			}
-\end{verbatim}
-\normalfont
-This change eliminates an object from Figure~\ref{fig:employee-status-fine-grained}, but it only recovers 8 bytes, since a 16 byte object is removed and \texttt{ContactPerson} is 8 bytes bigger. You can save considerably more space by inlining the four \texttt{ContactMethod} classes into the \texttt{ContactPerson} class, which removes 64 bytes of overhead. In a system with many instances of employees stored in memory, this reduction is significant. In order to make this change, the preferred contact method must be encoded somehow in \texttt{ContactPerson}.  A simple way to achieve this is to use an enumeration type field, which has the same size as a reference field, to discriminate among the different contact methods:
-\ttfamily
-\begin{verbatim} 
-      enum PreferredContactMethod {
-         EMAIL, HOME_PHONE, CELL_PHONE, WORK_PHONE;
-      }
+class ContactPerson {
+    String name;
+    String relation;
+    EmailAddress email;
+    PhoneNumber phone;
+    PhoneNumber cell;
+    PhoneNumber work;
+    ContactMethod preferredContact;
+}
+\end{verbatim2}
+This change eliminates an object from
+Figure~\ref{fig:employee-status-fine-grained}, but it only recovers 8 bytes,
+since a 16 byte object is removed and \class{ContactPerson} is 8 bytes bigger.
+You can save considerably more space by inlining the four \class{ContactMethod}
+classes into the \class{ContactPerson} class, which removes 64 bytes of
+overhead. In a system with many instances of employees stored in memory, this
+reduction is significant. In order to make this change, the preferred contact
+method must be encoded somehow in \class{ContactPerson}.  A simple way to
+achieve this is to use an enumeration type field, which has the same size as a reference field, to discriminate among the different contact methods:
+\begin{verbatim2} 
+enum PreferredContactMethod {
+    EMAIL, HOME_PHONE, CELL_PHONE, WORK_PHONE;
+}
       
-      class ContactPerson {
-        PreferredContactMethod preferred;
-        String name;
-        String relation;
-        String email;
-        byte[] cellPhone;
-        byte[] homePhone;
-        byte[] workPhone;
-      }		
-\end{verbatim}
-\normalfont
+class ContactPerson {
+    PreferredContactMethod preferred;
+    String name;
+    String relation;
+    String email;
+    byte[] cellPhone;
+    byte[] homePhone;
+    byte[] workPhone;
+}		
+\end{verbatim2}
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size and the bloat factor have been reduced.
  \begin{figure}
   \centering
@@ -288,37 +331,51 @@ As discussion in the last section, highly-delegated data models can result in to
 \begin{example}{Keeping track of updates} 
 
 A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
-\ttfamily
-\begin{verbatim}
-      class UpdateInfo {
-         Date createDate;
-         Party enteredBy;
-         Date updateDate;
-         Party updateBy;
-      }
-\end{verbatim}
-\normalfont
-You can track changes by subclassing from \texttt{UpdateInfo}. Update tracking is a \textit{cross-cutting feature}, since it can apply to any class in a data model.
+\begin{verbatim2}
+class UpdateInfo {
+     Date createDate;
+     Party enteredBy;
+     Date updateDate;
+     Party updateBy;
+}
+\end{verbatim2}
+You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
+a \textit{cross-cutting feature}, since it can apply to any class in a data model.
 
 \end{example}
-Returning to Example 3 in Section~\ref{fine-grained-data-models}, suppose that updates to employee emergency contacts need to be tracked. You need to decide how precise the tracking should be. Should every update to every phone number and email address be tracked, or is it sufficient to track the fact that some contact information was changed for an emergency contact? If you decide to track changes to every contact phone number or email address, you can easily achieve this by extending the \texttt{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
-\ttfamily
-\begin{verbatim}
-      class ContactMethod extends UpdateInfo {
-         ContactPerson owner;
-      }
-\end{verbatim}
-\normalfont
-Figure~\ref{fig:big-base-class} shows an instance of an contact person with update information associated with every \texttt{ContactMethod}. Not only is this a highly delegated structure with multiple \texttt{ContactMethod} objects, but each one has an additional 16 bytes. Furthermore, there are potentially four more objects of type \texttt{Date} and \texttt{Party} for each of the four \texttt{ContactMethod} objects. A far more scalable solution is to move up a level, and track changes to each \texttt{ContactPerson}. With this solution, you do not need such a fine-grained data model, and the update tracking functionality is 1/4 the cost.
+Returning to Example 3 in Section~\ref{fine-grained-data-models}, suppose that
+updates to employee emergency contacts need to be tracked. You need to decide
+how precise the tracking should be. Should every update to every phone number
+and email address be tracked, or is it sufficient to track the fact that some
+contact information was changed for an emergency contact? If you decide to
+track changes to every contact phone number or email address, you can easily achieve this by extending the \class{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
+\begin{verbatim2}
+class ContactMethod extends UpdateInfo {
+     ContactPerson owner;
+}
+\end{verbatim2}
+Figure~\ref{fig:big-base-class} shows an instance of an contact person with
+update information associated with every \class{ContactMethod}. Not only is this
+a highly delegated structure with multiple \class{ContactMethod} objects, but
+each one has an additional 16 bytes. Furthermore, there are potentially four
+more objects of type \class{Date} and \class{Party} for each of the four
+\class{ContactMethod} objects. A far more scalable solution is to move up a
+level, and track changes to each \class{ContactPerson}. With this solution, you
+do not need such a fine-grained data model, and the update tracking functionality is 1/4 the cost.
 \begin{figure}
   \centering
  \includegraphics[width=.70\textwidth]{Figures/chapter4/big-base-class.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The cost of associating \texttt{UndateInfo} with every \texttt{ContactMethod}.}
+  \caption{The cost of associating \class{UndateInfo} with every
+  \class{ContactMethod}.}
   \label{fig:big-base-class}
 \end{figure}
  
-The solution in Figure~\ref{fig:big-base-class} provides a very fine granularity of functionality. An argument can be made in favor of this solution, since you lose functionality and flexibility if you only track updates to \texttt{ContactPerson}. However, if the program hits a scalabity problem, it may not be possible to be this casual with memory. Also, an alternate design may be available that gives the desired functionality in a more memory-efficient way. In this example, you could implement an update log instead of tracking updates in the objects themselves. Assuming updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely at the memory size of a superclass, especially if the inheritance chain is long.   
+The solution in Figure~\ref{fig:big-base-class} provides a very fine
+granularity of functionality. An argument can be made in favor of this
+solution, since you lose functionality and flexibility if you only track
+updates to \class{ContactPerson}. However, if the program hits a scalabity
+problem, it may not be possible to be this casual with memory. Also, an alternate design may be available that gives the desired functionality in a more memory-efficient way. In this example, you could implement an update log instead of tracking updates in the objects themselves. Assuming updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely at the memory size of a superclass, especially if the inheritance chain is long.
 
 \section{64-bit Architectures}
 
