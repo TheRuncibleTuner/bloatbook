@@ -61,6 +61,7 @@ loop in which they were created. Within one iteration, they are created, almost
 immediately used, and then enter a state of \emph{limbo}.
 
 \callout{limbo}{Objects in Limbo}{
+\index{Limbo}
 In limbo, an object will never be used again, or at least not for long time,
 but the \jre doesn't yet know that this is the case. The object hangs
 around, taking up space in the Java heap until the point when it exits limbo.}
@@ -83,19 +84,20 @@ collectible.
 		\label{fig:limbo-exit}
 \end{figure}
 
-\section{Java Lifetime Management Mechanisms} The point at which an object exits
-its limbo depends upon how it is referenced by other objects. One can always
-assure that an object exits limbo by modifying your code to overwrite all
-references to that variable. If an object is no longer referenced at all, then it
-will exit limbo immediately.\footnote{Talk about cycles?} For example, a common
-way to do this is by assigning references to the value \code{null}. This is
-tricky in many cases, because it may not be easy to know where all those
-references emanate from. Who is to say that, when one calls the \code{parse}
-method of a \class{SimpleDateFormat} object, that it does not squirrel away a
-reference to the \class{ParsePosition} passed as a parameter? The API contract
-for \code{parse} makes no such claims, one way or the other. This is certainly
-calls to mind the worst of the days of explicitly managing memory in a language
-like C.
+\section{Lifetime Management Mechanisms}
+
+The point at which an object exits its limbo depends upon how it is referenced by
+other objects. One can always assure that an object exits limbo by modifying your
+code to overwrite all references to that variable. If an object is no longer
+referenced at all, then it will exit limbo immediately.\footnote{Talk about
+cycles?} For example, a common way to do this is by assigning references to the
+value \code{null}. This is tricky in many cases, because it may not be easy to
+know where all those references emanate from. Who is to say that, when one calls
+the \code{parse} method of a \class{SimpleDateFormat} object, that it does not
+squirrel away a reference to the \class{ParsePosition} passed as a parameter? The
+API contract for \code{parse} makes no such claims, one way or the other. This is
+certainly calls to mind the worst of the days of explicitly managing memory in a
+language like C.
 
 
 \begin{table}
@@ -166,15 +168,24 @@ class loading mechanism, which is unlikely to happen if it has static fields
 that reference other objects. Therefore, unless that field is overwritten,
 objects pointed to by static fields are likely never to exit limbo.
 
-The Java specification provides three other mechanisms that let you guide the
-\jre into the right time for an object to exit limbo: weak and soft references,
-and thread-local storage.
+\section{More Complex Mechanisms}
+There are important lifetime management policies that are not expressible via the
+normal mechanisms. When referenced by a local variable, an object lives or dies
+with the scope of the variable; when referenced by another object, it lives or
+dies along with that object (both, of course, in the absence of overwriting a
+reference). The Java specification provides three other mechanisms that let you
+guide the \jre into the right time for an object to exit limbo: weak and soft
+references, and thread-local storage.
 
-\subsection{Weak and Soft References}
+\subsection{Weak References}
+\index{Weak Reference}
+
+\subsection{Soft References}
+\index{Soft Reference}
 
 
-
-\subsection{Thread-local References}
+\subsection{Thread-local Storage}
+\index{Thread-local Storage}
 
 
 \begin{comment}
