@@ -14,13 +14,16 @@ The size of a data structure is the number of bytes it occupies. The \emph{healt
 
 In Java, it is all too easy to design a data structure that is bloated by a factor of more than 50\%; this means that over half of the data structure is devoted to things unrelated to the data that the application cares about. To understand why there is so much overhead, it is useful to dig deeper into its different sources:  
 \begin{itemize}
-\item \emph{JVM overhead.} Each object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
+\item \emph{JVM overhead.} \index{Object Headers} \index{JVM Overhead} Each
+object has a header imposed by the JVM to facilitate various administrative tasks, such as garbage collection. In addition, the JVM may impose additional object alignment overhead.
 \item \emph{Pointers}. Pointers glue objects together into data structures. Pointers can be null or non-null.   
-\item \emph{Bookkeeping fields}. Not all primitive fields store real application data. Some are bookkeeping fields needed by the representation. 
+\item \emph{Bookkeeping fields}. \index{Bookkeeping fields} Not all primitive
+fields store real application data. Some are bookkeeping fields needed by the representation.
 \end{itemize}
 
 
 \callout{callout:memory-bloat-factor}{The Memory Bloat Factor}{
+\index{Memory Bloat Factor}
     An important metric for evaluating the health of a data model
     design is the fraction of overhead in the objects of that data
     model. The \emph{memory bloat factor}, or simply \emph{bloat
@@ -70,6 +73,7 @@ factor of a complex data structure. As its name implies, an EC diagram shows the
 array. 
 
 \callout{callout:ec-diagram}{The Entity-Collection (EC) Diagram}{
+\index{Entity-Collection Diagram}
 
 \begin{center}
   \includegraphics[width=0.7\textwidth]{Figures/chapter3/content-schematic}
@@ -285,6 +289,7 @@ The basic question for predicting scalability is what happens to the bloat facto
 To understand why this happens, recall that the infrastructure of \texttt{TreeMap} is made up of nodes, with two 64-element arrays hanging off of each node. As samples are added, the infrastructure grows, since new nodes and arrays are being created. Also, each additional sample has its own overhead, namely the JVM overhead in each \texttt{Double} object. When the \texttt{TreeMap} becomes large enough, the \textit{per-entry overhead} dominates and hovers around 72\%. The bloat factor is larger when the \texttt{TreeMap} is small. In contrast, for small \texttt{TreeMap}s, the fixed cost of the initial \texttt{TreeMap} infrastructure is relatively big. The \texttt{TreeMap} wrapper object alone is 48 bytes. This initial fixed cost is quickly amortized away as samples are added. 
 
 \callout{callout:fixed-and-per-entry-costs}{Fixed vs Per-Entry Overhead}{
+\index{Fixed Collection Overhead} \index{Per-Entry Collection Overhead}
 The memory overhead of a collection can be classified as either \textit{fixed} or \textit{per-entry}. Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as the collection grows. Per-entry overhead depends on the number of entries stored in the collection. Collections with a large per-entry overhead do not scale well, since per-entry costs cannot be amortized away as the collection grows. 
 }
 

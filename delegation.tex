@@ -103,6 +103,7 @@ scalars for both \jres.
  
 Estimating the size of an object with more than one field is a bit more complicated. The hardware often imposes alignment restrictions on specific data types, for example, requiring integer fields to be aligned on 4 byte boundaries. Field alignment can introduce more padding.
 \callout{callout:minimum-size-estimation-rule}{Estimating Object Sizes}{
+\index{Estimating Object Size}
 The size of an object can be estimated as follows:
 \begin{enumerate}
 \item Add up the sizes of all of the fields in the object's class and all of its superclasses.
@@ -172,6 +173,7 @@ bloat factor for an array of 100 \code{int}s is insignificant. This is not the
 case for objects with other kinds of overhead, like pointers.
 
 \section{The Cost of Delegation}
+\index{Delegation}
 
 The \class{Employee} class is not a very realistic example, since it has only
 primitive fields. Usually, a class has some fields that are objects.  In Java,
@@ -346,6 +348,7 @@ Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these chang
 When many objects are used to represent one logical concept, this is an indication that the data model may be using too much delegation. Delegation is good, but it is possible to overuse a good thing.  A design with fewer, bigger objects has less overhead and is more scalable. Whenever you use delegation, there should be a good reason. This is especially true for the important data entities in an application, those that will determine the scalability of the program.  
  
 \section{Large Base Classes}
+\index{Base Class Baggage}
 
 As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
 
@@ -399,6 +402,7 @@ updates to \class{ContactPerson}. However, if the program hits a scalabity
 problem, it may not be possible to be this casual with memory. Also, an alternate design may be available that gives the desired functionality in a more memory-efficient way. In this example, you could implement an update log instead of tracking updates in the objects themselves. Assuming updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely at the memory size of a superclass, especially if the inheritance chain is long.
 
 \section{64-bit Architectures}
+\index{64-bit}
 
 If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
 \begin{example}{8-character string} 
