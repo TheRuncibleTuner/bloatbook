@@ -61,8 +61,8 @@ loop in which they were created. Within one iteration, they are created, almost
 immediately used, and then enter a state of \emph{limbo}.
 
 \callout{limbo}{Objects in Limbo}{
-In limbo, an object will never be used again, or at least not for long time, but
-the \jre doesn't yet know that this is the case. The object hangs
+In limbo, an object will never be used again, or at least not for long time,
+but the \jre doesn't yet know that this is the case. The object hangs
 around, taking up space in the Java heap until the point when it exits limbo.}
 
 The \code{pos} object represents to the parser the position within the
@@ -83,52 +83,58 @@ collectible.
 		\label{fig:limbo-exit}
 \end{figure}
 
-The point at which an object exits its limbo depends upon how it is referenced by
-other objects. One can always assure that an object exits limbo by overwriting
-all references to that variable; if it is no longer referenced at all, then it
-will exit limbo immediately. For example, a common way to do this is by assigning
-references to the value \code{null}. This is tricky in many cases, because it may
-not be easy to know where all those references emanate from. Who is to say that,
-when one calls the \code{parse} method of a \class{SimpleDateFormat} object, that
-it does not squirrel away a reference to the \class{ParsePosition} passed as a
-parameter? The API contract for \code{parse} makes no such claims, one way or the
-other. This is certainly calls to mind the worst of the days of explicitly
-managing memory in a language like C.
+\section{Java Lifetime Management Mechanisms} The point at which an object exits
+its limbo depends upon how it is referenced by other objects. One can always
+assure that an object exits limbo by modifying your code to overwrite all
+references to that variable. If an object is no longer referenced at all, then it
+will exit limbo immediately.\footnote{Talk about cycles?} For example, a common
+way to do this is by assigning references to the value \code{null}. This is
+tricky in many cases, because it may not be easy to know where all those
+references emanate from. Who is to say that, when one calls the \code{parse}
+method of a \class{SimpleDateFormat} object, that it does not squirrel away a
+reference to the \class{ParsePosition} passed as a parameter? The API contract
+for \code{parse} makes no such claims, one way or the other. This is certainly
+calls to mind the worst of the days of explicitly managing memory in a language
+like C.
 
 
 \begin{table}
 \centering
-	\begin{tabular}{ll} \toprule referenced by  & condition when object exits
-limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+	\begin{tabular}{ll} \toprule reachable only from  & \textbf{special condition}
+	when object exits limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
 			%
 			nothing & immediately
-        	%
-        	\\
-        	field of \class{SoftReference} & approximately
-        	LRU%$^{**}$
         	\\
         	%
+        	local variable & next garbage collection after scope exits
+        	\\ \addlinespace
+        	%
+        	instance field of an object & 
+        	when that object exits limbo %(could be \emph{never} --- memory leak)
+        	\\
+        	%
+        	static field of an object &
+        	when that object's class is unloaded
+        	%
+        	\\ \addlinespace
         	field of \class{WeakReference} & next garbage
         	collection
         	\\
         	%
-        	local variable & next collection after enclosing method
-        	returns
-        	\\
+        	field of \class{SoftReference} & approximately
+        	LRU%$^{**}$
         	%
-        	instance field of any other object & 
-        	when that object exits limbo %(could be \emph{never} --- memory leak)
         	\\
-        	%
-        	static field of any other object &
-        	when that class is unloaded (likely never)
+        	entry in thread local storage & when that thread dies
         	%
         	\\ 
         \bottomrule
     \end{tabular}
 	\caption{When, or
 	even whether, an object exits limbo depends upon how your program references
-	it.
+	it. If these references aren't explicitly overwritten, e.g. by your
+	code expliclty assigning the reference to \code{null}, then an object only
+	exits limbo under certain restricted circumstances.
 %	The point when an object exits limbo depends on 
 	%decisions under programmer control: it depends on how the object is
 	%referenced.
@@ -143,9 +149,32 @@ limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
 Still, one can't always rely on automatic mechanisms to guide an object out of
 limbo in a timely fashion.
 \autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
-illustrate how an object may exit limbo. If, as in the \class{ParsePosition}
+illustrate how an object may exit limbo. 
+A garbage collector only knows that an object is ready to
+be collected based on {\em reachability}: how the objects point to eachother.
+If, as in the \class{ParsePosition}
 or \class{SimpleDateFormat} objects from our example, the object is referenced
-only by a local variable of a method
+only by a local variable of a method, the \jre will not consider reclaming its
+storage until the variable's scope exits; e.g. when the loop continues to the
+next iteration, or when the method returns, depending on the scope of the
+variable that references the object. If the object is referenced only by a
+field of another object, then it must wait for that other object to exit limbo
+before it can do so. 
+An objects pointed to be only by a static field has a good chance of never
+being collected. A class only exits limbo when it is unloaded by the \jres
+class loading mechanism, which is unlikely to happen if it has static fields
+that reference other objects. Therefore, unless that field is overwritten,
+objects pointed to by static fields are likely never to exit limbo.
+
+The Java specification provides three other mechanisms that let you guide the
+\jre into the right time for an object to exit limbo: weak and soft references,
+and thread-local storage.
+
+\subsection{Weak and Soft References}
+
+
+
+\subsection{Thread-local References}
 
 
 \begin{comment}
