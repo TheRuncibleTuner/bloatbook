@@ -117,7 +117,7 @@ possible size (e.g. Sun), or align fields on word boundaries (e.g. IBM). Array d
 \begin{example}{Simple employee class}
 Consider a \class{SimpleEmployee} class with all primitive fields. The comments
 show the primitive data size of each field:
-\begin{verbatim2}
+\begin{shortlisting}
 class SimpleEmployee {
     int hoursPerWeek;        // 4 bytes 
     boolean exempt;          // 1 bytes
@@ -125,7 +125,7 @@ class SimpleEmployee {
     char jobCode;            // 2 bytes
     int yearsOfService;      // 4 bytes	
 }
-\end{verbatim2}
+\end{shortlisting}
 If the fields are laid out one after the other with no fill, then the
 \class{double} field \class{salary} would begin on a 5-byte boundary, which is
 not allowed. Either the \class{exempt} field must be padded, or the fields must
@@ -134,17 +134,18 @@ be rearranged to fill in the empty spaces. To estimate the size of a
 strategies the \jre uses. It turns out that the Sun and IBM use different
 strategies.
 \end{example}
+
 The Sun \jre does a good job rearranging and packing fields, so you can assume
 each field is the size of its primitive data type. The size of a
 \class{SimpleEmployee} object is 32 bytes:
-\begin{verbatim2}               
+\begin{shortlisting}               
 8 header bytes + (4+1+8+2+4) bytes = 27 bytes, rounds up to 32
-\end{verbatim2} 
+\end{shortlisting} 
 
 In contrast, with the IBM \jre, all fields in non-array objects are either 4 or
 8 bytes.  Here is the \class{SimpleEmployee} class with field sizes adjusted
 accordingly.
-\begin{verbatim2} 
+\begin{shortlisting} 
 class SimpleEmployee {
     int hoursPerWeek;        // 4 bytes
     boolean exempt;          // 4 byte
@@ -152,16 +153,16 @@ class SimpleEmployee {
     char jobCode;            // 4 bytes
     int yearsOfService;      // 4 bytes
 }
-\end{verbatim2}
+\end{shortlisting}
 With the IBM \jre, the size of a \class{SimpleEmployee} is 40 bytes:
-\begin{verbatim2}
+\begin{shortlisting}
 12 header bytes + (4+4+8+4+4) bytes = 36, rounds up to 40
-\end{verbatim2}
+\end{shortlisting}
 For arrays, the data is always packed with no spaces. For example, here is a
 formula that estimates the size of an array of 100 \code{chars}:
-\begin{verbatim2}
+\begin{shortlisting}
 header + 100*2, rounded up to a multiple of the alignment
-\end{verbatim2}
+\end{shortlisting}
 
 When objects are small, For objects with primitive data only, the bloat factor
 decreases as the object size increases. The overhead cost consists of a fixed
@@ -183,12 +184,13 @@ that is, the field stores a reference to another object of type
 calculate the size of any object as described in in
 Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field.
 Unless otherwise stated, the following examples assume the Sun \jre.
+
 \begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An
 employee now has a name, which is a \class{String}, and a start date, which is a
 \class{Date}. The type of \class{salary} has been changed from \code{double}
 to \class{BigDecimal}. \class{BigDecimal} avoids potential roundoff errors.
-\begin{verbatim2} 
+\begin{shortlisting} 
 class EmployeeWithDelegation {
     int hoursPerWeek;           // 4 bytes
     String name;                // 4 bytes
@@ -198,11 +200,12 @@ class EmployeeWithDelegation {
     char jobCode;               // 2 bytes
     int yearsOfService;         // 4 bytes
 }
-\end{verbatim2}
+\end{shortlisting}
+
 The minimum size of an \c{EmployeeWithDelegation} object is 32 bytes:
-\begin{verbatim2}
+\begin{shortlisting}
 (4+4+4+4+1+2+4) + 8 = 31, rounds up to 32 bytes
-\end{verbatim2}
+\end{shortlisting}
 \end{example}
 
 While an instance of the \class{EmployeeWithDelegation} class is a single 32
@@ -248,9 +251,10 @@ There is no simple rule that can always be applied to decide when to use delegat
 \begin{example}{Employee emergency contact} 
 Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 \end{example}
+
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
 
-\begin{verbatim2} 
+\begin{shortlisting} 
 class EmployeeWithEmergencyContact {
     ...
     EmergencyContact contact;
@@ -281,7 +285,7 @@ class PhoneNumber extends ContactMethod {
 class EmailAddress extends ContactMethod {
     String address;
 }
-\end{verbatim2}
+\end{shortlisting}
  \begin{figure}
   \centering
  \includegraphics[width=\textwidth]{Figures/chapter4/employee-status-fine-grained.pdf}
@@ -296,7 +300,7 @@ encapsulates the contact person and the preferred contact method. Reversing
 this delegation involves inlining the fields of the \class{EmergencyContact}
 class into other classes, and eliminating the \class{EmergencyContact} class.
 Here are the refactored classes:
-\begin{verbatim2}
+\begin{shortlisting}
 class EmployeeWithEmergencyContact {
     ...
     ContactPerson contact;
@@ -311,7 +315,7 @@ class ContactPerson {
     PhoneNumber work;
     ContactMethod preferredContact;
 }
-\end{verbatim2}
+\end{shortlisting}
 This change eliminates an object from
 Figure~\ref{fig:employee-status-fine-grained}, but it only recovers 8 bytes,
 since a 16 byte object is removed and \class{ContactPerson} is 8 bytes bigger.
@@ -321,7 +325,7 @@ overhead. In a system with many instances of employees stored in memory, this
 reduction is significant. In order to make this change, the preferred contact
 method must be encoded somehow in \class{ContactPerson}.  A simple way to
 achieve this is to use an enumeration type field, which has the same size as a reference field, to discriminate among the different contact methods:
-\begin{verbatim2} 
+\begin{shortlisting} 
 enum PreferredContactMethod {
     EMAIL, HOME_PHONE, CELL_PHONE, WORK_PHONE;
 }
@@ -335,7 +339,7 @@ class ContactPerson {
     byte[] homePhone;
     byte[] workPhone;
 }		
-\end{verbatim2}
+\end{shortlisting}
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size and the bloat factor have been reduced.
  \begin{figure}
   \centering
@@ -353,31 +357,30 @@ When many objects are used to represent one logical concept, this is an indicati
 As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
 
 \begin{example}{Keeping track of updates} 
-
 A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
-\begin{verbatim2}
+\begin{shortlisting}
 class UpdateInfo {
      Date createDate;
      Party enteredBy;
      Date updateDate;
      Party updateBy;
 }
-\end{verbatim2}
+\end{shortlisting}
 You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
 a \textit{cross-cutting feature}, since it can apply to any class in a data model.
-
 \end{example}
+
 Returning to Example 3 in Section~\ref{fine-grained-data-models}, suppose that
 updates to employee emergency contacts need to be tracked. You need to decide
 how precise the tracking should be. Should every update to every phone number
 and email address be tracked, or is it sufficient to track the fact that some
 contact information was changed for an emergency contact? If you decide to
 track changes to every contact phone number or email address, you can easily achieve this by extending the \class{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
-\begin{verbatim2}
+\begin{shortlisting}
 class ContactMethod extends UpdateInfo {
      ContactPerson owner;
 }
-\end{verbatim2}
+\end{shortlisting}
 Figure~\ref{fig:big-base-class} shows an instance of an contact person with
 update information associated with every \class{ContactMethod}. Not only is this
 a highly delegated structure with multiple \class{ContactMethod} objects, but
@@ -405,11 +408,13 @@ problem, it may not be possible to be this casual with memory. Also, an alternat
 \index{64-bit}
 
 If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
+
 \begin{example}{8-character string} 
 Consider what happens to the 8-character string from
 Section~\ref{sec:bloat-def} in a 64-bit \jre. The memory layout is shown in
 Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
-\end{example} 
+\end{example}
+ 
  \begin{figure}
   \centering
 
