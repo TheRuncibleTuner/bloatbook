@@ -44,17 +44,31 @@
 {% This is the begin code
 %\stepcounter{Examplecount}
  % \arabic{chapter}.\arabic{Examplecount}
+\minipage{0.9\textwidth}
+\begin{center}
 \vspace{3mm}%
+\nopagebreak%
 \hrule height \heavyrulewidth%
 \nopagebreak%
+\vspace{0.3mm}
+\nopagebreak%
+\hrule height \lightrulewidth%
+\nopagebreak%
 \vspace{1mm}%
-\nopagebreak\noindent\textbf{Example: #1}~~%
+\nopagebreak\minipage{0.95\textwidth}
+\noindent\textbf{Example: #1}~~%
 }
 {% This is the end code
-\qed%
+%\qed%
+%\flushright $<$/example$>$%
+\endminipage
 \vspace{2mm}%
+\hrule height \lightrulewidth%
+\vspace{0.3mm}
 \hrule height \heavyrulewidth%
 \vspace{5mm}%
+\end{center}
+\endminipage
 }
   
 %}
@@ -72,7 +86,7 @@
 
 \usepackage{listings}
 \lstset{language=Java,basicstyle=\footnotesize\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
-\lstnewenvironment{shortlisting}{\lstset{frame=none}}{\lstset{frame=tb}}
+\lstnewenvironment{shortlisting}{\quote\lstset{frame=none}}{\lstset{frame=tb}\endquote\vspace{-\baselineskip}}
 %\lstnewenvironment{longlisting}{}{}
 
 
