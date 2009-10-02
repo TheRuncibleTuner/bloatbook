@@ -37,19 +37,21 @@ object in a well behaved application.
 
 \begin{figure}
 	\includegraphics[width=0.9\textwidth]{Figures/lifetime/object-lifecycle}
-	\caption{A timeline of the life of an object.}
+	\caption{Timeline of the life of an object.}
 	\label{fig:typical-lifecycle}
 \end{figure}
 
-\begin{example}{Parsing a Date} Consider a loop that 
-shows a easy way to parse a list of dates.
+\begin{example}{Parsing a Date} Consider a loop that shows an easy way to parse
+a list of dates. What objects are created, and what are their lifetimes?
 \begin{shortlisting}
-	for (String string : inputList) {
-		ParsePosition pos = new ParsePosition(0);
-		SimpleDateFormat parser = new SimpleDateFormat();
-		System.out.println(parser.parse(string, pos));
-	}
+for (String string : inputList) {
+	ParsePosition pos = new ParsePosition(0);
+	SimpleDateFormat parser = new SimpleDateFormat();
+	System.out.println(parser.parse(string, pos));
+}
 \end{shortlisting}
+\end{example}
+
 For each iteration of this loop, this code takes a date that is represented as a
 string and produces a standard Java \class{Date} object. In doing so, a number of
 objects are created. Two of these are easy to see, in the two \code{new} calls
@@ -75,7 +77,6 @@ entirety of the call to \code{System.out.println}, an operation entirely
 unrelated to the creation or use of the parse position object. Once the current
 loop iteration finishes, these two objects will exit limbo, and become garbage
 collectible.
-\end{example}
 
 \begin{figure}
 	\centering
@@ -102,13 +103,13 @@ language like C.
 
 \begin{table}
 \centering
-	\begin{tabular}{ll} \toprule reachable only from  & \textbf{special condition}
+	\begin{tabular}{ll} \toprule reachable only from  & moment
 	when object exits limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
 			%
 			nothing & immediately
         	\\
         	%
-        	local variable & next garbage collection after scope exits
+        	local variable & after scope exits
         	\\ \addlinespace
         	%
         	instance field of an object & 
@@ -119,14 +120,17 @@ language like C.
         	when that object's class is unloaded
         	%
         	\\ \addlinespace
-        	field of \class{WeakReference} & next garbage
-        	collection
+        	field of \class{WeakReference} & immediately
         	\\
         	%
         	field of \class{SoftReference} & approximately
         	LRU%$^{**}$
         	%
         	\\
+        	$\ldots$ with \class{ReferenceQueue} & $\ldots$ then, after removed
+        	from queue
+        	%
+        	\\ \addlinespace
         	entry in thread local storage & when that thread dies
         	%
         	\\ 
@@ -168,17 +172,104 @@ class loading mechanism, which is unlikely to happen if it has static fields
 that reference other objects. Therefore, unless that field is overwritten,
 objects pointed to by static fields are likely never to exit limbo.
 
-\section{More Complex Mechanisms}
+\section{More Complex Management Mechanisms}
 There are important lifetime management policies that are not expressible via the
 normal mechanisms. When referenced by a local variable, an object lives or dies
 with the scope of the variable; when referenced by another object, it lives or
 dies along with that object (both, of course, in the absence of overwriting a
 reference). The Java specification provides three other mechanisms that let you
-guide the \jre into the right time for an object to exit limbo: weak and soft
-references, and thread-local storage.
+guide the \jre to the right time for an object to exit limbo: weak references,
+soft references, and thread-local storage.
 
 \subsection{Weak References}
 \index{Weak Reference}
+
+Sometimes, you will find it necessary to associate information with an object.
+If you can't modify the class definition for that object, or if only a small
+number of objects of a particular class need this associated information, then
+you'll have to store the extra information elsewhere. A \class{WeakReference}
+allows you to get some assurance that associated information will exit limbo
+shortly after the main object does. You need their lifetimes to be {\em
+correlated} with eachother. When one dies, the other should. Getting weak
+references to work properly is pretty tricky.
+
+\callout{weaks}{Rules for Using \class{java.util.WeakReference}}{
+	In order to assure that you use of weak references works properly, you must
+	follow three rules:
+	\begin{itemize}
+      \item Your instances of \class{WeakReference} must not, directly or
+      indirectly, maintain a non-weak reference to the object you wish to
+      annotate. It is best to maintain a collection of non-weak references to
+      the annotated objects, and use a local variable, or a subclass of
+      \class{WeakReference} for any other ways you refer to the annotated object.
+      
+      \item You must ensure that the \class{WeakReference} objects (or
+      subclasses thereof) that you create will exit limbo no sooner than the
+      annotated objects. Otherwise, these objects themselves, following the
+      rules of \autoref{tab:limbo-exit}, will exit limbo too early. So, if the
+      annotated objects are referenced by a collection that is in turn
+      referenced by a static field, then the same must be true for the weak
+      reference objects as well. 
+
+      \item Since you have to maintain two, parallel, collections to maintain
+      references to the annotated objects, and to the annotations, you must
+      ensure that exit limbo in lockstep. It is best to create your instances
+      of \class{WeakReference} with a \class{ReferenceQueue} parameter. You
+      must periodically call \code{poll} on this queue, and remove the
+      \class{WeakReference} instances from the parallel registry.
+    \end{itemize}
+}
+
+You can see that, despite the benefit of some support from the \jre, there's
+still quite a bit of memory management that you are left with. Luckly, the
+standard library ships with a \class{WeakHashMap}\index{WeakHashMap} which deals
+with some, but not all, of the legwork of managing weak references. It will
+handle the second and third items, but not the first. It is still up to you to
+ensure that none of your annotations, directly or indirectly, reference the
+annotated object. 
+
+For example, say you wished to associate a timestamp with some other object, and
+used the following code
+
+\begin{shortlisting}
+class TimestampAnnotation<T> {
+	T t;
+	long timestamp;
+}
+List annotations;
+for (String string : inputList) {
+	...
+	annotations.add(new WeakReference(new Wrapper<String>(string)));
+	...
+}
+\end{shortlisting}
+
+Despite your use of \class{WeakReference}, you would find that neither the main
+object (the strings), nor the annotations, would ever be collected. This design
+violates the first principal of the use of eak references: the annotations
+strongly reference the objects being annotated. It is not always this easy to
+debug problems in using weak references. Your application will hold on to objects
+that you didn't expect. Quite often, it is difficult to even know that there is a
+problem in the first place! The application may behave normally, except that it
+will consume more memory than necessary; if this extra memory consumption pushes
+it over your maximum heap size, then your application will crash --- you will
+know something is wrong, but diagnosing this type of problem, a memory
+leak\index{memory leak}, is quite difficult. It is better to keep these
+principals in mind, and design in a way that avoids memory leaks in the first
+place. If your annotations were coded to extend \class{WeakReference}, you would
+be in good shape:
+
+\begin{shortlisting}
+class TimestampAnnotation<T> extends WeakReference<T> {
+	long timestamp;
+	
+	TimestampAnnotation(T t, ReferenceQueue<T> queue) {
+		super(t, queue);
+	}
+}
+\end{shortlisting}
+
+In this case, the annotation has no normal references to the annotated object. 
 
 \subsection{Soft References}
 \index{Soft Reference}
@@ -303,7 +394,7 @@ Then it need only create around 2500 temporaries per request.
 %you had the freedom to code highly specialized implementations of the important
 %cases, from scratch, many of these temporary structures would be unnecessary.
 
-\begin{example}[How Easy it is to Create Lots of Temporary Objects]
+\begin{example}{How Easy it is to Create Lots of Temporary Objects}
 A common example of temporaries is parsing
 and manipulating data coming from the outside world. 
 % to the wire?
@@ -319,6 +410,7 @@ these substrings are eventually used only as input to the
 allow you to avoid this very problem. By passing a \class{ParsePosition}, one
 can parse substrings of a string without having to create temporary strings (at
 the expense of creating temporary \class{ParsePosition} objects!).
+\end{example}
 
 
 
@@ -341,7 +433,6 @@ void doRemoteProcedureCall(Date date) {
 }
 \end{lstlisting}
 
-\end{example}
 
 % correlated with need: as soon as last user goes away, remove his stuff 
 % share common expressions to save space, but using strong references -> memory
