@@ -224,8 +224,12 @@ handle the second and third items, but not the first. It is still up to you to
 ensure that none of your annotations, directly or indirectly, reference the
 annotated object. 
 
-For example, say you wished to associate a timestamp with some other object, and
-used the following code
+\begin{example}{Timestamp Annotation}
+How can you associate a timestamp with an object in a way that avoids memory
+leaks and that scales well to a highly concurrent workload?
+\end{example}
+
+We can start with the following code:
 
 \begin{shortlisting}
 class TimestampAnnotation<T> {

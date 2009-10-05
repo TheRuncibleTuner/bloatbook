@@ -1,4 +1,4 @@
-\chapter{Common Patterns of Object Lifetime}
+\chapter{Common Lifetime Patterns}
 
 It would be great if programmers could be in charge only of hooking together and
 populating their data structures, leaving the \jre responsible for the details
@@ -25,6 +25,13 @@ chapters. Designing a lifetime management strategy usually requires that you tak
 the tools that Java provides, and combine them with other strategies implemented
 on top of Java.
 
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps}
+	\caption{Memory consumption, over time, in a typical request-processing server
+	application.}
+	\label{fig:timeline-base-session-temps}
+\end{figure}
 
 \begin{table}
 \centering
