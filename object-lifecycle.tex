@@ -1,15 +1,14 @@
-\chapter{The Lifecycle of an Object}
+\chapter{Managing Object Lifetime}
 %Every object created by your application lives for an interval of time from its
 %creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
 %interval of time between its first and last necessary use. %cite drag paper
 %here?
 
 In a \emph{well-behaved} application, an object's lifetime spans its allocation,
-use, and the short period, after its last use, during whch the \jre takes
-control and eventually reclaims the space. For some subset of an object's {\em actual}
-lifetime, that is the time from creation to reclamation, your application will
-make use of the data stored in its fields.
-\autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
+use, and the short period during which the \jre takes control and reclaims the
+space. For some subset of an object's actual lifetime, that is the time from
+creation to reclamation, your application will make use of the data stored in its
+fields. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
 object in a well behaved application.
 
 \begin{figure}
@@ -53,23 +52,25 @@ iteration of the loop has finished. This time in limbo also includes the
 entirety of the call to \code{System.out.println}, an operation entirely
 unrelated to the creation or use of the parse position object. Once the current
 loop iteration finishes, these two objects will exit limbo, and become garbage
-collectible.
+collectible.\index{Exiting Limbo}
 
 \begin{figure}
 	\centering
 	\includegraphics[width=\textwidth]{Figures/lifetime/states}
-	\caption{After its last use, an object enters a kind of limbo.}
+	\caption{After its last use, an object enters a kind of limbo: the application
+	is done with it, but the \jre hasn't yet inferred this to be the case. When an
+	object exits limbo depends on the way it is referenced.}
 		\label{fig:limbo-exit}
 \end{figure}
 
-\section{Lifetime Management Mechanisms}
+\section{Basic Management Mechanisms}
 
 The point at which an object exits its limbo depends upon how it is referenced by
 other objects. One can always assure that an object exits limbo by modifying your
 code to overwrite all references to that variable. If an object is no longer
 referenced at all, then it will exit limbo immediately.\footnote{Talk about
-cycles?} For example, a common way to do this is by assigning references to the
-value \code{null}. This is tricky in many cases, because it may not be easy to
+reference cycles?} For example, a common way to do this is by assigning
+references to the value \code{null}. This is tricky in many cases, because it may not be easy to
 know where all those references emanate from. Who is to say that, when one calls
 the \code{parse} method of a \class{SimpleDateFormat} object, that it does not
 squirrel away a reference to the \class{ParsePosition} passed as a parameter? The
@@ -161,14 +162,32 @@ soft references, and thread-local storage.
 \subsection{Weak References}
 \index{Weak Reference}
 
-Sometimes, you will find it necessary to associate information with an object.
-If you can't modify the class definition for that object, or if only a small
-number of objects of a particular class need this associated information, then
-you'll have to store the extra information elsewhere. A \class{WeakReference}
-allows you to get some assurance that associated information will exit limbo
-shortly after the main object does. You need their lifetimes to be {\em
-correlated} with eachother. When one dies, the other should. Getting weak
-references to work properly is pretty tricky.
+Java provides a low-level mechanism that one can use to implement a
+correlated lifetime memory management policy, in the form of weak references.
+The standard library exposes this feature in the class
+\class{java.util.WeakReference}. Using this class correctly is
+difficult, because the semantics of weak references does not directly map to
+any important application-level use cases.
+
+\begin{definition}
+When calling the constructor \class{new WeakReference(obj)},
+ this new instance will maintain a reference to \code{obj}, however
+ \code{obj} will exit limbo, and become a candidate for cleanup processing by 
+the \jre, as if that reference did not exist.
+\end{definition} 
+
+When used in this way, weak references don't keep an object alive longer than it
+otherwise would have, in the absence of weak references. 
+This seems pretty far from anything an application might
+need. Still, you can use this low-level feature to implemented correlated
+lifetime, as long as you're careful. 
+When used to implement correlated lifetime policies, weak references may
+indeed delay the time till an object exits limbo.
+Improper use of a \class{WeakReference} will
+render your code worse off than before. It is quite possible that you will not
+have achieved the correlated lifetime that you need, but in a way that is hard
+to tell. Even worse, when using weak references, you can introduce memory
+leaks. Be very cautious when using them, and follow these rules.
 
 \callout{weaks}{Rules for Using \class{java.util.WeakReference}}{
 	In order to assure that you use of weak references works properly, you must
@@ -197,8 +216,8 @@ references to work properly is pretty tricky.
     \end{itemize}
 }
 
-You can see that, despite the benefit of some support from the \jre, there's
-still quite a bit of memory management that you are left with. Luckly, the
+You can see that, despite the benefit of some support from the \jre, there
+is quite a bit of memory management that you are left with. Luckly, the
 standard library ships with a \class{WeakHashMap}\index{WeakHashMap} which deals
 with some, but not all, of the legwork of managing weak references. It will
 handle the second and third items, but not the first. It is still up to you to
@@ -222,8 +241,9 @@ for (String string : inputList) {
 \end{shortlisting}
 
 Despite your use of \class{WeakReference}, you would find that neither the main
-object (the strings), nor the annotations, would ever be collected. This design
-violates the first principal of the use of eak references: the annotations
+object (the strings), nor the annotations, would ever be collected. This code
+has two memory leaks. One of the leaks is due to a
+violation of the first principal of the use of weak references: the annotations
 strongly reference the objects being annotated. It is not always this easy to
 debug problems in using weak references. Your application will hold on to objects
 that you didn't expect. Quite often, it is difficult to even know that there is a
@@ -231,26 +251,44 @@ problem in the first place! The application may behave normally, except that it
 will consume more memory than necessary; if this extra memory consumption pushes
 it over your maximum heap size, then your application will crash --- you will
 know something is wrong, but diagnosing this type of problem, a memory
-leak\index{memory leak}, is quite difficult. It is better to keep these
-principals in mind, and design in a way that avoids memory leaks in the first
-place. If your annotations were coded to extend \class{WeakReference}, you would
-be in good shape:
+leak\index{Memory Leak}, is quite difficult. It is better to keep the
+three principles of weak references in mind, and design in a way that avoids
+memory leaks in the first place. Your annotations can be modified to use a
+\class{WeakReference} to the main object:
+
+\begin{shortlisting}
+class TimestampAnnotation<T> {
+	WeakReference<T> t; // annotation only weakly refs main object
+	long timestamp;
+	
+	TimestampAnnotation(T t) {
+		this.t = new WeakReference(t);
+	}
+}
+\end{shortlisting}
+
+In this case, the annotation has no normal references to the annotated object,
+and so it obides by the first rule of weak references. If you remember from
+\autoref{chapter:delegation}, the code can be improved further to avoid the cost
+of delegation. This version of the annotation class extends
+\class{WeakReference}:
 
 \begin{shortlisting}
 class TimestampAnnotation<T> extends WeakReference<T> {
 	long timestamp;
 	
-	TimestampAnnotation(T t, ReferenceQueue<T> queue) {
-		super(t, queue);
+	TimestampAnnotation(T t) {
+		super(t);
 	}
 }
 \end{shortlisting}
 
-In this case, the annotation has no normal references to the annotated object. 
+Unfortunately, both of these updated versions h
 
 \subsection{Soft References}
 \index{Soft Reference}
 
+\subsection{Properly Draining a Reference Queue}
 
 \subsection{Thread-local Storage}
 \index{Thread-local Storage}
@@ -277,58 +315,5 @@ In this case, the annotation has no normal references to the annotated object.
 	\label{fig:typical-lifecycle}
 \end{figure}
 \end{comment}
-
-\section{Common Categories of Natural Lifetime}
-
-\begin{table}
-\centering
-	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
-	\toprule  & Lifetime Property & Example \\ \midrule
-	\autoref{temporary-lifetime}  & {Temporary} & new
-	parser for every date
-	\\
-	\autoref{forever-lifetime} & {Needed Forever} & product catalog
-	\\
-	\autoref{correlated-lifetime-1} & {Correlated with Object}
-	& object annotations
-	\\
-	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
-	DOM used only parsing
-	\\
-	\autoref{deferred-deletion} & {Deferred Deletion} &
-	session state \\
-%period\\ scoped to a phase/request\\
-%correlated with an object (annotations)\\
-%correlated with need}\\ \hline
-%reusable & maybe i'll need it later \\ \hline
-	\bottomrule
-	\end{tabular}
-	\caption{Five important categories of object lifetime.}
-	\label{tab:five-lifetimes}
-\end{table}
-
-\autoref{tab:five-lifetimes} summarizes five important cases of object lifetime.
-% introduced by example in this chapter, and
-Many objects are either temporaries or needed for
-the entire run of your application. Sometimes you create objects whose lifetime
-is correlated with other objects or that should go away when a method invocation
-completes. Sometimes you need to manage objects hanging around longer than their
-current need, to avoid future recomputations or refetching of data in the case
-when it is needed in the near future. 
-
-
-\begin{table}
-\centering
-	\begin{tabular}{ll} \toprule
-    	& Things Java Doesn't Do Automatically \\ \midrule
-    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
-    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
-    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
-        \bottomrule
-    \end{tabular}
-	\caption{Elements of programming for which Java's built-in mechanisms don't
-	provide great support.}
-	\label{tab:things-java-does-not-do}
-\end{table}
 
 

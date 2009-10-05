@@ -1,4 +1,4 @@
-\chapter{Natural Lifetime}
+\chapter{Common Patterns of Object Lifetime}
 
 It would be great if programmers could be in charge only of hooking together and
 populating their data structures, leaving the \jre responsible for the details
@@ -14,13 +14,65 @@ of a single Java process, and you need to manage, explicitly, shuttling them in
 and out of the Java heap.
 
 When programming in Java it is important to plan out the lifetime of your
-objects. Your application needs some objects to live forever and it needs the
-rest to die a timely death. This often requires careful design on your part, both
-to avoid bugs and so that your application performs well in the case when not
-everything fits into the Java heap. Designing a lifetime management strategy
-usually requires that you take the tools that Java provides, and combine them
-with other strategies implemented on top of Java.
+objects. \autoref{tab:five-lifetimes} summarizes five important cases of object
+lifetime discussed in this chapter. Your application needs some objects to live
+forever and it needs the rest to die a timely death. This often requires careful
+design on your part, both to avoid bugs and so that your application performs
+well in the case when not everything fits into the Java heap. These trickier
+aspects of memory management, summarized in
+\autoref{tab:tricky-memory-management}, are discussed in greater detail in later
+chapters. Designing a lifetime management strategy usually requires that you take
+the tools that Java provides, and combine them with other strategies implemented
+on top of Java.
 
+
+\begin{table}
+\centering
+	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
+	\toprule  & Lifetime Property & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
+	\autoref{temporary-lifetime}  & {Temporary} & new
+	parser for every date
+	\\
+	\autoref{forever-lifetime} & {Needed Forever} & product catalog
+	\\
+	\autoref{correlated-lifetime-1} & {Correlated with Object}
+	& object annotations
+	\\
+	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
+	DOM used only parsing
+	\\
+	\autoref{deferred-deletion} & {Deferred Deletion} &
+	session state \\
+%period\\ scoped to a phase/request\\
+%correlated with an object (annotations)\\
+%correlated with need}\\ \hline
+%reusable & maybe i'll need it later \\ \hline
+	\bottomrule
+	\end{tabular}
+	\caption{Five important categories of object lifetime.}
+	\label{tab:five-lifetimes}
+\end{table}
+
+% introduced by example in this chapter, and
+%Many objects are either temporaries or needed for
+%the entire run of your application. Sometimes you create objects whose lifetime
+%is correlated with other objects or that should go away when a method
+%invocation completes. Sometimes you need to manage objects hanging around
+%longer than their current need, to avoid future recomputations or refetching
+%of data in the case when it is needed in the near future. 
+
+\begin{table}
+\centering
+	\begin{tabular}{ll} \toprule
+    	%& Things Java Doesn't Do Automatically \\ \cmidrule{2-2}
+    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
+    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
+    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
+        \bottomrule
+    \end{tabular}
+	\caption{The tricky aspects of memory management.}
+	\label{tab:tricky-memory-management}
+\end{table}
 
 \section{Temporary Objects}
 \label{temporary-lifetime}
@@ -122,27 +174,45 @@ Created and used for the remaining duration of a run.
 
 \section{Objects with Correlated Lifetimes}
 
-Many objects are created and then only needed for some interval of time. For
-example, say your application is a transaction processing system implemented as
-a Java Enterprise Edition web application. In this case, most objects
-created within the scope of a servlet request will not, and for correctness
-reasons {\em must not}, survive the request; they are not used by the 
-application after the request has completed, and will, in the absence of bugs,
+Many non-temporary objects are created and then only needed for some interval of
+time.
+
+\subsection{Correlated with Another Object}
+\label{correlated-lifetime-1}
+
+
+For example, sometimes, you will find it necessary to associate information with
+an object. You need some assurance that associated information will exit limbo
+shortly after the main object does. You need their lifetimes to be {\em
+correlated} with eachother. When one dies, the other should. If you can't modify
+the class definition for that object, or if only a small number of objects of a
+particular class need this associated information, then you'll have to store the
+extra information elsewhere.
+
+\subsection{Correlated with Invocation}
+\label{correlated-lifetime-2}
+
+Some objects should only survive as long as a phase of your program is active.
+This is common, for example, if your application is an application server that
+handles web requests. These server applications are often implemented as a Java
+Enterprise Edition application. Let's focus on a particular example of a web
+application server that handles servlet requests. In these applications, most
+objects created within the scope of a servlet request will not survive the
+request. Furthermore, for correctness reasons, most objects created within a
+request {\em must not}, survive the request. If they unintentionally do survive,
+your application has a good chance of consuming more and more memory over time.
+\index{memory leak} This memory leak will eventually grind your application to a
+halt, often causing it to crash. Most of these {\em request-scoped}
+\index{Request-scoped Lifetime} objects are not used by the application after the
+request has completed. In the absence of application or framework bugs, they will
 be collected as soon as is convenient for the runtime. In this example, the
 lifetime of objects during a request are {\em correlated} with a method
 invocation: when the servlet \class{doGet} or \class{doPut} (etc.) invocations
 return, those correlated objects had better be garbage collectible.
 
-The same is true for a great many objects created by the application, not just
-at the large granularity of a servlets. For example,
-
-In many cases, the built-in mechanisms 
-
-\subsection{Correlated with Another Object}
-\label{correlated-lifetime-1}
-
-\subsection{Correlated with Need}
-\label{correlated-lifetime-2}
+%\subsection{Correlated with Need} % do we need this? isn't session state a
+% deferred deletion policy?
+%\label{correlated-lifetime-3}
 
 \section{Objects with Deferred-Deletion}
 \label{deferred-deletion}
