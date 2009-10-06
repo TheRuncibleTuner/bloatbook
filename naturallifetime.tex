@@ -28,10 +28,27 @@ on top of Java.
 \begin{figure}
 	\centering
 	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps}
-	\caption{Memory consumption, over time, in a typical request-processing server
-	application.}
+	\caption{Memory consumption, over time, typical of a web application server.}
 	\label{fig:timeline-base-session-temps}
 \end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps-with-leak}
+	\caption{If session state is not cleaned up
+	properly, a memory leak is the result.}
+	\label{fig:timeline-base-session-temps-with-leak}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps-with-cache}
+	\caption{When a cache is in use, this leaves less headroom for temporary
+	object allocation, often resulting in more frequent garbage collections.}
+	\label{fig:timeline-base-session-temps-with-cache}
+\end{figure}
+
+
 
 \begin{table}
 \centering
