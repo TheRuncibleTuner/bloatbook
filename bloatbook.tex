@@ -45,7 +45,7 @@
 {% This is the begin code
 %\stepcounter{Examplecount}
  % \arabic{chapter}.\arabic{Examplecount}
-\minipage{0.9\textwidth}
+\noindent\minipage{\textwidth}
 \begin{center}
 \vspace{3mm}%
 \nopagebreak%
@@ -56,8 +56,8 @@
 \hrule height \lightrulewidth%
 \nopagebreak%
 \vspace{1mm}%
-\nopagebreak\minipage{0.95\textwidth}
-\noindent\textbf{Example: #1}~~%
+\nopagebreak\minipage{\textwidth}
+\textbf{Example: #1}~~%
 }
 {% This is the end code
 %\qed%
