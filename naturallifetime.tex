@@ -1,29 +1,31 @@
 \chapter{Common Lifetime Patterns}
 
 It would be great if programmers could be in charge only of hooking together and
-populating their data structures, leaving the \jre responsible for the details
-of object allocation and reclamation. The Java runtime does indeed help manage some
+populating their data structures, leaving the \jre responsible for the details of
+object allocation and reclamation. The Java runtime does indeed help manage some
 aspects of these management tasks, but leaves a good deal of work in your hands.
 In Java, you needn't explicitly free objects, and in that way a managed language
 is a big step up from a language like C. However, the ultimate promise of
 automatic memory management, that you can create objects without regard for messy
 details of storage management, doesn't play out ideally in practice. Unless you
 are careful, your program will suffer from bugs such as memory leaks, and suffer
-from poor performance. Sometimes, your objects don't easily fit into the limits
-of a single Java process, and you need to manage, explicitly, shuttling them in
-and out of the Java heap.
+from poor performance. Furthermore, if your objects don't easily fit into the
+limits of a single Java process, and you need to manage, explicitly, shuttling
+them in and out of the Java heap.
 
-When programming in Java it is important to plan out the lifetime of your
-objects. \autoref{tab:five-lifetimes} summarizes five important cases of object
-lifetime discussed in this chapter. Your application needs some objects to live
-forever and it needs the rest to die a timely death. This often requires careful
-design on your part, both to avoid bugs and so that your application performs
-well in the case when not everything fits into the Java heap. These trickier
-aspects of memory management, summarized in
-\autoref{tab:tricky-memory-management}, are discussed in greater detail in later
-chapters. Designing a lifetime management strategy usually requires that you take
-the tools that Java provides, and combine them with other strategies implemented
-on top of Java.
+Unfortunately, then, it is necessary to plan out the lifetime of your objects.
+This task is made simpler by the fact that there aren't innumerable ways in which
+objects live and die. For the most part, your objects will fall into one of five
+common patterns of lifetime. \autoref{tab:five-lifetimes} summarizes these five
+important patterns. Your application needs some objects to live forever and it
+needs the rest to die a timely death. 
+%This often requires careful design on your
+%part, both to avoid bugs and so that your application performs well in the case
+%when not everything fits into the Java heap. 
+The trickier aspects of memory
+management, summarized in \autoref{tab:tricky-memory-management}, are discussed
+in greater detail in later chapters. 
+
 
 \begin{figure}
 	\centering
