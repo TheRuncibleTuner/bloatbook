@@ -14,17 +14,17 @@ limits of a single Java process, and you need to manage, explicitly, shuttling
 them in and out of the Java heap.
 
 Unfortunately, then, it is necessary to plan out the lifetime of your objects.
-This task is made simpler by the fact that there aren't innumerable ways in which
-objects live and die. For the most part, your objects will fall into one of five
-common patterns of lifetime. \autoref{tab:five-lifetimes} summarizes these five
-important patterns. Your application needs some objects to live forever and it
-needs the rest to die a timely death. 
-%This often requires careful design on your
-%part, both to avoid bugs and so that your application performs well in the case
-%when not everything fits into the Java heap. 
-The trickier aspects of memory
-management, summarized in \autoref{tab:tricky-memory-management}, are discussed
-in greater detail in later chapters. 
+Your application needs some objects to live forever and it needs the rest to die
+a timely death. This task of managing object lifetime is made simpler by the
+fact that there aren't innumerable ways in which objects live and die. For the most part, your objects
+will fall into one of five common patterns of lifetime.
+\autoref{tab:five-lifetimes} summarizes these five important patterns.
+% This often requires careful design on your part, both to avoid bugs and so that
+% your application performs well in the case when not everything fits into the
+% Java heap.
+The trickier aspects of memory management, summarized in
+\autoref{tab:tricky-memory-management}, are discussed in greater detail in later
+chapters.
 
 
 \begin{figure}
@@ -51,6 +51,12 @@ in greater detail in later chapters.
 	\label{fig:timeline-base-session-temps-with-cache}
 \end{figure}
 
+\begin{example}{Object Lifetimes in a Server Application}
+A web application server uses preloaded catalog data, maintains data for users
+as they interact with the system, and optionally caches data that is fetched
+from a remote database. How does Java heap consumption vary over time, and how
+should each of these uses of memory be apportioned?
+\end{example}
 
 
 \begin{table}
@@ -66,7 +72,7 @@ in greater detail in later chapters.
 	& object annotations
 	\\
 	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
-	DOM used only parsing
+	DOM used only for parsing
 	\\
 	\autoref{deferred-deletion} & {Deferred Deletion} &
 	session state \\
