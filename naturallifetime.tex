@@ -1,5 +1,5 @@
 \chapter{Common Lifetime Patterns}
-
+\index{Lifetime Patterns}
 It would be great if programmers could be in charge only of hooking together and
 populating their data structures, leaving the \jre responsible for the details of
 object allocation and reclamation. The Java runtime does indeed help manage some
@@ -25,6 +25,33 @@ will fall into one of five common patterns of lifetime.
 The trickier aspects of memory management, summarized in
 \autoref{tab:tricky-memory-management}, are discussed in greater detail in later
 chapters.
+
+\begin{table}
+\centering
+	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
+	\toprule  & Lifetime Property & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
+	\autoref{temporary-lifetime}  & {Temporary} & new
+	parser for every date
+	\\
+	\autoref{forever-lifetime} & {Needed Forever} & product catalog
+	\\
+	\autoref{correlated-lifetime-1} & {Correlated with Object}
+	& object annotations
+	\\
+	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
+	DOM used only for parsing
+	\\
+	\autoref{deferred-deletion} & {Deferred Deletion} &
+	session state \\
+%period\\ scoped to a phase/request\\
+%correlated with an object (annotations)\\
+%correlated with need}\\ \hline
+%reusable & maybe i'll need it later \\ \hline
+	\bottomrule
+	\end{tabular}
+	\caption{Five important categories of object lifetime.}
+	\label{tab:five-lifetimes}
+\end{table}
 
 \section{Examples from a Server Application}
 
@@ -53,6 +80,14 @@ per request. How does Java heap consumption vary over time? Which heap size
 fluctuations indicate a problem, and which are expected behavior?
 \end{example}
 
+The heap consumption of this application will fluctuate over time. It is
+helpful to plot a timeline of what you expect memory consumption to be, over
+time: during lulls and peaks of activity; as requests are processed and when
+sessions time out; and even as the server starts up.
+
+
+it fetches catalog data from its database, and stores them in the Java heap. 
+
 \begin{figure}
 	\centering
 	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps}
@@ -76,36 +111,6 @@ fluctuations indicate a problem, and which are expected behavior?
 	object allocation, often resulting in more frequent garbage collections.}
 	\label{fig:timeline-base-session-temps-with-cache}
 \end{figure}
-
-
-
-
-\begin{table}
-\centering
-	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
-	\toprule  & Lifetime Property & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
-	\autoref{temporary-lifetime}  & {Temporary} & new
-	parser for every date
-	\\
-	\autoref{forever-lifetime} & {Needed Forever} & product catalog
-	\\
-	\autoref{correlated-lifetime-1} & {Correlated with Object}
-	& object annotations
-	\\
-	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
-	DOM used only for parsing
-	\\
-	\autoref{deferred-deletion} & {Deferred Deletion} &
-	session state \\
-%period\\ scoped to a phase/request\\
-%correlated with an object (annotations)\\
-%correlated with need}\\ \hline
-%reusable & maybe i'll need it later \\ \hline
-	\bottomrule
-	\end{tabular}
-	\caption{Five important categories of object lifetime.}
-	\label{tab:five-lifetimes}
-\end{table}
 
 % introduced by example in this chapter, and
 %Many objects are either temporaries or needed for
