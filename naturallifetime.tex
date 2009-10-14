@@ -22,9 +22,10 @@ will fall into one of five common patterns of lifetime.
 % This often requires careful design on your part, both to avoid bugs and so that
 % your application performs well in the case when not everything fits into the
 % Java heap.
-The trickier aspects of memory management, summarized in
-\autoref{tab:tricky-memory-management}, are discussed in greater detail in later
-chapters.
+
+%The trickier aspects of memory management, summarized in
+%\autoref{tab:tricky-memory-management}, are discussed in greater detail in
+%later chapters.
 
 \begin{table}
 \centering
@@ -55,9 +56,9 @@ chapters.
 
 \section{Examples from a Server Application}
 
-Configuring memory settings is an iterative process. It usually involves a bit of
-trial and error, as one tunes the various knobs to balance memory consumption and
-application performance. These knobs affect things like the size of the Java
+Configuring memory settings is an iterative process. It usually involves a
+fair amount of trial and error, as one tunes the various knobs to balance memory
+consumption and application performance. These knobs affect things like the size of the Java
 heap, how many entries a cache should hold, and the timeout value for these
 caches. This is usually a process of black box tuning: twist a knob, and see
 how overall performance changes. In addition to being hit
@@ -66,10 +67,12 @@ high, you risk poor performance due to excessive garbage collection, and even
 possibly process failures, due to running out of heap space.
 
 Tuning memory consumption in long-running applications, such as servers or
-integrated development environments, is a particularly thorny issue. They
-synthesize information from a diverse array of sources, each with its own
-correctness issues and performance trade-offs. Consider an example from a server
-aplication.
+integrated development environments, is a particularly thorny issue. Improperly
+managing memory in a short-running application may not be the end of the world.
+In an application that runs more or less forever, mistakes can pile up over time.
+In addition, they synthesize information from a diverse array of sources, each
+with its own performance trade-offs. As such, caching plays a large role in these
+applications. Consider an example from a server aplication.
 
 \begin{example}{Object Lifetimes in a Server Application}
 A web application commerce server preloads catalog data into memory to allow for
@@ -80,20 +83,70 @@ per request. How does Java heap consumption vary over time? Which heap size
 fluctuations indicate a problem, and which are expected behavior?
 \end{example}
 
-The heap consumption of this application will fluctuate over time. It is
-helpful to plot a timeline of what you expect memory consumption to be, over
-time: during lulls and peaks of activity; as requests are processed and when
-sessions time out; and even as the server starts up.
-
-
-it fetches catalog data from its database, and stores them in the Java heap. 
-
 \begin{figure}
 	\centering
 	\includegraphics[width=\textwidth]{Figures/lifetime/timeline-base-session-temps}
 	\caption{Memory consumption, over time, typical of a web application server.}
 	\label{fig:timeline-base-session-temps}
 \end{figure}
+
+The heap consumption of this application will fluctuate over time. A timeline
+view expected memory consumption helps to illustrate the five main kinds of
+object lifetime. It visualizes memory during the lulls and peaks of activity, as
+requests are processed and when sessions time out, and as the server starts up.
+ \autoref{fig:timeline-base-session-temps} shows an example timeline
+for a server that, as it starts up begins to load catalog data into the Java heap.
+Then, it responds to one request at a time. The total height of the area under
+the curves represents the memory consumption at that point in time. 
+In this example, as the server starts up, it begins to load catalog data into
+the heap. This data will be used for the entire duration of the server process.
+\index{Objects That Live Forever}
+The Java objects that represent this catalog are objects that are needed
+forever. In the timeline picture, this data is respresented by the lowest area,
+labeled \emph{baseline}. Notice how it ramps up quickly, and then, after the
+server has reached a ``warmed up'' state, memory consumption of this baseline
+data evens out on a plateau for the remainder of the run.
+
+\index{Session State}
+After the server is warmed up, it begins to process client requests. Imagine
+interacting with a commerce site. First you browse around for items of
+interest. You may add items to your shopping cart. Eventually, you may
+authenticate and complete a purchase. 
+As you browse and buy, the server may be maintaining some
+state, to remember aspects of what you have done so far. This
+session state, at least the part of it stored in the Java heap, will go away
+soon after your browsing session is complete. In the timeline figure, this
+portion of memory is labeled \emph{sessions}. It ramps up while a session is in
+progress, and then, in the example illustrated here, soon all of that session
+memory should be reclaimed.
+
+The catalog (baseline) data and session state are both examples of objects that
+are expected to stick around for a while.
+\index{Temporary Objects}
+ In the course of preloading the cache
+and responding to client requests, the server application will create a number
+of objects that are only used for a very short period of time. They help to
+faciliate the main operations of the server.
+These temporary objects will be reclaimed by the \jres garbage collector in
+relatively short order. The point at which an object is reclaimed depends on when the garbage collector
+notices that it is reclaimable. Normally, the garbage collector will wait until
+the heap is full, and then inspect the heap for the objects that are still
+possibly in use. In this way, the area under the \emph{temporaries} curve has a
+see-saw shape. As the temporaries pile up, waiting for the next garbage
+collection, they contribute more and more to memory footprint. Normally, once
+the \jre runs a garbage collection, these temporaries no longer in use will no
+longer contribute to heap consumption.
+
+In this way, temporary objects
+\emph{fill up the headroom} in the heap.\index{Heap Headroom}. If there is a
+large amount of heap space unused by the longer-lived objects, then the
+temporaries can be reclaimed less often. This is a good thing, because a
+garbage collection is an expensive proposition.
+\index{Xmx setting} \index{Maximum Heap Size}
+When configuring your application, you may specify a maximum heap size. It
+should certainly be larger than the baseline and session data. How much
+larger than that? This choice directly affects the amount of \emph{headroom},
+ that is the amount of space available for temporaries to pile up.
 
 \begin{figure}
 	\centering
@@ -103,6 +156,36 @@ it fetches catalog data from its database, and stores them in the Java heap.
 	collections, and ever increasing heap size.}
 	\label{fig:timeline-base-session-temps-with-leak}
 \end{figure}
+
+\index{Memory Leaks}
+The catalog data should last forever, while the
+session data lives for some bounded period of time. It is possible that session
+state will live beyond the end of your session, but nonetheless it has a
+lifetime that is bounded. If, due to an bug, part of this session state is not
+reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
+accidentally lives forever. In this case, over time, the amount of heap required
+for the application to run will increase without bound.
+\autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
+in the extreme case when all of session state leaks. Over time, the area under
+the curve steps higher and higher.
+
+%As you scan the timeline from left to right, memory consumption 
+%it fetches catalog data from its database, and stores them in the Java heap. 
+
+Finally, this example server caches data from some expensive third-party data
+source. When caching data inside of Java objects, there is a fourth effect on
+the timeline landscape. The
+cached data must be configured properly to live long enough to be useful. It
+also must not occupy so much of the heap so as to leave little headroom for
+temporaries. \autoref{fig:timeline-base-session-temps-with-cache} shows an
+example where the cache has probably been configured to occupy too much heap
+space. Observe how, compared to the other timeline figures, there is little
+headroom for temporaries. In this case, the result is more frequent garbage
+collections. If the cache were sized to occupy an even greater amount of heap
+space, it is possible that there would no longer be room to fit session data.
+The result in this case would be failures in client requests. So, as you can
+see, sizing caches is important. As discussed later, it is very tricky to
+properly size caches, and is something best left in the hands of the \jre.
 
 \begin{figure}
 	\centering
@@ -120,18 +203,18 @@ it fetches catalog data from its database, and stores them in the Java heap.
 %longer than their current need, to avoid future recomputations or refetching
 %of data in the case when it is needed in the near future. 
 
-\begin{table}
-\centering
-	\begin{tabular}{ll} \toprule
-    	%& Things Java Doesn't Do Automatically \\ \cmidrule{2-2}
-    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
-    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
-    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
-        \bottomrule
-    \end{tabular}
-	\caption{The tricky aspects of memory management.}
-	\label{tab:tricky-memory-management}
-\end{table}
+%\begin{table}
+%\centering
+	%\begin{tabular}{ll} \toprule
+    %%%%	%& Things Java Doesn't Do Automatically \\ \cmidrule{2-2}
+%    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
+%    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
+%    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
+%        \bottomrule
+%    \end{tabular}
+%	\caption{The tricky aspects of memory management.}
+%	\label{tab:tricky-memory-management}
+%\end{table}
 
 \section{Temporary Objects}
 \label{temporary-lifetime}
