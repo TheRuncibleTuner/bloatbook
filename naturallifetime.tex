@@ -221,9 +221,11 @@ properly size caches, and is something best left in the hands of the \jre.
 
 If your application is like most Java applications, it creates a large number of
 temporary objects. They hold data that will only be used for a very short
-interval of time. For example, you populate a \class{StringBuffer}, turn it into
-a \class{String}, and print the string to a log file. The point at which all of
-these objects, the strings and character arrays, are no longer used is only
+interval of time. It is often the case that the objects in these transient data
+structures are only ever referenced by local variables. For example, this is the
+case when you populate a \class{StringBuffer}, turn it into a \class{String}, and
+then ultimately (and only) print the string to a log file. The point at which all
+of these objects, the strings and character arrays, are no longer used is only
 shortly after they are constructed. These objects serve as transient homes for
 your data, as it makes its way through the frameworks and libraries you depend
 on. Temporaries are often necessary to bridge separately developed code and
@@ -235,15 +237,17 @@ application creates. After all, generational garbage collectors these days do a
 very good job digesting a large volume of temporary objects. In a generational
 garbage collector, the \jre places temporary objects in a separate heap, and
 thus it need only process the newly created objects during its routine scan.
+
 Unfortunately, in Java it is pretty easy to create a high volume of temporary
 objects. Say your application 
-fills it the temporary heap ever second. In this case, based on the common
+fills up the temporary heap ever second. In this case, based on the common
 speeds of garbage collectors, your application could easily spend over 20\% of its time
 collecting garbage.
 Is it difficult to fill up the temporary heap once per second? Typical
 temporary heap sizes run around 128 megabytes. Say your application is a serves
 a peak of 1000 requests per second, and creates objects of around 50 bytes each.
-Then it need only create around 2500 temporaries per request. 
+If it creates around 2500 temporaries per request, then this application will
+spend 20\% of its time collecting garbage.
 
 
 %A great many of these
@@ -257,25 +261,11 @@ Then it need only create around 2500 temporaries per request.
 
 \begin{example}{How Easy it is to Create Lots of Temporary Objects}
 A common example of temporaries is parsing
-and manipulating data coming from the outside world. 
+and manipulating data coming from the outside world. Identify the temporary
+objects in the following code.
 % to the wire?
-Consider the code in \autoref{TempExampleCode}. This code starts in
-the \code{main} method by splitting the input string into two substrings. So
-far, the code has created four objects (one \class{String} and one character
-array per substring). 
-Creating these substrings makes it easy to use the \code{doWork} method, which
-takes two Strings as input. However, observe
-that these four objects are not a necessary part of the computation. Indeed,
-these substrings are eventually used only as input to the
-\class{SimpleDateFormat} \code{parse} method, which has been nicely designed to
-allow you to avoid this very problem. By passing a \class{ParsePosition}, one
-can parse substrings of a string without having to create temporary strings (at
-the expense of creating temporary \class{ParsePosition} objects!).
-\end{example}
 
-
-
-\begin{lstlisting}[float,caption=Code that constructs 8 temporary objects to handle two dates.,label=TempExampleCode]
+\begin{shortlisting}%[float,caption=Code that constructs 8 temporary objects tohandle two dates.,label=TempExampleCode]
 void main(String xy) {
 	doWork(xy.substring(0,10), xy.substring(10));
 }	
@@ -283,16 +273,27 @@ void doWork(String x, String y) {
 	doRemoveProcedureCall(parse(x));
 	doRemoveProcedureCall(parse(y));
 }
-	
 Date parse(String string) {
 	return new SimpleDataFormat().parse(string, new ParsePosition(0));
 }
-
 void doRemoteProcedureCall(Date date) {
 	long timestamp = date.getTime();
 	...
 }
-\end{lstlisting}
+\end{shortlisting}
+\end{example} 
+
+This code starts in the \code{main} method by splitting the input string into two
+substrings. So far, the code has created four objects (one \class{String} and one
+character array per substring). Creating these substrings makes it easy to use
+the \code{doWork} method, which takes two Strings as input. However, observe that
+these four objects are not a necessary part of the computation. Indeed, these
+substrings are eventually used only as input to the \class{SimpleDateFormat}
+\code{parse} method, which has been nicely designed to allow you to avoid this
+very problem. By passing a \class{ParsePosition}, one can parse substrings of a
+string without having to create temporary strings (at the expense of creating
+temporary \class{ParsePosition} objects!).
+
 
 
 % correlated with need: as soon as last user goes away, remove his stuff 
@@ -311,8 +312,23 @@ void doRemoteProcedureCall(Date date) {
 \section{Objects Needed Forever}
 \label{forever-lifetime}
 
-Created and used for the remaining duration of a run.
+A \class{SimpleDateFormat} object in the previous example was created in every
+loop iteration, and never used again. An improvement would be to create and
+use a single formatter for the remaining duration of the run. Though the Java 6
+documentation does not say so explicitly, it is safe to reuse a single instance
+of this object multiple times. You must be careful to remember that it is
+not safe to do so in multiple threads. The next chapter will discuss remedies
+to this problem. The updated code for the \code{parse} method would be:
 
+\begin{shortlisting}
+static final DateFormat fmt = new SimpleDateFormat();
+Date parse(String string) {
+	return fmt.parse(string, new ParsePosition(0));
+}
+\end{shortlisting} 
+
+A \code{static} field of an object is one way that Java gives you to indicate
+that you want an object to live forever.
 
 \section{Objects with Correlated Lifetimes}
 
