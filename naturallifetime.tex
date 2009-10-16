@@ -322,6 +322,7 @@ to this problem. The updated code for the \code{parse} method would be:
 
 \begin{shortlisting}
 static final DateFormat fmt = new SimpleDateFormat();
+
 Date parse(String string) {
 	return fmt.parse(string, new ParsePosition(0));
 }
@@ -338,14 +339,52 @@ time.
 \subsection{Correlated with Another Object}
 \label{correlated-lifetime-1}
 
+Sometimes, you will find it necessary to associate information with
+an object. 
 
-For example, sometimes, you will find it necessary to associate information with
-an object. You need some assurance that associated information will exit limbo
-shortly after the main object does. You need their lifetimes to be {\em
-correlated} with eachother. When one dies, the other should. If you can't modify
-the class definition for that object, or if only a small number of objects of a
-particular class need this associated information, then you'll have to store the
-extra information elsewhere.
+\begin{example}{Annotations}
+In order to debug a performance problem, you need to associate a timestamp with
+another object. Unfortunately, you don't have access to the source code for
+that object's class. Where do you keep the new information, and how can you
+link the associated storage to the main objects without introducing memory leaks?
+\end{example}
+
+If you can't modify the class definition for that object, then you'll have to
+store the extra information elsewhere. The annotations will be objects
+themselves, and you need their lifetimes to be correlated with the main objects.
+When one dies, the other should. You could store the annotations in a
+map that is keyed by the original object:
+
+\begin{shortlisting}
+Map timestamps = new HashMap();
+
+void addTimestamp(Object o) {
+	timestamps.put(o, new Date());
+}
+Date getTimestamp(Object o) {
+	return timestamps.get(o);
+}
+\end{shortlisting}
+
+This solution will function correctly, but suffers from a \emph{memory
+leak}\index{Memory Leak}. The application will run just fine, until the Java
+application runs out of heap space. This solution leaks memory, because the
+\code{timestamps} map introduces a reference to the main objects. When the
+garbage collector scans the heap to see which objects are still alive, the
+references in this map will be among those that keep the objects alive. The next
+chapter discusses these issues in more detail. An improved solution would use the
+\class{WeakHashMap} from the Java standard libraries. By replacing the
+initialization of the \code{timestamps} map, we have the same functionality as
+before, but no memory leak.
+
+\begin{shortlisting}
+Map timestamps = new WeakHashMap();
+\end{shortlisting}
+
+Note that this same situation can hold even if you are able to modify the class
+definition. A common scenario requires annotations on only a subset of all
+instances of a class. In this case, is it worth paying the memory cost to have
+the ability to annotate every single instance?
 
 \subsection{Correlated with Invocation}
 \label{correlated-lifetime-2}
@@ -357,14 +396,14 @@ Enterprise Edition application. Let's focus on a particular example of a web
 application server that handles servlet requests. In these applications, most
 objects created within the scope of a servlet request will not survive the
 request. Furthermore, for correctness reasons, most objects created within a
-request {\em must not}, survive the request. If they unintentionally do survive,
+request must not, survive the request. If they unintentionally do survive,
 your application has a good chance of consuming more and more memory over time.
 \index{memory leak} This memory leak will eventually grind your application to a
-halt, often causing it to crash. Most of these {\em request-scoped}
+halt, often causing it to crash. Most of these \emph{request-scoped}
 \index{Request-scoped Lifetime} objects are not used by the application after the
 request has completed. In the absence of application or framework bugs, they will
 be collected as soon as is convenient for the runtime. In this example, the
-lifetime of objects during a request are {\em correlated} with a method
+lifetime of objects during a request are \emph{correlated} with a method
 invocation: when the servlet \class{doGet} or \class{doPut} (etc.) invocations
 return, those correlated objects had better be garbage collectible.
 
