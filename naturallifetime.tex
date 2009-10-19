@@ -404,16 +404,23 @@ shines.
 \subsection{Objects that Live and Die with Program Phases}
 \label{correlated-lifetime-2}
 
-Your program probably has medium-to-long running methods that implement the
-core functionality of the program. For example, if your application includes
-loading in a log file from disk, parsing it, and then display the results to
-the user, it has roughly three phases for this activity. Most of the objects
-allocated in one phase are scoped to that phase; they are needed to implement
-the logic of that phase, but not subsequent phases. For example, when loading
-the log file, you may maintain some maps that help to cross reference different
-parts of the log file. Once the log file has been loaded, these maps can be
-discarded. These maps live and die with the first phase of this example
-program. If they don't, then you have a memory
+Similar to the way the lifetime of an object can be correlated with another
+object, lifetimes are often correlated with method invocations. When a method
+returns, objects correlated with it should go away. For temporary objects, this
+is usually easy to ensure, since they are usually only referenced by stack
+locations. For the medium-to-long running methods that implement the
+core functionalities of the program, this correlation is harder to get right.
+
+For example, if your application loads a log file from disk,
+parses it, and then displays the results to the user, it has roughly three
+phases for this activity. Most of the objects allocated in one phase are scoped to that
+phase; they are needed to implement the logic of that phase, but not subsequent
+phases. The phase that loads the log file is likely to maintain maps that
+help to cross reference different parts of the log file. These are necessary
+to facilitate parsing, but, once the log file has been loaded, these maps can be
+discarded. In this way, these maps live and die with the first phase of this
+example program. If they don't, because the machinery you have set up to
+govern their lifetimes has bugs, then your application has a memory
 leak\index{Memory Leaks}.
 
 This lifetime scenario is also common if your application is an
@@ -435,8 +442,34 @@ lifetime of objects during a request are \emph{correlated} with a method
 invocation: when the servlet \class{doGet} or \class{doPut} (etc.) invocations
 return, those correlated objects had better be garbage collectible.
 
+\index{Memory Leaks: Why?}
 There are many program bugs and configuration missteps that can lead to
-problems.
+problems. The general problem is that a reference to an object stays around
+indefinitely, but becomes
+\emph{forgotten}, and hence rendered unfindable by the normal application
+logic. If this request-scoped data structure were only reachable from stack
+locations, you would be fine. Therefore, a request-scoped object will leak only
+when there exist references from some data structure that lives forever. Here
+are some common ways that this happens.
+
+\begin{itemize}
+  \item Registrars, where objects are registered as listeners to some service,
+  but not deregistered at the end of a request.
+  \item Doubly-indexed registrars. Here the outer map provides a key to index
+  into the inner map. A leak occurs when the outer key is mistakenly
+  overwritten mid-request. This can happen if the namespace of keys isn't
+  canonical and two development groups use keys that collide. It can also
+  happen if there is a mistaken notion, between two development groups, of who
+  owns respnsibility of populating this registrar.
+  \item Misimplemented hashcode or equals, which foils the retrieval of an
+  object from a hash-based collection. If developers checked the return value of
+  the \code{remove} method, which for the standard collections would indicate a failure to remove, then
+  this bug could be easily detected early; but developers tend not to do this.
+\end{itemize}
+
+
+
+
 %\subsection{Correlated with Need} % do we need this? isn't session state a
 % deferred deletion policy?
 %\label{correlated-lifetime-3}
