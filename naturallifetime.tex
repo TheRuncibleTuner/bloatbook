@@ -476,26 +476,33 @@ fix the bugs that make it into your finished application.
 % deferred deletion policy?
 %\label{correlated-lifetime-3}
 
-\section{Objects with Deferred-Deletion}
+\section{Objects with Deferred Deletion}
 \label{deferred-deletion}
 
-Sometimes you don't know when, or even if, an the data stored in an object will
-be used again. If the data is cheap to recompute, or refetch from some external
-data source, then a good policy would be to make sure it lives only as long as
-it is clearly needed. Performing a few dozen machine instructions is very
+If the data stored in an object is cheap to recompute or refetch from an
+external data source, then a good policy would be to make sure that the object
+lives only as long as it is clearly needed. Performing a few dozen machine instructions is very
 likely to be a worthwhile trade-off, if memory consumption is the limiting
 resource for scaling up\index{Scaling Up}. If, on the other hand, this data is
 very expensive to recompute or refetch, and there is some chance it might be
-used in the future, then it might be worthwhile keeping it around. 
+used in the future, then it might be worthwhile to keep it around. 
 
-A cache is a performance optimization that holds on to a data structure after the
-current operation is finished with it, in the hope that other operations in the
+\subsection{Caches}
+Deferring
+the time that an object will be reclaimed is the primary function of a cache. A cache is a performance optimization 
+that trades space for time\index{Time-Space Trade-offs}.
+It holds on to a data structure
+after the current operation is finished with it, in the hope that other operations in the
 near future will reuse it. The expense of re-fetching data from external data
 sources and recomputing the in-memory structure can often be amortized, at the
 expense of stretching the lifetime of these data structures. By increasing the
 actual lifetime on an object you will very likely increase peak memory
 consumption.
 
+\subsection{Resource Pools}
+
+
+\subsection{Sharing Pools}
 
 
 %if scopes don't coincide with lifetime
