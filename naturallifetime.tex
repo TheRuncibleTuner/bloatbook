@@ -479,6 +479,13 @@ fix the bugs that make it into your finished application.
 \section{Objects with Deferred Deletion}
 \label{deferred-deletion}
 
+The fifth main facet of object lifetime are those objects that stay around for
+an indeterminant period of time. In some cass, this period based on the
+profitability of keeping them around. In other cases, it is based upon whether
+the 
+
+\subsection{Caches}
+
 If the data stored in an object is cheap to recompute or refetch from an
 external data source, then a good policy would be to make sure that the object
 lives only as long as it is clearly needed. Performing a few dozen machine instructions is very
@@ -487,7 +494,6 @@ resource for scaling up\index{Scaling Up}. If, on the other hand, this data is
 very expensive to recompute or refetch, and there is some chance it might be
 used in the future, then it might be worthwhile to keep it around. 
 
-\subsection{Caches}
 Deferring
 the time that an object will be reclaimed is the primary function of a cache. A cache is a performance optimization 
 that trades space for time\index{Time-Space Trade-offs}.
