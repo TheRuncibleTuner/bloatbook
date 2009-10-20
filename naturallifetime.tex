@@ -142,7 +142,7 @@ In this way, temporary objects
 large amount of heap space unused by the longer-lived objects, then the
 temporaries can be reclaimed less often. This is a good thing, because a
 garbage collection is an expensive proposition.
-\index{Xmx setting} \index{Maximum Heap Size}
+\index{Heap Size Settings} \index{Maximum Heap Size} \index{-Xmx}
 When configuring your application, you may specify a maximum heap size. It
 should certainly be larger than the baseline and session data. How much
 larger than that? This choice directly affects the amount of \emph{headroom},
@@ -467,7 +467,9 @@ are some common ways that this happens.
   this bug could be easily detected early; but developers tend not to do this.
 \end{itemize}
 
-
+The next chapter goes into greater detail of how to avoid these kinds of
+errors. (Some other) chapter describes tooling that can help you detect and
+fix the bugs that make it into your finished application.
 
 
 %\subsection{Correlated with Need} % do we need this? isn't session state a
@@ -476,6 +478,15 @@ are some common ways that this happens.
 
 \section{Objects with Deferred-Deletion}
 \label{deferred-deletion}
+
+Sometimes you don't know when, or even if, an the data stored in an object will
+be used again. If the data is cheap to recompute, or refetch from some external
+data source, then a good policy would be to make sure it lives only as long as
+it is clearly needed. Performing a few dozen machine instructions is very
+likely to be a worthwhile trade-off, if memory consumption is the limiting
+resource for scaling up\index{Scaling Up}. If, on the other hand, this data is
+very expensive to recompute or refetch, and there is some chance it might be
+used in the future, then it might be worthwhile keeping it around. 
 
 A cache is a performance optimization that holds on to a data structure after the
 current operation is finished with it, in the hope that other operations in the
