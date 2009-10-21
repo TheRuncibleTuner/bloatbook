@@ -489,13 +489,15 @@ There are three important cases of objects that need to be reclaimed in some
 deferred fashion: caches, resource pools, and sharing pools.
 
 \subsection{Caches}
+\index{Caches}
 
+\marginpar{A \textbf{Cache} is a map that holds expensive data values, each
+accessed by a unique key.}
 If the data stored in an object is cheap to recompute or refetch from an
 external data source, then a good policy would be to treat the object as a
 temporary. Performing a few dozen machine instructions is very likely to be a
 worthwhile trade-off, if memory consumption is the limiting resource for
 scaling up\index{Scaling Up}. 
-
 You do have to be careful, though. Recall our earlier example that creates a new
 instance of the date parser \class{SimpleDateFormat} for each iteration of a
 loop. Here, as is quite common, something expensive to compute, that
@@ -514,11 +516,32 @@ sufficient space to handle the flux of temporary objects your application
 creates. It holds on to a data structure after the current operation is finished
 with it, in the hope that other operations in the near future will reuse it.
 
+\subsection{Sharing Pools}
+\index{Sharing Pool}
+
+ Ideally, it is the
+\emph{bulk} storage that backs a set of data items, each of the same type.
+
+Objects share
+the data by indexing into the pool.
+
+\marginpar{A \textbf{Sharing Pool} stores canonical instances of data
+values that would otherwise be replicated in many objects.}
+
+\begin{example}{A String Pool}
+You application loads data from a file. This data contains a large number of
+name-value maps that will be used frequently throughout program execution. The
+names come from a small set of 16 distinct names. The values are strings,
+mostlsy quite short. How can these maps be stored in a memory efficient way? 
+\end{example}
+
+
+
 
 \subsection{Resource Pools}
+\index{Resource Pool}
 
-
-\subsection{Sharing Pools}
+\marginpar{A \textbf{Resource Pool} is a set of }
 
 
 %if scopes don't coincide with lifetime
