@@ -479,10 +479,12 @@ fix the bugs that make it into your finished application.
 \section{Objects with Deferred Deletion}
 \label{deferred-deletion}
 
-The fifth main facet of object lifetime are those objects that stay around for
-an indeterminant period of time. In some cass, this period based on the
-profitability of keeping them around. In other cases, it is based upon whether
-the 
+The fifth main facet of object lifetime are those objects that stay around
+beyond the scope of any one method or object. These objects must survive for
+some indeterminant amount of time. In some cases, this period based on the
+profitability of keeping them around. In other cases, objects need to be kept
+around for operations across multiple independent operations across several
+threads. 
 
 \subsection{Caches}
 
