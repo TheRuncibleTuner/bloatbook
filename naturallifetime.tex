@@ -467,7 +467,7 @@ are some common ways that this happens.
   this bug could be easily detected early; but developers tend not to do this.
 \end{itemize}
 
-The next chapter goes into greater detail of how to avoid these kinds of
+The next chapter goes into greater detail on how to avoid these kinds of
 errors. (Some other) chapter describes tooling that can help you detect and
 fix the bugs that make it into your finished application.
 
@@ -479,35 +479,41 @@ fix the bugs that make it into your finished application.
 \section{Objects with Deferred Deletion}
 \label{deferred-deletion}
 
-The fifth main facet of object lifetime are those objects that stay around
-beyond the scope of any one method or object. These objects must survive for
-some indeterminant amount of time; their lifetime is not correlated with any
-easily identifiable entity in the program. In some cases, this period based on
-the profitability of keeping them around. In other cases, objects need to be
-kept around to support multiple independent operations across several threads.
+The last important facet of object lifetime comes from those objects that stay
+around beyond the scope of any one method or object. These objects must survive
+for some indeterminant amount of time. In some cases, this period based on the
+profitability of keeping them around. In other cases, objects need to be kept
+around for operations that span several independent operations across multiple
+threads.
 There are three important cases of objects that need to be reclaimed in some
 deferred fashion: caches, resource pools, and sharing pools.
 
-\subsection{Caches and User/Connection State}
+\subsection{Caches}
 
 If the data stored in an object is cheap to recompute or refetch from an
-external data source, then a good policy would be to make sure that the object
-lives only as long as it is clearly needed. Performing a few dozen machine instructions is very
-likely to be a worthwhile trade-off, if memory consumption is the limiting
-resource for scaling up\index{Scaling Up}. If, on the other hand, this data is
-very expensive to recompute or refetch, and there is some chance it might be
-used in the future, then it might be worthwhile to keep it around. 
+external data source, then a good policy would be to treat the object as a
+temporary. Performing a few dozen machine instructions is very likely to be a
+worthwhile trade-off, if memory consumption is the limiting resource for
+scaling up\index{Scaling Up}. 
 
-Deferring
-the time that an object will be reclaimed is the primary function of a cache. A cache is a performance optimization 
-that trades space for time\index{Time-Space Trade-offs}.
-It holds on to a data structure
-after the current operation is finished with it, in the hope that other operations in the
-near future will reuse it. The expense of re-fetching data from external data
-sources and recomputing the in-memory structure can often be amortized, at the
-expense of stretching the lifetime of these data structures. By increasing the
-actual lifetime on an object you will very likely increase peak memory
-consumption.
+You do have to be careful, though. Recall our earlier example that creates a new
+instance of the date parser \class{SimpleDateFormat} for each iteration of a
+loop. Here, as is quite common, something expensive to compute, that
+\class{SimpleDateFormat}, is treated as a temporary. If the data stored in an
+object is expensive to recompute or refetch, and there is some chance it might
+be used in the future, then it is worthwhile to keep it around.
+
+\index{Time-Space Trade-offs}
+Finding the right balance of time and space is the goal of a good cache
+implementation. The expense of re-fetching data from external data sources and
+recomputing the in-memory structure can often be amortized, at the expense of
+stretching the lifetime of these data structures. By increasing the actual
+lifetime on an object you will very likely increase peak memory consumption. A
+good cache defers the time that an object will be reclaimed, as long as there is
+sufficient space to handle the flux of temporary objects your application
+creates. It holds on to a data structure after the current operation is finished
+with it, in the hope that other operations in the near future will reuse it.
+
 
 \subsection{Resource Pools}
 
