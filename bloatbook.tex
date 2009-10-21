@@ -1,5 +1,14 @@
 \documentclass[a5]{book}
 
+
+%% marginpar update
+\setlength{\marginparwidth}{1.2in}
+\let\oldmarginpar\marginpar
+\renewcommand\marginpar[1]{\-\oldmarginpar[\raggedleft\footnotesize #1]%
+{\raggedright\footnotesize #1}}
+%% marginpar update
+
+
 \def\jre{JRE\xspace}
 \def\jres{JREs\xspace}
 
