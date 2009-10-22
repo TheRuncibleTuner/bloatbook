@@ -489,6 +489,7 @@ There are three important cases of objects that need to be reclaimed in some
 deferred fashion: caches, sharing pools, and resource pools.
 
 \subsection{Caches: Buying Time with Space}
+\label{sec:caches}
 \index{Caches}
 
 \marginpar{A \textbf{Cache} is a map that holds expensive data values, each
@@ -517,24 +518,82 @@ creates. It holds on to a data structure after the current operation is finished
 with it, in the hope that other operations in the near future will reuse it.
 
 \subsection{Sharing Pools: Avoiding Data Replication}
+\label{sec:sharing-pools}
 \index{Sharing Pool}
-
- Ideally, it is the
-\emph{bulk} storage that backs a set of data items, each of the same type.
-
-Objects share
-the data by indexing into the pool.
 
 \marginpar{A \textbf{Sharing Pool} stores canonical instances of data
 values that would otherwise be replicated in many objects.}
+A cache amortizes the time cost of fetching or initializing data. An orthogonal
+issue lies in the memory expense of storing many copies of the same data
+throughout the heap. This is especially a problem with strings. Heaps can often
+store the same string a dozen times.
 
-\begin{example}{A String Pool}
+\begin{example}{Duplicate Strings}
 You application loads data from a file. This data contains a large number of
-name-value maps that will be used frequently throughout program execution. The
-names come from a small set of 16 distinct names. The values are strings,
-mostlsy quite short. How can these maps be stored in a memory efficient way? 
+name-value maps that will be used frequently throughout program execution.
+These maps represent configuration information. The names come from a small set
+of 16 distinct names. The values are strings come from
+a set of strings unknown at development time, but a set that is small in size;
+there aren't going to be many distinct values, but you are unwilling or unable
+to nail them down at compile time. How can these maps be stored in a memory
+efficient way?
 \end{example}
 
+Without any special effort, each instance of this kind of configuration map
+would store the some subset of same 16 key strings. Furthermore, each map would
+store duplicates of the values. The following code snippet has those two
+aspects of duplication:
+
+\begin{shortlisting}
+void handleNextEntry() {
+	String key = getNextString();
+	Object value = getNextString();
+	map.put(key, value);
+}
+\end{shortlisting} 
+
+Java provides a built-in mechanism for sharing the contents of strings across
+many string instances. By \emph{interning}\index{String interning} a Java
+\class{String}, you ensure that the returned \class{String} will only have
+distinct storage if it is a string value that hasn't been interned yet. You can
+modify the first try as follows:
+
+\begin{shortlisting}
+void handleNextEntry() {
+	String key = getNextString().intern();
+	Object value = getNextString().intern();
+	map.put(key, value);
+}
+\end{shortlisting} 
+
+It is possible to do even better, if you have the luxury of modifying both ends
+of the communication channel, i.e. both the serialization and this
+deserialization code. There are only 16 distinct names used in all instances of
+this configuration map. This seems like a perfect case for an enumerated type.
+An enumerated type can be used to represent strings as numbers at runtime. The
+only place the strings are stored is in the string constant pool\index{Java's
+Constant Pools}. Each class, when compiled, keeps a pool of the strings that
+are used by code in that class. In this way, an enumerated type is an even more
+highly optimized sharing pool than that provided by the interning mechanism:
+
+\begin{shortlisting}
+enum PropertyName = {...};
+void handleNextEntry() {
+	PropertyName key = getNextPropertyName();
+	Object value = getNextString().intern();
+	map.put(key, value);
+}
+\end{shortlisting} 
+
+
+
+There is an important variant of a sharing pool called the Bulk Sharing Pool.
+Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
+memor costs of storing data. However, rather than mitigate the costs of data
+duplication, a bulk sharing pool aims to amortize the costs of Java object
+headers across the elements in a pool. This is a topic that stretches notions of
+how to store data beyond the normal Java box, and so will be discussed, along
+with many similar matters, in \autoref{chapter:outisde-java-box}.
 
 
 \begin{table}
@@ -560,49 +619,51 @@ mostlsy quite short. How can these maps be stored in a memory efficient way?
 \end{table}
 
 \subsection{Resource Pools: Amortizing Allocation Costs}
+\label{sec:resource-pools}
 \index{Resource Pool}
 
 \index{Amortizing Costs}
-A cache can amortize the cost, in time, of fetching or otherwise initializing
-the data stored in an object. A sharing pool can amortize the cost, in space,
-of storing the same data in many separate objects. In both cases, the data is
-the important part of what is stored.
+A cache can amortize the cost, in time, of fetching or otherwise initializing the
+data stored in an object. A sharing pool can amortize the cost, in space, of
+storing the same data in many separate objects. In both cases, the data is the
+important part of what is stored.
 
-\marginpar{A \textbf{Resource Pool} is a set of interchangeable storage or 
-external connections that are expensive to construct.}
-There is a third case, where one needs to
-amortize the cost of the allocations, rather than the cost of initializing or
-fetching the data that is stored in this object. A resource pool stores the
-result of the allocation, not the data. Therefore, the elements of a resource
-pool are interchangeable, because it is the storage, not the values that
+\marginpar{A \textbf{Resource Pool} is a set of interchangeable storage or
+external connections that are expensive to construct.} There is a third case,
+where one needs to amortize the cost of the allocations, rather than the cost of
+initializing or fetching the data that is stored in this object. A resource pool
+stores the result of the allocation, not the data. Therefore, the elements of a
+resource pool are interchangeable, because it is the storage, not the values that
 matter. It is important to note that, though the data values are not the
 important part, the elements of the pool are objects, and are thus intended to
 store data! A resource pool handles the interesting case where the data is
-temporary, but you need, for performance reasons, the objects to live across
-many uses. The protocol for using a resource pool then involves reservation,
-a period of private use of the fields of the reserved object, followed by a
-return of that object to the pool.
+temporary, but you need, for performance reasons, the objects to live across many
+uses. The protocol for using a resource pool then involves reservation, a period
+of private use of the fields of the reserved object, followed by a return of that
+object to the pool.
 
 Resource pooling only makes sense if the allocations themselves are expensive.
-There are several reasons why a
-Java object can be expensive to allocate. Creating and zeroing a large array
-in each iteration of a loop can bog down performance. Creating a new key object
-to determine whether an value exists in a map can sometimes contribute a great
-deal to the load of temporary objects. 
+There are several reasons why a Java object can be expensive to allocate.
+Creating and zeroing a large array\index{Large Arrays} in each iteration of a
+loop can bog down performance. Creating a new key object to determine whether an
+value exists in a map can sometimes contribute a great deal to the load of
+temporary objects.
 
+\index{Connection Pools}
 A more important example of the need for amortizing the time cost of allocation
 comes when this Java object is a proxy for resources outside of Java. If your
-application accesses a relational database through the JDBC interface, you will
-experience the need for resource pooling. There are two kinds of objects that
-serve as proxies for resources involving database access. First are the
-connections to the database. In most operating systems, establishing a network
-connection is an expensive proposition. It also involves reservation of
-resoures in the database process. Second are the precompiled SQL statements
-that your application uses. As with the connections, these involve setup cost,
-of the compilation itself, as well as the reservation of memory resources, that
-the database uses to cache certain information about the query.
+application accesses a relational database through the JDBC\index{JDBC}
+interface, you will experience the need for resource pooling. There are two kinds
+of objects that serve as proxies for resources involving database access. First
+are the connections to the database. In most operating systems, establishing a
+network connection is an expensive proposition. It also involves reservation of
+resoures in the database process. Second are the precompiled SQL statements that
+your application uses. As with the connections, these involve setup cost, of the
+compilation itself, as well as the reservation of memory resources, that the
+database uses to cache certain information about the query.
 
 \begin{example}{Per-thread Singleton versus Resource Pool}
+\index{Thread-Local Storage}
 Your application accesses a remote resource. Why not keep one connection
 persistent per thread? What's the point of a resource pool in this case?
 \end{example}
