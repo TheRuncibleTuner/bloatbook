@@ -1,0 +1,15 @@
+Appendix
+
+, you can get them from HPROF heap snapshots. The \texttt{jmap} utility that comes with the Sun JRE distribution writes an HPROF heap dump:
+\ttfamily
+\begin{verbatim} 
+      jmap -dump:format=a,file=outputfile <pid of jvm process> 
+\end{verbatim}
+If you do not have \texttt{jmap}, you can enable the HPROF agent using the command line option: 
+\ttfamily
+\begin{verbatim} 
+      -agentlib:hprof=heap=dump,format=a,file=outputfile
+\end{verbatim}
+\normalfont
+Sending a signal to the JRE process produces a heap snapshot in \textit{outputfile}.
+
