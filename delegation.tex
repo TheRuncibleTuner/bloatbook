@@ -243,10 +243,9 @@ The software engineering culture tends to promote delegation, and for good reaso
 
 There is no simple rule that can always be applied to decide when to use delegation. Each situation has to be evaluated in context, and there may be tradeoffs among different goals. To make an informed decision, it is important to know what the costs are.
 
-\begin{example}{Employee emergency contact} 
+%\begin{example}{Employee emergency contact} 
 Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
-\end{example}
-
+%\end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
 
 \begin{shortlisting} 
@@ -351,7 +350,7 @@ When many objects are used to represent one logical concept, this is an indicati
 
 As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
 
-\begin{example}{Keeping track of updates} 
+%\begin{example}{Keeping track of updates} 
 A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
 \begin{shortlisting}
 class UpdateInfo {
@@ -363,9 +362,9 @@ class UpdateInfo {
 \end{shortlisting}
 You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
 a \textit{cross-cutting feature}, since it can apply to any class in a data model.
-\end{example}
+%\end{example}
 
-Returning to Example 3 in Section~\ref{fine-grained-data-models}, suppose that
+Returning to \class{EmployeeWithEmergencyContact} in Section~\ref{fine-grained-data-models}, suppose that
 updates to employee emergency contacts need to be tracked. You need to decide
 how precise the tracking should be. Should every update to every phone number
 and email address be tracked, or is it sufficient to track the fact that some
@@ -404,11 +403,11 @@ problem, it may not be possible to be this casual with memory. Also, an alternat
 
 If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
 
-\begin{example}{8-character string} 
+%\begin{example}{8-character string} 
 Consider what happens to the 8-character string from
 Section~\ref{sec:bloat-def} in a 64-bit \jre. The memory layout is shown in
 Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
-\end{example}
+%\end{example}
  
  \begin{figure}
   \centering
