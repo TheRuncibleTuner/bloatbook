@@ -1,7 +1,30 @@
 \chapter{Preface}
 
 Over the past ten years, we have worked with developers, testers, and performance analysts to help fix memory-related problems in large Java applications.
-During the many years we have spent studying the performance of Java applications, it has become clear to us that the problems related to memory is a topic worthy of a book.
+During the many years we have spent studying the performance of Java applications, it has become clear to us that the problems related to memory is a topic worthy of a book. 
+In spite of the fact that computers are now equipped with gigabytes of memory, Java developers face an uphill battle getting their applications to fit in memory. Ten years ago, a 500MB heap was considered big. Now it is not unusual to see applications that are having trouble fitting into 2 to 3 gigabyte heaps, and developers are turning to 64-bit architectures to be able to run with even larger heaps.  
+
+Java heaps are not just big, but are often bloated, with as much as 80\% of memory devoted to overhead. This much bloat is an indication that a lot of memory is being used to accomplish little. For example, we have seen applications where a simple transaction needs 500K for session state, or 1 Gigabyte of memory to support only a few hundred users. 
+
+By the time we are called in to help with a performance problem, the situation is often critical. The application is either in the final stages of testing or about to be deployed. Fixing problems this late in the development cycle is very expensive, and can sometimes require major code refactoring. It would certainly be better if it were possible to deal with memory issues earlier on, during development or even design.
+
+%Compared to systems languages like C, Java space costs are high, even for the most basic building blocks. This makes it all the more important for developers to be aware of memory costs.  Java heaps are not just big, but are often bloated, with as much as 80\% of memory devoted to overhead. Memory bloat can have a serious impact on development schedules and on the scalability of deployed systems. Fortunately, bloated designs are not an inevitable consequence of object-oriented development.
+
+This book is a practical, systematic, and comprehensive guide to memory-conscious programming in Java. It walks though numerous examples taken from real applications, illustrating common design problems that lead to memory bloat, and looks inside the Java collection classes and runtime. It details a methodology for programmers to follow. Our aim is to empower developers to avoid pitfalls, make informed tradeoffs, and to show how dramatic improvements in memory efficiency are sometimes possible with a little care.
 
 The book is appropriate for Java developers (experienced and novice alike), especially framework and applications developers, who are faced with decisions every day that will have impact down the line in system test and production. It is also aimed at technical managers and testers, who need to make sure that Java software meets its performance requirements.  This material should be of interest to students and teachers of software engineering, who would like to gain a better understanding of memory usage patterns in real-world Java applications. Basic knowledge of Java is assumed.
+
+Much of the content relies on knowing or measuring the size of objects at runtime. Sizes vary depending which JRE you are using. Our reference JRE is Sun Java 6 update 14. Unless otherwise stated, all sizes are for this reference JRE. The book is self-contained in that it teaches how to calculate object sizes from scratch. We realize, of course, that this can be a tedious endevour, and so the appendix provides a list of tools and resources that can help with memory analysis. Nevertheless, we belief that performing detailed calculations are pedagogically important. 
+
+
+The book is divided into four parts:
+
+Part 1 introduces an important theme that runs through the book: the
+health of a data design is the fraction of memory devoted to actual data vs. various kinds of infrastructure. In addition to size, memory health can be helpful for gauging the appropriateness of a design choice, and for comparing alternatives. It can also be a powerful tool for recognizing scaling problems early.
+
+Part 2 covers the choices developers face when creating their physical data models, such as whether to delegate data to separate classes, whether to introduce subclasses, and how to represent sparse data and relationships. These choices are looked at from a memory cost perspective. This section also covers how the JVM manages objects and its cost implications for different designs.
+  
+Part 3 is devoted to collections. Collection choices are at the heart of the ability of large data structures to scale. This section covers, through examples, various design choices that can be made based on data usage patterns (e.g. load vs. access), properties of the data (e.g. sparseness, degree of fan-out), context (e.g. nested structures) and constraints (e.g. uniqueness).  We look closely at the Java collection classes, their cost in different situations, and some of their undocumented assumptions. We also look at some alternatives to the Java collection classes.
+ 
+Part 4 covers the topic of lifetime management, a common source of inefficiency, as well as bugs. This section examines the costs of both short-lived temporaries and long-lived structures, such as caches and pools.  We explain the Java mechanisms available for managing object lifetime, such as ThreadLocal storage, weak and soft references, and the basic workings of the garbage collector. Finally, we present techniques for avoiding common errors such as memory leaks and d
 
