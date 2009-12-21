@@ -1,6 +1,27 @@
 
 \chapter{Introduction}
 
+Managing your Java program's use of memory couldn't be easier, or so it would
+seem. Java provides you with automatic garbage collection, a compiler that
+runs as your program is running, even responding to your program's operation, and
+a growing list of standard, open source, and proprietary libraries, such as collections,
+written by experts. All you have to do is piece together the parts and let the runtime do the rest for you.
+
+The reality, of course is very different. If you just assemble the parts, take
+all the defaults, and follow all the otherwise good advice about keeping your
+program flexible and maintainable, you may soon find that your memory costs are
+\emph{much} higher than imagined.  What's more, < something about lifetime
+here > .
+
+Languages like C give you a lot of choices, and it is obvious what
+decisions you are making. In Java it is exactly because so much is done for you that it
+is important to know what memory is costing you.  Unfortunately, it is also
+more difficult in Java to find out what your costs are. < And the sooner the
+better, since once memory problems are discovered they can require extensive
+refactoring >.  So before getting into too much detail, let's first dispel some
+common misconceptions about memory in Java.
+
+\comment{move a lot of this to preface as motivation/inspiration for book}
 Thanks to years of software engineering advances, there is now a large
 programmer toolkit for producing well-designed and maintainable programs,
 including a plethora of modeling techniques, design patterns, and coding 
@@ -55,7 +76,7 @@ fix. Limiting systemic bloat requires paying attention to memory
  at every step of the development process and at every level of abstraction.
 
 
-\section{Common Myths About Memory}
+\section{Common Misconceptions About Memory}
 
 In addition to the technical reality of layers and layers of abstraction, there
 are other reasons why memory footprint problems are so common. In particular,
@@ -224,7 +245,7 @@ Compared to systems languages like C, Java space costs are high, even for the mo
 This makes it all the more important for developers to be aware of memory costs.
 
 
-\setion{Conventions and Organization}
+\section{Conventions and Organization}
 
 
 Since the word \textit{object} can have different meanings, we precisely define the terminology used:
