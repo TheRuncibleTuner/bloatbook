@@ -1,17 +1,16 @@
 
 \chapter{Introduction}
 
-Managing your Java program's use of memory couldn't be easier, or so it would
+Managing your Java program's memory couldn't be easier, or so it would
 seem. Java provides you with automatic garbage collection, a compiler that
-runs as your program is running, even responding to your program's operation, and
-a growing list of standard, open source, and proprietary libraries, such as collections,
-written by experts. All you have to do is piece together the parts and let the runtime do the rest for you.
+runs as your program is running, and even responds to your program's
+operation, and a growing list of standard, open source, and proprietary libraries, such as collections,
+written by experts. All you have to do is piece together the parts and let the Java runtime system do the rest for you.
 
-The reality, of course is very different. If you just assemble the parts, take
+The reality, of course, is very different. If you just assemble the parts, take
 all the defaults, and follow all the otherwise good advice about keeping your
 program flexible and maintainable, you may soon find that your memory costs are
-\emph{much} higher than imagined.  What's more, < something about lifetime
-here > .
+\emph{much} higher than imagined.  What's more, keeping objects alive for only as long as you want them, and no longer, takes some effort. 
 
 Languages like C give you a lot of choices, and it is obvious what
 decisions you are making. In Java it is exactly because so much is done for you that it
@@ -21,7 +20,7 @@ better, since once memory problems are discovered they can require extensive
 refactoring >.  So before getting into too much detail, let's first dispel some
 common misconceptions about memory in Java.
 
-\comment{move a lot of this to preface as motivation/inspiration for book}
+%move a lot of this to preface as motivation/inspiration for book
 Thanks to years of software engineering advances, there is now a large
 programmer toolkit for producing well-designed and maintainable programs,
 including a plethora of modeling techniques, design patterns, and coding 
@@ -78,14 +77,14 @@ fix. Limiting systemic bloat requires paying attention to memory
 
 \section{Common Misconceptions About Memory}
 
-In addition to the technical reality of layers and layers of abstraction, there
+In addition to the technical reasons why managing memory can be a challenge, there
 are other reasons why memory footprint problems are so common. In particular,
 the software culture and popular beliefs lead programmers to ignore memory
 costs. Some of these beliefs are really myths --- they might have once
 been true, but no longer. Here are several.
 
-\emph{Myth.} Memory is cheap, hardware is always improving, so things are fine.
-With gigabytes of memory available, you never need to worry about running out.
+\bold{Misconception.} Memory is cheap, hardware is always improving, so things are fine.
+\bold{Reality.} With gigabytes of memory available, you never need to worry about running out.
 However, resources are still finite, and it is surprising how easy it is to
 saturate them. Furthermore, while processor speeds have been doubling every two
 years following Moore's law, a physical limit has now been reached preventing further processor speedup. 
@@ -95,7 +94,7 @@ memory bandwidth and cache sizes will not grow proportionally.
  and the rapidly growing number of small embedded processors will require more
  efficient use of memory.
 
-\emph{Myth.} The JIT optimizer and garbage collector are so good that they will
+\bold{Misconception.} The JIT optimizer and garbage collector are so good that they will
 clean up all efficiencies. things are fine, everything is cheap; there was an
 article on developer works, called "Go ahead, make a mess",  and this idea that objects are free, at least temporaries are,
  and everything will be taken care of for you. The JIT is going to clean things up, the garbage collector will elp, 
