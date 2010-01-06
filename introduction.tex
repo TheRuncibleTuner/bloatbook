@@ -3,22 +3,19 @@
 
 Managing your Java program's memory couldn't be easier, or so it would
 seem. Java provides you with automatic garbage collection, a compiler that
-runs as your program is running, and even responds to your program's
-operation, and a growing list of standard, open source, and proprietary libraries, such as collections,
-written by experts. All you have to do is piece together the parts and let the Java runtime system do the rest for you.
+runs as your program is running and responds to its operation, and a growing list of standard, open source, and proprietary libraries, such as collections, all written by experts. All you have to do is piece together the parts and let the Java runtime system do the rest for you.
 
 The reality, of course, is very different. If you just assemble the parts, take
-all the defaults, and follow all the otherwise good advice about keeping your
+the defaults, and follow all the otherwise good advice to make your
 program flexible and maintainable, you may soon find that your memory costs are
-\emph{much} higher than imagined.  What's more, keeping objects alive for only as long as you want them, and no longer, takes some effort. 
+\emph{much} higher than imagined.  What's more, keeping your data structures alive for exactly as long as you want can take much more effort than planned.
 
-Languages like C give you a lot of choices, and it is obvious what
-decisions you are making. In Java it is exactly because so much is done for you that it
-is important to know what memory is costing you.  Unfortunately, it is also
-more difficult in Java to find out what your costs are. < And the sooner the
-better, since once memory problems are discovered they can require extensive
-refactoring >.  So before getting into too much detail, let's first dispel some
-common misconceptions about memory in Java.
+Languages like C give you a lot of control over storage, and so it is clear what
+the consequences of your choices are. In Java much is done for you, both by the runtime and by the many layers of frameworks, so it is easy to lose sight of the space your data designs require. In fact, it can be downright difficult to find out. This is especially true early in the development cycle, when it is easier to make design changes.  Java also gives you fewer storage options than languages like C, and some of these options are surprisingly expensive. < In fact, many of the basic building blocks in Java require more space than C++. > So careful attention to the cost of design decisions is especially important in Java.  This book's main purpose is to help you make informed design tradeoffs based on a solid knowledge of common data design options and their space costs.  < And the sooner the better, since once memory problems are discovered they can require extensive
+refactoring >. 
+
+There are some common beliefs and there are some common beliefs that can get in the way 
+Before getting into too much technical detail, ... The next section dispels some common misconceptions about memory in Java.  These misconceptions can get in the way of making  The remaining sections in this chapter introduce some terminology and conventions used in the rest of the book.
 
 %move a lot of this to preface as motivation/inspiration for book
 Thanks to years of software engineering advances, there is now a large
@@ -253,6 +250,13 @@ Since the word \textit{object} can have different meanings, we precisely define 
 \item A \textit{data model} is a set of classes that represents one or more logical concepts.
 \item Finally, an \textit{object} is an instance of a class, that exists at runtime occupying a contiguous section of memory.
 \end{itemize} 
+
+
+\section{Entities and Collections}
+
+
+
+
 
  
 
