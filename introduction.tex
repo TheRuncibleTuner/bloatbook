@@ -72,7 +72,7 @@ fix. Limiting systemic bloat requires paying attention to memory
  at every step of the development process and at every level of abstraction.
 
 
-\section{Common Misconceptions About Memory}
+\section{Some Common Misconceptions About Memory}
 
 In addition to the technical reasons why managing memory can be a challenge, there
 are other reasons why memory footprint problems are so common. In particular,
@@ -241,8 +241,22 @@ Compared to systems languages like C, Java space costs are high, even for the mo
 This makes it all the more important for developers to be aware of memory costs.
 
 
-\section{Conventions and Organization}
+\section{Notation and Conventions}
 
+\subsection{Entity-Collection Diagrams}
+
+Much of this book is about how to implement your data designs to make the most efficient use of space. In this section we introduce a diagram, called the \emph{entity-collection(E-C) diagram}, that helps with that process. It highlights the major elements of the data model implementation, so that the costs and scaling consequences of the design are easily visible. We use these diagrams throughout the book to illustrate various implementation options and their costs.
+
+A data model implementation begins with a conceptual understanding of the entities and relationships in the model.  This may be an informal understanding, or it may be formalized in a diagram such as an E-R diagram or a UML class diagram.  At some point that conceptual model is turned into Java classes that represent the entities, attributes, and assocations of the model, as well as any auxiliary structures, such as indexes, needed to access the data.  The example below shows a simple conceptual model, using a UML class diagram.  A Java implementation of that model is also shown, using rectangles for classes and arrows for references.  %The Java diagram below is typical of a schema diagram, in that it shows 
+
+While the Java 
+
+
+In these models we make a distinction between the implementations of entities and the implementation of collections.  We do this for a number of reasons.  First, the kinds of choices you make to improve the storage of your entities are often different from those Collections are also depicted as nodes, using an octagonal shape.  This is different from UML class diagrams, where associations are shown as edges. E-C diagrams show 
+
+\subsection{Defining Terms}
+
+Terms like object can have different meanings in the literature.  The following are the conventions for terms used throughout this book.
 
 Since the word \textit{object} can have different meanings, we precisely define the terminology used:
 \begin{itemize}
@@ -252,7 +266,6 @@ Since the word \textit{object} can have different meanings, we precisely define 
 \end{itemize} 
 
 
-\section{Entities and Collections}
 
 
 
