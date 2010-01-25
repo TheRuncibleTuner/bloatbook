@@ -1,1 +1,267 @@
 \chapter{Reducing Object Bloat}
+
+In many applications, the heap is filled mostly with instances of just a few
+important classes.  You can increase scalability significantly by making these
+classes compact. This chapter describes field usage
+patterns that can be easily optimized for space, for example, a field that is
+rarely needed, a constant field, or a dependent field. Simple refactoring of these
+kinds of fields can sometimes result in big wins.
+ 
+
+\section{Rarely Used Fields}
+
+Chapter~\ref{chapter:delegation} presents examples where delegating fields
+to another class increases memory cost. There is a trade-off
+between memory cost and flexibility, and you have to decide whether the
+flexibility gained from delegation is really worth the cost. However, when
+fields are used rarely, delegating them to a side class can actually save
+memory, since a side object only has to be allocated if and when it is needed. 
+In this case, there is no trade-off, since delegation is always the right
+decision.
+
+As an example, consider an on-line store with millions of products. 
+Most of the products are supplied by the parent company, but
+occasionally the store sells products from another company:
+\begin{shortlisting} 
+class Product {
+	String sku;
+	String name;
+	\ldots
+	String alternateSupplierName;
+	String alternateSupplierAddress;
+	String alternateSupplierSku;
+}
+\end{shortlisting}
+In the common case where there is no alternate supplier, the last three fields
+are never used, so 12 bytes in a \class{Product} object are wasted. If you want
+to be able to cache as many products as possible in memory, then wasting 12 bytes per
+product is significant. To save memory, all of the alternate supplier information
+should be delegated to a separate side class, allocated lazily, on a need-only
+basis:
+\begin{shortlisting} 
+class Product {
+	String sku;
+	String name;
+	\ldots
+	Supplier alternateSupplier;
+}
+
+class Supplier {
+	String supplierName;
+	String supplierAddress;
+	String sku;
+}
+\end{shortlisting}
+For products with no alternative supplier, eight bytes are saved per product,
+since three fields are replaced by one.
+
+
+One possible error is
+to define a side class for fields that you think are rarely-used, but in fact
+they are used most of the time. In this case, you pay the 
+additional cost of delegation most of the time, so that memory costs increase
+rather than decrease.
+
+This raises an interesting question. If fields are rarely used, 
+delegation saves memory, but if fields are frequently used, delegation is more
+expensive. What about fields with different usage rate, say they are used 50\%
+of the time? In fact, whether delegation decreases or increases memory cost
+depends on the total size of the delegated fields, as well as the usage rate. 
+The graph in Figure ?? shows the cross-over point for different total sizes. 
+For example, if you are considering delegating two fields with a total size of
+eight bytes, then delegation saves these are used less than 25\% of the time. If you delegate 32 bytes to a side object, then you save memory if these are used less than 70\% of the time.
+For the product example, 12 byptes are delegated, so 
+
+CALLOUT:  do the math. 
+  
+A common error is to delegate rarely-used fields to a side class, but forget to
+allocate it only when needed, that is, always allocate a side object. 
+In this case, instead of saving memory, you pay the full cost of delegation as well as 
+the cost of unused fields. 
+Lazy allocation
+can be error-prone, since it may require testing  whether the object
+exists at every use. To avoid these kinds of errors, and to make the
+code easier to refactor, it is good practice to use interfaces and factories.
+
+ 
+
+
+
+This is a case where Java had had multiple inheritance, or had a better union type, or something,
+ it might have been able to help a little more here.
+
+The result is that it is really severely limiting a lot of choices that the application
+ programmer has. I’m going to go back, and this is a little bit historical, the examples
+  I’m showing have long been fixed years ago, and some of the other ones haven’t. 
+  Basically, when I looked at this thing the first time 5 years ago, it was a relatively 
+  early version of EMF, it was 1.x, basically, each object that you wanted to model had at least 
+  a 68 byte additional cost over your fields, and those numbers are kind of approximate right now.
+   The reason is that you had to extend this EObjectImpl thing. ModelObjectImp, 
+   I’m calling it here. And I’ll tell you what some of these pieces were. 
+   So you had it’s object overhead, like anything else, it had a bunch of bookkeeping fields, 
+   and then it delegated to thing called the properties holder, which had its own object o
+   verhead, 
+   and it had its own bookkeeping fields. 
+   So that’s a pretty high base cost to be paying. 
+   So we looked at this, and found some easy problems to fix,
+    and some deeper ones to fix, and some that still haven’t been fixed, 
+because in a large part they really can’t be fixed in the context of Java
+    as it stands now.
+
+This properties holder thing actually came about as the result of an earlier 
+optimization, that there were a whole bunch of fields that were rarely used, and 
+one of the EMF designers decided, very wisely, to take them, and put them into a side object. 
+In general in Java, those are your choices, I mean you don’t really have that many other choices 
+there are no union types, no multiple inheritance. So your choices are you can either have your 
+thing contain extra fields that aren’t being used, or to stick them in a separate object and 
+point to it. So that’s what they chose to do here. Unfortunately, the first problem they had, 
+they lazily allocated these, but the first time we did an analysis of this, there was a bug, 
+and the lazy analysis wasn’t working. I’ve seen this happen in other cases too. 
+You think you’ve fixed something, and then you find, wow, the footprint went up when they 
+did this, and how come we have the same number of property holders as eobjectimpls. 
+Fortunately, that one was a pretty easy problem to fix.
+
+Now let’s talk about the actual allocation cost here, too, so even if we could bring the cost of 
+that bookkeeping down, which they did, the next problem they had, and this is very recent, is that 
+there are some models that are making very heavy use of these fields, so they are not so rare 
+after all. So now all of a sudden, if most of your objects have this side object, then you are 
+paying an extra delegation cost, and you would have been better off having those bookkeeping 
+fields inlined in the first place, so there are tons of ironies here. It turns out the reason this 
+is becoming an issue is that those bookkeeping fields, a lot of what they deal with is references 
+across models, and because of the storage problem, because they are running out of memory, 
+what the rational modeling people are doing is breaking their models into smaller pieces, 
+so they don’t have to load them all into memory at the same time. As a result, they need to 
+have a lot of cross-model references, which in turn is making their models bigger. 
+So the thing that really struck me when I was up there 2 weeks ago, and it didn’t surprise 
+me at all, is there is a lot of very good engineering going on, these were super sharp people, 
+and they are well aware that they have some tough tradeoffs to make, and the same is true of 
+the EMF framework. Sure, there a little silly things here and there that ended up being fixed, 
+but there has been a lot of engineering effort that has gone into this thing, and still people 
+are heavily constrained, as in this case, they are forced to do these sort of contortions. 
+In this case the solution, or partial solution,, is that the EMF framework did some refactoring, 
+and they came up with something called the flat EMFImpl, for exactly this kind of case, where 
+you know you always want the property holder, so instead of extending from the standard 
+EOBjectImpl, you can extend from this flat EMFObjectImpl, and you can save the delegation costs.  
+So that’s still like a very, not a simple solution, still requires some significant refactoring 
+in the framework, and it requires the application developer to suddenly be subclassing a different 
+thing, and to be very conscious of it.
+ 
+
+
+\section{Bookkeeping Fields}
+
+Let’s come back to our low level example again, String. 12 bytes of our 4-byte string 
+or19\% of it, is due to 3 bookkeeping fields. So every string stores an offset,
+a length, and a hashcode. The offset and length are basically are a premature optimization, really. 
+ It was put into the JDK years ago, which was really intended for the substring case. 
+ It says that if I ever take a substring of this thing, 
+ I’m going to be able to share with the origjnal characters of the String 
+ This is a theme you will see throughout the JDK, that there’s so many optimizations that are 
+ done to avoid copies at any cost. Really with a huge focus on time, and almost no focus on 
+ space whatsoever. So studies we saw at TRL, in reality, in the long lived case, for 
+ objects that are sticking around, it’s pretty rare to have objects that are the result of 
+ substring.
+
+And in fact, if they did, they would probably have a lot of empty spaces, because you would be 
+pointing to the middle of them, so you would have a different footprint problem, saving character 
+arrays which you don’t need. So this ione of these optimizations, which you should be aware of as 
+a user, that string is expensive. You have to think about what they really cost when you use them. 
+But the other thing is sort of a cautionary tale, about premature optimization, and also an 
+opportunity that String is an area we should be reconsidering. The 3rd field is hashcode. 
+String stores its hashcode, which seems like a reasonable idea, until you think about the fact 
+that the common case of needing the hashcode is when the string is stored in hashset or a hashmap. 
+In both of those cases, the hashset or hashmap entry already has a field for a hashcode, and is 
+already storing it. And just to add an additional irony here, there is already 4 bytes reserved 
+in the object header for the identity hashcode, which string is overriding, as far as I know ,
+it’s not really being used. So there’s lots of room for storing that hashcode once rather than 
+twice, and maybe we can get rid of some more stuff in the process. So this cautionary tale here 
+is that as you design things that are higher level than this, introducing bookkeeping fields, 
+people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
+clear we are getting any performance out of this; in part because the benchmarks people are using 
+are not really representative of the real applications out there.
+
+
+
+
+\section{Mutually Exclusive Fields}
+
+The next problem we found is that in some cases, you still needed this thing, even when 
+it was rightfully being lazily allocated, and so it had 5 bookkeeping fields, and we took a 
+look at those fields, and we realized they were never all used at the same time. They each 
+covered different cases, and there were various combinations, and you never needed all of them. 
+You usually only needed 2 or 3 of them at a time. So I believe what they did, or what they were 
+planning to do, is combine some of those fields, and basically loosen the typing a bit, and use 
+casts, so share one field, get Capital Object, and then the accessor to it, recast it to it’s 
+actual use case. So that’s sort of like a poor man’s loosely typed union, and so if Java had 
+type safe unions, you wouldn’t need that, and the compiler could do a better job with that too. 
+
+\section{Constant Fields}
+
+The third example in this same larger example, the bookkeeping fields that were in the EObjectImpl 
+itself, and again they also had a variety of causes, there was actually a constant being stored 
+there, so that the class, not the Java class, but the UML class was being stored with each 
+instance. And that makes sense in some ways, because you have a big pool of einstances, 
+but it turned out that all this code is being generated by a code generator off a UML model, 
+so we realized that you can just take this field, and pull it up into a static method, and the 
+code generator can generate this static for each UML class. A UML class turned into a Java class. 
+So that’s a common pattern that shows up often. Sometimes, there are just constant fields, 
+that somebody put in because they thought that might change, or they were just not thinking 
+about the cost of having an extra instance variable. And so those are great easy, easy things 
+to pull out into a static.
+
+\section{Redundant Fields}
+
+A lot of the data type modeling patterns we talked about were either delation or things 
+having overhead fields, and in some cases we had too much data also.  I want to follow up on a 
+few patterns in that area.  Having more data than you really need. In some sense that’s another 
+kind of overhead.  
+
+(two types – can be computed rather than stored, or not.)
+
+Another case they had, they had one or two of those bookkeeping fields were stored computations, 
+they were caching things, so they were actually leaving pointer space to cache something, and 
+then the cache of it was another side object holding onto stuff, and in some cases that was 
+a collection. And it turns out that that was rarely needed. So I don’t know if they actually 
+fixed that, but I believe they did. So again, these are very typical of the kinds of problems you 
+see. You don’t usually see one big problem making an instance size big. You usually see a 
+smattering of all these little kinds of things, and they add up.
+
+The other thing is, and I just have one example of it here, but there are many more in these 
+types. See this typeID, then string of type, so each of these has a type, and they are storing 
+it, and they are storing the formatted version of it also, and so they are allocating basically 
+2 fields for every every logical field here. An int and a pointer. In the next session we will 
+look at other implications of that. This is something they did over and over again, like this 
+in the electronic address, the physical address. A lot of these bytes have to do with the fact 
+that they were storing these things twice. So just the field cost of that was huge. 
+
+So the first problem is hard to fix, in that there is a refactoring. The second problem is easy, 
+just not storing and recomputing it. The second problem is easy, just not storing and recomputing 
+it. (In this case, the database stored both fields as well.)
+
+So what they were doing there, was they were saving both a binary version, and an ASCII 
+formatted version of the same field, and they were doing that for a lot of fields. 
+And since this was a delegated design, this was multiplied everywhere. So it really added up.  
+We looked at the field cost, last time, in the actual objects making up the profile, 
+but the other thing that is super common is that they were pointing to Strings, 
+actually storing the data, and the actual cost of the Strings was pretty high. 
+So the naïve view, especially if you are used to languages like C, is that, what’s a couple of 
+characters?  I’ll just store “Y” or “N”, what’s the big deal of storing one or two characters. 
+But as we saw, looking inside the string, the health ratio for something like Y or an N, 
+a single character, is 48:1. It takes about 44 bytes to store that string, plus the pointer to 
+et there. In some cases these were either constant, or there were things that have just a 
+few values. I think it just had three values, where every single record had both an int, or a 
+short, and had the pointer to a string, which said Y or N.  This is a super common problem, 
+is duplicating data that has a high overhead in its representation. That combination is all over 
+the place, and Strings is the big culprit. They had another field like that. 
+It was a policy threshold, and it was a constant every single record had this
+10\% in it. And they had the number 10\%, and a pointer to a string “10\%”, 
+and a pointer to a string, not sharing them. So certainly they would get a huge reduction 
+just by sharing them. That’s one approach. It takes a little bit of machinery to build that. 
+You can use String intern if you want.  I’ll talk about that. The other thing is just to compute 
+the thing on the fly, assuming it’s something relatively easy. Actually these are 2 
+separate cases. The 10\% you probably want to either share it or compute it on
+the fly somehow, because that’s probably a number that’s dynamically determined. 
+Something like a Y or an N, I would guess is statically determined. That it has a small number of 
+values that you can predict at compile time, and in that case you can have some final statics 
+that are determined at compile time, and everyone can point to them. Pretty simple.
+
