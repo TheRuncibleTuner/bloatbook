@@ -1,0 +1,56 @@
+\usepackage[twoside,dvips]{geometry}
+
+\geometry{%
+paperwidth=7in,
+paperheight=9.25in,
+lmargin=.75in,
+rmargin=.75in,
+bmargin=.625in,
+tmargin=.625in,
+width=5.5in,
+height=7.525in, %7.3
+marginparwidth=0.35in,
+headheight=0.2in,
+headsep=.25in,
+footskip=.025in}
+
+
+%\usepackage[letter,center,dvips]{crop}
+%\special{papersize=11in,8.5in}
+%\crop[frame]
+
+
+\newcommand{\frontmatter}{
+\pagenumbering{roman}             % Roman numbering
+                        % Dummy cover --  PH makes real cover
+% --- Table of Contents ---
+\setcounter{page}{1}              % Starting page number (specified by PH)
+\cleardoublepage
+\parskip .5ex                     % Add space between Contents items
+\tableofcontents                  % Make Contents (comment out if not wanted)
+\cleardoublepage                  % Add blank even-num page if necessary
+\parskip 0in                      % Reset to zero interpar spacing
+% --- Preface (if any) ---
+%\include{preface}                 % Add Preface (if any)
+%\include{Ack}                        % Add acknowledgements if necessary
+%\cleardoublepage                  % Add blank even-num page if necessary
+}
+
+
+\newcommand{\mainmatter}{
+\pagenumbering{arabic}            % Arabic numbering
+}
+
+
+\newcommand{\backmatter}{
+\cleardoublepage
+\nocite{*}  % \nocite is used because no citations appear in this sample text
+}
+
+\let\oldchapter\chapter
+\let\oldendchapter\endchapter
+
+\renewenvironment{chapter}{%
+\cleardoublepage % This command ensures that each chapter starts on a right-hand page
+\oldchapter%
+}{\oldendchapter}      
