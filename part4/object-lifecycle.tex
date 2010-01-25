@@ -19,7 +19,7 @@ fields. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
 object in a well behaved application.
 
 \begin{figure}
-	\includegraphics[width=0.9\textwidth]{Figures/lifetime/object-lifecycle}
+	\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle}
 	\caption{Timeline of the life of an object.}
 	\label{fig:typical-lifecycle}
 \end{figure}
@@ -63,7 +63,7 @@ collectible.\index{Exiting Limbo}
 
 \begin{figure}
 	\centering
-	\includegraphics[width=\textwidth]{Figures/lifetime/states}
+	\includegraphics[width=\textwidth]{part4/Figures/lifetime/states}
 	\caption{After its last use, an object enters a kind of limbo: the application
 	is done with it, but the \jre hasn't yet inferred this to be the case. When an
 	object exits limbo depends on the way it is referenced.}
@@ -310,17 +310,17 @@ Unfortunately, both of these updated versions h
 	\centering
 	\subfigure[The lifecycle of a typical object and its data.]{
 	\label{fig:typical-lifecycle1}
-			\includegraphics[width=0.95\textwidth]{Figures/lifetime/object-lifecycle}
+			\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle}
 	}
 	\subfigure[A situation where there are long periods between uses of an
 	object's data.]{
 	\label{fig:typical-lifecycle2}
-		\includegraphics[width=0.95\textwidth]{Figures/lifetme/object-lifecycle-lulls}
+		\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle-lulls}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
 	\label{fig:typical-lifecycle3}
-		\includegraphics[width=0.9\textwidth]{Figures/object-lifecycle2}
+		\includegraphics[width=0.9\textwidth]{part4/Figures/object-lifecycle2}
 	}
 	\caption{Examples of Natural and Actual lifetimes.}
 	\label{fig:typical-lifecycle}
