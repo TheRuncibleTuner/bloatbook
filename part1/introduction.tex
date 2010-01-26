@@ -2,13 +2,30 @@
 \chapter{Introduction}
 
 Managing your Java program's memory couldn't be easier, or so it would
-seem. Java provides you with automatic garbage collection, a compiler that
-runs as your program is running and responds to its operation, and a growing list of standard, open source, and proprietary libraries, such as collections, all written by experts. All you have to do is piece together the parts and let the Java runtime system do the rest for you.
+seem. Java provides you with automatic garbage collection, and a compiler that
+runs as your program is running and even responds to its operation. There is
+a long list of standard, open source, and proprietary libraries, such as collections, 
+all written by experts. All you have to do is piece together the parts and let
+the Java runtime system do the rest for you.
 
 The reality, of course, is very different. If you just assemble the parts, take
-the defaults, and follow all the otherwise good advice to make your
-program flexible and maintainable, you may soon find that your memory costs are
-\emph{much} higher than imagined.  What's more, keeping your data structures alive for exactly as long as you want can take much more effort than planned.
+the defaults, and follow all the good advice to make your
+program flexible and maintainable, you will likely find that your memory needs are
+\emph{much} higher than imagined. What's more, it can take considerable effort to 
+have your data structures stay around exactly as long as you want, to achieve a
+good balance memory and CPU constraints.
+
+This book is a guide to using memory well in Java. It will give you the tools to make
+informed decisions about your data designs proper (Parts 2 and 3) and about managing the
+lifetime of data structures (Part 4).  For Java, compared to other language, making informed
+decisions about memory can be especially difficult, and especially important.  Here are some reasons
+why:
+
+
+So much is hidden
+Expensive compared to other languages
+Problems can pile up
+Limited choices compared to other languages.
 
 Languages like C give you a lot of control over storage, and so it is clear what
 the consequences of your choices are. In Java much is done for you, both by the runtime and by the many layers of frameworks, so it is easy to lose sight of the space your data designs require. In fact, it can be downright difficult to find out. This is especially true early in the development cycle, when it is easier to make design changes.  Java also gives you fewer storage options than languages like C, and some of these options are surprisingly expensive. < In fact, many of the basic building blocks in Java require more space than C++. > So careful attention to the cost of design decisions is especially important in Java.  This book's main purpose is to help you make informed design tradeoffs based on a solid knowledge of common data design options and their space costs.  < And the sooner the better, since once memory problems are discovered they can require extensive
