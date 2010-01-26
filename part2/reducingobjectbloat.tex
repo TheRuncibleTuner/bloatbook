@@ -11,13 +11,9 @@ kinds of fields can sometimes result in big wins.
 \section{Rarely Used Fields}
 
 Chapter~\ref{chapter:delegation} presents examples where delegating fields
-to another class increases memory cost. There is a trade-off
-between memory cost and flexibility, and you have to decide whether the
-flexibility gained from delegation is really worth the cost. However, when
-fields are used rarely, delegating them to a side class can actually save
-memory, since a side object only has to be allocated if and when it is needed. 
-In this case, there is no trade-off, since delegation is always the right
-decision.
+to another class increases memory cost. However, sometimes delegation can
+actually save memory, if you don't have to allocate the delegated object all the
+time.
 
 As an example, consider an on-line store with millions of products. 
 Most of the products are supplied by the parent company, but
@@ -33,9 +29,8 @@ class Product {
 }
 \end{shortlisting}
 In the common case where there is no alternate supplier, the last three fields
-are never used, so 12 bytes in a \class{Product} object are wasted. If you want
-to be able to cache as many products as possible in memory, then wasting 12 bytes per
-product is significant. To save memory, all of the alternate supplier information
+are never set, so 12 bytes in a \class{Product} object are wasted. 
+To save memory, all of the alternate supplier information
 should be delegated to a separate side class, allocated lazily, on a need-only
 basis:
 \begin{shortlisting} 
@@ -53,7 +48,8 @@ class Supplier {
 }
 \end{shortlisting}
 For products with no alternative supplier, eight bytes are saved per product,
-since three fields are replaced by one.
+since three fields are replaced by one. 
+
 
 
 One possible error is
@@ -71,6 +67,18 @@ The graph in Figure ?? shows the cross-over point for different total sizes.
 For example, if you are considering delegating two fields with a total size of
 eight bytes, then delegation saves these are used less than 25\% of the time. If you delegate 32 bytes to a side object, then you save memory if these are used less than 70\% of the time.
 For the product example, 12 byptes are delegated, so 
+
+\begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part2/Figures/chapter4/rarely-used.pdf}
+ % \includegraphics{eight-char-string}
+  \caption{Suppose a class has a set of related fields that are not needed all
+  of the time. This graph shows when delegating these fields to a side class
+  saves memory. The x-axis is the
+  total number of bytes in the fields, and the y-axis is the percentage 
+  of the time that the fields are used.}
+  \label{fig:rarely-used}
+\end{figure}
 
 CALLOUT:  do the math. 
   
