@@ -1,27 +1,32 @@
-\chapter{Common Lifetime Patterns}
-\index{Lifetime Patterns}
-It would be great if programmers could be in charge only of hooking together and
-populating their data structures, leaving the \jre responsible for the details of
-object allocation and reclamation. The Java runtime does indeed help manage some
-aspects of these management tasks, but leaves a good deal of work in your hands.
-In Java, you needn't explicitly free objects, and in that way a managed language
-is a big step up from a language like C. However, the ultimate promise of
-automatic memory management, that you can create objects without regard for messy
-details of storage management, doesn't play out ideally in practice. Unless you
-are careful, your program will suffer from bugs such as memory leaks, and suffer
-from poor performance. Furthermore, if your objects don't easily fit into the
-limits of a single Java process, and you need to manage, explicitly, shuttling
-them in and out of the Java heap.
+\chapter{Lifetime Requirements}
+\index{Lifetime Requirements}
 
-Unfortunately, then, it is necessary to plan out the lifetime of your objects.
 Your application needs some objects to live forever and it needs the rest to die
-a timely death. This task of managing object lifetime is made simpler by the
-fact that there aren't innumerable ways in which objects live and die. For the most part, your objects
-will fall into one of five common patterns of lifetime.
-\autoref{tab:five-lifetimes} summarizes these five important patterns.
-% This often requires careful design on your part, both to avoid bugs and so that
-% your application performs well in the case when not everything fits into the
-% Java heap.
+a timely death. Unfortunately, some of the important details governing memory
+management are left in your hands. Java promised, with its automatic memory
+management, that you could create objects without regard for the messy details of
+storage allocation and reclamation. In Java, you needn't explicitly free objects,
+which is at once the saviour from, and the source of, many problems with memory
+consumption. Unless you are careful, your program will suffer from bugs such as
+memory leaks\index{Memory Leaks} or excessive peak footprint. Furthermore, if
+your objects don't easily fit into the limits of a single Java process, you will
+need to manage, explicitly, marshalling them in and out of the Java
+heap.\index{Marshalling}
+
+Very often, your application uses a data structure in a way that falls into one
+of a handful of common \emph{lifetime patterns}\index{Lifetime Patterns}. The
+nature of each pattern dictates how much help you will get from the Java runtime
+in the desired preservation and reclamaion of objects, and where it leaves you to
+your own devices. \emph{A necessary step in the design process of any large
+application is understanding into which lifetime pattern each of your data models
+fit}. The five common lifetime patterns are: objects needed only transiently,
+objects needed for the duration of the run, objects whose lifetime ends along
+with a method invocation, objects whose lifetime is tied to some other object,
+and, most difficult of all, objects that live or die based on need.
+\autoref{tab:five-lifetimes} summarizes these five important patterns. We step
+you through each of the patterns, defining them and giving examples of how to
+know when you have an instance of each. In the next chapter, we show how to
+implement these patterns.
 
 %The trickier aspects of memory management, summarized in
 %\autoref{tab:tricky-memory-management}, are discussed in greater detail in
@@ -42,8 +47,8 @@ will fall into one of five common patterns of lifetime.
 	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
 	DOM used only for parsing
 	\\
-	\autoref{deferred-deletion} & {Deferred Deletion} &
-	session state \\
+	\autoref{deferred-deletion} & {Correlated with Need} &
+	pooled Strings \\
 %period\\ scoped to a phase/request\\
 %correlated with an object (annotations)\\
 %correlated with need}\\ \hline

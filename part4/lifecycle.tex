@@ -1,15 +1,9 @@
-\chapter{Managing Object Lifetime}
+\chapter{The Object Lifecycle}
 %Every object created by your application lives for an interval of time from its
 %creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
 %interval of time between its first and last necessary use. %cite drag paper
 %here?
 
-Designing a lifetime management strategy
-requires that you take the tools that Java provides, and combine them
-with other strategies implemented on top of Java. The built-in mechanisms,
-nominally, handle some of the common patterns of object lifetime.
-Unfortunately, they often appear in the form of low-level JVM hooks, and so
-require careful coding to make correct use of them.  
 
 In a \emph{well-behaved} application, an object's lifetime spans its allocation,
 use, and the short period during which the \jre takes control and reclaims the
