@@ -17,16 +17,22 @@ Very often, your application uses a data structure in a way that falls into one
 of a handful of common \emph{lifetime patterns}\index{Lifetime Patterns}. The
 nature of each pattern dictates how much help you will get from the Java runtime
 in the desired preservation and reclamaion of objects, and where it leaves you to
-your own devices. \emph{A necessary step in the design process of any large
-application is understanding into which lifetime pattern each of your data models
-fit}. The five common lifetime patterns are: objects needed only transiently,
+your own devices. 
+
+An important step in the design process of any large application is understanding
+into which lifetime pattern each of your data models fit. In this chapter, we
+describe the five common lifetime patterns: objects needed only transiently,
 objects needed for the duration of the run, objects whose lifetime ends along
 with a method invocation, objects whose lifetime is tied to some other object,
 and, most difficult of all, objects that live or die based on need.
 \autoref{tab:five-lifetimes} summarizes these five important patterns. We step
 you through each of the patterns, defining them and giving examples of how to
-know when you have an instance of each. In the next chapter, we show how to
-implement these patterns.
+know when you have an instance of each.
+
+Once you have mapped out the lifetime requirements of your data models, the next
+step is to chose the right implementation details in order to correctly implement
+each requirement. The remaining chapters in this part show how to implement these
+patterns.
 
 %The trickier aspects of memory management, summarized in
 %\autoref{tab:tricky-memory-management}, are discussed in greater detail in
