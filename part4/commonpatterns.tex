@@ -65,33 +65,47 @@ patterns.
 	\label{tab:five-lifetimes}
 \end{table}
 
-\section{Examples from a Server Application}
+\section{Five Patterns of Object Lifetime}
 
-Configuring memory settings is an iterative process. It usually involves a
-fair amount of trial and error, as one tunes the various knobs to balance memory
-consumption and application performance. These knobs affect things like the size of the Java
-heap, how many entries a cache should hold, and the timeout value for these
-caches. This is usually a process of black box tuning: twist a knob, and see
-how overall performance changes. In addition to being hit
-and miss, it is also quite prone to bugs. If you set the size of a cache too
-high, you risk poor performance due to excessive garbage collection, and even
-possibly process failures, due to running out of heap space.
+%Configuring memory settings is an iterative process. It usually involves a
+%fair amount of trial and error, as one tunes the various knobs to balance memory
+%consumption and application performance. These knobs affect things like the size of the Java
+%heap, how many entries a cache should hold, and the timeout value for these
+%caches. This is usually a process of black box tuning: twist a knob, and see
+%how overall performance changes. In addition to being hit
+%and miss, it is also quite prone to bugs. If you set the size of a cache too
+%high, you risk poor performance due to excessive garbage collection, and even
+%possibly process failures, due to running out of heap space.
 
-Tuning memory consumption in long-running applications, such as servers or
-integrated development environments, is a particularly thorny issue. Improperly
-managing memory in a short-running application may not be the end of the world.
-In an application that runs more or less forever, mistakes can pile up over time.
-In addition, they synthesize information from a diverse array of sources, each
-with its own performance trade-offs. As such, caching plays a large role in these
-applications. Consider an example from a server aplication.
+To introduce the common patterns of object lifetime, we walk through several
+scenarios found in most long-running server applications. These applications
+provide an interesting case study for lifetime management. Managing lifetime when
+the application runs forever is an especially complex issue. This is true for
+more than for servers alone. Desktop applications such as the Eclipse integrated
+development environment shares many of the same challenges. Improperly managing
+memory in a short-running application is usually not a make-or-break defect.
+Indeed, the application often finishes its run before one would even notice a
+problem with memory consumption. Plus, you're not often running many instances of
+this short-running application simultaneously, and so achieving the ultimate in
+scalability is not a primary concern. In contrast, if an application runs more or
+less forever, then mistakes pile up over time. In addition, caching plays a large
+role in these applications, since they often depend on data fetched from remote
+servers, or from disk, neither of which can support the necessary throughput and
+response time requirements. The ability for mistakes to pile up, and for
+misconfigured or poorly implemented caches to impede performance means that
+special care must be taken to recognize the lifetime patterns in your server
+application.
+ 
 
-\begin{example}{Object Lifetimes in a Server Application}
-A web application commerce server preloads catalog data into memory to allow for
-quick access to this commonly used data. It also maintains data for users as they
-interact with the system, browsing and buying products. Finally, it 
-caches the response data that comes from a remote service provider that charges
-per request. How does Java heap consumption vary over time? Which heap size
-fluctuations indicate a problem, and which are expected behavior?
+\begin{example}{Lifetime in A Web Application Server}
+We consider an example of a shopping cart server application. The server, on
+startup, preloads catalog data into memory to allow for quick access to this
+commonly used data. It also maintains data for users as they interact with the
+system, browsing and buying products. Finally, it caches the response data that
+comes from a remote service provider that charges per request. Let's walk
+through how we can plan out the lifetime requirements of these data structures.
+% How does Java heap consumption vary over time? Which heap size fluctuations
+% indicate a problem, and which are expected behavior?
 \end{example}
 
 \begin{figure}
@@ -102,9 +116,8 @@ fluctuations indicate a problem, and which are expected behavior?
 \end{figure}
 
 The heap consumption of this application will fluctuate over time. A timeline
-view expected memory consumption helps to illustrate the five main kinds of
-object lifetime. It visualizes memory during the lulls and peaks of activity, as
-requests are processed and when sessions time out, and as the server starts up.
+view of expected memory consumption helps to visualize these changes. It
+visualizes memory during the lulls and peaks of activity, as requests are processed and when sessions time out, and as the server starts up.
  \autoref{fig:timeline-base-session-temps} shows an example timeline
 for a server that, as it starts up begins to load catalog data into the Java heap.
 Then, it responds to one request at a time. The total height of the area under
@@ -149,7 +162,7 @@ the \jre runs a garbage collection, these temporaries no longer in use will no
 longer contribute to heap consumption.
 
 In this way, temporary objects
-\emph{fill up the headroom} in the heap.\index{Heap Headroom}. If there is a
+\emph{fill up the headroom} in the heap.\index{Heap Headroom} If there is a
 large amount of heap space unused by the longer-lived objects, then the
 temporaries can be reclaimed less often. This is a good thing, because a
 garbage collection is an expensive proposition.
@@ -174,8 +187,9 @@ session data lives for some bounded period of time. It is possible that session
 state will live beyond the end of your session, but nonetheless it has a
 lifetime that is bounded. If, due to an bug, part of this session state is not
 reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
-\marginpar{\textbf{Memory Leaks} are still possible, even with
-automatic garbage collection!} accidentally lives forever. In this
+%\marginpar{\textbf{Memory Leaks} are still possible, even with
+%automatic garbage collection!} 
+accidentally lives forever. In this
 case, over time, the amount of heap required for the application to run will increase without bound.
 \autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
 in the extreme case when all of session state leaks. Over time, the area under
