@@ -1,4 +1,27 @@
-\chapter{Lifetime Requirements}
+\begin{comment}
+chapter 1: basics of lifetime patterns
+chapter 2: aside for basics of memory management
+chapter 3: time-space tradeoffs (optimization)
+chapter 4: basics+optimizations -> requiremnts; how to implement these things
+chapter 5: out of the box
+
+
+
+
+feasibly recomputable state
+for recomputable, either recompute every time, recompute some times, recompute
+never
+
+sharing pool; flyweight; shared immutable factory pattern (coding pattern)
+
+inmemory designs; time-space tradeoffs; correlated lifetime
+
+three risks: introduce leaks, create concurrency problems, extra space
+consumption
+
+\end{comment}
+
+\chapter{Knowing Your Lifetime Requirements}
 \index{Lifetime Requirements}
 
 Your application needs some objects to live forever and it needs the rest to die
@@ -8,64 +31,69 @@ management, that you could create objects without regard for the messy details o
 storage allocation and reclamation. In Java, you needn't explicitly free objects,
 which is at once the saviour from, and the source of, many problems with memory
 consumption. Unless you are careful, your program will suffer from bugs such as
-memory leaks\index{Memory Leaks} or excessive peak footprint. Furthermore, if
-your objects don't easily fit into the limits of a single Java process, you will
-need to manage, explicitly, marshalling them in and out of the Java
-heap.\index{Marshalling}
+memory leaks\index{Memory Leaks}, race conditions, lock contention, or excessive
+peak footprint. Furthermore, if your objects don't easily fit into the limits of
+a single Java process, you will need to manage, explicitly, marshalling them in
+and out of the Java heap.\index{Marshalling}
 
 Very often, your application uses a data structure in a way that falls into one
-of a handful of common \emph{lifetime patterns}\index{Lifetime Patterns}. The
-nature of each pattern dictates how much help you will get from the Java runtime
+of a handful of common \emph{lifetime requirements}\index{Lifetime Requirements}. The
+nature of each requirement dictates how much help you will get from the Java runtime
 in the desired preservation and reclamaion of objects, and where it leaves you to
 your own devices. 
 
 An important step in the design process of any large application is understanding
-into which lifetime pattern each of your data models fit. In this chapter, we
-describe the five common lifetime patterns: objects needed only transiently,
+the lifetime requirement for each of your data models. In this chapter, we
+describe the five common lifetime requirements: objects needed only transiently,
 objects needed for the duration of the run, objects whose lifetime ends along
 with a method invocation, objects whose lifetime is tied to some other object,
 and, most difficult of all, objects that live or die based on need.
-\autoref{tab:five-lifetimes} summarizes these five important patterns. We step
-you through each of the patterns, defining them and giving examples of how to
+\autoref{tab:five-lifetimes} summarizes these five important requirements. We step
+you through each of the requirements, defining them and giving examples of how to
 know when you have an instance of each.
-
-Once you have mapped out the lifetime requirements of your data models, the next
-step is to chose the right implementation details in order to correctly implement
-each requirement. The remaining chapters in this part show how to implement these
-patterns.
-
-%The trickier aspects of memory management, summarized in
-%\autoref{tab:tricky-memory-management}, are discussed in greater detail in
-%later chapters.
 
 \begin{table}
 \centering
 	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
-	\toprule  & Lifetime Property & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
+	\toprule  & Lifetime Requirement & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
 	\autoref{temporary-lifetime}  & {Temporary} & new
 	parser for every date
 	\\
-	\autoref{forever-lifetime} & {Needed Forever} & product catalog
+	\autoref{forever-lifetime} & {Permanently Resident} & product catalog
 	\\
-	\autoref{correlated-lifetime-1} & {Correlated with Object}
+	\autoref{correlated-lifetime} & {Correlated Lifetime}
 	& object annotations
 	\\
-	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
-	DOM used only for parsing
-	\\
-	\autoref{deferred-deletion} & {Correlated with Need} &
-	pooled Strings \\
+%	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
+%	DOM used only for parsing
+%	\\
+	\autoref{deferred-deletion} & {Time-space Tradeoff} &
+		database connection pool \\
+	\autoref{deferred-deletion} & {Deferred Deletion} &
+		session state \\
 %period\\ scoped to a phase/request\\
 %correlated with an object (annotations)\\
 %correlated with need}\\ \hline
 %reusable & maybe i'll need it later \\ \hline
 	\bottomrule
 	\end{tabular}
-	\caption{Five important categories of object lifetime.}
+	\caption{Common requirements for the lifetime of objects that your
+	application must implement properly, in order to avoid correctness or
+	performance problems.}
 	\label{tab:five-lifetimes}
 \end{table}
 
-\section{Five Patterns of Object Lifetime}
+Once you have mapped out the lifetime requirements of your data models, the next
+step is to chose the right implementation details in order to correctly implement
+each requirement. The remaining chapters in this part show how to implement these
+requirements.
+
+%The trickier aspects of memory management, summarized in
+%\autoref{tab:tricky-memory-management}, are discussed in greater detail in
+%later chapters.
+
+
+\section{Lifetime in A Web Application Server}
 
 %Configuring memory settings is an iterative process. It usually involves a
 %fair amount of trial and error, as one tunes the various knobs to balance memory
@@ -77,36 +105,44 @@ patterns.
 %high, you risk poor performance due to excessive garbage collection, and even
 %possibly process failures, due to running out of heap space.
 
-To introduce the common patterns of object lifetime, we walk through several
+To introduce the common requirements for object lifetime, we walk through several
 scenarios found in most long-running server applications. These applications
 provide an interesting case study for lifetime management. Managing lifetime when
 the application runs forever is an especially complex issue. This is true for
 more than for servers alone. Desktop applications such as the Eclipse integrated
 development environment shares many of the same challenges. Improperly managing
-memory in a short-running application is usually not a make-or-break defect.
-Indeed, the application often finishes its run before one would even notice a
-problem with memory consumption. Plus, you're not often running many instances of
-this short-running application simultaneously, and so achieving the ultimate in
-scalability is not a primary concern. In contrast, if an application runs more or
-less forever, then mistakes pile up over time. In addition, caching plays a large
-role in these applications, since they often depend on data fetched from remote
-servers, or from disk, neither of which can support the necessary throughput and
-response time requirements. The ability for mistakes to pile up, and for
-misconfigured or poorly implemented caches to impede performance means that
-special care must be taken to recognize the lifetime patterns in your server
-application.
- 
+the lifetimes of objects, for short-running applications, often does not result
+in critical failure. Indeed, the application often finishes its run before one
+would even notice a problem with memory consumption. Plus, you're probably don't
+run many instances of a short-running application simultaneously; and so
+achieving the ultimate in scalability is not a primary concern. In contrast, if
+an application runs more or less forever, then mistakes pile up over time. In
+addition, caching plays a large role in these applications, since they often
+depend on data fetched from remote servers, or from disk, neither of which can
+support the necessary throughput and response time requirements. The ability for
+mistakes to pile up, and for misconfigured or poorly implemented caches to impede
+performance means that special care must be taken when implementing your server application.
 
-\begin{example}{Lifetime in A Web Application Server}
-We consider an example of a shopping cart server application. The server, on
-startup, preloads catalog data into memory to allow for quick access to this
-commonly used data. It also maintains data for users as they interact with the
-system, browsing and buying products. Finally, it caches the response data that
-comes from a remote service provider that charges per request. Let's walk
-through how we can plan out the lifetime requirements of these data structures.
+The heap consumption of this application will fluctuate over time. A timeline
+view of expected memory consumption helps to visualize these changes. It
+visualizes memory during the lulls and peaks of activity, as requests are
+processed and when sessions time out, and as the server starts up. We will use
+these over the next few pages, as we walk through the common cases of lifetime
+requirements.
+
+
+
+
+% \begin{example}{Lifetime in A Web Application Server}
+To help introduce the common lifetime requirements, we walk through an example of
+a shopping cart server application. The server, on startup, preloads catalog data
+into memory to allow for quick access to this commonly used data. It also
+maintains data for users as they interact with the system, browsing and buying
+products. Finally, it caches the response data that comes from a remote service
+provider that charges per request. Let's walk through how we can plan out the
+lifetime requirements of these data structures.
 % How does Java heap consumption vary over time? Which heap size fluctuations
-% indicate a problem, and which are expected behavior?
-\end{example}
+% indicate a problem, and which are expected behavior? \end{example}
 
 \begin{figure}
 	\centering
@@ -115,35 +151,40 @@ through how we can plan out the lifetime requirements of these data structures.
 	\label{fig:timeline-base-session-temps}
 \end{figure}
 
-The heap consumption of this application will fluctuate over time. A timeline
-view of expected memory consumption helps to visualize these changes. It
-visualizes memory during the lulls and peaks of activity, as requests are processed and when sessions time out, and as the server starts up.
- \autoref{fig:timeline-base-session-temps} shows an example timeline
-for a server that, as it starts up begins to load catalog data into the Java heap.
-Then, it responds to one request at a time. The total height of the area under
-the curves represents the memory consumption at that point in time. 
-In this example, as the server starts up, it begins to load catalog data into
-the heap. This data will be used for the entire duration of the server process.
+\paragraph{Lifetime Requirement: Permanently Resident}
+\autoref{fig:timeline-base-session-temps} shows the timeline of memory
+consumption of our example server 
+during and shortly after its initial startup.
+During the startup interval, the server preloads catalog data into
+the Java heap. Then, the server is warmed with with two test requests.
+The total height of the area
+under the curves represents the memory consumption at that point in time. 
+The preloaded catalog
+data will be used for the entire duration of the server process.
 \index{Objects That Live Forever}
-The Java objects that represent this catalog are objects that are needed
-forever. In the timeline picture, this data is respresented by the lowest area,
-labeled \emph{baseline}. Notice how it ramps up quickly, and then, after the
-server has reached a ``warmed up'' state, memory consumption of this baseline
-data evens out on a plateau for the remainder of the run.
+Therefore, the Java objects that represent this catalog are objects that are
+needed forever. In the timeline picture, this data is respresented by the lowest area, labeled
+\emph{baseline}. Notice how it ramps up quickly, and then, after the server has
+reached a ``warmed up'' state, memory consumption of this baseline data evens out
+on a plateau for the remainder of the run.
 
+\paragraph{Lifetime Requirement: Deferred Deletion}
 \index{Session State}
 After the server is warmed up, it begins to process client requests. Imagine
-interacting with a commerce site. First you browse around for items of
-interest. You may add items to your shopping cart. Eventually, you may
-authenticate and complete a purchase. 
-As you browse and buy, the server may be maintaining some
-state, to remember aspects of what you have done so far. This
-session state, at least the part of it stored in the Java heap, will go away
-soon after your browsing session is complete. In the timeline figure, this
-portion of memory is labeled \emph{sessions}. It ramps up while a session is in
-progress, and then, in the example illustrated here, soon all of that session
-memory should be reclaimed.
+interacting with a commerce site with a web browser. First you browse around,
+looking for items that you like, and add them to your shopping cart. Eventually,
+you may authenticate and complete a purchase. As you browse and buy, the server
+maintains some state, to remember aspects of what you have done so far. For
+example, the server stores the incremental state of multi-step transactions,
+those that span multiple page views.
+ This session
+state, at least the part of it stored in the Java heap, will go away soon after
+your browsing session is complete. In the timeline figure, this portion of memory
+is labeled \emph{sessions}. It ramps up while a session is in progress, and then,
+in the example illustrated here, soon all of that session memory should be
+reclaimed.
 
+\paragraph{Lifetime Requirement: Temporaries}
 The catalog (baseline) data and session state are both examples of objects that
 are expected to stick around for a while.
 \index{Temporary Objects}
@@ -181,6 +222,7 @@ larger than that? This choice directly affects the amount of \emph{headroom},
 	\label{fig:timeline-base-session-temps-with-leak}
 \end{figure}
 
+\paragraph{Lifetime Requirement: Correlated Lifetime}
 \index{Memory Leaks}
 The catalog data should last forever, while the
 session data lives for some bounded period of time. It is possible that session
@@ -198,6 +240,8 @@ the curve steps higher and higher.
 %As you scan the timeline from left to right, memory consumption 
 %it fetches catalog data from its database, and stores them in the Java heap. 
 
+\paragraph{Lifetime Requirement: Time-space Tradeoffs}
+\index{Time-Space Tradeoffs}
 Finally, this example server caches data from some expensive third-party data
 source. When caching data inside of Java objects, there is a fourth effect on
 the timeline landscape. The
@@ -209,9 +253,8 @@ space. Observe how, compared to the other timeline figures, there is little
 headroom for temporaries. In this case, the result is more frequent garbage
 collections. If the cache were sized to occupy an even greater amount of heap
 space, it is possible that there would no longer be room to fit session data.
-The result in this case would be failures in client requests. So, as you can
-see, sizing caches is important. As discussed later, it is very tricky to
-properly size caches, and is something best left in the hands of the \jre.
+The result in this case would be failures in client requests. 
+Sizing caches is important, but tricky to get right.
 
 \begin{figure}
 	\centering
@@ -248,7 +291,7 @@ properly size caches, and is something best left in the hands of the \jre.
 If your application is like most Java applications, it creates a large number of
 temporary objects. They hold data that will only be used for a very short
 interval of time. It is often the case that the objects in these transient data
-structures are only ever referenced by local variables. For example, this is the
+structures are only ever reachable by local variables. For example, this is the
 case when you populate a \class{StringBuffer}, turn it into a \class{String}, and
 then ultimately (and only) print the string to a log file. The point at which all
 of these objects, the strings and character arrays, are no longer used is only
@@ -296,8 +339,8 @@ void main(String xy) {
 	doWork(xy.substring(0,10), xy.substring(10));
 }	
 void doWork(String x, String y) {
-	doRemoveProcedureCall(parse(x));
-	doRemoveProcedureCall(parse(y));
+	doRemoteProcedureCall(parse(x));
+	doRemoteProcedureCall(parse(y));
 }
 Date parse(String string) {
 	return new SimpleDataFormat().parse(string, new ParsePosition(0));
@@ -335,7 +378,7 @@ temporary \class{ParsePosition} objects!).
 % annotation by map lookup
 
 
-\section{Objects Needed Forever}
+\section{Permanently Resident}
 \label{forever-lifetime}
 
 A \class{SimpleDateFormat} object in the previous example was created in every
@@ -354,10 +397,8 @@ Date parse(String string) {
 }
 \end{shortlisting} 
 
-A \code{static} field of an object is one way that Java gives you to indicate
-that you want an object to live forever.
-
 \section{Objects with Correlated Lifetimes}
+\label{correlated-lifetime}
 
 Many objects are needed for a very specific interval of time. This interval is
 usually defined either by the lifetime of another object, or by the duration of
@@ -432,7 +473,7 @@ shines.
 Similar to the way the lifetime of an object can be correlated with another
 object, lifetimes are often correlated with method invocations. When a method
 returns, objects correlated with it should go away. For temporary objects, this
-is usually easy to ensure, since they are usually only referenced by stack
+is usually easy to ensure, since they are usually only reachable from stack
 locations. For the medium-to-long running methods that implement the
 core functionalities of the program, this correlation is harder to get right.
 
@@ -522,7 +563,7 @@ accessed by a unique key.}
 If the data stored in an object is cheap to recompute or refetch from an
 external data source, then a good policy would be to treat the object as a
 temporary. Performing a few dozen machine instructions is very likely to be a
-worthwhile trade-off, if memory consumption is the limiting resource for
+worthwhile tradeoff, if memory consumption is the limiting resource for
 scaling up\index{Scaling Up}. 
 You do have to be careful, though. Recall our earlier example that creates a new
 instance of the date parser \class{SimpleDateFormat} for each iteration of a
@@ -531,7 +572,7 @@ loop. Here, as is quite common, something expensive to compute, that
 object is expensive to recompute or refetch, and there is some chance it might
 be used in the future, then it is worthwhile to keep it around.
 
-\index{Time-Space Trade-offs}
+\index{Time-Space Tradeoffs}
 Finding the right balance of time and space is the goal of a good cache
 implementation. The expense of re-fetching data from external data sources and
 recomputing the in-memory structure can often be amortized, at the expense of

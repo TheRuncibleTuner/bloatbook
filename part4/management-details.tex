@@ -1,4 +1,4 @@
-\chapter{Lifetime Management Strategies}
+\chapter{Implementing Lifetime Requirements}
 
 Designing a lifetime management strategy
 requires that you take the tools that Java provides, and combine them
@@ -6,3 +6,7 @@ with other strategies implemented on top of Java. The built-in mechanisms,
 nominally, handle some of the common patterns of object lifetime.
 Unfortunately, they often appear in the form of low-level JVM hooks, and so
 require careful coding to make correct use of them.  
+
+
+A \code{static} field of an object is one way that Java gives you to indicate
+that you want an object to live forever.
