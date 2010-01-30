@@ -21,7 +21,7 @@ consumption
 
 \end{comment}
 
-\chapter{Knowing Your Lifetime Requirements}
+\chapter{Understanding Your Lifetime Requirements}
 \index{Lifetime Requirements}
 
 Your application needs some objects to live forever and it needs the rest to die
@@ -54,23 +54,33 @@ know when you have an instance of each.
 
 \begin{table}
 \centering
-	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
-	\toprule  & Lifetime Requirement & Example \\ \cmidrule(r){2-2} \cmidrule(l){3-3}
-	\autoref{temporary-lifetime}  & {Temporary} & new
-	parser for every date
+%	\begin{tabular}{lp{0.30\textwidth}p{0.35\textwidth}}
+	\begin{tabular}{ll}
+	\toprule
+	  %&
+	   Lifetime Requirement & Example \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+	   %\cmidrule(r){2-2} \cmidrule(l){3-3}
+	%\autoref{temporary-lifetime} &
+	  Temporary & new parser for every date
 	\\
-	\autoref{forever-lifetime} & {Permanently Resident} & product catalog
+	%\autoref{correlated-lifetime} &
+	Correlated with Another Object & object annotations
 	\\
-	\autoref{correlated-lifetime} & {Correlated Lifetime}
-	& object annotations
+	%\autoref{correlated-lifetime} &
+	Correlated with a Phase or Request & tables needed only for parsing
+	\\
+	%\autoref{deferred-deletion} &
+	Request/phase-spanning & session state 
+	\\
+	%\autoref{forever-lifetime} &
+	 Permanently Resident & product catalog
 	\\
 %	\autoref{correlated-lifetime-2} & {Correlated with Phase} &
 %	DOM used only for parsing
 %	\\
-	\autoref{deferred-deletion} & {Time-space Tradeoff} &
-		database connection pool \\
-	\autoref{deferred-deletion} & {Deferred Deletion} &
-		session state \\
+	%\autoref{deferred-deletion} &
+	 Time-space Tradeoff & database connection pool
+	  \\
 %period\\ scoped to a phase/request\\
 %correlated with an object (annotations)\\
 %correlated with need}\\ \hline
@@ -83,6 +93,13 @@ know when you have an instance of each.
 	\label{tab:five-lifetimes}
 \end{table}
 
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{part4/Figures/requirements}
+\caption{Illustration of some common lifetime requirements.}
+\label{fig:five-lifetimes}
+\end{figure}
+
 Once you have mapped out the lifetime requirements of your data models, the next
 step is to chose the right implementation details in order to correctly implement
 each requirement. The remaining chapters in this part show how to implement these
@@ -93,7 +110,7 @@ requirements.
 %later chapters.
 
 
-\section{Lifetime in A Web Application Server}
+\section{Object Lifetimes in A Web Application Server}
 
 %Configuring memory settings is an iterative process. It usually involves a
 %fair amount of trial and error, as one tunes the various knobs to balance memory
@@ -168,7 +185,7 @@ needed forever. In the timeline picture, this data is respresented by the lowest
 reached a ``warmed up'' state, memory consumption of this baseline data evens out
 on a plateau for the remainder of the run.
 
-\paragraph{Lifetime Requirement: Deferred Deletion}
+\paragraph{Lifetime Requirement: Request-spanning}
 \index{Session State}
 After the server is warmed up, it begins to process client requests. Imagine
 interacting with a commerce site with a web browser. First you browse around,
@@ -292,31 +309,75 @@ If your application is like most Java applications, it creates a large number of
 temporary objects. They hold data that will only be used for a very short
 interval of time. It is often the case that the objects in these transient data
 structures are only ever reachable by local variables. For example, this is the
-case when you populate a \class{StringBuffer}, turn it into a \class{String}, and
-then ultimately (and only) print the string to a log file. The point at which all
-of these objects, the strings and character arrays, are no longer used is only
-shortly after they are constructed. These objects serve as transient homes for
-your data, as it makes its way through the frameworks and libraries you depend
-on. Temporaries are often necessary to bridge separately developed code and
-enable code reuse: as long as you can convert your data layout into a form that
-an API requires, then you can reuse the functionality it provides.
+case when you populate a \class{StringBuilder}, turn it into a \class{String},
+and then ultimately (and only) print the string to a log file. The point at
+which these objects, the string builder, string, and character arrays, are no
+longer used is only shortly after they are constructed:
 
-In many cases, you need do nothing special to manage the temporary objects your
-application creates. After all, generational garbage collectors these days do a
-very good job digesting a large volume of temporary objects. In a generational
-garbage collector, the \jre places temporary objects in a separate heap, and
-thus it need only process the newly created objects during its routine scan.
+\begin{shortlisting}
+String makeLogString(String message, Throwable exception) {
+	StringBuilder sb = new StringBuilder();
+	sb.append(message);
+	sb.append(exception.getLocalizedMessage());
+	return sb.toString();
+}
+void log(String message, Throwable exception) {
+	System.err.println(makeLogString(message, exception));
+}
+\end{shortlisting}
 
-Unfortunately, in Java it is pretty easy to create a high volume of temporary
-objects. Say your application 
-fills up the temporary heap ever second. In this case, based on the common
-speeds of garbage collectors, your application could easily spend over 20\% of its time
-collecting garbage.
-Is it difficult to fill up the temporary heap once per second? Typical
-temporary heap sizes run around 128 megabytes. Say your application is a serves
-a peak of 1000 requests per second, and creates objects of around 50 bytes each.
-If it creates around 2500 temporaries per request, then this application will
-spend 20\% of its time collecting garbage.
+A temporary object serves as a transient home for your data, as it makes its way
+through the frameworks and libraries you depend on. Temporaries are often
+necessary to bridge separately developed code and enable code reuse. The above
+example avoids code dupliation and ensures uniformity of the output data by
+factoring out the logic of formatting messages into the \code{makeLogString}
+method.
+
+%By converting your data layout into a form that an API requires,
+%then you can reuse the functionality it provides.
+
+In many cases, the \jre will do a sufficient job in managing these temporary
+objects for you. Generational garbage collectors \index{Generational Garbage
+Collection} these days do a very good job digesting a large volume of temporary
+objects. In a generational garbage collector, the \jre places temporary objects
+in a separate heap, and thus need only process the newly created objects, rather
+than all objects, during its routine scan.
+
+There are two potential problems that you may encounter with temporary objects.
+The first is the runtime cost of initializing the state of the temporary
+objects' fields. Even if allocating an freeing up the memory for an object is
+free, there remains the work done in the constructor:
+
+\begin{shortlisting}
+class Temp {
+	private final Date date;
+	
+	public Temp(String input) {
+		this.date = DateFormat.getInstance().parse(input);
+	}
+}
+\end{shortlisting}
+
+Even if an instance of \class{Temp} lives for only a very short time, its
+construction has a high cost. It is often the case that this expense is hidden
+behind a wall of APIs. If so, then what you think of as trivial temporary (since
+you, after all, are in control of when the instance of \class{Temp} lives and
+dies), would in actuality be far from trivial in runtime expense. Expenses can
+pile up even further if temporary object constructions are nested.
+
+There is a second potential problem with temporary objects. By creating temporary
+objects at a very high rate, it is possible to overwhelm either the garbage
+collector, or the physical limitations of your hardware. For example, at some
+point, the memory bandwidth necessary to initialize the temporary objects will
+exceed that provided by the hardware. Say your application fills up the temporary
+heap ever second. In this case, based on the common speeds of garbage collectors,
+your application could easily
+ spend over 20\% of its time collecting garbage. Is it difficult to fill up the
+ temporary heap once per second? Typical temporary heap sizes run around 128
+ megabytes. Say your application is a serves a peak of 1000 requests per second,
+ and creates objects of around 50 bytes each. If it creates around 2500
+ temporaries per request, then this application will spend 20\% of its time
+ collecting garbage.
 
 
 %A great many of these
@@ -542,7 +603,7 @@ detect and fix the bugs that make it into your finished application.
 % deferred deletion policy?
 %\label{correlated-lifetime-3}
 
-\section{Objects with Deferred Deletion}
+\section{Object Uses that Span Requests}
 \label{deferred-deletion}
 
 The last important facet of object lifetime comes from those objects that stay
