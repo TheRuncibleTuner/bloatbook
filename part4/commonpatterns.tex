@@ -202,22 +202,20 @@ in the example illustrated here, soon all of that session memory should be
 reclaimed.
 
 \paragraph{Lifetime Requirement: Temporaries}
-The catalog (baseline) data and session state are both examples of objects that
-are expected to stick around for a while.
 \index{Temporary Objects}
- In the course of preloading the cache
-and responding to client requests, the server application will create a number
-of objects that are only used for a very short period of time. They help to
-faciliate the main operations of the server.
-These temporary objects will be reclaimed by the \jres garbage collector in
-relatively short order. The point at which an object is reclaimed depends on when the garbage collector
-notices that it is reclaimable. Normally, the garbage collector will wait until
-the heap is full, and then inspect the heap for the objects that are still
-possibly in use. In this way, the area under the \emph{temporaries} curve has a
-see-saw shape. As the temporaries pile up, waiting for the next garbage
-collection, they contribute more and more to memory footprint. Normally, once
-the \jre runs a garbage collection, these temporaries no longer in use will no
-longer contribute to heap consumption.
+The catalog data and session state are both examples of objects that are expected
+to stick around for a while. In the course of preloading the cache and responding
+to client requests, the server application will create a number of objects that
+are only used for a very short period of time. They help to faciliate the main
+operations of the server. These temporary objects will be reclaimed by the \jres
+garbage collector in relatively short order. The point at which an object is
+reclaimed depends on when the garbage collector notices that it is reclaimable.
+Normally, the garbage collector will wait until the heap is full, and then
+inspect the heap for the objects that are still possibly in use. In this way, the
+area under the \emph{temporaries} curve has a see-saw shape. As the temporaries
+pile up, waiting for the next garbage collection, they contribute more and more
+to memory footprint. Normally, once the \jre runs a garbage collection, these
+temporaries no longer in use will no longer contribute to heap consumption.
 
 In this way, temporary objects
 \emph{fill up the headroom} in the heap.\index{Heap Headroom} If there is a
@@ -246,8 +244,8 @@ session data lives for some bounded period of time. It is possible that session
 state will live beyond the end of your session, but nonetheless it has a
 lifetime that is bounded. If, due to an bug, part of this session state is not
 reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
-%\marginpar{\textbf{Memory Leaks} are still possible, even with
-%automatic garbage collection!} 
+\marginpar{\textbf{Memory Leaks} are still possible, even with
+automatic garbage collection!} 
 accidentally lives forever. In this
 case, over time, the amount of heap required for the application to run will increase without bound.
 \autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
@@ -303,7 +301,7 @@ Sizing caches is important, but tricky to get right.
 %\end{table}
 
 \section{Temporary Objects}
-\label{temporary-lifetime}
+\label{sec:temporary-lifetime}
 
 If your application is like most Java applications, it creates a large number of
 temporary objects. They hold data that will only be used for a very short
@@ -439,16 +437,16 @@ temporary \class{ParsePosition} objects!).
 % annotation by map lookup
 
 
-\section{Permanently Resident}
-\label{forever-lifetime}
+\section{Permanently Resident Objects}
+\label{sec:forever-lifetime}
 
-A \class{DateFormat} object in the previous example was created in every
-loop iteration, and never used again. An improvement would be to create and
-use a single formatter for the duration of the run. The Java API
-documentation encourages developers to reuse a single instance
-multiple times, but leaves the burden of doing so on you. You must be careful to
-remember that it is not safe to do so in multiple threads. The next chapter will discuss remedies
-to this problem. The updated code for the \code{parse} method would be:
+In the previous example, a \class{DateFormat} object was created in every loop
+iteration and used only once. We can improve this situation by creating and using
+a single formatter for the duration of the run. The Java API documentation, in
+writing at least, encourages this behavior, but leaves the burden of doing so on
+you. You must be careful to remember that it is not safe to do so in multiple
+threads. The next chapter will discuss remedies to this problem. The updated code
+for the \code{parse} method would be:
 
 \begin{shortlisting}
 static final DateFormat fmt = new DateFormat.getInstance();
@@ -459,16 +457,17 @@ Date parse(String string) {
 \end{shortlisting} 
 
 \section{Objects with Correlated Lifetimes}
-\label{correlated-lifetime}
+\label{sec:correlated-lifetime}
 
-Many objects are needed for a very specific interval of time. This interval is
-usually defined either by the lifetime of another object, or by the duration of
-a method call. Once that other object is not needed, or once that method
-returns, then these objects are also no longer needed. These are the two many
+Many objects are needed for a bounded interval of time. In some cases, this
+interval is bounded by the lifetime of another object. In a second important
+scenario, the lifetime of an object is bounded by the duration of a method call.
+Once that other object is not needed, or once that method returns, then these
+\emph{correlated} objects are also no longer needed. These are the two important
 cases of objects with correlated lifetime.
 
 \subsection{Objects that Live and Die Together}
-\label{correlated-lifetime-1}
+\label{sec:correlated-lifetime-1}
 
 Normally, if you need to augment the state stored an object, you modify
 the source code of some existing classes. For example, to add a secondary
@@ -529,7 +528,7 @@ case where a solution of side annotations, stored in a \class{WeakHashMap},
 shines.
 
 \subsection{Objects that Live and Die with Program Phases}
-\label{correlated-lifetime-2}
+\label{sec:correlated-lifetime-2}
 
 Similar to the way the lifetime of an object can be correlated with another
 object, lifetimes are often correlated with method invocations. When a method
@@ -599,12 +598,8 @@ errors. \autoref{chapter:tools} describes tooling that can help you
 detect and fix the bugs that make it into your finished application.
 
 
-%\subsection{Correlated with Need} % do we need this? isn't session state a
-% deferred deletion policy?
-%\label{correlated-lifetime-3}
-
-\section{Object Uses that Span Requests}
-\label{deferred-deletion}
+\section{Object that Naturally Span Program Phases or Requests}
+\label{sec:correlated-with-need}
 
 The last important facet of object lifetime comes from those objects that stay
 around beyond the scope of any one method or object. These objects must survive
@@ -615,7 +610,14 @@ threads.
 There are three important cases of objects that need to be reclaimed in some
 deferred fashion: caches, sharing pools, and resource pools.
 
-\subsection{Caches: Buying Time with Space}
+
+\section{Time-space Tradeoffs}
+\label{sec:time-space-tradeoffs}
+
+Extending or Shortening the Natural Lifetime of Objects
+
+
+\subsection{Caches}
 \label{sec:caches}
 \index{Caches}
 
@@ -644,7 +646,7 @@ sufficient space to handle the flux of temporary objects your application
 creates. It holds on to a data structure after the current operation is finished
 with it, in the hope that other operations in the near future will reuse it.
 
-\subsection{Sharing Pools: Avoiding Data Replication}
+\subsection{Sharing Pools}
 \label{sec:sharing-pools}
 \index{Sharing Pool}
 
@@ -712,8 +714,6 @@ void handleNextEntry() {
 }
 \end{shortlisting} 
 
-
-
 There is an important variant of a sharing pool called the Bulk Sharing Pool.
 Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
 memor costs of storing data. However, rather than mitigate the costs of data
@@ -721,29 +721,6 @@ duplication, a bulk sharing pool aims to amortize the costs of Java object
 headers across the elements in a pool. This is a topic that stretches notions of
 how to store data beyond the normal Java box, and so will be discussed, along
 with many similar matters, in \autoref{chapter:outisde-java-box}.
-
-
-\begin{table}
-	\centering
-	\begin{tabular}{rlll} \toprule
-            & cache             & sharing pool & resource pool 
-    \\ \cmidrule{2-4}
-%    What is Saved & alloc. and data init. time & duplicates &
-    %alloc. time 
-%    \\
-    Addressing the Contents     & by key       & by index & by key
-    \\
-        Elements Interchangeable?   & no    & no    & yes
-    \\
-    Multiple Users per Element? & yes   & yes   & no
-    \\
-    Data Persists Across Uses?  & yes   & yes   & no
-    \\ \bottomrule
-    \end{tabular}
-	\caption{Comparing the charaacteristics of three mechanisms for keeping data
-	or objects around for indefinite periods of time.}
-	\label{tab:three-deferred-deletions}
-\end{table}
 
 \subsection{Resource Pools: Amortizing Allocation Costs}
 \label{sec:resource-pools}
@@ -794,6 +771,35 @@ database uses to cache certain information about the query.
 Your application accesses a remote resource. Why not keep one connection
 persistent per thread? What's the point of a resource pool in this case?
 \end{example}
+
+
+
+\begin{table}
+	\centering
+	\begin{tabular}{rlll} \toprule
+            & cache             & sharing pool & resource pool 
+    \\ \cmidrule{2-4}
+%    What is Saved & alloc. and data init. time & duplicates &
+    %alloc. time 
+%    \\
+    Addressing the Contents     & by key       & by index & by key
+    \\
+        Elements Interchangeable?   & no    & no    & yes
+    \\
+    Multiple Users per Element? & yes   & yes   & no
+    \\
+    Data Persists Across Uses?  & yes   & yes   & no
+    \\ \bottomrule
+    \end{tabular}
+	\caption{Comparing the charaacteristics of three mechanisms for keeping data
+	or objects around for indefinite periods of time.}
+	\label{tab:three-deferred-deletions}
+\end{table}
+
+
+
+
+
 
 
 %% OLD STUFF NMM 20090820
