@@ -352,7 +352,7 @@ free, there remains the work done in the constructor:
 class Temp {
 	private final Date date;
 	
-	public Temp(String input) {
+	public Temp(String input) { /* constructor */
 		this.date = DateFormat.getInstance().parse(input);
 	}
 }
@@ -404,7 +404,7 @@ void doWork(String x, String y) {
 	doRemoteProcedureCall(parse(y));
 }
 Date parse(String string) {
-	return new SimpleDataFormat().parse(string, new ParsePosition(0));
+	return DataFormat.getInstance().parse(string, new ParsePosition(0));
 }
 void doRemoteProcedureCall(Date date) {
 	long timestamp = date.getTime();
@@ -418,7 +418,7 @@ substrings. So far, the code has created four objects (one \class{String} and on
 character array per substring). Creating these substrings makes it easy to use
 the \code{doWork} method, which takes two Strings as input. However, observe that
 these four objects are not a necessary part of the computation. Indeed, these
-substrings are eventually used only as input to the \class{SimpleDateFormat}
+substrings are eventually used only as input to the \class{DateFormat}
 \code{parse} method, which has been nicely designed to allow you to avoid this
 very problem. By passing a \class{ParsePosition}, one can parse substrings of a
 string without having to create temporary strings (at the expense of creating
@@ -442,16 +442,16 @@ temporary \class{ParsePosition} objects!).
 \section{Permanently Resident}
 \label{forever-lifetime}
 
-A \class{SimpleDateFormat} object in the previous example was created in every
+A \class{DateFormat} object in the previous example was created in every
 loop iteration, and never used again. An improvement would be to create and
-use a single formatter for the remaining duration of the run. Though the Java 6
-documentation does not say so explicitly, it is safe to reuse a single instance
-of this object multiple times. You must be careful to remember that it is
-not safe to do so in multiple threads. The next chapter will discuss remedies
+use a single formatter for the duration of the run. The Java API
+documentation encourages developers to reuse a single instance
+multiple times, but leaves the burden of doing so on you. You must be careful to
+remember that it is not safe to do so in multiple threads. The next chapter will discuss remedies
 to this problem. The updated code for the \code{parse} method would be:
 
 \begin{shortlisting}
-static final DateFormat fmt = new SimpleDateFormat();
+static final DateFormat fmt = new DateFormat.getInstance();
 
 Date parse(String string) {
 	return fmt.parse(string, new ParsePosition(0));
@@ -627,9 +627,9 @@ temporary. Performing a few dozen machine instructions is very likely to be a
 worthwhile tradeoff, if memory consumption is the limiting resource for
 scaling up\index{Scaling Up}. 
 You do have to be careful, though. Recall our earlier example that creates a new
-instance of the date parser \class{SimpleDateFormat} for each iteration of a
+instance of the date parser \class{DateFormat} for each iteration of a
 loop. Here, as is quite common, something expensive to compute, that
-\class{SimpleDateFormat}, is treated as a temporary. If the data stored in an
+\class{DateFormat}, is treated as a temporary. If the data stored in an
 object is expensive to recompute or refetch, and there is some chance it might
 be used in the future, then it is worthwhile to keep it around.
 
