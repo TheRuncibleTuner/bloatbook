@@ -2,10 +2,10 @@
 
 In many applications, the heap is filled mostly with instances of just a few
 important classes.  You can increase scalability significantly by making these
-classes compact. This chapter describes field usage
-patterns that can be easily optimized for space, for example, a field that is
-rarely needed, a constant field, or a dependent field. Simple refactoring of these
-kinds of fields can sometimes result in big wins.
+classes as compact as possible. This chapter describes field usage
+patterns that can be easily optimized for space, for example, fields that are
+rarely needed, constant fields, and dependent fields. Simple refactoring of
+these kinds of fields can sometimes result in big wins.
  
 
 \section{Rarely Used Fields}
@@ -17,27 +17,27 @@ time.
 
 As an example, consider an on-line store with millions of products. 
 Most of the products are supplied by the parent company, but
-occasionally the store sells products from another company:
+sometimes the store sells products from another company:
 \begin{shortlisting} 
 class Product {
 	String sku;
 	String name;
-	\ldots
+	..
 	String alternateSupplierName;
 	String alternateSupplierAddress;
 	String alternateSupplierSku;
 }
 \end{shortlisting}
-In the common case where there is no alternate supplier, the last three fields
-are never set, so 12 bytes in a \class{Product} object are wasted. 
-To save memory, all of the alternate supplier information
-should be delegated to a separate side class, allocated lazily, on a need-only
-basis:
+When there is no alternate supplier, the last three fields
+are never used. By moving these fields to a separate side class, you can
+ save memory, provided the side object is allocated only when
+it is actually needed. This is called \emph{lazy allocation}.
+
 \begin{shortlisting} 
 class Product {
 	String sku;
 	String name;
-	\ldots
+	.. 
 	Supplier alternateSupplier;
 }
 
@@ -47,114 +47,83 @@ class Supplier {
 	String sku;
 }
 \end{shortlisting}
-For products with no alternative supplier, eight bytes are saved per product,
-since three fields are replaced by one. 
+For products with no alternate supplier, eight bytes are saved per product,
+since three fields are replaced by one. Of course, products with an alternate
+supplier pay a delegation cost, including an extra pointer and object header.
+The question is how much total memory is actually saved, if any? The answer
+depends on the percentage of products that have an alternate supplier needing a
+side object, which we'll call the \emph{fill rate}.
 
-
-
-One possible error is
-to define a side class for fields that you think are rarely-used, but in fact
-they are used most of the time. In this case, you pay the 
-additional cost of delegation most of the time, so that memory costs increase
-rather than decrease.
-
-This raises an interesting question. If fields are rarely used, 
-delegation saves memory, but if fields are frequently used, delegation is more
-expensive. What about fields with different usage rate, say they are used 50\%
-of the time? In fact, whether delegation decreases or increases memory cost
-depends on the total size of the delegated fields, as well as the usage rate. 
-The graph in Figure ?? shows the cross-over point for different total sizes. 
-For example, if you are considering delegating two fields with a total size of
-eight bytes, then delegation saves these are used less than 25\% of the time. If you delegate 32 bytes to a side object, then you save memory if these are used less than 70\% of the time.
-For the product example, 12 byptes are delegated, so 
-
+Figure~\ref{fig:fill-rate} shows the memory saved for different
+fill rates, assuming three fields (12 bytes) are delegated. The most memory that can
+be saved is 66\%, when the fill rate is
+0\%. When the fill rate is 10\%, 50\% of memory is saved. 
+When the fill rate is over 40\%, the memory saved is
+negative, that is, memory is wasted. The lesson here is that if you aren't sure
+what the fill rate is, then using delegation to save memory may end up
+backfiring.
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part2/Figures/chapter4/rarely-used.pdf}
+ \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/12-byte-graph.pdf}
  % \includegraphics{eight-char-string}
-  \caption{Suppose a class has a set of related fields that are not needed all
-  of the time. This graph shows when delegating these fields to a side class
-  saves memory. The x-axis is the
-  total number of bytes in the fields, and the y-axis is the percentage 
-  of the time that the fields are used.}
+  \caption{This plot shows how much memory is saved or wasted by delegating 12
+  bytes of memory to a side object. The x-axis is the fill rate, and the
+  y-axis is the percent of memory saved.}
+  \label{fig:fill-rate}
+\end{figure}
+In addition to the fill rate, the memory savings also depends on the
+number of fields delegated. The more bytes delegated, the larger the memory
+savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
+saved for different fill rates and different delegated-field sizes. Each
+line represents a different delegated-field size. The bottom-most line
+represents a delegated field size of 16 bytes, the next line represents 32 bytes, the next
+represents 48 bytes, and so on, up to 144 bytes. As the delegation size
+increases, you can worry less about the fill rate. For example, if 32 bytes
+are delegated, there is almost 90\% savings with a low fill rate, and some
+memory savings with a fill rate up to 70\%. As the delegation size increases, 
+the lines start to converge, since the fixed delegation cost becomes relatively
+less important.
+\begin{figure}
+  \centering
+ \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/rarely-used.pdf}
+ % \includegraphics{eight-char-string}
+  \caption{This plot shows how much memory is saved or wasted for different
+  delegate field sizes. The x-axis is the fill rate, and the y-axis is the
+  percent of memory saved. Each line represents a different delegated size,
+  starting from 16 bytes, going up to 144 bytes by increments of 16 bytes.}
   \label{fig:rarely-used}
 \end{figure}
 
-CALLOUT:  do the math. 
-  
+\callout{callout:rarely-used}{Delegation Cost Calculation}{
+\index{Delegation Cost Calculation}
+Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
+bytes. Let $B$ = the size in bytes of a set of fields being delegated, and
+$F$ = the fill rate. Then the memory cost of the delegated
+implementation per object is:
+\begin{eqnarray}
+D &=& F(B+8)+4 \nonumber
+\end{eqnarray}
+Note that every object pays a 4 byte pointer cost, and only $F$ of
+the objects pay for the side object. The proportional improvement is:
+\begin{eqnarray}
+\frac{(B-D)}{B} &=& 1 - \frac{D}{B} \nonumber \\
+&=& 1 - \frac{(F(B+8)+4)}{B} \nonumber.
+\end{eqnarray}
+The following equation can be used to obtain the plots in
+Figures~\ref{fig:fill-rate} and~\ref{fig:rarely-used}, for different values of
+$B$:
+\begin{eqnarray}
+y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B})
+\end{eqnarray}
+} 
 A common error is to delegate rarely-used fields to a side class, but forget to
 allocate it only when needed, that is, always allocate a side object. 
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
 the cost of unused fields. 
 Lazy allocation
-can be error-prone, since it may require testing  whether the object
-exists at every use. To avoid these kinds of errors, and to make the
-code easier to refactor, it is good practice to use interfaces and factories.
-
- 
-
-
-
-This is a case where Java had had multiple inheritance, or had a better union type, or something,
- it might have been able to help a little more here.
-
-The result is that it is really severely limiting a lot of choices that the application
- programmer has. I’m going to go back, and this is a little bit historical, the examples
-  I’m showing have long been fixed years ago, and some of the other ones haven’t. 
-  Basically, when I looked at this thing the first time 5 years ago, it was a relatively 
-  early version of EMF, it was 1.x, basically, each object that you wanted to model had at least 
-  a 68 byte additional cost over your fields, and those numbers are kind of approximate right now.
-   The reason is that you had to extend this EObjectImpl thing. ModelObjectImp, 
-   I’m calling it here. And I’ll tell you what some of these pieces were. 
-   So you had it’s object overhead, like anything else, it had a bunch of bookkeeping fields, 
-   and then it delegated to thing called the properties holder, which had its own object o
-   verhead, 
-   and it had its own bookkeeping fields. 
-   So that’s a pretty high base cost to be paying. 
-   So we looked at this, and found some easy problems to fix,
-    and some deeper ones to fix, and some that still haven’t been fixed, 
-because in a large part they really can’t be fixed in the context of Java
-    as it stands now.
-
-This properties holder thing actually came about as the result of an earlier 
-optimization, that there were a whole bunch of fields that were rarely used, and 
-one of the EMF designers decided, very wisely, to take them, and put them into a side object. 
-In general in Java, those are your choices, I mean you don’t really have that many other choices 
-there are no union types, no multiple inheritance. So your choices are you can either have your 
-thing contain extra fields that aren’t being used, or to stick them in a separate object and 
-point to it. So that’s what they chose to do here. Unfortunately, the first problem they had, 
-they lazily allocated these, but the first time we did an analysis of this, there was a bug, 
-and the lazy analysis wasn’t working. I’ve seen this happen in other cases too. 
-You think you’ve fixed something, and then you find, wow, the footprint went up when they 
-did this, and how come we have the same number of property holders as eobjectimpls. 
-Fortunately, that one was a pretty easy problem to fix.
-
-Now let’s talk about the actual allocation cost here, too, so even if we could bring the cost of 
-that bookkeeping down, which they did, the next problem they had, and this is very recent, is that 
-there are some models that are making very heavy use of these fields, so they are not so rare 
-after all. So now all of a sudden, if most of your objects have this side object, then you are 
-paying an extra delegation cost, and you would have been better off having those bookkeeping 
-fields inlined in the first place, so there are tons of ironies here. It turns out the reason this 
-is becoming an issue is that those bookkeeping fields, a lot of what they deal with is references 
-across models, and because of the storage problem, because they are running out of memory, 
-what the rational modeling people are doing is breaking their models into smaller pieces, 
-so they don’t have to load them all into memory at the same time. As a result, they need to 
-have a lot of cross-model references, which in turn is making their models bigger. 
-So the thing that really struck me when I was up there 2 weeks ago, and it didn’t surprise 
-me at all, is there is a lot of very good engineering going on, these were super sharp people, 
-and they are well aware that they have some tough tradeoffs to make, and the same is true of 
-the EMF framework. Sure, there a little silly things here and there that ended up being fixed, 
-but there has been a lot of engineering effort that has gone into this thing, and still people 
-are heavily constrained, as in this case, they are forced to do these sort of contortions. 
-In this case the solution, or partial solution,, is that the EMF framework did some refactoring, 
-and they came up with something called the flat EMFImpl, for exactly this kind of case, where 
-you know you always want the property holder, so instead of extending from the standard 
-EOBjectImpl, you can extend from this flat EMFObjectImpl, and you can save the delegation costs.  
-So that’s still like a very, not a simple solution, still requires some significant refactoring 
-in the framework, and it requires the application developer to suddenly be subclassing a different 
-thing, and to be very conscious of it.
- 
-
+can be error-prone, since it may require testing whether the object exists at
+every use. This complexity has to be weighed against potential memory
+savings.
 
 \section{Bookkeeping Fields}
 
@@ -187,8 +156,6 @@ is that as you design things that are higher level than this, introducing bookke
 people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
 clear we are getting any performance out of this; in part because the benchmarks people are using 
 are not really representative of the real applications out there.
-
-
 
 
 \section{Mutually Exclusive Fields}
