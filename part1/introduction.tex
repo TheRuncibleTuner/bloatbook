@@ -3,29 +3,41 @@
 
 Managing your Java program's memory couldn't be easier, or so it would
 seem. Java provides you with automatic garbage collection, and a compiler that
-runs while your program is running and responds to its operation. There are
-many standard, open source, and proprietary libraries available, providing
-powerful functionality, all written by experts. All you have to do is piece
-together the parts and let the Java runtime system do the rest for you.
+runs as your program is running and responds to its operation. There are many
+standard, open source, and proprietary libraries and frameworks available,
+all written by experts. All you have to do is piece together the parts and let
+the Java runtime system do the rest for you.
 
-The reality, unfortunately, is very different. If you just assemble the parts,
-take the defaults, and follow all the good advice about making your
+The reality, unfortunately, is very different. If you just assemble the parts, take
+the defaults, and follow all the good advice to make your
 program flexible and maintainable, you will likely find that your memory needs are
-\emph{much} higher than imagined. In fact, it is all too common to find, at
-testing or deployment time, that what seemed like a well-designed system will
-exceed the available memory when to support the scale of usage that is
-required. What's more, it can take considerable effort to have your data structures stay around exactly as long as you want, to achieve a good balance memory and CPU constraints. How certain approaches to memory usage can help you meet performance goals.
+\emph{much} higher than imagined. You may also find that precious memory resources
+are wasted on data that is sticking around longer than necessary, or that 
+CPU resources are wasted recreating data that could have been saved longer. 
 
-This book is a guide to using memory wisely in Java. It will give you the tools
-to make informed decisions about your data designs proper (Parts 2 and 3) and about managing the
-lifetime of data structures (Part 4).  Help you avoid problems, or at least
-catch them early on when it is easier to make design changes and adjust
-schedules.
+This book is a guide to using memory well in Java.  While there has been much written on 
+how to build systems that are easily maintained and extended, bug-free, and secure, there is
+little guidance available on efficient use of memory.  Unfortunately memory usage
+is often an afterthought, where much is left to chance, at least
+until there is a crisis. The theme of this book is that memory usage,
+like any other aspect of software, needs to be carefully engineered if your system is to be successful. 
+This book provides an overall approach to engineering memory usage, and a practical guide to 
+making informed decisions at every step of the way. (every part of a design)
 
-In the rest of this chapter we first look at the challenges for using memory
-efficienlty in Java, and in today's , compared to other language, making
-informed decisions about memory can be especially difficult, and especially important.  Here are some reasons why:
+Engineering memory usage properly, and early in the cycle, can make the difference between success and failure a 
+software project. If at system test or deployment you find that your design does not fit in memory, ...
+There are many reasons why in Java systems, good memory usage requires can require more
+attention and be more difficult to achieve, than in some other languages.  Unfortunately,
+the consequences of not getting the design right can be worse as well.
+The next section explores (motivates?) these technical realities
+that make good use of memory both essential and challenging. It also looks at some popular misconceptions that can
+get in the way of solid engineering.
 
+
+
+
+not so easy, and is extremely important for your system's success, because of Java and the use of so
+many frameworks (current style of programming)
 
 So much is hidden
 Expensive compared to other languages
