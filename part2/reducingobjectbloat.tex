@@ -125,17 +125,17 @@ can be error-prone, since it may require testing whether the object exists at
 every use. This complexity has to be weighed against potential memory
 savings.
 
-section{Constant Fields}
+\section{Constant Fields}
 
-Recognizing when a field can be declared \ttfamily{static} is a simple way to
+Recognizing when a field can be declared \code{static} is a simple way to
 save memory. Programmers usually remember to make constants like \emph{pi} 
 static. There are other situations that are a bit more subtle, for example,
 when a field is looked at out of context.
 
 Returning to the product example, suppose that each product has a field
-\ttfamily{catalog} that points to a store catelog.
+\code{catalog} that points to a store catelog.
 If you know that there is always just one store catalog, then the field
-\ttfamily{catalog} can be turned into a static, saving 4 bytes per product.
+\code{catalog} can be turned into a static, saving 4 bytes per product.
 
 As a more elaborate example, suppose that every product belongs to a
 category such as books, music, clothes, toys, etc, and 
@@ -144,7 +144,7 @@ These fields are clearly not the same across all products. However, suppose we
 define
 subclasses \class{Book}, \class{Music}, \class{Clothing} of \class{Product}, 
 where all instances of a subclass belong to the same category.  
-Now the \ttfamily{category} field is the same for products in each subclass,
+Now the \code{category} field is the same for products in each subclass,
 so it can be made static:
 
 \begin{shortlisting} 
@@ -167,43 +167,17 @@ class Clothing extends Product {
 Knowing the context of how objects are created and used, and how they relate to
 other objects, is helpful in making these kinds of memory optimizations.
 
-\section{Bookkeeping Fields}
-
-Let’s come back to our low level example again, String. 12 bytes of our 4-byte string 
-or19\% of it, is due to 3 bookkeeping fields. So every string stores an offset,
-a length, and a hashcode. The offset and length are basically are a premature optimization, really. 
- It was put into the JDK years ago, which was really intended for the substring case. 
- It says that if I ever take a substring of this thing, 
- I’m going to be able to share with the origjnal characters of the String 
- This is a theme you will see throughout the JDK, that there’s so many optimizations that are 
- done to avoid copies at any cost. Really with a huge focus on time, and almost no focus on 
- space whatsoever. So studies we saw at TRL, in reality, in the long lived case, for 
- objects that are sticking around, it’s pretty rare to have objects that are the result of 
- substring.
-
-And in fact, if they did, they would probably have a lot of empty spaces, because you would be 
-pointing to the middle of them, so you would have a different footprint problem, saving character 
-arrays which you don’t need. So this ione of these optimizations, which you should be aware of as 
-a user, that string is expensive. You have to think about what they really cost when you use them. 
-But the other thing is sort of a cautionary tale, about premature optimization, and also an 
-opportunity that String is an area we should be reconsidering. The 3rd field is hashcode. 
-String stores its hashcode, which seems like a reasonable idea, until you think about the fact 
-that the common case of needing the hashcode is when the string is stored in hashset or a hashmap. 
-In both of those cases, the hashset or hashmap entry already has a field for a hashcode, and is 
-already storing it. And just to add an additional irony here, there is already 4 bytes reserved 
-in the object header for the identity hashcode, which string is overriding, as far as I know ,
-it’s not really being used. So there’s lots of room for storing that hashcode once rather than 
-twice, and maybe we can get rid of some more stuff in the process. So this cautionary tale here 
-is that as you design things that are higher level than this, introducing bookkeeping fields, 
-people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
-clear we are getting any performance out of this; in part because the benchmarks people are using 
-are not really representative of the real applications out there.
-
 
 \section{Mutually Exclusive Fields}
 
-The next problem we found is that in some cases, you still needed this thing, even when 
-it was rightfully being lazily allocated, and so it had 5 bookkeeping fields, and we took a 
+Sometimes a class has fields that are never used at the same time, and possibly
+they can share the same space. Unfortunately, Java does not have anything like
+a union type, so sharing space is often not possible. However, there are some
+limited opportunities to take advantage of mutually exclusive fields to save
+memory.
+
+The next problem we found is that in some cases, you
+ still needed this thing, even when it was rightfully being lazily allocated, and so it had 5 bookkeeping fields, and we took a 
 look at those fields, and we realized they were never all used at the same time. They each 
 covered different cases, and there were various combinations, and you never needed all of them. 
 You usually only needed 2 or 3 of them at a time. So I believe what they did, or what they were 
@@ -211,7 +185,6 @@ planning to do, is combine some of those fields, and basically loosen the typing
 casts, so share one field, get Capital Object, and then the accessor to it, recast it to it’s 
 actual use case. So that’s sort of like a poor man’s loosely typed union, and so if Java had 
 type safe unions, you wouldn’t need that, and the compiler could do a better job with that too. 
-
 
 
 \section{Redundant Fields}
@@ -269,4 +242,48 @@ the fly somehow, because that’s probably a number that’s dynamically determined.
 Something like a Y or an N, I would guess is statically determined. That it has a small number of 
 values that you can predict at compile time, and in that case you can have some final statics 
 that are determined at compile time, and everyone can point to them. Pretty simple.
+
+\section{Bookkeeping Fields}
+
+Optimizing for the wrong case.
+
+Let’s come back to our low level example again, String. 12 bytes of our 4-byte string 
+or19\% of it, is due to 3 bookkeeping fields. So every string stores an offset,
+a length, and a hashcode. The offset and length are basically are a premature optimization, really. 
+ It was put into the JDK years ago, which was really intended for the substring case. 
+ It says that if I ever take a substring of this thing, 
+ I’m going to be able to share with the origjnal characters of the String 
+ This is a theme you will see throughout the JDK, that there’s so many optimizations that are 
+ done to avoid copies at any cost. Really with a huge focus on time, and almost no focus on 
+ space whatsoever. So studies we saw at TRL, in reality, in the long lived case, for 
+ objects that are sticking around, it’s pretty rare to have objects that are the result of 
+ substring.
+
+And in fact, if they did, they would probably have a lot of empty spaces, because you would be 
+pointing to the middle of them, so you would have a different footprint problem, saving character 
+arrays which you don’t need. So this ione of these optimizations, which you should be aware of as 
+a user, that string is expensive. You have to think about what they really cost when you use them. 
+But the other thing is sort of a cautionary tale, about premature optimization, and also an 
+opportunity that String is an area we should be reconsidering. The 3rd field is hashcode. 
+String stores its hashcode, which seems like a reasonable idea, until you think about the fact 
+that the common case of needing the hashcode is when the string is stored in hashset or a hashmap. 
+In both of those cases, the hashset or hashmap entry already has a field for a hashcode, and is 
+already storing it. And just to add an additional irony here, there is already 4 bytes reserved 
+in the object header for the identity hashcode, which string is overriding, as far as I know ,
+it’s not really being used. So there’s lots of room for storing that hashcode once rather than 
+twice, and maybe we can get rid of some more stuff in the process. So this cautionary tale here 
+is that as you design things that are higher level than this, introducing bookkeeping fields, 
+people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
+clear we are getting any performance out of this; in part because the benchmarks people are using 
+are not really representative of the real applications out there.
+
+
+\section{Summary}
+
+A smattering of a lot of these little things add up.
+Many of these optimizations rely on knowing how objects are used -- if you are
+writing a framework, you don't know this, and the choice you make for some case
+is wrong in another case.  Java makes things hard -- few choices.
+
+
 
