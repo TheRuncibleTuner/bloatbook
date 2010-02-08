@@ -1,9 +1,33 @@
-%basics of MM: when gc runs, Xmx and when heap expands, what reclaimed what not,
-%permspace, finalizers/phantom refs, class unloading and lifetime of statics,
-%object lifecycle. maybe introduce weaks and softs
+% TODO maybe introduce weaks and softs??
+
+\chapter{Memory Management Fundamentals}
+
+Before getting into the details of how to implement your lifetime requirements,
+it is important to understand some important details of object lifetimes. This is
+especially true in a language like Java. Languages, like Java, with a
+\emph{managed runtime}, have many features, including automatic garbage
+collection, that govern the lifetime of objects in certain ways. You need to
+appreciate what the runtime is doing on your behalf before you begin to reshape
+object lifetimes to better suit your needs.
 
 
-\chapter{The Object Lifecycle}
+\section{The Garbage Collector}
+
+when gc runs
+
+Xmx and when heap expands
+
+what reclaimed what not
+
+permspace
+
+finalizers/phantom refs
+
+class unloading and lifetime of statics,
+
+
+
+\section{The Object Lifecycle}
 %Every object created by your application lives for an interval of time from its
 %creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
 %interval of time between its first and last necessary use. %cite drag paper
