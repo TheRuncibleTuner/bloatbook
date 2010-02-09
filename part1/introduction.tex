@@ -22,23 +22,32 @@ This book is a guide to using memory wisely in Java.  While there has been much
 written on how to build systems that are bug-free, easy to maintain, and secure,
 there is little guidance available on how to use Java memory efficiently
 or even correctly. (Too often memory issues are left to chance, or at least
-put off until there is a crisis.) The main theme of this book is that
-memory usage, like any other aspect of software, needs to be carefully engineered if your system is
-to be successful. This book gives you the tools to do just that.  It gives you
+put off until there is a crisis.) The main message of this book is that
+memory usage, like any other aspect of software, needs to be carefully
+engineered if your system is to be successful. This book gives you the tools to do that.
+It gives you 
 an approach to looking at your system's uses of memory, and a practical guide
-to making informed tradeoffs at every step of your design. 
+to making informed tradeoffs in every part of your design and
+implementation.
 
-Achieving efficient memory usage can take some effort in any language. Yet 
-Java systems are especially prone to excessive or incorrent memory usage. 
-It is easy to fall into costly memory traps. In fact, it is
-hard not to. It can also be more difficult to recover if good decisions are not made early on. 
-(As important as the technical realities are, )Beyond the technical realities of
-using memory well in Java there are some commonly held misconceptions that often make things worse. So
-before getting into how to engineer memory in Java, it is worth dispelling some
+While achieving efficient memory usage can take some effort in any language,
+Java systems (it is especially easy) can be especially prone to bloated or
+incorrent memory usage. In part it's because Java is so easy to program, it can give you a
+false sense of security that memory concerns are being handled for you. Also,
+in Java, the space costs of basic building blocks, can be surprisingly expensive,
+as we shall see. So much is done for you in
+Java, from management of the heap, to all the functionality hidden behind framework APIs, that it can be
+difficult to find out what's really going on until symptoms appear in a
+running system.  (what the costs of your objects are, and how long they are
+sticking around)  Compared to languages like C, Java gives you fewer options for designing your data structures and managing their storage.
+In fact  means
+
+ It is easy to fall into
+costly memory traps. In fact, it is hard not to. It can also be more difficult to recover if good decisions are not made early on. (As important as the technical realities are, )Beyond the technical realities of using memory well in Java there are some commonly held misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
 of these myths, and getting a better understanding of why memory problems
 can be so common in Java.
 
-\section{Myths and Realities}
+\section{Java Memory: Facts and Fictions}
 
 not so easy, and is extremely important for your system's success, because of Java and the use of so
 many frameworks (current style of programming)
@@ -278,6 +287,7 @@ In fact, as we will see in some of our examples, inside the Java library themsel
 Compared to systems languages like C, Java space costs are high, even for the most basic building blocks. 
 This makes it all the more important for developers to be aware of memory costs.
 
+\section{An Engineering Approach}
 
 \section{Notation and Conventions}
 
