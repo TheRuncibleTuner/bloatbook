@@ -156,8 +156,8 @@ a shopping cart server application. The server, on startup, preloads catalog dat
 into memory to allow for quick access to this commonly used data. It also
 maintains data for users as they interact with the system, browsing and buying
 products. Finally, it caches the response data that comes from a remote service
-provider that charges per request. Let's walk through how we can plan out the
-lifetime requirements of these data structures.
+provider that charges per request. The remainder of this chapter walks you
+through understanding the lifetime requirements of these data structures.
 % How does Java heap consumption vary over time? Which heap size fluctuations
 % indicate a problem, and which are expected behavior? \end{example}
 
@@ -168,7 +168,10 @@ lifetime requirements of these data structures.
 	\label{fig:timeline-base-session-temps}
 \end{figure}
 
-\paragraph{Lifetime Requirement: Permanently Resident}
+\section{Lifetime Requirement: Permanently Resident}
+\label{sec:forever-lifetime}
+\index{Permanently Resident Objects}
+
 \autoref{fig:timeline-base-session-temps} shows the timeline of memory
 consumption of our example server 
 during and shortly after its initial startup.
@@ -185,7 +188,26 @@ needed forever. In the timeline picture, this data is respresented by the lowest
 reached a ``warmed up'' state, memory consumption of this baseline data evens out
 on a plateau for the remainder of the run.
 
-\paragraph{Lifetime Requirement: Request-spanning}
+\subsection{Permanently Resident Objects in Practice}
+
+In the above example, a \class{DateFormat} object was created in every loop
+iteration and used only once. We can improve this situation by creating and using
+a single formatter for the duration of the run. The Java API documentation, in
+writing at least, encourages this behavior, but leaves the burden of doing so on
+you. You must be careful to remember that it is not safe to do so in multiple
+threads. The next chapter will discuss remedies to this problem. The updated code
+for the \code{parse} method would be:
+
+\begin{shortlisting}
+static final DateFormat fmt = new DateFormat.getInstance();
+
+Date parse(String string) {
+	return fmt.parse(string, new ParsePosition(0));
+}
+\end{shortlisting} 
+
+
+\section{Lifetime Requirement: Request-spanning}
 \index{Session State}
 After the server is warmed up, it begins to process client requests. Imagine
 interacting with a commerce site with a web browser. First you browse around,
@@ -201,12 +223,15 @@ is labeled \emph{sessions}. It ramps up while a session is in progress, and then
 in the example illustrated here, soon all of that session memory should be
 reclaimed.
 
-\paragraph{Lifetime Requirement: Temporaries}
+\section{Lifetime Requirement: Temporaries}
+\label{sec:temporary-lifetime}
 \index{Temporary Objects}
+
 The catalog data and session state are both examples of objects that are expected
 to stick around for a while. In the course of preloading the cache and responding
 to client requests, the server application will create a number of objects that
-are only used for a very short period of time. They help to faciliate the main
+are only used for a very short period of time.
+They help to faciliate the main
 operations of the server. These temporary objects will be reclaimed by the \jres
 garbage collector in relatively short order. The point at which an object is
 reclaimed depends on when the garbage collector notices that it is reclaimable.
@@ -228,83 +253,9 @@ should certainly be larger than the baseline and session data. How much
 larger than that? This choice directly affects the amount of \emph{headroom},
  that is the amount of space available for temporaries to pile up.
 
-\begin{figure}
-	\centering
-	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-leak}
-	\caption{If session state is not cleaned up
-	properly, a memory leak is the result. This means more frequent garbage
-	collections, and ever increasing heap size.}
-	\label{fig:timeline-base-session-temps-with-leak}
-\end{figure}
-
-\paragraph{Lifetime Requirement: Correlated Lifetime}
-\index{Memory Leaks}
-The catalog data should last forever, while the
-session data lives for some bounded period of time. It is possible that session
-state will live beyond the end of your session, but nonetheless it has a
-lifetime that is bounded. If, due to an bug, part of this session state is not
-reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
-\marginpar{\textbf{Memory Leaks} are still possible, even with
-automatic garbage collection!} 
-accidentally lives forever. In this
-case, over time, the amount of heap required for the application to run will increase without bound.
-\autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
-in the extreme case when all of session state leaks. Over time, the area under
-the curve steps higher and higher.
-
-%As you scan the timeline from left to right, memory consumption 
-%it fetches catalog data from its database, and stores them in the Java heap. 
-
-\paragraph{Lifetime Requirement: Time-space Tradeoffs}
-\index{Time-Space Tradeoffs}
-Finally, this example server caches data from some expensive third-party data
-source. When caching data inside of Java objects, there is a fourth effect on
-the timeline landscape. The
-cached data must be configured properly to live long enough to be useful. It
-also must not occupy so much of the heap so as to leave little headroom for
-temporaries. \autoref{fig:timeline-base-session-temps-with-cache} shows an
-example where the cache has probably been configured to occupy too much heap
-space. Observe how, compared to the other timeline figures, there is little
-headroom for temporaries. In this case, the result is more frequent garbage
-collections. If the cache were sized to occupy an even greater amount of heap
-space, it is possible that there would no longer be room to fit session data.
-The result in this case would be failures in client requests. 
-Sizing caches is important, but tricky to get right.
-
-\begin{figure}
-	\centering
-	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-cache}
-	\caption{When a cache is in use, this leaves less headroom for temporary
-	object allocation, often resulting in more frequent garbage collections.}
-	\label{fig:timeline-base-session-temps-with-cache}
-\end{figure}
-
-% introduced by example in this chapter, and
-%Many objects are either temporaries or needed for
-%the entire run of your application. Sometimes you create objects whose lifetime
-%is correlated with other objects or that should go away when a method
-%invocation completes. Sometimes you need to manage objects hanging around
-%longer than their current need, to avoid future recomputations or refetching
-%of data in the case when it is needed in the near future. 
-
-%\begin{table}
-%\centering
-	%\begin{tabular}{ll} \toprule
-    %%%%	%& Things Java Doesn't Do Automatically \\ \cmidrule{2-2}
-%    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
-%    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
-%    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
-%        \bottomrule
-%    \end{tabular}
-%	\caption{The tricky aspects of memory management.}
-%	\label{tab:tricky-memory-management}
-%\end{table}
-
-\section{Temporary Objects}
-\label{sec:temporary-lifetime}
-
+\subsection{Temporaries in Practice}
 If your application is like most Java applications, it creates a large number of
-temporary objects. They hold data that will only be used for a very short
+these temporary objects. They hold data that will only be used for a very short
 interval of time. It is often the case that the objects in these transient data
 structures are only ever reachable by local variables. For example, this is the
 case when you populate a \class{StringBuilder}, turn it into a \class{String},
@@ -423,41 +374,36 @@ string without having to create temporary strings (at the expense of creating
 temporary \class{ParsePosition} objects).
 
 
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-leak}
+	\caption{If session state is not cleaned up
+	properly, a memory leak is the result. This means more frequent garbage
+	collections, and ever increasing heap size.}
+	\label{fig:timeline-base-session-temps-with-leak}
+\end{figure}
 
-% correlated with need: as soon as last user goes away, remove his stuff 
-% share common expressions to save space, but using strong references -> memory
-% leak; plugins in eclipse go away when all views
-% sharing pool 
-
-% weak ref keys -> annotation
-% weak ref values -> sharing pool
-
-% soft ref values -> caching
-
-% annotation by map lookup
-
-
-\section{Permanently Resident Objects}
-\label{sec:forever-lifetime}
-
-In the previous example, a \class{DateFormat} object was created in every loop
-iteration and used only once. We can improve this situation by creating and using
-a single formatter for the duration of the run. The Java API documentation, in
-writing at least, encourages this behavior, but leaves the burden of doing so on
-you. You must be careful to remember that it is not safe to do so in multiple
-threads. The next chapter will discuss remedies to this problem. The updated code
-for the \code{parse} method would be:
-
-\begin{shortlisting}
-static final DateFormat fmt = new DateFormat.getInstance();
-
-Date parse(String string) {
-	return fmt.parse(string, new ParsePosition(0));
-}
-\end{shortlisting} 
-
-\section{Objects with Correlated Lifetimes}
+\section{Lifetime Requirement: Correlated Lifetime}
 \label{sec:correlated-lifetime}
+\index{Memory Leaks}
+
+The catalog data should last forever, while the
+session data lives for some bounded period of time. It is possible that session
+state will live beyond the end of your session, but nonetheless it has a
+lifetime that is bounded. If, due to an bug, part of this session state is not
+reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
+\marginpar{\textbf{Memory Leaks} are still possible, even with
+automatic garbage collection!} 
+accidentally lives forever. In this
+case, over time, the amount of heap required for the application to run will increase without bound.
+\autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
+in the extreme case when all of session state leaks. Over time, the area under
+the curve steps higher and higher.
+
+%As you scan the timeline from left to right, memory consumption 
+%it fetches catalog data from its database, and stores them in the Java heap. 
+
+\subsection{Correlated Lifetime in Practice}
 
 Many objects are needed for a bounded interval of time. In some cases, this
 interval is bounded by the lifetime of another object. In a second important
@@ -466,7 +412,7 @@ Once that other object is not needed, or once that method returns, then these
 \emph{correlated} objects are also no longer needed. These are the two important
 cases of objects with correlated lifetime.
 
-\subsection{Objects that Live and Die Together}
+\paragraph{Objects that Live and Die Together}
 \label{sec:correlated-lifetime-1}
 
 Normally, if you need to augment the state stored an object, you modify
@@ -527,7 +473,7 @@ have the ability to annotate every single instance. Therefore, this is another
 case where a solution of side annotations, stored in a \class{WeakHashMap},
 shines.
 
-\subsection{Objects that Live and Die with Program Phases}
+\paragraph{Objects that Live and Die with Program Phases}
 \label{sec:correlated-lifetime-2}
 
 Similar to the way the lifetime of an object can be correlated with another
@@ -596,6 +542,68 @@ are some common ways that this happens.
 The next chapter goes into greater detail on how to avoid these kinds of
 errors. \autoref{chapter:tools} describes tooling that can help you
 detect and fix the bugs that make it into your finished application.
+
+\section{Lifetime Requirement: Time-space Tradeoffs}
+\index{Time-Space Tradeoffs}
+Finally, this example server caches data from some expensive third-party data
+source. When caching data inside of Java objects, there is a fourth effect on
+the timeline landscape. The
+cached data must be configured properly to live long enough to be useful. It
+also must not occupy so much of the heap so as to leave little headroom for
+temporaries. \autoref{fig:timeline-base-session-temps-with-cache} shows an
+example where the cache has probably been configured to occupy too much heap
+space. Observe how, compared to the other timeline figures, there is little
+headroom for temporaries. In this case, the result is more frequent garbage
+collections. If the cache were sized to occupy an even greater amount of heap
+space, it is possible that there would no longer be room to fit session data.
+The result in this case would be failures in client requests. 
+Sizing caches is important, but tricky to get right.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-cache}
+	\caption{When a cache is in use, this leaves less headroom for temporary
+	object allocation, often resulting in more frequent garbage collections.}
+	\label{fig:timeline-base-session-temps-with-cache}
+\end{figure}
+
+% introduced by example in this chapter, and
+%Many objects are either temporaries or needed for
+%the entire run of your application. Sometimes you create objects whose lifetime
+%is correlated with other objects or that should go away when a method
+%invocation completes. Sometimes you need to manage objects hanging around
+%longer than their current need, to avoid future recomputations or refetching
+%of data in the case when it is needed in the near future. 
+
+%\begin{table}
+%\centering
+	%\begin{tabular}{ll} \toprule
+    %%%%	%& Things Java Doesn't Do Automatically \\ \cmidrule{2-2}
+%    	\autoref{avoiding-lifetime-bugs} & {Avoiding Memory Leaks} \\
+%    	\autoref{balance-time-and-space} & {Balancing Time and Space} \\
+%    	\autoref{outisde-java-box} & {Supporting Massive Data Sets}  	\\
+%        \bottomrule
+%    \end{tabular}
+%	\caption{The tricky aspects of memory management.}
+%	\label{tab:tricky-memory-management}
+%\end{table}
+
+
+
+
+% correlated with need: as soon as last user goes away, remove his stuff 
+% share common expressions to save space, but using strong references -> memory
+% leak; plugins in eclipse go away when all views
+% sharing pool 
+
+% weak ref keys -> annotation
+% weak ref values -> sharing pool
+
+% soft ref values -> caching
+
+% annotation by map lookup
+
+
 
 
 \section{Objects that Span Program Phases or Requests}
