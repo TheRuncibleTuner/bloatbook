@@ -13,7 +13,7 @@ the defaults, and follow all the good advice to make your
 program flexible and maintainable, you will likely find that your memory needs are
 \emph{much} higher than imagined. You may find that precious memory resources
 are wasted on data that is sticking around longer than necessary, or that
-CPU cycles are wasted recreating data that could be saved. 
+CPU cycles are wasted recreating data that was just thrown away. 
 (At system test or deployment you find that your design does not fit in memory,
 ... In short, engineering memory usage properly, and early in the cycle, can make
 the difference between success and failure a software project.)
@@ -28,7 +28,7 @@ to be successful. This book gives you the tools to do just that.  It gives you
 an approach to looking at your system's uses of memory, and a practical guide
 to making informed tradeoffs at every step of your design. 
 
-Achieveing efficient memory usage can take some effort in any language. Yet 
+Achieving efficient memory usage can take some effort in any language. Yet 
 Java systems are especially prone to excessive or incorrent memory usage. 
 It is easy to fall into costly memory traps. In fact, it is
 hard not to. It can also be more difficult to recover if good decisions are not made early on. 
@@ -38,7 +38,7 @@ before getting into how to engineer memory in Java, it is worth dispelling some
 of these myths, and getting a better understanding of why memory problems
 can be so common in Java.
 
-\Section{Myths and Realities}
+\section{Myths and Realities}
 
 not so easy, and is extremely important for your system's success, because of Java and the use of so
 many frameworks (current style of programming)
