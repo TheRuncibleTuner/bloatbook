@@ -12,6 +12,12 @@ has feature that govern, on your behalf, important aspects of the lifetime of
 objects. You need to appreciate what the runtime is doing for you, before
 considering how to reshape object lifetimes to better suit your needs.
 
+Designing a lifetime management strategy requires that you take the tools that
+Java provides, and combine them with other strategies implemented on top of Java.
+The built-in mechanisms handle some aspects of the common patterns of object
+lifetime. Unfortunately, they often appear in the form of low-level JVM hooks,
+and so require careful coding to make correct use of them.
+
 This chapter introduces the basics of the garbage collector, and how the Java
 managed runtime governs object lifetimes. Then, it walks you through the
 lifecycle of typical objects from allocation to eventual garbage collection. If
@@ -152,3 +158,39 @@ collectible.\index{Exiting Limbo}
 \end{comment}
 
 
+\section{Basic Management Mechanisms}
+DO WE NEED THIS?
+
+The point at which an object exits its limbo depends upon how it is referenced by
+other objects. One can always assure that an object exits limbo by modifying your
+code to overwrite all references to that variable. If an object is no longer
+referenced at all, then it will exit limbo immediately.\footnote{Talk about
+reference cycles?} For example, a common way to do this is by assigning
+references to the value \code{null}. This is tricky in many cases, because it may not be easy to
+know where all those references emanate from. Who is to say that, when one calls
+the \code{parse} method of a \class{SimpleDateFormat} object, that it does not
+squirrel away a reference to the \class{ParsePosition} passed as a parameter? The
+API contract for \code{parse} makes no such claims, one way or the other. This is
+certainly calls to mind the worst of the days of explicitly managing memory in a
+language like C.
+
+
+Still, one can't always rely on automatic mechanisms to guide an object out of
+limbo in a timely fashion.
+\autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
+illustrate how an object may exit limbo. 
+A garbage collector only knows that an object is ready to
+be collected based on {\em reachability}: how the objects point to eachother.
+If, as in the \class{ParsePosition}
+or \class{SimpleDateFormat} objects from our example, the object is referenced
+only by a local variable of a method, the \jre will not consider reclaming its
+storage until the variable's scope exits; e.g. when the loop continues to the
+next iteration, or when the method returns, depending on the scope of the
+variable that references the object. If the object is referenced only by a
+field of another object, then it must wait for that other object to exit limbo
+before it can do so. 
+An objects pointed to be only by a static field has a good chance of never
+being collected. A class only exits limbo when it is unloaded by the \jres
+class loading mechanism, which is unlikely to happen if it has static fields
+that reference other objects. Therefore, unless that field is overwritten,
+objects pointed to by static fields are likely never to exit limbo.
