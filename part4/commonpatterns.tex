@@ -21,7 +21,7 @@ consumption
 
 \end{comment}
 
-\chapter{Understanding Your Lifetime Requirements}
+\chapter{Lifetime Requirements}
 \index{Lifetime Requirements}
 
 Your application needs some objects to live forever and it needs the rest to die
@@ -247,9 +247,9 @@ In this way, temporary objects
 large amount of heap space unused by the longer-lived objects, then the
 temporaries can be reclaimed less often. This is a good thing, because a
 garbage collection is an expensive proposition.
-\index{Heap Size Settings} \index{Maximum Heap Size} \index{-Xmx}
-When configuring your application, you may specify a maximum heap size. It
-should certainly be larger than the baseline and session data. How much
+\index{Heap Size Settings} \index{Maximum Heap Size} \index{-Xmx command line
+setting} When configuring your application, you may specify a maximum heap size.
+It should certainly be larger than the baseline and session data. How much
 larger than that? This choice directly affects the amount of \emph{headroom},
  that is the amount of space available for temporaries to pile up.
 

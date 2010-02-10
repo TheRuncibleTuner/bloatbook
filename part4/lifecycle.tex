@@ -1,30 +1,65 @@
 % TODO maybe introduce weaks and softs??
 
-\chapter{Memory Management Fundamentals}
+\chapter{Memory Fundamentals}
 
 Before getting into the details of how to implement your lifetime requirements,
-it is important to understand some important details of object lifetimes. This is
-especially true in a language like Java. Languages, like Java, with a
-\emph{managed runtime}, have many features, including automatic garbage
-collection, that govern the lifetime of objects in certain ways. You need to
-appreciate what the runtime is doing on your behalf before you begin to reshape
-object lifetimes to better suit your needs.
+it is important to understand some of what the fundamentals of memory management
+in languages like Java. The Java language has a \emph{managed runtime}. In part,
+this means that, as a Java program runs, a runtime environment assumes the burden
+of key aspects of memory management. This level of management includes as
+automatic garbage collection of both instances and Java classes. Therefore, Java
+has feature that govern, on your behalf, important aspects of the lifetime of
+objects. You need to appreciate what the runtime is doing for you, before
+considering how to reshape object lifetimes to better suit your needs.
 
+This chapter introduces the basics of the garbage collector, and how the Java
+managed runtime governs object lifetimes. Then, it walks you through the
+lifecycle of typical objects from allocation to eventual garbage collection. If
+you are comfortable with the basics of memory management, you may discover that
+you can skip to the next chapter.
 
 \section{The Garbage Collector}
+The \jre decides when the storage allocated to an object should be reclaimed.
+This decision is based on a number of criteria. The point of reclamation
+depends on the settings you have chosen for various policy knobs, and is also
+affected by choices you have made in the application code. However, in most
+cases, there is a common structure to the schedule of when objects are
+collected.
 
+\paragraph{The Collection Schedule}
+Most contemporary garbage collectors deallocate storage in a bulk process 
+A language 
 when gc runs
+In this way, memory consumption over time assumes a sawtooth edge.
+\index{Sawtooth Pattern}
 
+\paragraph{Configuration Settings}
+You can guide the frequency of 
 Xmx and when heap expands
+\index{-Xmx command line setting}
+\index{-Xms command line setting}
 
 what reclaimed what not
 
-permspace
+\paragraph{The Nursery, Permspace, and Constant Pools}
+\index{Nursery}
+\index{Permspace}
 
-finalizers/phantom refs
+\paragraph{Finalizers, and phantom referenes}
+\index{Finalization of objects}
+\index{Phantom References}
 
-class unloading and lifetime of statics,
+\paragraph{Class Unloading and Lifetime of Statics}
 
+A \code{static} field of an object is one way that Java gives you to indicate
+that you want an object to live forever.
+\index{Class Unloading}
+\index{Static fields}
+
+\paragraph{Concurrent, Parallel, and Real-time Collection}
+\index{Concurrent GC}
+\index{Parallel GC}
+\index{Real-time GC}
 
 
 \section{The Object Lifecycle}
