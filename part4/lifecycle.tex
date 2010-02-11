@@ -33,25 +33,40 @@ cases, there is a common structure to the schedule of when objects are
 collected.
 
 \paragraph{The Collection Schedule}
-Most contemporary garbage collectors deallocate storage in a bulk process 
-A language 
-when gc runs
-In this way, memory consumption over time assumes a sawtooth edge.
+Most contemporary garbage collectors deallocate storage in a series of bulk
+steps. In almost all \jres, memory is not reclaimed one object at a time.
+Instead, to amortize the costs involved in reclamation, the garbage collector
+often lets reclaimable objects pile up for a while. It then collects then en
+masse. As objects are allocated, memory consumption can be observed to increase,
+up until some maximum allowed amount. At this point, the collector reclaims
+unused memory, and the process starts again. In this way, memory consumption over
+time often assumes a sawtooth edge, such as those shown in
+\autoref{fig:timeline-base-session-temps-with-cache}.
 \index{Sawtooth Pattern}
 
 \paragraph{Configuration Settings}
-You can guide the frequency of 
-Xmx and when heap expands
-\index{-Xmx command line setting}
-\index{-Xms command line setting}
+You can guide the frequency of collection, which will change the slope of this
+sawtooth curve to be either more or less jagged. In one common case, the garbage
+collector will wait until all available memory is consumed before reclaiming
+storage.  In Java, you can configure this ceiling by supplying a sizing to the
+\code{-Xms} (initial ceiling) and
+\code{-Xmx} (maximum ceiling) command line options. \index{-Xms command line setting}
+\index{-Xmx command line setting} The \jre will begin with a ceiling at the
+former level. If collections are occuring too frequently, the \jre may decide to
+increase the \emph{current} ceiling to a higher level. As the need for memory
+fluctuates, so the \jre will raise or lower the current ceiling level. The
+current ceiling will always be some value lower than the maximum, \code{-Xmx},
+setting. One such scenario, of increasing ceiling level, is illustrated in
+\autoref{fig:timeline-base-session-temps-with-leak}.
 
-what reclaimed what not
+
+\paragraph{What a Collection Collects}
 
 \paragraph{The Nursery, Permspace, and Constant Pools}
 \index{Nursery}
 \index{Permspace}
 
-\paragraph{Finalizers, and phantom referenes}
+\paragraph{Finalization and Phantom Referenes}
 \index{Finalization of objects}
 \index{Phantom References}
 

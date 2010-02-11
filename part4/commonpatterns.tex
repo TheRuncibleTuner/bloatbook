@@ -209,19 +209,25 @@ Date parse(String string) {
 
 \section{Lifetime Requirement: Request-spanning}
 \index{Session State}
+\label{sec:correlated-with-need}
+
 After the server is warmed up, it begins to process client requests. Imagine
 interacting with a commerce site with a web browser. First you browse around,
 looking for items that you like, and add them to your shopping cart. Eventually,
 you may authenticate and complete a purchase. As you browse and buy, the server
 maintains some state, to remember aspects of what you have done so far. For
 example, the server stores the incremental state of multi-step transactions,
-those that span multiple page views.
- This session
-state, at least the part of it stored in the Java heap, will go away soon after
-your browsing session is complete. In the timeline figure, this portion of memory
-is labeled \emph{sessions}. It ramps up while a session is in progress, and then,
-in the example illustrated here, soon all of that session memory should be
-reclaimed.
+those that span multiple page views. This session state, at least the part of it
+stored in the Java heap, will go away soon after your browsing session is
+complete. In the timeline figure, this portion of memory is labeled
+\emph{sessions}. It ramps up while a session is in progress, and then, in the
+example illustrated here, soon all of that session memory should be reclaimed.
+
+These session state objects need to be kept around for operations that span
+several independent operations, and are possibly used across multiple threads.
+They are used beyond the scope of a phase, are not correlated with another
+object, but don't live forever.
+
 
 \section{Lifetime Requirement: Temporaries}
 \label{sec:temporary-lifetime}
@@ -606,12 +612,7 @@ Sizing caches is important, but tricky to get right.
 
 
 
-\section{Objects that Span Program Phases or Requests}
-\label{sec:correlated-with-need}
 
-Some objects need to be kept around for operations that span several independent
-operations, or are used across multiple threads. They are used beyond the scope
-of a phase, are not correlated with another object, but don't live forever. 
 
 
 
