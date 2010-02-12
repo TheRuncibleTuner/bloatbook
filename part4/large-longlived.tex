@@ -1,12 +1,17 @@
 %about objects not information; we can discuss in outside the box the issue of
 %information needed forver but shuttled in and out.
 
-\chapter{Large, Long-lived Data}
-\label{chapter:outisde-java-box}
+\chapter{Scalability of Long-lived Data}
+\label{chapter:large-long-lived}
 
+Objects that live forever have it easy! They are free from the bugs that riddle
+objects with correlated lifetime. How can an object that is \emph{supposed}
+to live forever be part of a memory leak? A challenge that many developers face
+is the case where objects that are needed forever do not fit into the
+limits of available Java heap, or available memory.
 
 \begin{example}{Nodes and Edges}
-
+Consider representing a graph, one with a great many nodes and edges.
 \end{example}
 
 \section{The Bulk Sharing Pool}

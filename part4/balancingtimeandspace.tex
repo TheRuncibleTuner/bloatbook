@@ -132,7 +132,7 @@ memor costs of storing data. However, rather than mitigate the costs of data
 duplication, a bulk sharing pool aims to amortize the costs of Java object
 headers across the elements in a pool. This is a topic that stretches notions of
 how to store data beyond the normal Java box, and so will be discussed, along
-with many similar matters, in \autoref{chapter:outisde-java-box}.
+with many similar matters, in \autoref{chapter:large-long-lived}.
 
 \section{Resource Pools: Amortizing Allocation Costs}
 \label{sec:resource-pools}
@@ -219,6 +219,8 @@ persistent per thread? What's the point of a resource pool in this case?
 
 \section{Properly Draining a Reference Queue}
 Where does this go?
+
+\section{Tradeoffs Gone Wrong: Memory Leaks}
 
 \begin{comment}
 

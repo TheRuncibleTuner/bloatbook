@@ -168,7 +168,7 @@ through understanding the lifetime requirements of these data structures.
 	\label{fig:timeline-base-session-temps}
 \end{figure}
 
-\section{Lifetime Requirement: Permanently Resident}
+\section{Permanently Resident}
 \label{sec:forever-lifetime}
 \index{Permanently Resident Objects}
 
@@ -188,7 +188,7 @@ needed forever. In the timeline picture, this data is respresented by the lowest
 reached a ``warmed up'' state, memory consumption of this baseline data evens out
 on a plateau for the remainder of the run.
 
-\subsection{Permanently Resident Objects in Practice}
+\paragraph{Permanently Resident Objects in Practice}
 
 In the above example, a \class{DateFormat} object was created in every loop
 iteration and used only once. We can improve this situation by creating and using
@@ -207,7 +207,7 @@ Date parse(String string) {
 \end{shortlisting} 
 
 
-\section{Lifetime Requirement: Request-spanning}
+\section{Request-spanning}
 \index{Session State}
 \label{sec:correlated-with-need}
 
@@ -229,7 +229,7 @@ They are used beyond the scope of a phase, are not correlated with another
 object, but don't live forever.
 
 
-\section{Lifetime Requirement: Temporaries}
+\section{Temporaries}
 \label{sec:temporary-lifetime}
 \index{Temporary Objects}
 
@@ -259,7 +259,7 @@ It should certainly be larger than the baseline and session data. How much
 larger than that? This choice directly affects the amount of \emph{headroom},
  that is the amount of space available for temporaries to pile up.
 
-\subsection{Temporaries in Practice}
+\paragraph{Temporaries in Practice}
 If your application is like most Java applications, it creates a large number of
 these temporary objects. They hold data that will only be used for a very short
 interval of time. It is often the case that the objects in these transient data
@@ -389,9 +389,8 @@ temporary \class{ParsePosition} objects).
 	\label{fig:timeline-base-session-temps-with-leak}
 \end{figure}
 
-\section{Lifetime Requirement: Correlated Lifetime}
+\section{Correlated Lifetimes}
 \label{sec:correlated-lifetime}
-\index{Memory Leaks}
 
 The catalog data should last forever, while the
 session data lives for some bounded period of time. It is possible that session
@@ -402,6 +401,7 @@ reclaimed, the application will leak memory. Though it is supposed to have a bou
 automatic garbage collection!} 
 accidentally lives forever. In this
 case, over time, the amount of heap required for the application to run will increase without bound.
+\index{Memory Leaks}
 \autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
 in the extreme case when all of session state leaks. Over time, the area under
 the curve steps higher and higher.
@@ -409,7 +409,7 @@ the curve steps higher and higher.
 %As you scan the timeline from left to right, memory consumption 
 %it fetches catalog data from its database, and stores them in the Java heap. 
 
-\subsection{Correlated Lifetime in Practice}
+\paragraph{Correlated Lifetime in Practice}
 
 Many objects are needed for a bounded interval of time. In some cases, this
 interval is bounded by the lifetime of another object. In a second important
@@ -549,7 +549,7 @@ The next chapter goes into greater detail on how to avoid these kinds of
 errors. \autoref{chapter:tools} describes tooling that can help you
 detect and fix the bugs that make it into your finished application.
 
-\section{Lifetime Requirement: Time-space Tradeoffs}
+\section{Time-space Tradeoffs}
 \index{Time-Space Tradeoffs}
 Finally, this example server caches data from some expensive third-party data
 source. When caching data inside of Java objects, there is a fourth effect on
