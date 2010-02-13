@@ -59,23 +59,59 @@ current ceiling will always be some value lower than the maximum, \code{-Xmx},
 setting. One such scenario, of increasing ceiling level, is illustrated in
 \autoref{fig:timeline-base-session-temps-with-leak}.
 
-
-\paragraph{What a Collection Collects}
-
-\paragraph{The Nursery, Permspace, and Constant Pools}
+\paragraph{The Nursery and Long-lived Heaps}
 \index{Nursery}
+To optimize for applications that create a large number of temporary objects, 
+some garbage collection strategies attempt to separate the short-lived and
+long-lived objects into two separate heaps. The heap for short-lived objects is
+typically called the \emph{nursery}. Some collectors allow you to specify a
+separate maxmum size for each, and some let you specify only the
+maximum nursery size and the total maximum heap consumption (via \code{-Xmx}.)
+
+
+\paragraph{The Permspace Heap}
+\index{Constant Pools}
 \index{Permspace}
+In addition to separating new and old objects, some \jres create
+a third heap in which to store the descriptions of your Java classes. This
+includes the scalar and pointer slots for the classes, and any metainformation
+that the \jre associates with each class.
+
+\begin{example}{Class Duplication and Excessive Permspace}
+A Java Enterprise Edition (JEE) server application is deployed as 100 separate
+applications, each in its own \code{war} file. Each \code{war} file contains
+duplicate class files for logic common to some, or even all applications.
+The development team didn't think to worry about this, figuring that the
+\jre would notice and remove the duplication. They were wrong, due to
+requirements of teh JEE specification, and suffered from excessive Permspace
+consumption.
+
+In JEE, each \code{war} file represents a distinct application, probably
+separately developed. Having been coded separately, the JEE model assumes the
+worst, that the applications will collide in their use of the static fields of
+classes. Therefore, each \code{war} is loaded into a separate classloader, with
+the result that the class duplication is not removed. The server application
+required 500 megabytes for its Permspace heap, despite having under 100 megabytes
+of distinct class data.
+\end{example}
+
+\paragraph{Lifetime of Statics and Class Unloading}
+
+A \code{static} field of an object is one way that Java gives you to indicate
+that you want an object to live forever.
+
+\index{Class Unloading}
+\index{Static fields}
+
+\paragraph{Constant Pools and String interning}
 
 \paragraph{Finalization and Phantom Referenes}
 \index{Finalization of objects}
 \index{Phantom References}
 
-\paragraph{Class Unloading and Lifetime of Statics}
 
-A \code{static} field of an object is one way that Java gives you to indicate
-that you want an object to live forever.
-\index{Class Unloading}
-\index{Static fields}
+\paragraph{What a Collection Collects}
+Each time a garbage cllection occurs, 
 
 \paragraph{Concurrent, Parallel, and Real-time Collection}
 \index{Concurrent GC}
