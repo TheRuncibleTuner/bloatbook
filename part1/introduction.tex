@@ -20,26 +20,27 @@ must support. (Indeed, properly predicting and engineering
 your system's memory needs, early in the cycle, can make the
 difference between success and failure of your project.)
 
-Achieving efficient memory usage takes some effort in any language, yet
-there are things about Java that make it very easy to end up with bloated or even incorrect
-data designs. In part it's because Java is so easy to program, it gives you a
-false sense of security that everything is being handled for you. (Languages like C give you a
+Achieving efficient memory usage takes some effort in any language. 
+There are things about Java that make it especially easy to end up with bloated
+or even incorrect data designs. One reason is that Java is so easy to program,
+so it gives you a false sense of security that everything is being handled for you. (Languages like C give you a
 lot of control over storage, and so it is clear what
 the consequences of your choices are.) Also, as we shall see,
 the basic costs of building blocks such as Strings, can be surprisingly expensive,
 when compared with languages like C++. So much is done for you in
 Java, from management of the heap, to all the functionality hidden behind framework APIs, that it can be
-difficult to know how much memory your data structures need, or how long they are staying around, until you have
-a fully running system. Compared to languages like C++, Java also gives you fewer options for designing your
-data structures and managing their storage. This means that if you find you have problems, you may have fewer
-ways of fixing them without rethinking larger aspects of your design.
-
-All of this makes it even more important to understand what memory costs and alternatives are, as early as possible
+difficult to find out how much memory your data structures need, or how long
+they are staying around, until you have a fully running system. Compared to
+many languages, Java also gives you fewer options for designing your data
+structures and managing their storage. This means that if you find you have
+problems, you have fewer ways of fixing them without rethinking larger aspects of your design.
+All of this makes it important to understand what memory
+costs and alternatives are, as early as possible.
 
 This book is a guide to using memory wisely in Java. Memory usage, like any other
 aspect of software, needs to be carefully engineered if your system is to be successful.
 Engineering requires making informed tradeoffs, and, unfortunately, the information
-about space isn't always available. 
+about memory isn't always available. 
 While there has been much written on how to build systems that are bug-free, easy to maintain, and secure,
 there is little guidance available on how to use Java memory efficiently
 or even correctly. (Too often memory issues are left to chance, or at least
@@ -89,15 +90,14 @@ At a high level, the approach we present in this book is simple. For each part o
 The bulk of this book takes you through the most common patterns that come up in practice for each topic. We show you how to recognize
 these patterns in your designs, and give you relevant information about costs and other pitfalls.  
 
-%very high level overview of approach goes here
 
 \subsection{Estimating Space Costs}
 
-%discuss estimating (Edith text on counting bytes, etc is great)
+discuss estimating (Edith text on counting bytes, etc is great)
 
-%discuss health very briefly
+discuss health very briefly
 
-%discuss entities and collections
+discuss entities and collections
 
 \subsubsection{Entity-Collection Diagrams}
 
@@ -105,16 +105,16 @@ Much of this book is about how to implement your data designs to make the most e
 
 A data model implementation begins with a conceptual understanding of the entities and relationships in the model.  This may be an informal understanding, or it may be formalized in a diagram such as an E-R diagram or a UML class diagram.  At some point that conceptual model is turned into Java classes that represent the entities, attributes, and assocations of the model, as well as any auxiliary structures, such as indexes, needed to access the data.  The example below shows a simple conceptual model, using a UML class diagram.  A Java implementation of that model is also shown, using rectangles for classes and arrows for references.  %The Java diagram below is typical of a schema diagram, in that it shows 
 
-While the Java 
 
 In these models we make a distinction between the implementations of entities and the implementation of collections.  We do this for a number of reasons.  First, the kinds of choices you make to improve the storage of your entities are often different from those Collections are also depicted as nodes, using an octagonal shape.  This is different from UML class diagrams, where associations are shown as edges. E-C diagrams show 
 
 \subsection{Managing lifetime}
 
+discuss overview of approach to lifetime management
 
 \subsection{Defining Terms}
 
-Terms like object can have different meanings in the literature.  The following are the conventions for terms used throughout this book.
+Terms like object can have different meanings in the literature.  The following are the conventions used throughout this book.
 
 Since the word \textit{object} can have different meanings, we precisely define the terminology used:
 \begin{itemize}
