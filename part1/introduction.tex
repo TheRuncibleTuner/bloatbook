@@ -11,43 +11,53 @@ the parts and let the Java runtime system do the rest for you.
 The reality, unfortunately, is very different. If you just assemble the parts, take
 the defaults, and follow all the good advice to make your
 program flexible and maintainable, you will likely find that your memory needs are
-\emph{much} higher than imagined. You may find that precious memory resources
-are wasted on data that is sticking around longer than necessary, or that
-CPU cycles are wasted recreating data that was just thrown away. 
-(At system test or deployment you find that your design does not fit in memory,
-... In short, engineering memory usage properly, and early in the cycle, can make
-the difference between success and failure a software project.)
+\emph{much} higher than imagined. You may also find that precious memory
+resources are wasted holding on to data that is no longer needed, or that
+CPU cycles are wasted re-creating data that was just thrown away. 
+You may discover, when you are ready to ship, that your design is very far from
+fitting into memory, or that it does not support nearly the number of users it
+must support. (Indeed, properly predicting and engineering 
+your system's memory needs, early in the cycle, can make the
+difference between success and failure of your project.)
 
-This book is a guide to using memory wisely in Java.  While there has been much
-written on how to build systems that are bug-free, easy to maintain, and secure,
+Achieving efficient memory usage takes some effort in any language, yet
+there are things about Java that make it very easy to end up with bloated or even incorrect
+data designs. In part it's because Java is so easy to program, it gives you a
+false sense of security that everything is being handled for you. (Languages like C give you a
+lot of control over storage, and so it is clear what
+the consequences of your choices are.) Also, as we shall see,
+the basic costs of building blocks such as Strings, can be surprisingly expensive,
+when compared with languages like C++. So much is done for you in
+Java, from management of the heap, to all the functionality hidden behind framework APIs, that it can be
+difficult to know how much memory your data structures need, or how long they are staying around, until you have
+a fully running system. Compared to languages like C++, Java also gives you fewer options for designing your
+data structures and managing their storage. This means that if you find you have problems, you may have fewer
+ways of fixing them without rethinking larger aspects of your design.
+
+All of this makes it even more important to understand what memory costs and alternatives are, as early as possible
+
+This book is a guide to using memory wisely in Java. Memory usage, like any other
+aspect of software, needs to be carefully engineered if your system is to be successful.
+Engineering requires making informed tradeoffs, and, unfortunately, the information
+about space isn't always available. 
+While there has been much written on how to build systems that are bug-free, easy to maintain, and secure,
 there is little guidance available on how to use Java memory efficiently
 or even correctly. (Too often memory issues are left to chance, or at least
-put off until there is a crisis.) The main message of this book is that
-memory usage, like any other aspect of software, needs to be carefully
-engineered if your system is to be successful. This book gives you the tools to do that.
+put off until there is a crisis.)  This book gives you the tools to do that.
 It gives you 
 an approach to looking at your system's uses of memory, and a practical guide
 to making informed tradeoffs in every part of your design and
-implementation.
+implementation.  (Common patterns that make up your design - helps you understand costs and alternatives.  Also 
+relevant Java mechanisms).
 
-While achieving efficient memory usage can take some effort in any language,
-Java systems (it is especially easy) can be especially prone to bloated or
-incorrent memory usage. In part it's because Java is so easy to program, it can give you a
-false sense of security that memory concerns are being handled for you. Also,
-in Java, the space costs of basic building blocks, can be surprisingly expensive,
-as we shall see. So much is done for you in
-Java, from management of the heap, to all the functionality hidden behind framework APIs, that it can be
-difficult to find out what's really going on until symptoms appear in a
-running system.  (what the costs of your objects are, and how long they are
-sticking around)  Compared to languages like C, Java gives you fewer options for designing your data structures and managing their storage.
-In fact  means
+If you are like most Java developers, you probably don't have a good picture of
+of how much memory your designs use.
 
- It is easy to fall into
-costly memory traps. In fact, it is hard not to. It can also be more difficult to recover if good decisions are not made early on. (As important as the technical realities are, )Beyond the technical realities of using memory well in Java there are some commonly held misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
+Beyond the technical realities of using memory well in Java there are some commonly held misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
 of these myths, and getting a better understanding of why memory problems
 can be so common in Java.
 
-\section{Java Memory: Facts and Fictions}
+\section{Facts and Fictions}
 
 not so easy, and is extremely important for your system's success, because of Java and the use of so
 many frameworks (current style of programming)
@@ -57,241 +67,39 @@ Expensive compared to other languages
 Problems can pile up
 Limited choices compared to other languages.
 
-Languages like C give you a lot of control over storage, and so it is clear what
-the consequences of your choices are. In Java much is done for you, both by the runtime and by the many layers of frameworks, so it is easy to lose sight of the space your data designs require. In fact, it can be downright difficult to find out. This is especially true early in the development cycle, when it is easier to make design changes.  Java also gives you fewer storage options than languages like C, and some of these options are surprisingly expensive. < In fact, many of the basic building blocks in Java require more space than C++. > So careful attention to the cost of design decisions is especially important in Java.  This book's main purpose is to help you make informed design tradeoffs based on a solid knowledge of common data design options and their space costs.  < And the sooner the better, since once memory problems are discovered they can require extensive
-refactoring >. 
 
-There are some common beliefs and there are some common beliefs that can get in the way 
-Before getting into too much technical detail, ... The next section dispels some common misconceptions about memory in Java.  These misconceptions can get in the way of making  The remaining sections in this chapter introduce some terminology and conventions used in the rest of the book.
-
-%move a lot of this to preface as motivation/inspiration for book
-Thanks to years of software engineering advances, there is now a large
-programmer toolkit for producing well-designed and maintainable programs,
-including a plethora of modeling techniques, design patterns, and coding 
-advice. This is a success story for software engineering. Productivity has
-increased at a remarkable pace to meet the demands of an exploding software-driven world. 
-
-Along the way, programming has changed in some fundamental ways. Rather than building applications from scratch, programmers 
-assemble applications from a collection of off-the-shelf, reusable frameworks
-and libraries. These reusable frameworks and libraries provide suitable
-abstractions, while under the covers they do the heavy lifting, performing a
-myriad of low-level tasks like connecting to a database, managing transactions,
-providing security, or building user interface widgets.
-
-Layers of abstraction make it easy to construct applications
-rapidly, but also make it easy to introduce huge inefficiencies without the
-programmer being aware of it. Consuming too much memory is a particularly common
-kind of inefficiency. When a program stops with an out-of-memory exception, it's
-often hard to tell whether there's a memory leak or the program is just too big. 
-In either case, the next more difficult
-question is how to fix it. This book is about to how to avoid memory problems in the first place. Before
-getting into specifics, we first look at the bigger picture, to motivate
-why you should care about how much memory your program is using.
-
-
-\section{The Big Pileup}
-
-A Java application is like an iceberg, and you, the programmer, typically see
-only the very tip. Coding at the tip, you select which libraries
-and frameworks to use for various purposes. Abstractions provided by these
-libraries and frameworks insulate you from the actual implemention. At the tip
-of the iceberg, you don't see (and you don't need to see) what's under water,
-and this what reusability is all about. Abstractions improve understandabiliy, quality, and
-pruductivity. 
-
-Unfortunately, abstractions also hide memory costs, and
- you are unaware whether a framework method call creates 5 objects 
-or hundreds of objects. If a prorgram runs out of memory,
-then abstractions suddenly get in the way. To fix a memory problem, assuming
-you can't just increase the heap size, you need to get inside what's been
-carefully hidden from you, the rest of the iceberg. Typically, once you dive in,
-you will see that the frameworks you are using call
-other frameworks, which call other frameworks, and so on, eventually calling
-core libraries. The iceberg is really a big layering of abstractions, large
-enough to overwhelm anyone. 
-
-Often a memory problem doesn't have a single cause, which is another reason why
-it can be hard to fix. Like developers at the tip of the iceberg, framework
-developers also use abstractions without understanding their memory costs, so
-that each abstraction layer introduces inefficiencies. Added together, these  
-result in a systemic bloat problem, which needs extensive refactoring to
-fix. Limiting systemic bloat requires paying attention to memory
- at every step of the development process and at every level of abstraction.
+There are some common beliefs that can get in the way 
+Before getting into too much technical detail, ... The next section dispels some common misconceptions about memory in Java.  These misconceptions can get in the way of making 
 
 
 \section{Some Common Misconceptions About Memory}
 
 In addition to the technical reasons why managing memory can be a challenge, there
 are other reasons why memory footprint problems are so common. In particular,
-the software culture and popular beliefs lead programmers to ignore memory
+the software culture and popular beliefs can lead you to ignore memory
 costs. Some of these beliefs are really myths --- they might have once
 been true, but no longer. Here are several.
 
-\textbf{Misconception.} Memory is cheap, hardware is always improving, so
-things are fine. \textbf{Reality.} With gigabytes of memory available, you never
-need to worry about running out. However, resources are still finite, and it is surprising how easy it is to
-saturate them. Furthermore, while processor speeds have been doubling every two
-years following Moore's law, a physical limit has now been reached preventing further processor speedup. 
-Instead, the number of processor cores on a chip is expected double every two years. However,
-memory bandwidth and cache sizes will not grow proportionally. 
- Larger heaps combined with relatively less bandwidth is a recipe for a big performance hit going forward, 
- and the rapidly growing number of small embedded processors will require more
- efficient use of memory.
+\section{Memory-concious Engineering}
 
-\textbf{Misconception.} The JIT optimizer and garbage collector are so good that
-they will clean up all efficiencies. things are fine, everything is cheap; there was an
-article on developer works, called "Go ahead, make a mess",  and this idea that objects are free, at least temporaries are,
- and everything will be taken care of for you. The JIT is going to clean things up, the garbage collector will elp, 
- all of this great research 
-  on garbage collection and jit optimization, and you shouldn't have to worry about that; just code whatever the best design 
-  is from a maintainability standpoint, or whatever other standpoint, and the performance will magically be taken care of.
+At a high level, the approach we present in this book is simple. For each part of your data design:
+- understand the space needs of the various implementation alternatives
+- determine how long that data should remain alive, and then choose an appropriate implementation to achieve that
 
-In fact, in the memory space, the JIT is doing, all of the commercial JITs that we know of are doing absolutely nothing 
-in terms of storage optimization, so that every single object, with all of its fields, ends up as an object in the heap, 
-taking up space.  We'll look into the detail of what that means. And similarly the garbage collector, yes it is cleaning up 
-temporary objects. But even for temporaries there are other costs.
-General belief is that JRE, JIT, garbage collection take care of things.
+The bulk of this book takes you through the most common patterns that come up in practice for each topic. We show you how to recognize
+these patterns in your designs, and give you relevant information about costs and other pitfalls.  
 
-The construction of the objects in the first place; garbage collectors are only dealing with shortlived objects,
- and footprint problems are a problem of long-lived objects, which garbage collectors are not addressing at all.
- 
+%very high level overview of approach goes here
 
-\emph{Myth}: If you are using a library or framework, in particular if
-it is popular, it is natural to think that it was developers by experts, and
-therefore it is highly efficient. Therefore, you do not have to worry about
-its memory footprint. In reality, framework developers may not know
-the costs of the frameworks that they themselves are using.  Additionally, they
-can't predict how their framework will be used, and you cannot assume that it
-will be optimized for your particular situation.
+\subsection{Estimating Space Costs}
 
+%discuss estimating (Edith text on counting bytes, etc is great)
 
-Myth 4: Performance or memory -- tradeoff -- would sacrifice good design.
-Goal of the book:  teach how do good design, while taking memory costs into account.
+%discuss health very briefly
 
-Many developers know things are bad, but not how had, and we see this over and over again. 
-In fact, I just came back, about a month ago, working with a group of IBM rational developers in Ottowa, 
-a very strong group of people, very good engineers, who were quite aware of how memory contrained they were,
- and even they were surprised still when we looked at the actual cost, to see just how costly things were. 
- They were even more than they thought.
+%discuss entities and collections
 
-Then there are the people who just give up - I know Java is expensive, it's always expensive, 
-there is nothing I can do about it, it's just a cost of object oriente programming in Java, and if I try to do anything, 
-it's going to break my good design.
-And so, hopefully, one of the things we want to achieve is to raise awareness of cost. 
-So that it's not a lost cause, there is some hope.  It's possible to make informed tradeoffs, can't fix all problems. 
-Identify places where good engineering can help by the developer, and then where people are going to hit a wall.
-
-Finally, this is an issue for performance, not just for memory. 
-There's a false dichotomy in a lot of people's minds that say well, if you have a lot of footprint it must be buying
- you something in terms of performance. But in reality, that is not always the case. In fact, sometimes bad memory usage
-  will result in poor performance as well, even something as simple as I am using so much of my heap for long-lived objects, 
-  then I have very little headroom for temporaries.  And so my garbage collector has to run much more often. 
-
-Or I don't have enough room to size the caches for things I get from the database as large as I like, 
-so I go back to the database more than I like, so this can have a huge performance cost.
-
-Fortunately, bloated designs are not an inevitable consequence of object-oriented development.
-
-\section{Quiz}
-
-Understanding memory costs requires counting bytes, which may seem like a strange activity for a Java programmer,
- accustomed to rapid assembly of applications from assorted libraries. At its core, programming is an engineering discipline, 
- and there is no escaping the fact that the consumption of any finite resource must be measured and managed.  
- To start you thinking about bytes, here is a quiz to test how good you are at estimating sizes of Java objects. 
- Assume a 32-bit JVM.
- 
-\begin{verbatim}
-
-   Question 1: What is the size ratio in bytes Integer to int?
-   
-      a. 1:1
-      b. 1.33:1
-      c. 2:1
-      d. 4:1
-      e. 8:1
-   
-   Question 2: How many bytes in an 8-character string?
-
-      a. 8 bytes
-      b. 16 bytes
-      c. 20 bytes
-      d. 40 bytes
-      e. 56 bytes
- 
-   
-   Question 3: Which statement is true about a HashSet compared to 
-               a HashMap with the same number of entries?
-               
-      a. It has fewer data fields and less overhead.
-      b. It has the same number of data fields and more overhead.
-      c. It has the same number of data fields and the same overhead.
-      d. It has more data fields and it has less overhead.
-                  
-                       
-   Question 4: Arrange the following 2-element collections in size order:
-    
-      ArrayList, HashSet, LinkedList, HashMap
-          
-   Question 5: How many collections are there in a typical heap?
-   
-      a. between five and ten
-      b. tens
-      c. hundreds
-      d. thousands
-      e. order(s) of magnitude more than any of the above
-
-   Question 6: What is the size of an empty ConcurrentHashMap?
-   (Extra Credit)
-      a. 17 bytes
-      b. 170 bytes
-      c. 1700 bytes
-      d. 17000 bytes
-      e. 500 bytes
-           
-
-ANSWERS: 1d, 2e, 3b, 
-         4 ArrayList LinkedList HashMap HashSet, 
-         5e, 6c                 
-\end{verbatim}
-
-If you look inside a typical Java heap, it is mostly filled with the kinds of objects used in the quiz --- boxed scalars, 
-strings, and collections. Every time a program instantiates a class, there is an object created in the heap, and as 
-shown by the 4:1 size ratio of \texttt{Integer} to \texttt{int}, objects are not cheap. 
-
-Strings often consume half of the heap and are surprisingly costly. 
-If you are a C programmer, you might think that an 8-character string should consume 9 bytes of memory, 
-8 bytes for characters and 1 byte to indicate the end of the string. What could possibly be taking up 56 bytes? 
-Part of the cost is because Java uses th 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes. 
-The rest is various kinds of overhead.
-
-After strings, collections are the most common types of objects in the heap. In typical real programs, having 100's of 
-thousands and even millions of collection instances in a heap is not at all unusual. If there are a million collections 
-in the heap, then the collection choice matters. One collection type might use 20 bytes more than another, 
-which may seem insignificant, but in a production execution, the wrong choice can add 20 megabytes to the heap.
-
-\texttt{ConcurrentHashMap}, compared to the more common collections in the standard library, is surprisingly expensive. 
-If you are used to creating hundreds of \texttt{HashMaps}, then you might think that it is not a problem to create hundreds 
-of \texttt{ConcurrentHashMaps}. There is certainly nothing in the API to warn you that \texttt{HashMaps} and 
-\texttt{ConcurrentHashMaps} are completely different when it comes to memory usage. 
-The quiz gives some sense of how surprising the sizes are for the Java basic objects, like \texttt{Integers}, 
-strings, and collections. When code is layered with multiple abstractions, memory costs become more and more difficult 
-to predict.
-%Looking at objects individually, what heappens
-
-
-
-In fact, as we will see in some of our examples, inside the Java library themselves, the low level libraries are calling
- other low level libraries.  String buffer uses ;;  Hashset interms of hashmap, and so forth.  
- This is true for memory and performance.
-
-Compared to systems languages like C, Java space costs are high, even for the most basic building blocks. 
-This makes it all the more important for developers to be aware of memory costs.
-
-\section{An Engineering Approach}
-
-\section{Notation and Conventions}
-
-\subsection{Entity-Collection Diagrams}
+\subsubsection{Entity-Collection Diagrams}
 
 Much of this book is about how to implement your data designs to make the most efficient use of space. In this section we introduce a diagram, called the \emph{entity-collection(E-C) diagram}, that helps with that process. It highlights the major elements of the data model implementation, so that the costs and scaling consequences of the design are easily visible. We use these diagrams throughout the book to illustrate various implementation options and their costs.
 
@@ -299,8 +107,10 @@ A data model implementation begins with a conceptual understanding of the entiti
 
 While the Java 
 
-
 In these models we make a distinction between the implementations of entities and the implementation of collections.  We do this for a number of reasons.  First, the kinds of choices you make to improve the storage of your entities are often different from those Collections are also depicted as nodes, using an octagonal shape.  This is different from UML class diagrams, where associations are shown as edges. E-C diagrams show 
+
+\subsection{Managing lifetime}
+
 
 \subsection{Defining Terms}
 
