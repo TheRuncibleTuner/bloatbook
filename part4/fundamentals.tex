@@ -25,23 +25,68 @@ you are comfortable with the basics of memory management, you may discover that
 you can skip to the next chapter.
 
 \section{The Garbage Collector}
-The \jre decides when the storage allocated to an object should be reclaimed.
-This decision is based on a number of criteria. The point of reclamation
-depends on the settings you have chosen for various policy knobs, and is also
-affected by choices you have made in the application code. However, in most
-cases, there is a common structure to the schedule of when objects are
-collected.
+The garbage collector is the mechanism for determining when an object should be
+reclaimed. It is governed by a number of configuration choices that you can make.
+These configuration choices guide the schedule that the collector follows. This
+includes, for example, the frequency of collection and the lengths of pauses your
+application experiences. In any case, the collector will obey some basic
+principles, dictated by how your data structures are interconnected, when
+determining \emph{what} to collect.
+
+\paragraph{What a Collection Collects: Reachability and Unique Ownership}
+Each time a garbage collection occurs, the collector inspects the heap for
+possibly \emph{live} objects. The collector treats the heap as a graph of
+objects. The nodes are the objects themselves, and the edges are field or array
+slots that result in a pointer from one object to another. \index{Heap, as a
+graph of objects} Recursively, an object is live either if it is a referenced
+either by a live object, or, in the base case, by a \emph{root}. The roots of
+garbage collection are those that come from outside the Java space, and include:
+objects serving as monitors, objects on the stack of a method invocation in
+progress, and references from native code via the Java Native Interface (JNI).
+Every other object not live, in this sense, are ready for collection; they are
+garbage.
+
+\begin{figure}
+\centering
+	\subfigure[A live data
+	structure.]{\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability1}}
+	\hspace{0.18\textwidth}
+	\subfigure[Then, a link is clipped.]{\label{fig:reachability-b}\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability2}}
+	\caption{The garbage collector uses the references between objects to
+	determine what objects are collectable. The data structure on the left is
+	filled entirely with live objects; the one on the right, after a link is
+	clipped, now contains some collectable objects.}
+	\label{fig:reachability}
+\end{figure}
+
+This recursive aspect can also be expressed in terms of \emph{reachability}.
+\index{Reachability} The live objects are those objects reachable, by following a
+chain of references, from some root. \autoref{fig:reachability} illustrates a
+simple data structure, and shows which part becomes collectable when a reference
+is set to null, or ``clipped''. When the indicated reference is clipped, there is
+no chain of references from a root to the shaded region of objects.
+
+Reachability is the graph property that determines what objects are still live.
+This is all the garbage collector cares about, finding the objects that need to
+be kept around. It is also helpful for programmers to know which objects become
+dead as the result of a pointer being clipped. The objects within the shaded
+region of \autoref{fig:reachability-b} have the property that each is reachable
+\emph{only} from the clipped reference. That clipped reference is the unique
+owner of the shaded objects. The graph property that describes unique ownership
+is called \emph{dominance}; \index{Dominance} the clipped reference is said to
+dominate those objects that it uniquely owns.
 
 \paragraph{The Collection Schedule}
-Most contemporary garbage collectors deallocate storage in a series of bulk
-steps. In almost all \jres, memory is not reclaimed one object at a time.
-Instead, to amortize the costs involved in reclamation, the garbage collector
-often lets reclaimable objects pile up for a while. It then collects then en
-masse. As objects are allocated, memory consumption can be observed to increase,
-up until some maximum allowed amount. At this point, the collector reclaims
-unused memory, and the process starts again. In this way, memory consumption over
-time often assumes a sawtooth edge, such as those shown in
-\autoref{fig:timeline-base-session-temps-with-cache}.
+The garbage collector does not reclaim memory immediately after an object's last
+use. Instead, to amortize the costs involved in reclamation, the garbage
+collector often lets reclaimable objects pile up for a while, and reclaims memory
+in bulk. This bulk operation or reclaiming unused memory is usually implemented
+as a number of threads. These worker threads, on some schedule, wake up and
+traverse the heap for live objects. As objects are allocated, memory consumption
+can be observed to increase, up until some maximum allowed amount. At this point,
+the collector reclaims unused memory, and the process starts again. In this way,
+memory consumption over time often assumes a sawtooth edge, such as those shown
+in \autoref{fig:timeline-base-session-temps-with-cache}.
 \index{Sawtooth Pattern}
 
 \paragraph{Configuration Settings}
@@ -73,10 +118,21 @@ maximum nursery size and the total maximum heap consumption (via \code{-Xmx}.)
 \index{Constant Pools}
 \index{Permspace}
 In addition to separating new and old objects, some \jres create
-a third heap in which to store the descriptions of your Java classes. This
-includes the scalar and pointer slots for the classes, and any metainformation
-that the \jre associates with each class.
+a third heap in which to store data that is very unlikely to ever become
+garbage. This includes the \jres metadata for your Java classes, along with the
+executable code for your methods. In addition, any strings that you have
+interned will be stored in this heap, along with any objects that the source
+code compiler has decided to store in the \emph{constant pool} for a class;
+these objects include any static strings, such as the one in this code snippet:
 
+\begin{shortlisting}
+System.err.println("aStaticString");
+\end{shortlisting} 
+
+The maximum size of Permspace, like the other heaps in Java, can often be
+specified on the command line. In some cases, you may find that your application
+requires a suspciously large maximum size for Permspace.
+ 
 \begin{example}{Class Duplication and Excessive Permspace}
 A Java Enterprise Edition (JEE) server application is deployed as 100 separate
 applications, each in its own \code{war} file. Each \code{war} file contains
@@ -95,28 +151,38 @@ required 500 megabytes for its Permspace heap, despite having under 100 megabyte
 of distinct class data.
 \end{example}
 
-\paragraph{Lifetime of Statics and Class Unloading}
-
-A \code{static} field of an object is one way that Java gives you to indicate
-that you want an object to live forever.
-
+\paragraph{The Lifetime of Statics and Class Unloading}
 \index{Class Unloading}
 \index{Static fields}
 
-\paragraph{Constant Pools and String interning}
+The \jre allocates memory for every class, to store its static fields. This
+memory is often referred to as the \emph{class object} for the class.\index{Class
+Objects} Therefore, unless a class is \emph{unloaded} by the \jre, its class
+object will remain permanently resident. Unless you are using a module management
+system, such as OSGi~\cite{OSGi_2007}, this is unlikely to happen. Therefore,
+your design should anticipate that the memory for these static fields is
+permanently resident. This means that any static fields referencing an instance,
+rather than containing primitive data, will render that instance also permanently
+resident. Unless, that is, you take action to explicitly clip the static field
+reference, by assigning the field to null. Otherwise, that instance will be
+forever reachable along a path from some garbage collection root through the
+static field reference. In this way, storing a reference in a \code{static} field
+of an class is one way to implement a permanently resident lifetime policy.
+
 
 \paragraph{Finalization and Phantom Referenes}
 \index{Finalization of objects}
 \index{Phantom References}
 
+\paragraph{Soft and Weak References}
 
-\paragraph{What a Collection Collects}
-Each time a garbage cllection occurs, 
 
 \paragraph{Concurrent, Parallel, and Real-time Collection}
 \index{Concurrent GC}
 \index{Parallel GC}
 \index{Real-time GC}
+
+TODO. do we need this?
 
 
 \section{The Object Lifecycle}

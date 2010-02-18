@@ -70,7 +70,7 @@ know when you have an instance of each.
 	Correlated with a Phase or Request & tables needed only for parsing
 	\\
 	%\autoref{deferred-deletion} &
-	Request/phase-spanning & session state 
+	Correlated with External Event & session state, cleared on user logout 
 	\\
 	%\autoref{forever-lifetime} &
 	 Permanently Resident & product catalog
@@ -207,8 +207,8 @@ Date parse(String string) {
 \end{shortlisting} 
 
 
-\section{Request-spanning}
-\index{Session State}
+\section{Correlated with External Event}
+\index{Lifetime Requirement, Correlated with External Event}
 \label{sec:correlated-with-need}
 
 After the server is warmed up, it begins to process client requests. Imagine
