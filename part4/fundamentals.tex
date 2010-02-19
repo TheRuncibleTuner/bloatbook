@@ -170,29 +170,23 @@ static field reference. In this way, storing a reference in a \code{static} fiel
 of an class is one way to implement a permanently resident lifetime policy.
 
 
-\paragraph{Finalization and Phantom Referenes}
-\index{Finalization of objects}
-\index{Phantom References}
-
-\paragraph{Soft and Weak References}
-
-
-\paragraph{Concurrent, Parallel, and Real-time Collection}
-\index{Concurrent GC}
-\index{Parallel GC}
-\index{Real-time GC}
-
-TODO. do we need this?
+%% DO WE NEED THIS?
+%\paragraph{Concurrent, Parallel, and Real-time Collection}
+%\index{Concurrent GC}
+%\index{Parallel GC}
+%\index{Real-time GC}
 
 
-\section{The Object Lifecycle}
+
+\section{The Lifecycle of an Object}
 %Every object created by your application lives for an interval of time from its
 %creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
 %interval of time between its first and last necessary use. %cite drag paper
 %here?
 
-
-In a \emph{well-behaved} application, an object's lifetime spans its allocation,
+An object, from creation to reclamation, goes through a number of 
+stages. It is illustrative to walk through some of the typical lifecycle cases.
+In a well-behaved application, an object's lifetime spans its allocation,
 use, and the short period during which the \jre takes control and reclaims the
 space. For some subset of an object's actual lifetime, that is the time from
 creation to reclamation, your application will make use of the data stored in its
@@ -224,13 +218,15 @@ this created two objects, but many more are created by the standard libraries to
 finish the task. These include a calendar object, number of arrays, and the
 \class{Date} itself. None of these objects are used beyond the iteration of the
 loop in which they were created. Within one iteration, they are created, almost
-immediately used, and then enter a state of \emph{limbo}.
+immediately used, and then enter a state of \emph{drag}.
 
-\callout{limbo}{Objects in Limbo}{
-\index{Limbo}
-In limbo, an object will never be used again, or at least not for long time,
-but the \jre doesn't yet know that this is the case. The object hangs
-around, taking up space in the Java heap until the point when it exits limbo.}
+\callout{limbo}{Objects in Drag}{
+\index{Drag}
+At some point, an object will never be used again, 
+but the \jre doesn't yet know that this is the case. The object hangs around,
+taking up space in the Java heap until the point when some action is taken,
+either by the \jre or by the application itself, to make the object a
+candidate for reclamation.}
 
 The \code{pos} object represents to the parser the position within the
 input string to begin parsing. The implementation of the \code{parse} method
@@ -274,6 +270,13 @@ collectible.\index{Exiting Limbo}
 \end{figure}
 \end{comment}
 
+
+\paragraph{Low-level Ways to Modify Finalization and Phantom References}
+\index{Finalization of objects}
+\index{Phantom References}
+
+
+\paragraph{Soft and Weak References}
 
 \section{Basic Management Mechanisms}
 DO WE NEED THIS?
