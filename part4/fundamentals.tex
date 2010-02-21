@@ -176,7 +176,37 @@ of an class is one way to implement a permanently resident lifetime policy.
 %\index{Parallel GC}
 %\index{Real-time GC}
 
+\section{How to Free an Object}
 
+If you wish an object's storage to be reclaimed, you must take some care. In a
+language like C, which, at least in its standard form, you need only call
+\code{free} on any pointer to a dynamically allocated memory region. That
+memory is then immediately returned to the pool of free memory. That style of
+memory management comes with the obvious risks which commonly lead to memory
+errors. Memory might be deallocated more than once. Variables that do not point
+to the start of an allocated region might be passed to \code{free}.
+
+In Java, there is no way to return memory for immediately use in future
+allocations. The only device at your disposal is assigning references to
+objects to \code{null}. If this is the only reference to the object, i.e. that
+reference uniquely owns the object, then you are in luck. The object will
+now be a candiate for garbage collection. Its memory will be free for future
+allocations once the garbage collector notices its candidacy and takes action.
+
+In the case where there is more than one reference to the object, the story
+gets more complicated. In contrast to C, where a \code{free} of \emph{any}
+pointer suffices for deallocation, in Java \emph{all} references to an object
+must be assigned to \code{null}.
+This is tricky in many cases, because it may not be easy to
+know where all those references emanate from.
+
+\begin{figure}
+\centering
+	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
+	\caption{When an object is shared, such as the darkly shaded one shown
+	here, care must be taken to clip all non-backwards edges. Otherwise, the
+	object will not be garbage collectable.}
+\end{figure}
 
 \section{The Lifecycle of an Object}
 %Every object created by your application lives for an interval of time from its
@@ -220,7 +250,7 @@ finish the task. These include a calendar object, number of arrays, and the
 loop in which they were created. Within one iteration, they are created, almost
 immediately used, and then enter a state of \emph{drag}.
 
-\callout{limbo}{Objects in Drag}{
+\callout{drag}{Memory Drag}{
 \index{Drag}
 At some point, an object will never be used again, 
 but the \jre doesn't yet know that this is the case. The object hangs around,
@@ -278,16 +308,10 @@ collectible.\index{Exiting Limbo}
 
 \paragraph{Soft and Weak References}
 
-\section{Basic Management Mechanisms}
-DO WE NEED THIS?
 
-The point at which an object exits its limbo depends upon how it is referenced by
-other objects. One can always assure that an object exits limbo by modifying your
-code to overwrite all references to that variable. If an object is no longer
-referenced at all, then it will exit limbo immediately.\footnote{Talk about
-reference cycles?} For example, a common way to do this is by assigning
-references to the value \code{null}. This is tricky in many cases, because it may not be easy to
-know where all those references emanate from. Who is to say that, when one calls
+\section{old stuff}
+
+ Who is to say that, when one calls
 the \code{parse} method of a \class{SimpleDateFormat} object, that it does not
 squirrel away a reference to the \class{ParsePosition} passed as a parameter? The
 API contract for \code{parse} makes no such claims, one way or the other. This is
