@@ -1,55 +1,5 @@
 \chapter{Correlated Lifetimes}
 
-\begin{table}
-\centering
-	\begin{tabular}{ll} \toprule reachable only from  & moment
-	when object exits limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
-			%
-			nothing & immediately
-        	\\
-        	%
-        	local variable & after scope exits
-        	\\ \addlinespace
-        	%
-        	instance field of an object & 
-        	when that object exits limbo %(could be \emph{never} --- memory leak)
-        	\\
-        	%
-        	static field of an object &
-        	when that object's class is unloaded
-        	%
-        	\\ \addlinespace
-        	field of \class{WeakReference} & immediately
-        	\\
-        	%
-        	field of \class{SoftReference} & approximately
-        	LRU%$^{**}$
-        	%
-        	\\
-        	$\ldots$ with \class{ReferenceQueue} & $\ldots$ then, after removed
-        	from queue
-        	%
-        	\\ \addlinespace
-        	entry in thread local storage & when that thread dies
-        	%
-        	\\ 
-        \bottomrule
-    \end{tabular}
-	\caption{When, or
-	even whether, an object exits limbo depends upon how your program references
-	it. If these references aren't explicitly overwritten, e.g. by your
-	code expliclty assigning the reference to \code{null}, then an object only
-	exits limbo under certain restricted circumstances.
-%	The point when an object exits limbo depends on 
-	%decisions under programmer control: it depends on how the object is
-	%referenced.
-	%older {\jre}s	use very poor heuristics for handling soft references; see the
-	% body for more detail.
-	%, it will be reclaimed
-	%under certain rules, or may be part of a memory leak
-	}
-	\label{tab:limbo-exit}
-\end{table}
 
 
 There are important lifetime management policies that are not expressible via the

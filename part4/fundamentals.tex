@@ -126,7 +126,7 @@ code compiler has decided to store in the \emph{constant pool} for a class;
 these objects include any static strings, such as the one in this code snippet:
 
 \begin{shortlisting}
-System.err.println("aStaticString");
+System.out.println("aStaticString");
 \end{shortlisting} 
 
 The maximum size of Permspace, like the other heaps in Java, can often be
@@ -139,7 +139,7 @@ applications, each in its own \code{war} file. Each \code{war} file contains
 duplicate class files for logic common to some, or even all applications.
 The development team didn't think to worry about this, figuring that the
 \jre would notice and remove the duplication. They were wrong, due to
-requirements of teh JEE specification, and suffered from excessive Permspace
+requirements of the JEE specification, and suffered from excessive Permspace
 consumption.
 
 In JEE, each \code{war} file represents a distinct application, probably
@@ -186,34 +186,15 @@ memory management comes with the obvious risks which commonly lead to memory
 errors. Memory might be deallocated more than once. Variables that do not point
 to the start of an allocated region might be passed to \code{free}.
 
-In Java, there is no way to return memory for immediately use in future
-allocations. The only device at your disposal is assigning references to
-objects to \code{null}. If this is the only reference to the object, i.e. that
-reference uniquely owns the object, then you are in luck. The object will
-now be a candiate for garbage collection. Its memory will be free for future
-allocations once the garbage collector notices its candidacy and takes action.
+In Java, you are immune from these problems, but there is no way to return memory
+for immediately use in future allocations. Instead, you indicate, either
+implicitly or explicitly, that objects are no longer needed. To do so, There are
+several devices at your disposal. In contrast, to C, all of these have a certain
+degree of delay, from last use to reclamation. It is even the case that
+there is a delay from the point at which you indicate an object is no longer
+needed until its storage is reclaimed. 
 
-In the case where there is more than one reference to the object, the story
-gets more complicated. In contrast to C, where a \code{free} of \emph{any}
-pointer suffices for deallocation, in Java \emph{all} references to an object
-must be assigned to \code{null}.
-This is tricky in many cases, because it may not be easy to
-know where all those references emanate from.
-
-\begin{figure}
-\centering
-	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
-	\caption{When an object is shared, such as the darkly shaded one shown
-	here, care must be taken to clip all non-backwards edges. Otherwise, the
-	object will not be garbage collectable.}
-\end{figure}
-
-\section{The Lifecycle of an Object}
-%Every object created by your application lives for an interval of time from its
-%creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
-%interval of time between its first and last necessary use. %cite drag paper
-%here?
-
+\paragraph{The Lifecycle of an Object}
 An object, from creation to reclamation, goes through a number of 
 stages. It is illustrative to walk through some of the typical lifecycle cases.
 In a well-behaved application, an object's lifetime spans its allocation,
@@ -225,9 +206,10 @@ object in a well behaved application.
 
 \begin{figure}
 	\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle}
-	\caption{Timeline of the life of an object.}
+	\caption{Timeline of the life of a typical object.}
 	\label{fig:typical-lifecycle}
 \end{figure}
+
 
 \begin{example}{Parsing a Date} Consider a loop that shows an easy way to parse
 a list of dates. What objects are created, and what are their lifetimes?
@@ -258,50 +240,178 @@ taking up space in the Java heap until the point when some action is taken,
 either by the \jre or by the application itself, to make the object a
 candidate for reclamation.}
 
-The \code{pos} object represents to the parser the position within the
-input string to begin parsing. The implementation of the \code{parse} method
-uses it early on in the process of parsing. Despite being unused for the
-remainder of the parsing, the \jre does not know this until the current
-iteration of the loop has finished. This time in limbo also includes the
-entirety of the call to \code{System.out.println}, an operation entirely
-unrelated to the creation or use of the parse position object. Once the current
-loop iteration finishes, these two objects will exit limbo, and become garbage
-collectible.\index{Exiting Limbo}
+The \code{pos} object represents to the parser the position within the input
+string to begin parsing. The implementation of the \code{parse} method uses it
+early on in the process of parsing. Despite being unused for the remainder of the
+parsing, the \jre does not know this until the current iteration of the loop has
+finished. For this duration of time the object is in a kind of limbo, referenced
+by never to be used again. This limbo time also includes the entirety of the call to
+\code{System.out.println}, an operation entirely unrelated to the creation or use
+of the parse position object. Once the current loop iteration finishes, these two
+objects will exit this limbo, and become candidates for garbage
+collection.
 
 \begin{figure}
 	\centering
 	\includegraphics[width=\textwidth]{part4/Figures/lifetime/states}
 	\caption{After its last use, an object enters a kind of limbo: the application
-	is done with it, but the \jre hasn't yet inferred this to be the case. When an
-	object exits limbo depends on the way it is referenced.}
+	is done with it, but it is not yet a candidate for garbage collection. When an
+	object exits this limbo depends on the way it is referenced by your
+	application.}
 		\label{fig:limbo-exit}
 \end{figure}
+
+\begin{table}
+\centering
+	\begin{tabular}{ll} \toprule reachable only from  & moment
+	when object exits limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+			%
+			nothing & immediately
+        	\\
+        	%
+        	local variable & after scope exits
+        	\\ \addlinespace
+        	%
+        	instance field of an object & 
+        	when that object exits limbo %(could be \emph{never} --- memory leak)
+        	\\
+        	%
+        	static field of an object &
+        	when that object's class is unloaded
+        	%
+        	\\ \addlinespace
+        	field of \class{WeakReference} & immediately
+        	\\
+        	%
+        	field of \class{SoftReference} & approximately
+        	LRU%$^{**}$
+        	%
+        	\\
+        	$\ldots$ with \class{ReferenceQueue} & $\ldots$ then, after removed
+        	from queue
+        	%
+        	\\ \addlinespace
+        	entry in thread local storage & when that thread dies
+        	%
+        	\\ 
+        \bottomrule
+    \end{tabular}
+	\caption{When, or
+	even whether, an object becomes a candidate for reclamation depends upon how
+	your program references it. If these references aren't explicitly overwritten, e.g. by your
+	code expliclty assigning the reference to \code{null}, then an object only
+	becomes a candidate under certain restricted circumstances.
+%	The point when an object exits limbo depends on 
+	%decisions under programmer control: it depends on how the object is
+	%referenced.
+	%older {\jre}s	use very poor heuristics for handling soft references; see the
+	% body for more detail.
+	%, it will be reclaimed
+	%under certain rules, or may be part of a memory leak
+	}
+	\label{tab:limbo-exit}
+\end{table}
+
+\autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
+illustrate how an object may exit limbo. 
+Still, one can't always rely on automatic mechanisms to guide an object out of
+limbo in a timely fashion.
+
+
+\paragraph{Shared Ownership}
+
+Who is to say that, when one calls the \code{parse} method of a
+\class{SimpleDateFormat} object, that it does not squirrel away a reference to
+the \class{ParsePosition} passed as a parameter? The API contract for
+\code{parse} makes no such claims, one way or the other. This is certainly calls
+to mind the worst of the days of explicitly managing memory in a language like C.
+
+In the case where there is more than one reference to the object, the story gets
+more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
+suffices for deallocation, in Java \emph{all} references to an object must be
+assigned to \code{null}. This is tricky in many cases, because it may not be easy
+to know where all those references emanate from.
+\autoref{fig:reachability-sharing} illustrates a situation where three references
+must be clipped before an object, the darkly shaded one, becomes a candidate for
+garbage collection. There are two other important things to note in this example.
+First, just as in \autoref{fig:reachability-b}, after clipping the three
+indicated references, an entire data structure, not just that darkly shaded
+object, becomes a candidate for reclamation.
+ This structure consists of the two objects contained within the lightly shaded
+ region. The second important thing to note is that you needn't clip the
+ backwards edge, or any edge contained entirely within the data structure you no
+ longer need.
+
+\begin{figure}
+\centering
+	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
+	\caption{When an object is shared, such as the darkly shaded one shown
+	here, care must be taken to clip all non-backwards edges. Otherwise, the
+	object will not be garbage collectable.}
+	\label{fig:reachability-sharing}
+\end{figure}
+
+
+
+\paragraph{Local Variable References}
+
+If, as in the \class{ParsePosition}
+or \class{SimpleDateFormat} objects from our example, the object is referenced
+only by a local variable of a method, the \jre will not consider reclaming its
+storage until the variable's scope exits; e.g. when the loop continues to the
+next iteration, or when the method returns, depending on the scope of the
+variable that references the object. 
+
+\paragraph{Field References}
+
+In this case, the only device at your disposal is assigning references to
+objects to \code{null}. If this is the only reference to the object, i.e. that reference
+uniquely owns the object, then you are in luck. The object will now be a candiate
+for garbage collection. Its memory will be free for future allocations once the
+garbage collector notices its candidacy and takes action.
+
+If the object is referenced only by a
+field of another object, then it must wait for that other object to exit limbo
+before it can do so. 
+
+
+
+%Every object created by your application lives for an interval of time from its
+%creation to the point that the Java runtime gets around to collecting it. An object's {\em natural} lifetime is defined by the
+%interval of time between its first and last necessary use. %cite drag paper
+%here?
+
+
+
+
+
+
 
 
 \begin{comment}
 \begin{figure}
 	\centering
-	\subfigure[The lifecycle of a typical object and its data.]{
-	\label{fig:typical-lifecycle1}
-			\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle}
-	}
+%	\subfigure[The lifecycle of a typical object and its data.]{
+	%\label{fig:typical-lifecycle1}
+			%\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle}
+	%}
 	\subfigure[A situation where there are long periods between uses of an
 	object's data.]{
-	\label{fig:typical-lifecycle2}
+	\label{fig:typical-lifecycle2a}
 		\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle-lulls}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
-	\label{fig:typical-lifecycle3}
-		\includegraphics[width=0.9\textwidth]{part4/Figures/object-lifecycle2}
+	\label{fig:typical-lifecycle2b}
+		\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle2}
 	}
 	\caption{Examples of Natural and Actual lifetimes.}
-	\label{fig:typical-lifecycle}
+	\label{fig:typical-lifecycle2}
 \end{figure}
 \end{comment}
 
 
-\paragraph{Low-level Ways to Modify Finalization and Phantom References}
+\paragraph{Phantom References and Finalization}
 \index{Finalization of objects}
 \index{Phantom References}
 
@@ -309,32 +419,6 @@ collectible.\index{Exiting Limbo}
 \paragraph{Soft and Weak References}
 
 
-\section{old stuff}
-
- Who is to say that, when one calls
-the \code{parse} method of a \class{SimpleDateFormat} object, that it does not
-squirrel away a reference to the \class{ParsePosition} passed as a parameter? The
-API contract for \code{parse} makes no such claims, one way or the other. This is
-certainly calls to mind the worst of the days of explicitly managing memory in a
-language like C.
 
 
-Still, one can't always rely on automatic mechanisms to guide an object out of
-limbo in a timely fashion.
-\autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
-illustrate how an object may exit limbo. 
-A garbage collector only knows that an object is ready to
-be collected based on {\em reachability}: how the objects point to eachother.
-If, as in the \class{ParsePosition}
-or \class{SimpleDateFormat} objects from our example, the object is referenced
-only by a local variable of a method, the \jre will not consider reclaming its
-storage until the variable's scope exits; e.g. when the loop continues to the
-next iteration, or when the method returns, depending on the scope of the
-variable that references the object. If the object is referenced only by a
-field of another object, then it must wait for that other object to exit limbo
-before it can do so. 
-An objects pointed to be only by a static field has a good chance of never
-being collected. A class only exits limbo when it is unloaded by the \jres
-class loading mechanism, which is unlikely to happen if it has static fields
-that reference other objects. Therefore, unless that field is overwritten,
-objects pointed to by static fields are likely never to exit limbo.
+
