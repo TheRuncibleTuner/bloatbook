@@ -230,15 +230,16 @@ this created two objects, but many more are created by the standard libraries to
 finish the task. These include a calendar object, number of arrays, and the
 \class{Date} itself. None of these objects are used beyond the iteration of the
 loop in which they were created. Within one iteration, they are created, almost
-immediately used, and then enter a state of \emph{drag}.
+immediately used, and then enter a state of drag.
 
 \callout{drag}{Memory Drag}{
 \index{Drag}
-At some point, an object will never be used again, 
-but the \jre doesn't yet know that this is the case. The object hangs around,
-taking up space in the Java heap until the point when some action is taken,
-either by the \jre or by the application itself, to make the object a
-candidate for reclamation.}
+At some point, an object will never be used again, but the \jre doesn't yet know
+that this is the case. The object hangs around, taking up space in the Java heap
+until the point when some action is taken, either by the \jre or by the
+application itself, to make the object a candidate for reclamation. The interval
+of time between its last use and ultimate reclamation is refered to as
+\emph{drag}.}
 
 The \code{pos} object represents to the parser the position within the input
 string to begin parsing. The implementation of the \code{parse} method uses it
