@@ -104,14 +104,30 @@ current ceiling will always be some value lower than the maximum, \code{-Xmx},
 setting. One such scenario, of increasing ceiling level, is illustrated in
 \autoref{fig:timeline-base-session-temps-with-leak}.
 
-\paragraph{The Nursery and Long-lived Heaps}
+\paragraph{The Nursery and Mature Heaps}
 \index{Nursery}
-To optimize for applications that create a large number of temporary objects, 
+To optimize for applications that create a large number of temporary objects,
 some garbage collection strategies attempt to separate the short-lived and
-long-lived objects into two separate heaps. The heap for short-lived objects is
-typically called the \emph{nursery}. Some collectors allow you to specify a
-separate maxmum size for each, and some let you specify only the
-maximum nursery size and the total maximum heap consumption (via \code{-Xmx}.)
+long-lived objects into two separate heaps. These two heaps are typically called
+the \emph{nursery} and \emph{mature} spaces. The usual behavior is for objects to
+be allocated in the nursery and, if they survive a sufficient number of garbage
+collection cycles, to be \emph{tenured} to the mature space. If a large majority
+of the objects in the nursery are no longer live at the time the \jre runs a
+garbage collection on the nursery heap, then a traversal of the nursery help will
+only touch a small number of memory pages. In this way, ignoring the costs of
+initialization, reclaiming objects that are short-lived can be very cheap. Some
+collectors allow you to specify a separate maxmum size for each, and some let you
+specify only the maximum nursery size and the total maximum heap consumption (via
+\code{-Xmx}.)
+
+\begin{figure}[h]
+\centering
+	\includegraphics[width=0.6\textwidth]{part4/Figures/nursery}
+	\caption{Oftentimes, the Java heap is split into two sub-heaps. The nursery
+	space stores newly-allocated objects, and the mature space stores objects that
+	have been tenured; this is done when an object survives a sufficient number of
+	nursery garbage collections.}
+\end{figure}
 
 
 \paragraph{The Permspace Heap}
