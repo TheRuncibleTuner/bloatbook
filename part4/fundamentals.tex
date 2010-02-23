@@ -106,11 +106,23 @@ setting. One such scenario, of increasing ceiling level, is illustrated in
 
 \paragraph{The Nursery and Mature Heaps}
 \index{Nursery}
+
+\begin{figure}
+\centering
+	\includegraphics[width=0.6\textwidth]{part4/Figures/nursery}
+	\caption{Oftentimes, the Java heap is split into two sub-heaps. The nursery
+	space stores newly-allocated objects, and the mature space stores objects that
+	have been tenured. The garbage collector tenures an object after it
+	survives a sufficient number of nursery garbage collections.}
+	\label{fig:nursery-and-mature}
+\end{figure}
+
 To optimize for applications that create a large number of temporary objects,
 some garbage collection strategies attempt to separate the short-lived and
 long-lived objects into two separate heaps. These two heaps are typically called
-the \emph{nursery} and \emph{mature} spaces. The usual behavior is for objects to
-be allocated in the nursery and, if they survive a sufficient number of garbage
+the \emph{nursery} and \emph{mature} spaces, as illustrated in
+\autoref{fig:nursery-and-mature}. The usual behavior is for objects to be
+allocated in the nursery and, if they survive a sufficient number of garbage
 collection cycles, to be \emph{tenured} to the mature space. If a large majority
 of the objects in the nursery are no longer live at the time the \jre runs a
 garbage collection on the nursery heap, then a traversal of the nursery help will
@@ -119,16 +131,6 @@ initialization, reclaiming objects that are short-lived can be very cheap. Some
 collectors allow you to specify a separate maxmum size for each, and some let you
 specify only the maximum nursery size and the total maximum heap consumption (via
 \code{-Xmx}.)
-
-\begin{figure}[h]
-\centering
-	\includegraphics[width=0.6\textwidth]{part4/Figures/nursery}
-	\caption{Oftentimes, the Java heap is split into two sub-heaps. The nursery
-	space stores newly-allocated objects, and the mature space stores objects that
-	have been tenured; this is done when an object survives a sufficient number of
-	nursery garbage collections.}
-\end{figure}
-
 
 \paragraph{The Permspace Heap}
 \index{Constant Pools}
@@ -192,33 +194,40 @@ of an class is one way to implement a permanently resident lifetime policy.
 %\index{Parallel GC}
 %\index{Real-time GC}
 
-\section{How to Free an Object}
+\section{How to Free an Object in Java}
 
-If you wish an object's storage to be reclaimed, you must take some care. In a
-language like C, which, at least in its standard form, you need only call
-\code{free} on any pointer to a dynamically allocated memory region. That
-memory is then immediately returned to the pool of free memory. That style of
-memory management comes with the obvious risks which commonly lead to memory
-errors. Memory might be deallocated more than once. Variables that do not point
-to the start of an allocated region might be passed to \code{free}.
+If you wish an object's storage to be reclaimed, you must take some care. To do
+so in a language like C is simple, if bug prone. When you call \code{free} on any
+pointer to a dynamically allocated memory region, memory is immediately available
+for subsequent use.\footnote{Though it is possible to run a C program with a
+special \code{malloc} library that introduces a simplified form of garbage
+collection.} A C style of memory management comes with well known risks, and
+commonly leads to memory errors. For example, memory might be deallocated more
+than once, or variables that do not point to the start of an allocated region
+might be passed to \code{free}. Still, using \code{free} is straightforward to
+use, and immediate in effect.
 
 In Java, you are immune from these problems, but there is no way to return memory
 for immediately use in future allocations. Instead, you indicate, either
-implicitly or explicitly, that objects are no longer needed. To do so, There are
-several devices at your disposal. In contrast, to C, all of these have a certain
-degree of delay, from last use to reclamation. It is even the case that
+implicitly or explicitly, that objects are no longer needed. The explicit
+mechanism is to set references to null. To do so implicitly, there are several
+devices at your disposal. This section describes the details of both.
+
+It is important to remember that in contrast to C, all means of indicating an
+object is no longer needed have a certain degree of delay. There are delays of
+two sorts. First, if you rely on the implicit mechanisms for indicating an object is no
+longer needing, there is often a delay from its last use to this point. Second,
 there is a delay from the point at which you indicate an object is no longer
-needed until its storage is reclaimed. 
+needed until its storage is reclaimed.
 
 \paragraph{The Lifecycle of an Object}
-An object, from creation to reclamation, goes through a number of 
-stages. It is illustrative to walk through some of the typical lifecycle cases.
-In a well-behaved application, an object's lifetime spans its allocation,
-use, and the short period during which the \jre takes control and reclaims the
-space. For some subset of an object's actual lifetime, that is the time from
-creation to reclamation, your application will make use of the data stored in its
-fields. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
-object in a well behaved application.
+These two delays are but a part of the larger lifecycle that every Java object
+goes through, from creation to reclamation. In a well-behaved application, an
+object's lifetime spans its allocation, use, and the short period during which
+the \jre takes control and reclaims the space. For some subset of an object's
+actual lifetime, that is the time from creation to reclamation, your application
+will make use of the data stored in its fields. \autoref{fig:typical-lifecycle}
+illustrates the lifecycle of a typical object in a well behaved application.
 
 \begin{figure}
 	\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle}
