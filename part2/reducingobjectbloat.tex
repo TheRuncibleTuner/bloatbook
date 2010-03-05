@@ -1,7 +1,7 @@
 \chapter{Reducing Object Bloat}
 
-In many applications, the heap is filled mostly with instances of just a few
-important classes.  You can increase scalability significantly by making these
+In many applications, the heap is mostly filled with instances of just a
+few important classes.  You can increase scalability significantly by making these
 classes as compact as possible. This chapter describes field usage
 patterns that can be easily optimized for space, for example, fields that are
 rarely needed, constant fields, and dependent fields. Simple refactoring of
@@ -31,7 +31,8 @@ class Product {
 When there is no alternate supplier, the last three fields
 are never used. By moving these fields to a separate side class, you can
  save memory, provided the side object is allocated only when
-it is actually needed. This is called \emph{lazy allocation}.
+it is actually needed. This is called \emph{lazy allocation}. Here are the 
+refactored classes:
 
 \begin{shortlisting} 
 class Product {
@@ -50,9 +51,10 @@ class Supplier {
 For products with no alternate supplier, eight bytes are saved per product,
 since three fields are replaced by one. Of course, products with an alternate
 supplier pay a delegation cost, including an extra pointer and object header.
-The question is how much total memory is actually saved, if any? The answer
-depends on the percentage of products that have an alternate supplier needing a
-side object, which we'll call the \emph{fill rate}.
+An interesting question is how much total memory is actually saved? The
+answer depends on the percentage of products that have an alternate supplier needing a
+side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
+saved. In fact, if the fill rate is too high, memory is wasted.
 
 Figure~\ref{fig:fill-rate} shows the memory saved for different
 fill rates, assuming three fields (12 bytes) are delegated. The most memory that can
@@ -77,7 +79,7 @@ savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the mem
 saved for different fill rates and different delegated-field sizes. Each
 line represents a different delegated-field size. The bottom-most line
 represents a delegated field size of 16 bytes, the next line represents 32 bytes, the next
-represents 48 bytes, and so on, up to 144 bytes. As the delegation size
+represents 48 bytes, and so on, up to 144 bytes. As the delegated object size
 increases, you can worry less about the fill rate. For example, if 32 bytes
 are delegated, there is almost 90\% savings with a low fill rate, and some
 memory savings with a fill rate up to 70\%. As the delegation size increases, 
@@ -97,9 +99,13 @@ less important.
 \callout{callout:rarely-used}{Delegation Cost Calculation}{
 \index{Delegation Cost Calculation}
 Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
-bytes. Let $B$ = the size in bytes of a set of fields being delegated, and
-$F$ = the fill rate. Then the memory cost of the delegated
-implementation per object is:
+bytes, and
+\begin{eqnarray} 
+B &=& the\ size\ in\ bytes\ of\ the\ delegated\ fields \nonumber \\
+F &=& the\ fill\ rate\  \nonumber
+\end{eqnarray}
+The memory cost per object with the delegated
+implementation is:
 \begin{eqnarray}
 D &=& F(B+8)+4 \nonumber
 \end{eqnarray}
@@ -107,7 +113,7 @@ Note that every object pays a 4 byte pointer cost, and only $F$ of
 the objects pay for the side object. The proportional improvement is:
 \begin{eqnarray}
 \frac{(B-D)}{B} &=& 1 - \frac{D}{B} \nonumber \\
-&=& 1 - \frac{(F(B+8)+4)}{B} \nonumber.
+&=& 1 - \frac{(F(B+8)+4)}{B} \nonumber
 \end{eqnarray}
 The following equation can be used to obtain the plots in
 Figures~\ref{fig:fill-rate} and~\ref{fig:rarely-used}, for different values of
@@ -117,7 +123,7 @@ y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B})
 \end{eqnarray}
 } 
 A common error is to delegate rarely-used fields to a side class, but forget to
-allocate it only when needed, that is, always allocate a side object. 
+lazily allocate it, that is, always allocate a side object. 
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
 the cost of unused fields. 
 Lazy allocation
@@ -127,13 +133,13 @@ savings.
 
 \section{Constant Fields}
 
-Recognizing when a field can be declared \code{static} is a simple way to
+Declaring a constant field \code{static} is a simple way to
 save memory. Programmers usually remember to make constants like \emph{pi} 
 static. There are other situations that are a bit more subtle, for example,
-when a field is looked at out of context.
+when a field is constant because of how it used in context of the application.
 
 Returning to the product example, suppose that each product has a field
-\code{catalog} that points to a store catelog.
+\code{catalog} that points to a store catalog.
 If you know that there is always just one store catalog, then the field
 \code{catalog} can be turned into a static, saving 4 bytes per product.
 
@@ -142,10 +148,10 @@ category such as books, music, clothes, toys, etc, and
  has a field pointing to a \class{Category} object.
 These fields are clearly not the same across all products. However, suppose we
 define
-subclasses \class{Book}, \class{Music}, \class{Clothing} of \class{Product}, 
-where all instances of a subclass belong to the same category.  
+subclasses \class{Book}, \class{Music}, and \class{Clothing} of \class{Product}, 
+and all instances of a subclass belong to the same category.  
 Now the \code{category} field is the same for products in each subclass,
-so it can be made static:
+so it can be declared static:
 
 \begin{shortlisting} 
 class Book extends Product {
@@ -170,112 +176,155 @@ other objects, is helpful in making these kinds of memory optimizations.
 
 \section{Mutually Exclusive Fields}
 
-Sometimes a class has fields that are never used at the same time, and possibly
+Sometimes a class has fields that are never used at the same time, and therefore
 they can share the same space. Unfortunately, Java does not have anything like
-a union type, so sharing space is often not possible. However, there are some
-limited opportunities to take advantage of mutually exclusive fields to save
-memory.
+a union type, so to conflate several fields into one field, the fields have
+to be of the same type. If the fields are not the same type, then a new type
+must be created that is a generalization of the mutually exclusive field types.
 
-The next problem we found is that in some cases, you
- still needed this thing, even when it was rightfully being lazily allocated, and so it had 5 bookkeeping fields, and we took a 
-look at those fields, and we realized they were never all used at the same time. They each 
-covered different cases, and there were various combinations, and you never needed all of them. 
-You usually only needed 2 or 3 of them at a time. So I believe what they did, or what they were 
-planning to do, is combine some of those fields, and basically loosen the typing a bit, and use 
-casts, so share one field, get Capital Object, and then the accessor to it, recast it to it’s 
-actual use case. So that’s sort of like a poor man’s loosely typed union, and so if Java had 
-type safe unions, you wouldn’t need that, and the compiler could do a better job with that too. 
+For example, suppose that each women's clothing product has a size, and there
+are different systems of women's sizes: xsmall-small-medium-large-xlarge,
+numeric sizes, petite sizes, and large women's sizes. One way
+to implement this is to introduce a field for each kind of size:
+\begin{shortlisting}
+class WomensClothing extends Product {
+	static Category clothingCategory;  // points to the clothing category object
+	..
+	SMLSize     smlxSize;
+	NumericSize  numSize;
+	PetiteSize   petiteSize;
+	WomensSize   womensSize; 
+}
+\end{shortlisting}
+Each type is an enum class, such as:
+\begin{shortlisting}
+enum SMLSize {
+	XSMALL, SMALL, MEDIUM, LARGE, XLARGE;
+}
+
+enum NumericSize {
+	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN;
+}
+
+enum PetiteSize {
+    ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN;
+}
+
+enum WomensSize {
+	ONEX, TWOX, THREEX, FOURX;
+}
+\end{shortlisting}
+These four size fields are all mutually exclusive --- a clothing item cannot
+have both a petite size and a women's size, for example. Therefore, you can
+replace these fields by one field, provided that the four enum types are
+combined into one enum type:
+\begin{shortlisting}
+class Clothing extends Product {
+	static Category clothingCategory;  // points to the clothing category object
+	..
+	ClothingSize     size; 
+}
+
+enum ClothingSize {
+	XSMALL, SMALL, MEDIUM, LARGE, XLARGE, 
+	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN,
+    PETITE_ZERO, PETITE_TWO, PETITE_FOUR, PETITE_SIX, PETITE_EIGHT, PETITE_TEN,
+    PETITE_TWELVE, PETITE_FOURTEEN, PETITE_SIXTEEN,
+	ONEX, TWOX, THREEX, FOURX;
+}
+
+\end{shortlisting}
+
+If the types of two mutually exclusive fields are different classes, then you
+generalize these types by defining a common superclass, if possible. As a last
+resort, you can combine these fields into a single field of type \class{Object}.
+Finally, if there are sets of fields that are mutually exclusive, then you can
+define a side class for each set of fields, where all side classes have
+a common superclass. In this case, you need to do the math to make sure that you
+actually save memory, given the extra cost of delegation.
 
 
 \section{Redundant Fields}
 
-A lot of the data type modeling patterns we talked about were either delation or things 
-having overhead fields, and in some cases we had too much data also.  I want to follow up on a 
-few patterns in that area.  Having more data than you really need. In some sense that’s another 
-kind of overhead.  
+A field is redundant if it stores the same information as another field but in
+a different form. Why would anyone define a redundant field?  One reason is to
+have a binary form for efficient computation, and a string form for
+reporting. For example, a product may store both an integer and a string
+representation for the productID. Since it is possible to convert one
+representation into the other, there is no necessity to store both. Redundant string fields 
+are a particularly
+bad idea, since strings have a very high overhead in Java, as we have seen.
 
-(two types – can be computed rather than stored, or not.)
+ %product may store both a boolean and a string ``Yes'' or ``No'' to indicate
+%whether a product is in stock.  If
+%the string ``Yes''
+In fact, any field that can be computed on the fly is redundant and could in
+principle be eliminated. For example, you can allocate a field to store the number of items
+in a shopping cart, or compute it by counting all items in the cart as needed. 
+There is a trade-off between the cost of the computation and the memory 
+cost of the extra field, which has to be weighed in context. On the one hand,
+how often is the information needed and how expensive is it to compute? On the
+other hand, how many objects would there be with the computed field? Comparing
+performance cost to memory cost is a bit like apples and oranges, but often it
+is clear which resource is most constrained.
 
-Another case they had, they had one or two of those bookkeeping fields were stored computations, 
-they were caching things, so they were actually leaving pointer space to cache something, and 
-then the cache of it was another side object holding onto stuff, and in some cases that was 
-a collection. And it turns out that that was rarely needed. So I don’t know if they actually 
-fixed that, but I believe they did. So again, these are very typical of the kinds of problems you 
-see. You don’t usually see one big problem making an instance size big. You usually see a 
-smattering of all these little kinds of things, and they add up.
+\section{Optimizing Framework Code}
 
-The other thing is, and I just have one example of it here, but there are many more in these 
-types. See this typeID, then string of type, so each of these has a type, and they are storing 
-it, and they are storing the formatted version of it also, and so they are allocating basically 
-2 fields for every every logical field here. An int and a pointer. In the next session we will 
-look at other implications of that. This is something they did over and over again, like this 
-in the electronic address, the physical address. A lot of these bytes have to do with the fact 
-that they were storing these things twice. So just the field cost of that was huge. 
+The storage optimizations described in this chapter assume that you are
+familiar with the entire application, understand how objects are created and
+used, and therefore know enough to determine whether these optimizations make
+sense. However, if you are programming a library or framework, you have no way
+of knowing how your code will be used. In fact, it may be used in a whole
+variety of different contexts with different characteristics.
 
-So the first problem is hard to fix, in that there is a refactoring. The second problem is easy, 
-just not storing and recomputing it. The second problem is easy, just not storing and recomputing 
-it. (In this case, the database stored both fields as well.)
+A common error when programming a framework is premature optimization ---
+making an assumption about how the code will be used, and optimizing for that
+case. If your assumption is wrong most of the time, then your optimization may
+add more cost.
 
-So what they were doing there, was they were saving both a binary version, and an ASCII 
-formatted version of the same field, and they were doing that for a lot of fields. 
-And since this was a delegated design, this was multiplied everywhere. So it really added up.  
-We looked at the field cost, last time, in the actual objects making up the profile, 
-but the other thing that is super common is that they were pointing to Strings, 
-actually storing the data, and the actual cost of the Strings was pretty high. 
-So the naïve view, especially if you are used to languages like C, is that, what’s a couple of 
-characters?  I’ll just store “Y” or “N”, what’s the big deal of storing one or two characters. 
-But as we saw, looking inside the string, the health ratio for something like Y or an N, 
-a single character, is 48:1. It takes about 44 bytes to store that string, plus the pointer to 
-et there. In some cases these were either constant, or there were things that have just a 
-few values. I think it just had three values, where every single record had both an int, or a 
-short, and had the pointer to a string, which said Y or N.  This is a super common problem, 
-is duplicating data that has a high overhead in its representation. That combination is all over 
-the place, and Strings is the big culprit. They had another field like that. 
-It was a policy threshold, and it was a constant every single record had this
-10\% in it. And they had the number 10\%, and a pointer to a string “10\%”, 
-and a pointer to a string, not sharing them. So certainly they would get a huge reduction 
-just by sharing them. That’s one approach. It takes a little bit of machinery to build that. 
-You can use String intern if you want.  I’ll talk about that. The other thing is just to compute 
-the thing on the fly, assuming it’s something relatively easy. Actually these are 2 
-separate cases. The 10\% you probably want to either share it or compute it on
-the fly somehow, because that’s probably a number that’s dynamically determined. 
-Something like a Y or an N, I would guess is statically determined. That it has a small number of 
-values that you can predict at compile time, and in that case you can have some final statics 
-that are determined at compile time, and everyone can point to them. Pretty simple.
+Let’s come back to our low level example again, the 4-byte string \code{String}.
+12 bytes of it, or 23\% of it, is due to three bookkeeping fields, an offset, a
+length, and a hashcode. The offset and length fields are there to implement an optimization for
+substrings. That is, when you create a substring of a string, both
+the string and substring share the same character array. The offset and length
+fields in the substring object specify the shared portion of the character
+array. This is both a time and
+space optimization, since there is no new character array created for the
+substring and no copying. However, every string pays the price of the offset
+and length field, whether or not they are used.
+For applications with few or no substrings, which is the common case, a lot of
+memory is wasted. Even when there are many substrings, if the original
+strings go away, you have a different footprint problem, namely,
+saving character arrays which are too big.
 
-\section{Bookkeeping Fields}
+%It says that if I ever take a substring of this thing,
+% I’m going to be able to share with the origjnal characters of the String This
+ %is a theme you will see throughout the JDK, that there’s so many
+% optimizations that are done to avoid copies at any cost. Really with a huge
+% focus on time, and almost no focus on space whatsoever. So studies we saw at
+% TRL, in reality, in the long liv
 
-Optimizing for the wrong case.
+The third bookkeeping field stores a hashcode. A \code{String} stores its
+hashcode, which seems like a reasonable idea, until you think about the fact
+that a string needs its hashcode when it is stored in a \code{HashSet} or a
+\code{HashMap}. In both of those cases, the \code{HashSet} or \code{HashMap}
+entry already has a field for a hashcode, and is already storing it.
+As if this redundancy isn't enough, there are also already four bytes reserved
+in the object header for the identity hashcode. 
 
-Let’s come back to our low level example again, String. 12 bytes of our 4-byte string 
-or19\% of it, is due to 3 bookkeeping fields. So every string stores an offset,
-a length, and a hashcode. The offset and length are basically are a premature optimization, really. 
- It was put into the JDK years ago, which was really intended for the substring case. 
- It says that if I ever take a substring of this thing, 
- I’m going to be able to share with the origjnal characters of the String 
- This is a theme you will see throughout the JDK, that there’s so many optimizations that are 
- done to avoid copies at any cost. Really with a huge focus on time, and almost no focus on 
- space whatsoever. So studies we saw at TRL, in reality, in the long lived case, for 
- objects that are sticking around, it’s pretty rare to have objects that are the result of 
- substring.
-
-And in fact, if they did, they would probably have a lot of empty spaces, because you would be 
-pointing to the middle of them, so you would have a different footprint problem, saving character 
-arrays which you don’t need. So this ione of these optimizations, which you should be aware of as 
-a user, that string is expensive. You have to think about what they really cost when you use them. 
-But the other thing is sort of a cautionary tale, about premature optimization, and also an 
-opportunity that String is an area we should be reconsidering. The 3rd field is hashcode. 
-String stores its hashcode, which seems like a reasonable idea, until you think about the fact 
-that the common case of needing the hashcode is when the string is stored in hashset or a hashmap. 
-In both of those cases, the hashset or hashmap entry already has a field for a hashcode, and is 
-already storing it. And just to add an additional irony here, there is already 4 bytes reserved 
-in the object header for the identity hashcode, which string is overriding, as far as I know ,
-it’s not really being used. So there’s lots of room for storing that hashcode once rather than 
-twice, and maybe we can get rid of some more stuff in the process. So this cautionary tale here 
+So this cautionary tale here 
 is that as you design things that are higher level than this, introducing bookkeeping fields, 
 people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
 clear we are getting any performance out of this; in part because the benchmarks people are using 
 are not really representative of the real applications out there.
+
+
+This is a cautionary tale about premature optimization. The implementation of
+\code{String} in the Java library is so much part the language and its
+implementations that it is very hard to change at this point. Yet, strings
+are so pervasive that almost all applications pay a price for this
+implementation decision. 
+
 
 
 \section{Summary}
