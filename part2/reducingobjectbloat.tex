@@ -9,6 +9,7 @@ these kinds of fields can sometimes result in big wins.
  
 
 \section{Rarely Used Fields}
+\label{sec:rarely-used}
 
 Chapter~\ref{chapter:delegation} presents examples where delegating fields
 to another class increases memory cost. However, sometimes delegation can
@@ -119,7 +120,7 @@ The following equation can be used to obtain the plots in
 Figures~\ref{fig:fill-rate} and~\ref{fig:rarely-used}, for different values of
 $B$:
 \begin{eqnarray}
-y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B})
+y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B}) \nonumber
 \end{eqnarray}
 } 
 A common error is to delegate rarely-used fields to a side class, but forget to
@@ -132,22 +133,24 @@ every use. This complexity has to be weighed against potential memory
 savings.
 
 \section{Constant Fields}
+\label{sec:constant}
 
 Declaring a constant field \code{static} is a simple way to
 save memory. Programmers usually remember to make constants like \emph{pi} 
 static. There are other situations that are a bit more subtle, for example,
-when a field is constant because of how it used in context of the application.
+when a field is constant because of how it is used in context of the
+application.
 
 Returning to the product example, suppose that each product has a field
 \code{catalog} that points to a store catalog.
 If you know that there is always just one store catalog, then the field
 \code{catalog} can be turned into a static, saving 4 bytes per product.
 
-As a more elaborate example, suppose that every product belongs to a
-category such as books, music, clothes, toys, etc, and 
- has a field pointing to a \class{Category} object.
-These fields are clearly not the same across all products. However, suppose we
-define
+As a more elaborate example, suppose that a \class{Product} has a field
+referencing a \class{Category} object, where a category may be
+books, music, clothes, toys, etc.
+The categories are clearly not the same across all products.
+However, suppose we define
 subclasses \class{Book}, \class{Music}, and \class{Clothing} of \class{Product}, 
 and all instances of a subclass belong to the same category.  
 Now the \code{category} field is the same for products in each subclass,
@@ -175,22 +178,24 @@ other objects, is helpful in making these kinds of memory optimizations.
 
 
 \section{Mutually Exclusive Fields}
+\label{sec:mutually-exclusive}
 
 Sometimes a class has fields that are never used at the same time, and therefore
 they can share the same space. Unfortunately, Java does not have anything like
 a union type, so to conflate several fields into one field, the fields have
-to be of the same type. If the fields are not the same type, then a new type
-must be created that is a generalization of the mutually exclusive field types.
+to be of the same type. If the fields are not the same type or have the same
+base type, then a new type must be created that is a generalization of the
+mutually exclusive field types.
 
 For example, suppose that each women's clothing product has a size, and there
-are different systems of women's sizes: xsmall-small-medium-large-xlarge,
+are different kinds of sizes: xsmall-small-medium-large-xlarge,
 numeric sizes, petite sizes, and large women's sizes. One way
 to implement this is to introduce a field for each kind of size:
 \begin{shortlisting}
 class WomensClothing extends Product {
 	static Category clothingCategory;  // points to the clothing category object
 	..
-	SMLSize     smlxSize;
+	SMLSize     smlSize;
 	NumericSize  numSize;
 	PetiteSize   petiteSize;
 	WomensSize   womensSize; 
@@ -214,7 +219,7 @@ enum WomensSize {
 	ONEX, TWOX, THREEX, FOURX;
 }
 \end{shortlisting}
-These four size fields are all mutually exclusive --- a clothing item cannot
+These four size fields are mutually exclusive --- a clothing item cannot
 have both a petite size and a women's size, for example. Therefore, you can
 replace these fields by one field, provided that the four enum types are
 combined into one enum type:
@@ -237,8 +242,8 @@ enum ClothingSize {
 
 If the types of two mutually exclusive fields are different classes, then you
 generalize these types by defining a common superclass, if possible. As a last
-resort, you can combine these fields into a single field of type \class{Object}.
-Finally, if there are sets of fields that are mutually exclusive, then you can
+resort, you can alwyas combine these fields into a single field of type
+\class{Object}. Finally, if there are sets of fields that are mutually exclusive, then you can
 define a side class for each set of fields, where all side classes have
 a common superclass. In this case, you need to do the math to make sure that you
 actually save memory, given the extra cost of delegation.
@@ -271,31 +276,51 @@ is clear which resource is most constrained.
 \section{Optimizing Framework Code}
 
 The storage optimizations described in this chapter assume that you are
-familiar with the entire application, understand how objects are created and
-used, and therefore know enough to determine whether these optimizations make
+familiar with the entire application you are working on. You need to
+understand how objects are created and used, and therefore know enough to determine
+whether these optimizations make
 sense. However, if you are programming a library or framework, you have no way
-of knowing how your code will be used. In fact, it may be used in a whole
-variety of different contexts with different characteristics.
-
-A common error when programming a framework is premature optimization ---
+of knowing how your code will be used. In fact, your code may be used in a whole
+variety of different contexts with different characteristics. Premature optimization ---
 making an assumption about how the code will be used, and optimizing for that
-case. If your assumption is wrong most of the time, then your optimization may
-add more cost.
+case --- is a common pitfall when programming frameworks. If your assumption is
+wrong most of the time, then premature optimization fails. 
 
-Let’s come back to our low level example again, the 4-byte string \code{String}.
-12 bytes of it, or 23\% of it, is due to three bookkeeping fields, an offset, a
-length, and a hashcode. The offset and length fields are there to implement an optimization for
+For example, suppose the online store is designed as a framework
+that can be extended to implement different kinds of stores.
+For some stores, most products may have an alternate supplier. For other
+stores, most products may not.  There is no way of knowing. If the
+\code{Product} class is designed so that the alternate supplier is allocated to
+a side object, then sometimes memory will be saved and sometimes wasted. 
+One possibility is to define two versions of the \code{Product} class, one that
+delegates and one that doesn't. The framework user can then use the version
+that is appropriate to the specific context. However, this is generally not
+practical. 
+
+Frequently, decisions are made that trade space for time.
+Let’s come back to our low level example again, the 8-character 
+\code{String}. 12 bytes of it, or 21\% of it, is due to three bookkeeping fields, an offset, a
+length, and a hashcode. The offset and length fields implement an optimization for
 substrings. That is, when you create a substring of a string, both
-the string and substring share the same character array. The offset and length
-fields in the substring object specify the shared portion of the character
-array. This is both a time and
-space optimization, since there is no new character array created for the
-substring and no copying. However, every string pays the price of the offset
+the string and substring share the same character array, as shown in
+Figure~\ref{fig:substring}. The offset and length fields in the substring
+\code{String} object specify the shared portion of the character array. This optimizes both time and
+space for substring operations, since there is no new character array created
+for the substring and no copying. However, every string pays the price of the offset
 and length field, whether or not they are used.
 For applications with few or no substrings, which is the common case, a lot of
 memory is wasted. Even when there are many substrings, if the original
 strings go away, you have a different footprint problem, namely,
 saving character arrays which are too big.
+\begin{figure}
+  \centering
+ \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/substring.pdf}
+ % \includegraphics{eight-char-string}
+  \caption{A string and a substring share the same character. The length and
+  offset fields are needed for the substring, but store redundant information
+  for the string.}
+  \label{fig:substring}
+\end{figure}
 
 %It says that if I ever take a substring of this thing,
 % I’m going to be able to share with the origjnal characters of the String This
@@ -304,35 +329,44 @@ saving character arrays which are too big.
 % focus on time, and almost no focus on space whatsoever. So studies we saw at
 % TRL, in reality, in the long liv
 
-The third bookkeeping field stores a hashcode. A \code{String} stores its
-hashcode, which seems like a reasonable idea, until you think about the fact
-that a string needs its hashcode when it is stored in a \code{HashSet} or a
-\code{HashMap}. In both of those cases, the \code{HashSet} or \code{HashMap}
+The third bookkeeping field in \code{String} is a hashcode.
+Storing a hashcode seems like a reasonable idea, until you think about the fact
+that a string only needs its hashcode when it is stored in a \code{HashSet} or a
+\code{HashMap}. In both of these cases, the \code{HashSet} or \code{HashMap}
 entry already has a field for a hashcode, and is already storing it.
-As if this redundancy isn't enough, there are also already four bytes reserved
-in the object header for the identity hashcode. 
-
-So this cautionary tale here 
-is that as you design things that are higher level than this, introducing bookkeeping fields, 
-people throw in extra fields to optimize performance, and footprint blows up, and it’s not even 
-clear we are getting any performance out of this; in part because the benchmarks people are using 
-are not really representative of the real applications out there.
+As if this redundancy isn't enough, there are also four bytes reserved
+in every object header for the identity hashcode. 
 
 
-This is a cautionary tale about premature optimization. The implementation of
+This is a cautionary tale. The implementation of
 \code{String} in the Java library is so much part the language and its
 implementations that it is very hard to change at this point. Yet, strings
-are so pervasive that almost all applications pay a price for this
-implementation decision. 
-
+are so pervasive that almost all applications pay the price of  having a larger
+footprint. And it's not even clear that there is any performance gain from
+these string optimizations for most applications. 
+They might make a difference in certain benchmarks, but benchmarks usually do
+not behave like other applications.
 
 
 \section{Summary}
 
-A smattering of a lot of these little things add up.
-Many of these optimizations rely on knowing how objects are used -- if you are
-writing a framework, you don't know this, and the choice you make for some case
-is wrong in another case.  Java makes things hard -- few choices.
+Even though Java does not let you control the layout of objects, it is still
+possible to make objects smaller by recognizing certain usage patterns.
+Optimization opportunities include:
 
+\begin{itemize}
+  \item Rarely used fields can be delegated to a side object.
+  \item Fields that have the same value in all instances of a class can be
+  declared static.
+  \item Mutually exclusive fields can share the same field, provided they have
+  the same type.
+  \item Redundant fields whose value depends on the value of other fields can
+  be eliminated, and recomputed each time they are used.
+  \item 
+\end{itemize}
 
+Every field eliminated saves around 4 bytes per object, which may seem small.
+However, often several optimizations can be applied to a class, and if the
+class has the most objects in the heap, then these small optimizations turn out
+to be significant. 
 
