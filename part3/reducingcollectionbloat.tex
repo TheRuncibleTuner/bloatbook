@@ -1,1 +1,367 @@
 \chapter{Reducing Collection Bloat}
+
+ Relationships in an
+entity-relationship model are almost always implemented in Java using the
+standard library collection classes. While a simple 1:1 relationship can be
+implemented with a single map, more complex 1:n, n:1, and m:n are usually 
+implemented with collections inside other
+collections, sometimes nested three or more levels deep. 
+As a result, it is common for a Java application to create hundreds of
+thousands, even millions, of collections, where the vast majority have only a
+very small number of entries.
+
+This small-collections pattern is a leading cause of memory bloat.
+Collections themselves are pure overhead, since they are infrastructure glue, 
+not data, and they are quite big. Our guess is that the
+collection class developers would be surprised by this usage pattern. 
+Why bother worrying about expandable structures and clever
+hashing algorithms for only a few entries? 
+
+ This chapter describes the cost of the most common collection classes, and
+ shows how to reduce the bloat from having too many small
+ collections.
+ 
+ \section{Choosing The Right Collection}
+
+In this case 
+the planning system was implementing what is know as a level graph. A level 
+graph is a graph with nodes and the graph has multiple levels, where each node 
+has different edges at each level. So same nodes at each level, different edges 
+at each level. And this is the data structure they were using to implement the 
+edges in the level graph. The idea here is that they basically had an index to 
+map a vertex and a level, so this was a map where its key is a multipart key, 
+where it took a vertex and a level, and it mapped that to a set of edges. 
+For every vertex, at each level, there could be multiple edges. 
+This is a fairly common pattern, actually 2 common patterns. 
+One, it’s a map using a multipart key, and the other is a multi-valued map, 
+where each value is a set of orderless values.  When we analyzed this with the 
+developer, the costs were pretty surprising, as I said, this example like all 
+the others, is a small to medium scale run, and something that needed to scale 
+much larger.
+
+The developers saw this, he was pretty surprised at the costs we found. Just 
+thinking through the health, we found that the overhead of the representation 
+of this was 83\% overhead. So it was a pretty unhealthy design, and that would
+be the case at any scale. The other thing is that like all our other examples, 
+this was one problem among many in the same application. There are lots and lots 
+of problems. That’s what we see. Not just like you find one hot area and you’re 
+done. Usually it’s a pileup of different things. In this case, no matter how many 
+vertices you added to this, you never amortize this 83\% overhead. So something
+is wrong with this design. So let’s take it apart a little bit. Let’s 
+look at just the side where they are implementing just the multivalue part of 
+this multi-key, multi-value design. They were implementing using hashsets to 
+represent the set of edges for each node at a particular level. That might seem 
+like a reasonable idea. Until when we actually looked at the cost, the developer 
+and us were pretty surprised when it turned out that there was a relatively small 
+number of edges in each of these sets. The average number was 4.5, and almost all 
+the sets had a pretty small number. That’s a pattern we see time and time again. 
+There is some kind of set or list used to represent very, very small number of 
+elements. In this case, these sets were costing 220-250 bytes each, which was 
+pretty shocking to the developer. So we started to think, what’s inside these
+ hashsets, and so we can take a look what’s inside the Java hashset implementation.
+
+HashSet actually doesn’t do any work itself, it delegates it HashMap. So the
+re’s 
+the cost of the HashSet, and now you have whatever the cost of HashMap is.  
+We talked about last week delegation costs can be pretty high, so you are paying 
+an extra object overhead plus a pointer. HashMap itself actually a fairly
+ expensive class also from a memory standpoint. It delegates its work to an array,
+  sort of a necessity in Java, and it also has a number of bookkeeping fields,
+ we will talk about in a minute. The thing is pretty hefty. On top of  it, 
+the default size of the array, if you don’t specify something is 16. 
+ So you get 16 size array, and this is all fixed cost. Before we have even
+gotten to the cost of the actual entries in it. The way HashMap is implemented,
+ it is using open chaining, which means that each hashmap entry turns into a 
+ hashmapentry object, similar to the treemap example last week. 
+ SO the end result is that HashSet is a pretty poor choice if you have small sets. 
+ At least with its current implementation. Obviously, it’s worth measuring here. 
+ And indeed the developer did, and was able to solve the problem. Some other 
+ lessons in here about what the developers of hashset must have been thinking, 
+ and really for anyone who is developing a library of framework that is going to 
+ be used higher up. Basically, they hardcoded in a lot of the assumptions about 
+ its expected usage.
+
+The first assumption here is whether it was conscious or not, is that internal 
+reuse is more important than having a low fixed cost, which means they didn’t 
+really expect to have a lot of small hashsets. If the thought it through, they 
+probably thought that fixed cost doesn’t matter because you weren’t going to see 
+a lot of these things. In fact, we see millions of these, and this is the kind of 
+thing, we talked about last week, that low level libraries in particular, 
+specialization is a good thing.  Or it can be a good thing, and reuse is sometimes 
+a misplaced value in these kinds of cases. 
+
+In this case, the reuse has a fixed cost of 24 bytes per set, and this is based 
+on 1.4.2, the J9 numbers are a bit higher. It also has a per entry cost because 
+each hashmap entry is storing a key and a value, and hashset isn’t using both. 
+It’s only using the key, it isn’t using the value. The value pointer is pointing 
+to a constant. So the whole thing is over general than needed. HashMap is 
+expensive just for HashMap. It could be much more specialized for HashSet. 
+And we also have the default size of the array. The third problem is that hashmap 
+has a bunch of bookkeeping fields in it, that really are rarely needed, 
+and certainly not needed all together. It has a bunch of fields to keep different 
+views of the hashmap that you might want. The map interface says that you can 
+compute a collection of all the entries, all the keys, and all the values.
+ And HashMAp caches all of those. So every HashMap, and every HashSet, is paying these three pointer costs, which is an extra 12 bytes. In fact, you rarely use all three together, and it’s not all that common to use even one of them. 
+
+The other thing is that the hashmap entry itself is storing a hashcode. 
+It’s maintaining a hashcode, even though the most common cases are keys, 
+either strings, store their own hashcode. Or integers, where the hashcode 
+computation is pretty trivial. So that’s also a misplaced optimization, 
+and you have to ask the question. Was this based on an empirical study, 
+with possibly the wrong benchmarks, or was this based on some assumptions? 
+In this case, it was sort of another cautionary tale for library designers of 
+the danger of premature optimizations. 
+
+Transforming FIXED SIZE COLLECTIONS
+
+Getting back to our example, the developer looked and said, I actually 
+don’t need the hashset functionality, because the only difference in functionality 
+between a hashset and an array list is that the hashset was guaranteeing 
+uniqueness, and it turns out the developer was already guaranteeing uniqueness 
+in the loading code, so this was just put in as an extra failsafe thing, just in 
+case there was a bug in the higher level code. When the developer saw this, 
+he said, that extra check is not worth the cost. Was able to replace this with an 
+arraylist, and for this piece of the structure was able to get 77\% savings
+pretty easily.  Obviously, if we could have collections that worried about all 
+of this stuff for you. A set that grows more gracefully, that you didn’t have to 
+pay a high fixed cost for a tiny little set, then it would be very nice.
+
+Let’s look at the key side of things. Here, he implemented each key as an 
+arraylist with 2 elements in it. The vertex and the level. This was a lot more 
+expensive than he thought it was going to be. We were a little bit puzzled, why
+ someone would use an arraylist, when you know the thing always having 2 entries 
+ in it. It turns out, just from reading various developers blogs, this is a super 
+ common programming idiom that people use. It is based on the fact that Java 
+ doesn’t have very good support for structured constants, and so he wanted to 
+ code something very quickly where he can code test cases , and there’s a method 
+ call, array.asList, whereh you can give it a structured constant with 2 eleemnts 
+ and it will turn it into this list for you, and that allowed him to generate 
+ some constant test cases very easily.   This is very easy way to code, and it 
+ has 2 problems, One is that the arrayList itself is expensive. The other is that 
+ the Java collections require you to box any scalars, since they are only 
+ collections of Objects, don’t allow collections of scalars. So there is a boxing 
+ cost of cap Integer, which we saw last week, is a magnification factor of 4. 
+ It’s a 4 byte scalar integer on a 32-bit JVM, into a 16 byte Cap Integer. 
+ Just taking a look inside this array list and seeing what makes it so expensive. 
+ Like all the other Java collections, there’s a wrapper object, and a few 
+ bookkeeping fields of questionable value for some use cases, and then it has an
+object array. At a minimum, you are paying 2-object cost. Now arrayLists per 
+entry costs are quite good. Only 4 bytes per entry, But the fixed cost is still 
+relatively high. It’s not hashset or hashmap. It’s still 40 bytes on this JVM.
+ A little bit more on the newer J9 with Harmony classes. So this still was a 
+ pretty expensive choice, for something that doesn’t really need collection 
+ functionality, because there are a fixed number of elements all of the time. 
+
+So he was able to replace that by a Pair class, that had 2 fields in it, and he 
+actually inlined the int as one of the fields. And the other field was a pointer 
+to the vertex. And was able to reduce the overhead of this side of the data 
+structure by 68\%. And again, that’s a constant overhead as this things scales
+up, so that was great. Just so you don’t think –
+
+
+Properly SIZING COLLECTIONS
+
+ Let’s talk a little bit about default sizes and growth policies, and that 
+ sort of thing. So this is a little hypothetical experiment here. We’re getting 
+ back to the value side of this structure, where you replace the original 
+ hashsets by arraylist. He sized them minimally, but having not done that, 
+ had he taken the default sizes for the arraylists, it would have cost another
+ 28\% of overhead, since all the collections, basically are sized pretty 
+ aggressively just like StringBuffer is, with this idea of trying to reduce 
+ the copying costs and basically assuming that any collections you have are 
+ going to grow, and so we’d better pay those costs up front in large chunks, 
+ so that you don’t have to constantly pay a reallocation, and copy costs, 
+ and it’s really an open question of whether that’s buying us any performance 
+ or not, it’s certainly costing people a lot of footprint. One of the common 
+ patterns we see is people just take the default size of collections. 
+ They just take the constructor, no parameters, and even when they do 
+ specify a default size, the collection growth policies are still pretty 
+ aggressive. Typically double in size, and there’s even one copy constructor 
+ that one of the array list copy constructure, if you hand it a collection and 
+ say make me an arraylist out of this, it actually adds 10\% to it, just in
+ case you grow this thing. And the typical pattern is you are building some 
+ temporary collection to sort something or filter something, and at the last 
+ minute you are done with it, and you turn it into an arraylist that you are 
+ going to send onto somebody else, and they are not going to modify it again. 
+ So there is definitely optimization for some questionable cases in here.
+
+What can you do about this? One is that you can set the initial capacity 
+relatively low. If you might be introducing a performance problem then do 
+some timing, and see if it’s actually the case. Another thing is if you have 
+data modes and many data models have this pattern, where you have a load phase 
+vs a usage phase. I load all my data, and I never modify it again. Or maybe 
+I’m modifying entries but never adding anything , then you can use  trimToSize. 
+Just walk through the whole data model and call trimToSize on every collection. 
+You will pay a reallocation and copying cost just once, and that’s it. 
+
+
+Just a quick look at some of the default sizes. LinkedList, 
+it’s not really applicable other than the fact – always comes with an 
+extra entry as a sentinel, just to make the coding of LinkedList simpler, 
+So you are actually paying 3 entry cost for a 2 element collection. 
+ArrayLists, the default size is 10. For some reason, the latest J9, 
+in these Harmony classes, which are open source, they’ve upped it to 12, 
+and I’m not quite sure why they’ve done that. Actually that’s not really true.
+ The default size initially for an empty collection is 0, so they’re still
+ allocating the array with 0 size. Where as the Sun and older JVM’s are always 
+ allocating 10 element collection. But on the Harmony classes, the new J9, 
+ after you add the first element, they jump it to 12. It’s pretty hard not to 
+ get those big jumps in these collection classes. HashMap, the default is 16, 
+ and HashSet as well, since it’s based on HashMap. So it’s definitely 
+ worth setting the default in these cases where you know you have mostly these 
+ small collections. 
+
+Avoiding EMPTY COLLECTIONS
+
+A related problem is empty collections, and this is super, super common. 
+People are eagerly initializing things, and without realizing that the empty 
+collections are pretty costly too. This was the case from JPMorgan 
+Chase critsit, that Nick did, and in fact in SessionState, which had all sorts 
+of other stuff in it, had these profile objects in it, which were profiles of 
+customers, and each of those profiles was a highly delegated design, we saw it 
+last week, each one had 40 instances hidden inside that box. 
+
+For those of you who weren’t here last week, this notation is kind of a UML-like 
+notation This is a logical data structure and these boxes are hiding other classes.
+ The octagonal shaped ones are collections, things implementing relationships. 
+ SO profile had quite a few classes inside it, and they all had the same coding 
+ pattern in them, where they had these arraylists hanging off of them. 
+ In one case it was to track the history of modifications in various fields. 
+ In total, each usersession data had 210 empty arraylists hanging off of it, 
+ which was rather expensive in this little example here. They were paying  
+ 8MB in this of just empty arraylists. So what are the remedies here? 
+ The simplest thing is to lazily allocate these things. Along with lazy 
+ allocation, there’s a nice static method in the collections class, 
+called emptyset, where it will return you a pointer to a singleton empty set 
+that has all the functionality of a set. EmptySet, EmptyList, EmptyMap, and 
+those are great since you can point to them, and the size method will still work,
+iterators will still work, all that stuff will still work, and you don’t have 
+to allocate an empty collection. The only bad thing with those 2 patterns, 
+and you really have to watch out for, is if you give out any references to your 
+collections before they’ve been allocated. Because once you give out a 
+reference, you expect people to hold on to it, then there’s no way to morph it 
+into this other form that’s actually populated. And that’s a serious issue in Java.
+ But if you can hide the references within the class, then this is very easy 
+ to fix. 
+
+So just a quick look inside the empty collections, you can see that they are not 
+all that empty. So all the standard Java collections eagerly allocate their 
+subsidiary objects, which means that every empty collection consists of 2 objects, 
+2 object headers, a pointer, plus whatever bookkeeping fields they have. 
+So you get these rippling effects, you have a really high level code, that’s 
+eagerly initializing some package, and it’s eagerly initializing some thing else,
+ and eventually it’s initializing some collection, and the collection is doing 
+ the same thing; it says, well I’m just going ahead and allocate my array, 
+it’s not clear why, it’s either ease of coding, or to avoid an if statement 
+check at runtime, it’s not clear. So another area is to see if there’s any 
+ performance benefit to this, or is this something that can be changed very 
+easily. And juust a quick look at the cost of the empty collections. 
+What strikes me – these are the number from both sun and IBM. What strikes
+me is that the smallest number here is 48, so there’s certainly no single 
+digit anything in Java, but 48 is a pretty high number for something that’s 
+empty, if you are going to have a lot of them, and also, there’s a little bit 
+of variation, both having to do with whether you’ve made the size default or not, 
+and also what kinds of collection class you are choosing.
+
+REDUCING NUMBER OF COLLECTIONS
+
+This next example is a thought experiment, based on the previous example, the
+level graph. This is an archetypal pattern of a multikey map. There are lots of 
+different ways to implement it. In my own coding, it’s come up quite a bit. 
+I think it’s very easy to do the easy thing, and the costs are very surprising. 
+I’ve worked through 3 implementations, and we can see the implications. 
+Let’s just get back to the problem statement again. We have a level graph. 
+We have a bunch of nodes, and let’s assume it’s a small number of levels, 
+but we want this thing to scale up to lots of nodes, lots of vertices. Each 
+vertex has some number of edges at each level. So how do we represent the mapping 
+of I want to take a vertex and level, and map it into a set of edges. 
+
+A very simple implementation of this is to have a high level index of vertices, 
+and for each vertex, I have a map that tells me what the edges are for each 
+level. That’s a pretty simple way to implement this thing. I have certainly 
+implemented many things like this. It’s kind of intuitive, and so I did the 
+computation. Let’s say we have 10,000 vertices, and on average, 5 levels for 
+which there are edges for each vertex, and let’s assume that the total number 
+of edges is relatively small. Then we have about 10,000 hashmaps, we have these 
+10,000 inner hashmaps. We have this outer one. So 10,001 times the cost of a 
+hashmap, the fixed cost. Then we have 60,000 hashmap entries. We have the 10,000 
+up here that get you to these, and we have the 50,000 down here that are the 
+vertices times the levels. The total cost was 2.6 MB, I’m using 1.2 numbers here. 
+Will be higher with current J9. 
+
+Let’s look at another design. Let’s still keep the current nested hashmap design, 
+but invert the order of the collections. So all the same assumptions, we have 5 
+levels, but this time we’re going to have one hashmap at the top, a relatively 
+small hashmap where the key is the level rather than the vertex, and that’s 
+going to have each of those is going to be mapped to hashmap of vertices. 
+So this has 6 fixed hashmap costs, and it has 50,005 per entry costs, per 
+hashmap entry, 50,005 entries. The result is  1.4MB, compared to the  
+2.6 MB of the previous representation. So we get a 46\% reduction here, 
+just by flipping the order of the collections, just by eliminating hashmap 
+fixed costs. This is obviously not going to work if you have some huge number
+of levels compared to the number of vertices you have. But if you know you have a 
+small number of levels compared to the vertices, then this is a great design. 
+And it is consistently better than the first design, no matter how many vertices 
+you have, as long as you have a very small number of levels. So this is a
+ pretty good design, as long as you can  predict that we hve very few levels.
+
+A third design which I thought was well this What about just flattening out the 
+hahsmap, that should be better than both of them. So what I did was I made a 
+single level Hashmap, it’s got 50,000 entries in it, and I introduced a pair 
+class, which has a vertex and the level. And I’m not counting whether I can box 
+the level or not. Let’s assume for now that the level is an int that’s inlined 
+into the pair, just for simplicity. The cost of this is one fixed cost for the 
+hashmap, now we have 50,000 hashmap entry cost, and we now have 50,000 pair 
+objects. So the result is that this thing 2.4 MB and that was actually pretty 
+surprising to me. I thought this one was going to be a lot better than number 1, 
+and it turns out htat it was only 11\% better than number 1 in this case,
+That’s because this pair class was so expensive, so the delegation cost has bitten 
+us again, which seems the recurring theme in Java footprint, that introducing 
+this pair, in addition to the high hahsmap per entry cost already, it is worse 
+than what we traded off in the first design. So anyway, this was surprising 
+because not only because it was only a small amount better than 1, but it was 
+so much worse than 2. And so I actually was preparing this slide ready to make 
+the opposite point, what a great design it was, then I worked through the numbers, I was pretty surprised. The lesson is, you really have to measure this stuff and work through it. The costs aren’t obvious.
+
+People don’t do this until they have a problem. Don’t have tools. Either they 
+don’t know things are this bad. It’s just a collection, just an integer. Or the 
+tools are so hard to use, no easy way to do it until they have a crisis. 
+
+The garbage collector is not the answer to this. Garbage collector’s realm is 
+cleaning up temporaries. This is a problem of long lived-objects. The gc is not 
+addressing these things at all. People have the assumption that the JIT, 
+the garbage collector, things are magically being taken care of. There’s no 
+footprint optimization being done in any commercial JITs. 
+
+Because Java has a gc, they don’t give you the tools to do your own memory 
+management, and these are the tools you need to figure out how big things are.
+
+We’re making logical decisions, but Java is forcing us to manage it as physical 
+things. Object oriented storage. Just how limited, you really hit it with the 
+idea the GC is going to everything for it, so there are no other tools for 
+managing storage. Simplified java modeling scheme – no unions, all the little 
+tricks you have in C++ just don’t exist in Java. 
+
+Model driven development, tools should give you the ability to choose the right 
+implementation. The developer is interestedin the data model. UML to Java 
+transformation should just do the work for you.
+
+I did a quick comparison of the 3 different designs and this was based on 
+assuming there was a small number of levels, and many vertices. 
+Designs 1 and 2 – shows the number of levels and how many bytes per extra 
+vertex it’s going to cost you. This shows you there is a constant difference 
+between designs 1 and 2. In other words, it doesn’t matter how many levels 
+I have, within a small number of levels. One is always going to be worse than 2, 
+by a constant per vertex factor. Wherease 3, has a more complicated pattern. 
+3 is sensitive to the number of levels. The tradeoff between design 3 and 
+design 1 really requires being able to predict how many levels you have here. 
+So, my sense on this is that if I have to pick a design, 2 is the best design, 
+unless I really think I might have a large number of levels. 
+
+The big cost of the pair is not the duplication. 
+The big cost is the delegation cost. It’s the object header overhead, 
+and the pointer to the pair object. The actual duplication of the pointer 
+to the ??, one of those is duplicated in each of the other designs anyway. 
+It’s the delegation cost that’s so expensive. This JVM is 20 bytes per entry, 
+and that’s what pushed it over the edge here.
+

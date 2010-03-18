@@ -1,1 +1,164 @@
 \chapter{The Cost of Java Collections}
+
+It is not unusual for a Java application to have hundreds of thousands, even
+millions, of collections. To get this many collections, ollections are
+nested in other collections, sometimes three to four levels deep. Collection
+infrastructure is pure overhead, so using too many or choosing expensive
+collections can lead to a huge amount of bloat. This chapter 
+analyzes the memory cost of the four most common, representative collections: 
+\class{ArrayList}, \class{LinkdedList}, \class{HashSet} and \class{HashMap}.
+
+%What the different libraries are. Where we take our overhead costs from. 
+%What alternative libraries are out there.
+%%And finally, some of these specialized collections are worthwhile for their
+%functionality, if not only for it’s footprint. The identity map is worthwhile
+%for its footprint. Just some alternative collections. Like I said, the Apache
+%can tell, at least from the code I’ve looked at. The Trove collections are great for footprint, 
+%but we are not allowed to use them, at least from what I understand. Anything
+%you work on that may go out, you really have to check specifically.   The
+%opensource licensing stuff, it’s on a product by product basis. There’s a lot
+%of collection class efforts Amino classes are aimed at concurrency, Javalution
+%from Raytheon is for soft realtime, and externally on sourceforge, Cliff Click
+%has some non-blocking collections. Actually, he claimed the footprint is good.
+%I haven’t seen any studies on it. The best source of good collections I’ve
+%seen are actually scattered around the IBM frameworks. Portal, Rational, just
+%
+%all over the company.
+
+
+\section{Basic Java Collections and Their Costs}
+
+Describe container object, entries and arrays, and each entry overhead. fDescribe fixed costs vs. 
+per entry costs. Give the figures for empty collections.
+
+And juust a quick look at the cost of the empty collections. What strikes me – 
+these are the number from both sun and IBM. What strikes me is that the smallest number 
+here is 48, so there’s certainly no single digit anything in Java, but 48 is a pretty high number 
+for something that’s empty, if you are going to have a lot of them, and also, there’s a little
+ bit of variation, both having to do with whether you’ve made the size default or not, and also 
+ what kinds of collection class you are choosing.
+
+
+Just a quick look at some of the default sizes. LinkedList, it’s not really applicable other 
+than the fact – always comes with an extra entry as a sentinel, just to make the coding of 
+LinkedList simpler, So you are actually paying 3 entry cost for a 2 element collection. 
+ArrayLists, the default size is 10. For some reason, the latest J9, in these Harmony classes, 
+which are open source, they’ve upped it to 12, and I’m not quite sure why they’ve done that. 
+Actually that’s not really true. The default size initially for an empty collection is 0, 
+so they’re still allocating the array with 0 size. Where as the Sun and older JVM’s are always 
+allocating 10 element collection. But on the Harmony classes, the new J9, after you add the first 
+element, they jump it to 12.
+
+
+\section{Example: HashSet}
+
+HashSet actually doesn’t do any work itself, it delegates it HashMap. So there’s the cost of the 
+HashSet, and now you have whatever the cost of HashMap is.  We talked about last week delegation 
+costs can be pretty high, so you are paying an extra object overhead plus a pointer. 
+HashMap itself actually a fairly expensive class also from a memory standpoint. It delegates its 
+work to an array, sort of a necessity in Java, and it also has a number of bookkeeping fields, 
+we will talk about in a minute. The thing is pretty hefty. On top of it, the default size of the
+ array, if you don’t specify something is 16. So you get 16 size array, and this is all fixed 
+ cost. Before we have even gotten to the cost of the actual entries in it. The way HashMap is 
+ implemented, it is using open chaining, which means that each hashmap entry turns into a 
+ hashmapentry object, similar to the treemap example last week. SO the end result is that HashSet 
+ is a pretty poor choice if you have small sets. At least with its current implementation. 
+ Obviously, it’s worth measuring here. And indeed the developer did, and was able to solve the 
+ problem. Some other lessons in here about what the developers of hashset must have been thinking,
+  and really for anyone who is developing a library of framework that is going to be used higher 
+  up. Basically, they hardcoded in a lot of the assumptions about its expected usage.
+
+The first assumption here is whether it was conscious or not, is that internal reuse is more 
+important than having a low fixed cost, which means they didn’t really expect
+to have a lot of ]small hashsets. If the thought it through, they probably thought that fixed 
+cost doesn’t matter because you weren’t going to see a lot of these things. In fact, we see 
+millions of these, and this is the kind of thing, we talked about last week, that low level 
+libraries in particular, specialization is a good thing.  Or it can be a good thing, and reuse 
+is sometimes a misplaced value in these kinds of cases.
+
+In this case, the reuse has a fixed cost of 24 bytes per set, and this is based on 1.4.2, 
+the J9 numbers are a bit higher. It also has a per entry cost because each hashmap entry is 
+storing a key and a value, and hashset isn’t using both. It’s only using the key, it isn’t using 
+the value. The value pointer is pointing to a constant. So the whole thing is over general than 
+needed. HashMap is expensive just for HashMap. It could be much more specialized for HashSet. 
+And we also have the default size of the array. The third problem is that hashmap has a bunch 
+of bookkeeping fields in it, that really are rarely needed, and certainly not needed all together. 
+It has a bunch of fields to keep different views of the hashmap that you might want. 
+The map interface says that you can compute a collection of all the entries, all the keys, 
+and all the values. And HashMAp caches all of those. So every HashMap, and every HashSet, is 
+paying these three pointer costs, which is an extra 12 bytes. In fact, you rarely use all three 
+together, and it’s not all that common to use even one of them.
+
+The other thing is that the hashmap entry itself is storing a hashcode.
+ It’s maintaining a hashcode, even though the most common cases are keys, 
+ either strings, store their own hashcode. Or integers, where the hashcode computation
+  is pretty trivial. So that’s also a misplaced optimization, and you have to ask the question. 
+  Was this based on an empirical study, with possibly the wrong benchmarks, or was this based on 
+  some assumptions? In this case, it was sort of another cautionary tale for library designers 
+  of the danger of premature optimizations. 
+
+
+\section{Summary}
+
+Decisions programmer must make: which to use, how to model, how to manage;
+Depends on scenario. E.g. concurrent use, load phase, use phase. Do you know how big to expect? 
+ 
+
+So now some special cases in this. There are a lot of different uses of this, and one
+ interesting things we’ve been learning, as we’ve been looking at all these case studies
+  is that we’re really trying to think about why are people using collections, and what are
+   they using them for? In the last example, we saw, they are using them to implement a map. 
+   A fairly complicated map. In that first long example. 
+
+People don’t do this until they have a problem. Don’t have tools. Either they don’t 
+know things are this bad. It’s just a collection, just an integer. Or the tools are so hard to 
+use, no easy way to do it until they have a crisis. 
+
+The garbage collector is not the answer to this. Garbage collector’s realm is cleaning up 
+temporaries. This is a problem of long lived-objects. The gc is not addressing these things at 
+all. People have the assumption that the JIT, the garbage collector, things are magically being 
+taken care of. There’s no footprint optimization being done in any commercial JITs. 
+
+Because Java has a gc, they don’t give you the tools to do your own memory management, and these 
+are the tools you need to figure out how big things are.
+
+We’re making logical decisions, but Java is forcing us to manage it as physical things. Object
+ oriented storage. Just how limited, you really hit it with the idea the GC is going to 
+ everything for it, so there are no other tools for managing storage. Simplified java modeling 
+ scheme – no unions, all the little tricks you have in C++ just don’t exist in Java. 
+
+Model driven development, tools should give you the ability to choose the right 
+implementation. The developer is interestedin the data model. UML to Java transformation 
+should just do the work for you.
+
+Just a summary of colllecitons.
+There are really 2 classes of scaling issues. One is you have small nested collections, 
+and you are paying the fixed cost of small collections, plus you may be paying per entry costs, 
+if they have high per entry costs too for the small collections. The other case is the 
+per-element costs of larger collections or nested collections, and any data delegation costs 
+that those occur of the objects you store in them.
+
+Just a little more about standard collections. The focus has been speed. Or supposedly it has 
+been speed. It certainly hasn’t been footprint. There’s been very little attention given to that.
+ I was a little surprised to see in the harmony classes. They harmony classes are the newest 
+ classes for J9, version 6. They have been open sourced on Apache. I was surprised that Harmony,
+  I thought this was great, they finally fixed some of this stuff, and I found that they actually
+   increased the footprint in a couple of cases. They added an extra field to arraylist, they made 
+   some of the sizes bigger. They cut the footprint in a number of cases too, but nothing 
+   substantial. I think the more disturbing part here, is the fact that a lot of the assumptions 
+   are hard wired. So there are not a lot of policy knobs to play with when you are coding to 
+   these things, and that’s really a problem. 
+
+Developers have a tough situation. Choosing the collections not always obvious what the choices
+ are. Purpose, to raise the awareness. What kinds of things to think about, what to measure. 
+ Not to think that things are cheap. And in this context of expensive implementations, 
+ sometimes you do hit walls, and there’s nothing you can do. But sometimes you really can 
+ fix a number of problems. There’s a lot of problems that have easy solutions. 
+ Choosing the default size, lazily allocating collections that are most likely to be empty. 
+ Picking a collection with less functionality if you don’t need the full functionality. 
+ I strongly advise not writing your own collections, unless you really have search the company
+  for something that will do the job, because it just introduces a whole other set of problems.
+
+Implementing a cache, relationships, a nested map, attribute-value pairs etc – global 
+optimizations. Study – what’s most of the heap?  Which kinds of database bulk storage 
+optimizations would be appropriate?
