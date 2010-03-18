@@ -1,1 +1,151 @@
 \chapter{Sharing Immutable Data}
+
+\section{Literals and Statics}
+\section{Sharing Strings}
+
+So what they were doing there, was they were saving both a binary version, and an ASCII 
+formatted version of the same field, and they were doing that for a lot of fields. 
+And since this was a delegated design, this was multiplied everywhere. So it really added up.  
+We looked at the field cost, last time, in the actual objects making up the profile, but the 
+other thing that is super common is that they were pointing to Strings, actually storing the data, 
+and the actual cost of the Strings was pretty high. So the naïve view, especially 
+if you are used to languages like C, is that, what’s a couple of characters?  
+I’ll just store “Y” or “N”, what’s the big deal of storing one or two characters. 
+But as we saw, looking inside the string, the health ratio for something like Y or an N, 
+a single character, is 48:1. It takes about 44 bytes to store that string, plus the pointer 
+to get there. In some cases these were either constant, or there were things that have just a 
+few values. I think it just had three values, where every single record had both an int, or a 
+short, and had the pointer to a string, which said Y or N.  This is a super common problem, 
+is duplicating data that has a high overhead in its representation. That combination is all over 
+the place, and Strings is the big culprit. They had another field like that. It was a policy 
+threshold, and it was a constant every single record had this 10\% in it. And
+they had the number 10\%, and a pointer to a string “10\%”, and a pointer to a
+string, not sharing them. So certainly they would get a huge reduction just by sharing them. 
+That’s one approach. It takes a little bit of machinery to build that. You can use String intern 
+if you want.  I’ll talk about that. The other thing is just to compute the thing on the fly, 
+assuming it’s something relatively easy. Actually these are 2 separate cases.
+The 10\% you probably want to either share it or compute it on the fly somehow, because 
+that’s probably a number that’s dynamically determined. Something like a Y or an N, 
+I would guess is statically determined. That it has a small number of values that you can 
+predict at compile time, and in that case you can have some final statics that are determined 
+at compile time, and everyone can point to them. Pretty simple.
+
+\section{Sharing Scalars}
+
+Also, recently the boxed scalars, I think this started in 1.5, maybe 1.6, that they have these 
+methods called valueOf, where they will do some sharing for you. So if you think you will have 
+a lot of copies of a Capital Integer, for example, they won’t share all of them, not like intern,
+ where they always share this thing. They allocate a cache at the beginning of very commonly used 
+ integers, commonly used across all applications, so it’s not dynamically determined. 
+ Somebody at compile time has decided that the numbers from -100 to 100 are likely to be used 
+ a lot. So if you happen to hit one of those, you’re going to get a shared one. If you don’t, 
+ you’ll get a new Cap Integer or Float, or whatever you are sharing here. So you have to be  
+ a little careful using this. You definitely can’t assume that you can use ==. 
+ Because sometimes you are going to get objects that are shared, and sometimes you are going to 
+ get …  So this is sort of a funny mechanism here.
+
+\section{Pooling Data}
+
+
+5.6 Redundant Objects
+
+So we see the same pattern at kind of a higher level of not-sharing high overhead data, 
+and this was from text analysis system being developed at research. This was a concordance, 
+which was the center of an important data structure. This particular problem has been fixed. 
+And there were multiple frameworks talking to each other, and one part of it building the 
+concordance was relying on another framework to figure out the type of each word was. 
+Each word in its context that was being indexed. And so in the concordance, even though the words, 
+there were only 20 or 30 types total in this whole vocabulary, this whole classification system, 
+there could be hundreds of thousands of these type data structures here, even though there are 
+actually only 20 or 30 of them.  So this is the same thing here. Immutable data, that has a 
+small number of values, that was highly duplicated, and it turned out the type itself had some 
+fields in it, and it delegated its work to String, which of course is highly delegated, 
+because it delegates its work to char array. So this was a fairly easy problem to fix by just 
+introducing the shared immutable factory pattern to say I need a type object that matches this 
+particular constant. If I have one already, then just give me back that otherwise, make a new one 
+and put it in your pool, and we’ll share it. The one thing to keep in mind when implementing 
+things like that, is to make sure you avoid any lifetime management issues, in particular, 
+memory leaks.  You can also introduce a concurrency problem if you are not careful.
+
+So just some support the JVM does give you for sharing low level data. 
+There’s no support for sharing high-level data like data types. 
+There is something called String.intern where basically, for a given string, 
+you can say to the JDK, I want you to share this string for me. 
+What happens is that you call string.intern with a new string that you create, 
+and it will give you back a pointer either to that same string, meaning I didn’t have 
+this here in this pool yet, but now I do, or to someone elses string that is already in the 
+pool that matches that. So it is only sharing strings that someone has asked to intern. 
+It shares at the level of the string object. There is some misconception that it shares the 
+char array. It actually sharing a string object itself, which means that if you know you are 
+using this pattern, == comparison works, probably still safer to use .equals, because in some 
+cases the code changes. Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
+intern everything, because internally, the JVM is keeping some kind of map, and there is some 
+kind of  per entry cost,  so there is a cost, it has to be worth sharing. 
+There’s a myth floating around that using this can cause memory leaks, and there actually was a 
+version of this Sun’s JVM in 1 or 2 that had a leak, where they were’nt freeing up this memory. 
+That’s long been fixed.
+
+It’s implemented in native code, not Java level, in most JVMs.  
+The benefit is that hopefully it’s less than having 1,000 copies of the same string. 
+So there will be an entry cost of one copy, if you don’t have sufficient sharing, it won’t save. 
+ You don’t want to intern all your strings if they aren’t shared. 
+ If they are shared to some extent then that savings will …
+
+So you can hit perm space limits. This memory is allocated in JVM’s perm space, 
+so if you intern enough stuff, you can get an out of memory of the perm space. 
+There is a JVM flag you can set to up the limit of the perm space. I believe that’s the same 
+story on IBM, but haven’t been able to verify the details. A few developers told me it is. 
+
+You can implement your own map using weak references. Go into tht pattern later. 
+To make sure you avoid a memory leak. The downside of that is that there can be some pretty 
+high per entry cost. Doing it yourself in Java.  Don’t know the native entry cost, but know 
+the per entry in Java is pretty high. 
+
+
+
+Common prefix???
+
+5.7 Example: Caching Strings
+
+Most bloated designs have multiple problems, as shown in this example.  (Quiz??)
+
+Analysis of what’s wrong with this example.
+So this was an example from one of the Lotus frameworks, from Sametime Gateway, and this 
+was one piece of a session connection, and like all the other examples, it’s one piece of a 
+data puzzle with other problems and other sources of costs. It was kind of a medium scale run. 
+We saw that the biggest part of this data structure had sessions 110 of them. Each of them had 2 
+StringBuffers, and that was taking the bulk of the space here.  We looked in to it, and they had 
+quite a few different problems. We saw these StringBuffers sitting in the long lived heap, and 
+thought, why would anyone store stringbuffers as permanent memory. Typically stringbuffers are 
+used as temporaries. They have very aggressive storage allocation, kind of like the collectio
+ns, 
+with the thought in mind that you are going to grow them. You are going to be editing them.  
+Typically, long-lived memory doesn’t have that problem. Typically, Strings in particular, you 
+build them up, and then they are pretty stable. So it seems sort of strange. Usually 
+StringBuffer
+ is 40\% empty space, because it has a doubling algorithm for allocating them.
+ The other strange thing was that they had 3 of them per session, and then there was the 
+ question of whether they needed them at all. Turns out we looked at the code, and they had a 
+ confluence of 3 different issues going on here. First of all, they had a somewhat delegated 
+ design, and again, this was one of the consequences that delegated designs can have, where it 
+ causes coding pattern to be duplicated. So in this case, for a completely different reason, 
+ they had taken their session objects and split them into 3 parts. And they had some good design 
+ reasons for doing that for some replication functionality they needed. But along with that, 
+ they took a coding pattern that said that everytime they call toString on this thing for some 
+ logging purpose, we’re going to save the contents of that String so that we don’t have to 
+ recomputed it. That was really their main problem, that they didn’t realize how much space 
+ they were 
+taking 
+up by saving this computation. And sometimes that’s indeed worth it. 
+That you compute something and hold onto it.  In this case they realized they didn’t need to hold 
+onto that much stuff. So in this case they had 3 problems. One is they were holding onto it, 
+and it got multiplied by 3 because it was a delegated design. The second problem was they were 
+holding onto it, and they may not need to. The third problem was they were going to hold onto it,
+ 
+StringBuffer was the wrong thing to use.  In the end, they would have been better off 
+trimming the StringBuffer, or just calling toString on it, and getting a shorter 
+String out of it.
+
+
+
+
