@@ -10,23 +10,36 @@ As a result, it is common for a Java application to create hundreds of
 thousands, even millions, of collections, where the vast majority have only a
 very small number of entries.
 
-This small-collections pattern is a leading cause of memory bloat.
-Collections themselves are pure overhead, since they are infrastructure glue, 
-not data, and they are quite big. Our guess is that the
+Our guess is that the
 collection class developers would be surprised by this usage pattern. 
-Why bother worrying about expandable structures and clever
-hashing algorithms for only a few entries? 
-
- This chapter describes the cost of the most common collection classes, and
- shows how to reduce the bloat from having too many small
- collections.
+Why would they have bothered implementing expandable
+structures and clever hashing algorithms for only a few entries?
+This mismatch between collection implementation and usage is 
+a leading cause of memory bloat. The basic cost of a collection, even an
+empty collection, is high. Creating millions of small collections multiplies
+this basic infrastructure cost, which is all overhead, to fill the heap.
+ 
+ This chapter describes the basic costs of common collection classes, and shows
+ how to mitigate the small-collections problem to reduce memory bloat.
  
  \section{Choosing The Right Collection}
 
-In this case 
-the planning system was implementing what is know as a level graph. A level 
-graph is a graph with nodes and the graph has multiple levels, where each node 
-has different edges at each level. So same nodes at each level, different edges 
+There are many ways to implement a relationship. Conveniently, Java collection
+classes make this decision easy: for a
+set, use \class{HashSet}, for a map, use \class{HashMap}. 
+If you need ordering, there are various lists; if you need sorted order, use
+\class{TreeMap}. However, sometimes the obvious choice is more general than
+what you really need, and you pay for it with excessive memory bloat. 
+
+To illustrate, consider a graph with the edges represented by nodes mapped to 
+sets of other nodes. This kind of multi-valued map is very commonly implemented
+using a \class{HashMap}, with nested \class{HashSet}s as values.
+Figure ?? shows an entity-collection diagram for this example.
+
+
+
+ the planning system was implementing what is know as a level
+graph. A level graph is a graph with nodes and the graph has multiple levels, where each node has different edges at each level. So same nodes at each level, different edges 
 at each level. And this is the data structure they were using to implement the 
 edges in the level graph. The idea here is that they basically had an index to 
 map a vertex and a level, so this was a map where its key is a multipart key, 
