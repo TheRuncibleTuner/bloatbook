@@ -1,6 +1,109 @@
 \chapter{Sharing Immutable Data}
 
-\section{Literals and Statics}
+So far, we have been concerned with representation overhead.
+But what about the data itself? If you examine any Java heap, you will
+find that a
+large amount of the data is duplicated. At one extreme, 
+there may be thousands of copies of the same boxed
+integers, especially 0 and 1. At the other extreme, there may be many identical
+copies of small data structures that have the same shape and data values.
+And, of course, duplicate strings are very common.
+To save memory, you can share data and data structures, provided that
+does not change during an execution. This chapter describes various
+opportunities and techniques that you can use for sharing, including a few
+low-level mechanisms that Java provides.
+
+\section{Sharing Strings}
+
+Heaps often store many copies of the same string. 
+A solution to this problem is to use a 
+sharing pool to avoid creating duplicate strings. 
+
+A sharing pool is a structure that stores canonical instances
+of data values that would otherwise be replicated in many objects.
+Sharing strings works as follows. Before using a new string, first look in the
+pool to see if it is already there. If it is, reuse it; otherwise, add the new
+string to the pool. One catch is that if you end up adding many strings to
+the pool that are never reused, then you will waste memory, since the pool
+structure is it's own overhead.
+
+Java has 
+
+\begin{example}{Duplicate Strings}
+You application loads data from a file. This data contains a large number of
+name-value maps that will be used frequently throughout program execution.
+These maps represent configuration information. The names come from a small set
+of 16 distinct names. The values are strings come from
+a set of strings unknown at development time, but a set that is small in size;
+there aren't going to be many distinct values, but you are unwilling or unable
+to nail them down at compile time. How can these maps be stored in a memory
+efficient way?
+\end{example}
+
+Without any special effort, each instance of this kind of configuration map
+would store the some subset of same 16 key strings. Furthermore, each map would
+store duplicates of the values. The following code snippet has those two
+aspects of duplication:
+
+\begin{shortlisting}
+void handleNextEntry() {
+	String key = getNextString();
+	Object value = getNextString();
+	map.put(key, value);
+}
+\end{shortlisting} 
+
+Java provides a built-in mechanism for sharing the contents of strings across
+many string instances. By \emph{interning}\index{String interning} a Java
+\class{String}, you ensure that the returned \class{String} will only have
+distinct storage if it is a string value that hasn't been interned yet. You can
+modify the first try as follows:
+
+\begin{shortlisting}
+void handleNextEntry() {
+	String key = getNextString().intern();
+	Object value = getNextString().intern();
+	map.put(key, value);
+}
+\end{shortlisting} 
+
+So just some support the JVM does give you for sharing low level data. 
+There’s no support for sharing high-level data like data types. 
+There is something called String.intern where basically, for a given string, 
+you can say to the JDK, I want you to share this string for me. 
+What happens is that you call string.intern with a new string that you create, 
+and it will give you back a pointer either to that same string, meaning I didn’t have 
+this here in this pool yet, but now I do, or to someone elses string that is already in the 
+pool that matches that. So it is only sharing strings that someone has asked to intern. 
+It shares at the level of the string object. There is some misconception that it shares the 
+char array. It actually sharing a string object itself, which means that if you know you are 
+using this pattern, == comparison works, probably still safer to use .equals, because in some 
+cases the code changes. Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
+intern everything, because internally, the JVM is keeping some kind of map, and there is some 
+kind of  per entry cost,  so there is a cost, it has to be worth sharing. 
+There’s a myth floating around that using this can cause memory leaks, and there actually was a 
+version of this Sun’s JVM in 1 or 2 that had a leak, where they were’nt freeing up this memory. 
+That’s long been fixed.
+
+It’s implemented in native code, not Java level, in most JVMs.  
+The benefit is that hopefully it’s less than having 1,000 copies of the same string. 
+So there will be an entry cost of one copy, if you don’t have sufficient sharing, it won’t save. 
+ You don’t want to intern all your strings if they aren’t shared. 
+ If they are shared to some extent then that savings will …
+
+So you can hit perm space limits. This memory is allocated in JVM’s perm space, 
+so if you intern enough stuff, you can get an out of memory of the perm space. 
+There is a JVM flag you can set to up the limit of the perm space. I believe that’s the same 
+story on IBM, but haven’t been able to verify the details. A few developers told me it is. 
+
+
+\section{Statics/Enumeration}
+
+example from Nick.
+
+\section{Sharing Scalars}
+
+\section{Wrong data container}
 \section{Sharing Strings}
 
 So what they were doing there, was they were saving both a binary version, and an ASCII 
@@ -67,34 +170,6 @@ and put it in your pool, and we’ll share it. The one thing to keep in mind when 
 things like that, is to make sure you avoid any lifetime management issues, in particular, 
 memory leaks.  You can also introduce a concurrency problem if you are not careful.
 
-So just some support the JVM does give you for sharing low level data. 
-There’s no support for sharing high-level data like data types. 
-There is something called String.intern where basically, for a given string, 
-you can say to the JDK, I want you to share this string for me. 
-What happens is that you call string.intern with a new string that you create, 
-and it will give you back a pointer either to that same string, meaning I didn’t have 
-this here in this pool yet, but now I do, or to someone elses string that is already in the 
-pool that matches that. So it is only sharing strings that someone has asked to intern. 
-It shares at the level of the string object. There is some misconception that it shares the 
-char array. It actually sharing a string object itself, which means that if you know you are 
-using this pattern, == comparison works, probably still safer to use .equals, because in some 
-cases the code changes. Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
-intern everything, because internally, the JVM is keeping some kind of map, and there is some 
-kind of  per entry cost,  so there is a cost, it has to be worth sharing. 
-There’s a myth floating around that using this can cause memory leaks, and there actually was a 
-version of this Sun’s JVM in 1 or 2 that had a leak, where they were’nt freeing up this memory. 
-That’s long been fixed.
-
-It’s implemented in native code, not Java level, in most JVMs.  
-The benefit is that hopefully it’s less than having 1,000 copies of the same string. 
-So there will be an entry cost of one copy, if you don’t have sufficient sharing, it won’t save. 
- You don’t want to intern all your strings if they aren’t shared. 
- If they are shared to some extent then that savings will …
-
-So you can hit perm space limits. This memory is allocated in JVM’s perm space, 
-so if you intern enough stuff, you can get an out of memory of the perm space. 
-There is a JVM flag you can set to up the limit of the perm space. I believe that’s the same 
-story on IBM, but haven’t been able to verify the details. A few developers told me it is. 
 
 You can implement your own map using weak references. Go into tht pattern later. 
 To make sure you avoid a memory leak. The downside of that is that there can be some pretty 

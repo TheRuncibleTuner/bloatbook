@@ -1,8 +1,8 @@
 \chapter{Reducing Object Bloat}
 
-In many applications, the heap is mostly filled with instances of just a
+In many applications, the heap is filled mostly with instances of just a
 few important classes.  You can increase scalability significantly by making these
-classes as compact as possible. This chapter describes field usage
+objects as compact as possible. This chapter describes field usage
 patterns that can be easily optimized for space, for example, fields that are
 rarely needed, constant fields, and dependent fields. Simple refactoring of
 these kinds of fields can sometimes result in big wins.
@@ -53,8 +53,9 @@ For products with no alternate supplier, eight bytes are saved per product,
 since three fields are replaced by one. Of course, products with an alternate
 supplier pay a delegation cost, including an extra pointer and object header.
 An interesting question is how much total memory is actually saved? The
-answer depends on the percentage of products that have an alternate supplier needing a
-side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
+answer depends on the percentage of products that have an alternate supplier and
+need
+a side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
 saved. In fact, if the fill rate is too high, memory is wasted.
 
 Figure~\ref{fig:fill-rate} shows the memory saved for different
@@ -74,6 +75,7 @@ backfiring.
   y-axis is the percent of memory saved.}
   \label{fig:fill-rate}
 \end{figure}
+
 In addition to the fill rate, the memory savings also depends on the
 number of fields delegated. The more bytes delegated, the larger the memory
 savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
@@ -91,7 +93,7 @@ less important.
  \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/rarely-used.pdf}
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted for different
-  delegate field sizes. The x-axis is the fill rate, and the y-axis is the
+  delegated field sizes. The x-axis is the fill rate, and the y-axis is the
   percent of memory saved. Each line represents a different delegated size,
   starting from 16 bytes, going up to 144 bytes by increments of 16 bytes.}
   \label{fig:rarely-used}
@@ -122,7 +124,8 @@ $B$:
 \begin{eqnarray}
 y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B}) \nonumber
 \end{eqnarray}
-} 
+(Note that this calculation does not take alignment fill into account, which can
+add additional delegation overhead.) } 
 A common error is to delegate rarely-used fields to a side class, but forget to
 lazily allocate it, that is, always allocate a side object. 
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
@@ -132,13 +135,35 @@ can be error-prone, since it may require testing whether the object exists at
 every use. This complexity has to be weighed against potential memory
 savings.
 
+\section{Attribute Table}
+
+If a field is very rarely used, then it might make sense to delete it from
+its class altogether, and store it in a separate attribute table that maps objects to the attribute
+values. For example, suppose that a few of the products have won major awards,
+and you want to record this information. Rather than maintaining a field
+\code{majorAward} in every product, you can define a table:
+
+\begin{shortlisting}
+class Product {
+    static HashMap<String, String> majorAward = new HashMap();
+    ..
+}
+\end{shortlisting}
+
+Even though a \class{HashMap} has it's own high overhead, this design will come
+out ahead if there are a small number of major awards. 
+Whenever you add any kind of new table like this, however, you have to be
+careful you do not introduce a memory leak. If products are garbage collected, 
+the corresponding entries in the attribute table should be cleaned up. This
+topic is discussed at length in ???.
+
 \section{Constant Fields}
 \label{sec:constant}
 
 Declaring a constant field \code{static} is a simple way to
 save memory. Programmers usually remember to make constants like \emph{pi} 
 static. There are other situations that are a bit more subtle, for example,
-when a field is constant because of how it is used in context of the
+when a field is constant because of how it is used in the context of an
 application.
 
 Returning to the product example, suppose that each product has a field
@@ -149,11 +174,11 @@ If you know that there is always just one store catalog, then the field
 As a more elaborate example, suppose that a \class{Product} has a field
 referencing a \class{Category} object, where a category may be
 books, music, clothes, toys, etc.
-The categories are clearly not the same across all products.
+Clearly, different products belong to different categories.
 However, suppose we define
 subclasses \class{Book}, \class{Music}, and \class{Clothing} of \class{Product}, 
 and all instances of a subclass belong to the same category.  
-Now the \code{category} field is the same for products in each subclass,
+Now the \code{category} field has the same value for products in each subclass,
 so it can be declared static:
 
 \begin{shortlisting} 
@@ -181,11 +206,12 @@ other objects, is helpful in making these kinds of memory optimizations.
 \label{sec:mutually-exclusive}
 
 Sometimes a class has fields that are never used at the same time, and therefore
-they can share the same space. Unfortunately, Java does not have anything like
-a union type, so to conflate several fields into one field, the fields have
-to be of the same type. If the fields are not the same type or have the same
-base type, then a new type must be created that is a generalization of the
-mutually exclusive field types.
+they can share the same space. Two mutually exclusive fields can be conflated
+into one field if they have the same type. 
+Unfortunately, Java does not have anything like
+a union type to combine fields of different types. However, if it makes sense,
+mutually exclusive field types can be broadened to a common base type to
+allow this optimization. 
 
 For example, suppose that each women's clothing product has a size, and there
 are different kinds of sizes: xsmall-small-medium-large-xlarge,
@@ -242,7 +268,7 @@ enum ClothingSize {
 
 If the types of two mutually exclusive fields are different classes, then you
 generalize these types by defining a common superclass, if possible. As a last
-resort, you can alwyas combine these fields into a single field of type
+resort, you can always combine these fields into a single field of type
 \class{Object}. Finally, if there are sets of fields that are mutually exclusive, then you can
 define a side class for each set of fields, where all side classes have
 a common superclass. In this case, you need to do the math to make sure that you
@@ -251,27 +277,34 @@ actually save memory, given the extra cost of delegation.
 
 \section{Redundant Fields}
 
-A field is redundant if it stores the same information as another field but in
-a different form. Why would anyone define a redundant field?  One reason is to
-have a binary form for efficient computation, and a string form for
-reporting. For example, a product may store both an integer and a string
-representation for the productID. Since it is possible to convert one
-representation into the other, there is no necessity to store both. Redundant string fields 
-are a particularly
-bad idea, since strings have a very high overhead in Java, as we have seen.
+A field is redundant if it can be computed on the fly from other fields, and, in
+principle, can be eliminated. In the simplest case, two fields store the same
+information but in different forms, since the two fields are used for
+different purposes. For example, product IDs are
+more efficiently compared as \code{ints}, but more easily printed as
+\code{Strings}. Since it is possible to convert one representation into the
+other, storing both representations is not necessary, and only makes sense if
+there is a real cost penalty from performing the data conversion.
+In the more general case, a field may depend on many other values. For example,
+you could allocate a field to store the number of items in a shopping cart,
+ or simply compute it by adding up all of the shopping cart items. 
 
- %product may store both a boolean and a string ``Yes'' or ``No'' to indicate
-%whether a product is in stock.  If
-%the string ``Yes''
-In fact, any field that can be computed on the fly is redundant and could in
-principle be eliminated. For example, you can allocate a field to store the number of items
-in a shopping cart, or compute it by counting all items in the cart as needed. 
-There is a trade-off between the cost of the computation and the memory 
-cost of the extra field, which has to be weighed in context. On the one hand,
-how often is the information needed and how expensive is it to compute? On the
-other hand, how many objects would there be with the computed field? Comparing
-performance cost to memory cost is a bit like apples and oranges, but often it
-is clear which resource is most constrained.
+There is a trade-off between the performance cost of a conversion or computation
+and the memory cost of an extra field, which has to be weighed in context. 
+How often is the information needed and how expensive is it to compute? What's
+the total memory cost? Comparing performance cost to memory cost is a bit like apples and oranges, 
+but often it is clear which resource is most constrained. Here are several
+considerations to keep in mind:
+\begin{itemize}
+  \item Redundant \class{String} fields should be avoided, since
+strings have a very high overhead in Java, 
+as we have seen.  
+\item Computed fields are very useful when storing partial values avoids 
+expensive quadratic computation. For example, if you need to support finding the
+number of children of nodes in a graph, then caching
+this value for each node is a good idea. 
+\end{itemize}
+
 
 \section{Optimizing Framework Code}
 
@@ -280,17 +313,16 @@ familiar with the entire application you are working on. You need to
 understand how objects are created and used, and therefore know enough to determine
 whether these optimizations make
 sense. However, if you are programming a library or framework, you have no way
-of knowing how your code will be used. In fact, your code may be used in a whole
+of knowing how your code will be used. In fact, your code may be used in a
 variety of different contexts with different characteristics. Premature optimization ---
 making an assumption about how the code will be used, and optimizing for that
-case --- is a common pitfall when programming frameworks. If your assumption is
-wrong most of the time, then premature optimization fails. 
+case --- is a common pitfall when programming frameworks.  
 
 For example, suppose the online store is designed as a framework
 that can be extended to implement different kinds of stores.
 For some stores, most products may have an alternate supplier. For other
 stores, most products may not.  There is no way of knowing. If the
-\code{Product} class is designed so that the alternate supplier is allocated to
+\code{Product} class is designed so that the alternate supplier is allocated as
 a side object, then sometimes memory will be saved and sometimes wasted. 
 One possibility is to define two versions of the \code{Product} class, one that
 delegates and one that doesn't. The framework user can then use the version
@@ -298,27 +330,30 @@ that is appropriate to the specific context. However, this is generally not
 practical. 
 
 Frequently, decisions are made that trade space for time.
-Let’s come back to our low level example again, the 8-character 
-\code{String}. 12 bytes of it, or 21\% of it, is due to three bookkeeping fields, an offset, a
-length, and a hashcode. The offset and length fields implement an optimization for
-substrings. That is, when you create a substring of a string, both
-the string and substring share the same character array, as shown in
+There are many instances of this trade-off in the Java standard library. For
+example, let’s look at  \code{String}, which has three 
+ bookkeeping fields, an offset,
+a length, and a hashcode. These 12 bytes of overhead consume 21\% of an eight
+character string. 
+The offset and length fields implement an optimization for substrings. 
+That is, when you create a substring, both
+the original string and substring share the same character array, as shown in
 Figure~\ref{fig:substring}. The offset and length fields in the substring
-\code{String} object specify the shared portion of the character array. This optimizes both time and
-space for substring operations, since there is no new character array created
-for the substring and no copying. However, every string pays the price of the offset
+\code{String} object specify the shared portion of the character array. 
+This scheme optimizes the time to create a substring, since there is no new
+character array and no copying. However, every string pays the price of the offset
 and length field, whether or not they are used.
-For applications with few or no substrings, which is the common case, a lot of
-memory is wasted. Even when there are many substrings, if the original
+Across all Java applications, there are many more strings than substrings, so a
+lot of memory is wasted. Even when there are many substrings, if the original
 strings go away, you have a different footprint problem, namely,
 saving character arrays which are too big.
 \begin{figure}
   \centering
  \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/substring.pdf}
  % \includegraphics{eight-char-string}
-  \caption{A string and a substring share the same character. The length and
-  offset fields are needed for the substring, but store redundant information
-  for the string.}
+  \caption{A string and a substring share the same character array. The length
+  and offset fields are needed for the substring, but are redundant
+  in the original string object.}
   \label{fig:substring}
 \end{figure}
 
@@ -330,23 +365,21 @@ saving character arrays which are too big.
 % TRL, in reality, in the long liv
 
 The third bookkeeping field in \code{String} is a hashcode.
-Storing a hashcode seems like a reasonable idea, until you think about the fact
-that a string only needs its hashcode when it is stored in a \code{HashSet} or a
+Storing a hashcode seems like a reasonable idea, since it is expensive to
+compute it repeatedly. However, you have to be puzzled by the space-time
+trade-off, since 
+a string only needs its hashcode when it is stored in a \code{HashSet} or a
 \code{HashMap}. In both of these cases, the \code{HashSet} or \code{HashMap}
-entry already has a field for a hashcode, and is already storing it.
-As if this redundancy isn't enough, there are also four bytes reserved
-in every object header for the identity hashcode. 
+entry already has a field for hashcode for each element.
+(As if this redundancy isn't enough, there are also four bytes reserved
+in every object header for the identity hashcode.) 
 
-
-This is a cautionary tale. The implementation of
-\code{String} in the Java library is so much part the language and its
-implementations that it is very hard to change at this point. Yet, strings
-are so pervasive that almost all applications pay the price of  having a larger
-footprint. And it's not even clear that there is any performance gain from
-these string optimizations for most applications. 
-They might make a difference in certain benchmarks, but benchmarks usually do
-not behave like other applications.
-
+This is a cautionary tale of premature optimization. Framework
+decisions can have a long-lived impact. For these \class{String}
+optimizations, it's not clear that there is any performance gain beyond 
+some unrealistic benchmarks. 
+But it's too late and expensive to change the implementation, 
+so all applications must pay the price in memory footprint.
 
 \section{Summary}
 
@@ -355,7 +388,8 @@ possible to make objects smaller by recognizing certain usage patterns.
 Optimization opportunities include:
 
 \begin{itemize}
-  \item Rarely used fields can be delegated to a side object.
+  \item Rarely used fields can be delegated to a side object, or stored in a
+  completely separate attribute table.
   \item Fields that have the same value in all instances of a class can be
   declared static.
   \item Mutually exclusive fields can share the same field, provided they have
