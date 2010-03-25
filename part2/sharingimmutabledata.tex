@@ -15,70 +15,108 @@ low-level mechanisms that Java provides.
 
 \section{Sharing Strings}
 
-Heaps often store many copies of the same string. 
-A solution to this problem is to use a 
-sharing pool to avoid creating duplicate strings. 
+It is common for the heap to contain many duplicate strings.
+Duplicate string literals, known at compile-time, are shared automatically.
+So duplicates in the heap are strings that are created on-the-fly,
+during execution. Their values cannot be determined at compile-time, so 
+the compiler cannot decide to share them.
 
-A sharing pool is a structure that stores canonical instances
-of data values that would otherwise be replicated in many objects.
-Sharing strings works as follows. Before using a new string, first look in the
-pool to see if it is already there. If it is, reuse it; otherwise, add the new
-string to the pool. One catch is that if you end up adding many strings to
-the pool that are never reused, then you will waste memory, since the pool
-structure is it's own overhead.
-
-Java has 
-
-\begin{example}{Duplicate Strings}
-You application loads data from a file. This data contains a large number of
-name-value maps that will be used frequently throughout program execution.
-These maps represent configuration information. The names come from a small set
-of 16 distinct names. The values are strings come from
-a set of strings unknown at development time, but a set that is small in size;
-there aren't going to be many distinct values, but you are unwilling or unable
-to nail them down at compile time. How can these maps be stored in a memory
-efficient way?
-\end{example}
-
-Without any special effort, each instance of this kind of configuration map
-would store the some subset of same 16 key strings. Furthermore, each map would
-store duplicates of the values. The following code snippet has those two
-aspects of duplication:
-
+For example, for following code, the compiler generates two unique strings,
+``Harry'' and ``Tom'', and these strings are stored in \emph{perm
+space}, which is a JVM permanent memory area.
 \begin{shortlisting}
-void handleNextEntry() {
-	String key = getNextString();
-	Object value = getNextString();
-	map.put(key, value);
+class BunchOfStrings {
+	String name1 = ``Harry'';
+	String name2 = ``Tom'';
+	String name3 = ``Harry'';
 }
-\end{shortlisting} 
+\end{shortlisting}
 
-Java provides a built-in mechanism for sharing the contents of strings across
-many string instances. By \emph{interning}\index{String interning} a Java
-\class{String}, you ensure that the returned \class{String} will only have
-distinct storage if it is a string value that hasn't been interned yet. You can
-modify the first try as follows:
-
+As another example, suppose you are reading in property name-value pairs from 
+files into tables:
 \begin{shortlisting}
 void handleNextEntry() {
-	String key = getNextString().intern();
+	String name = getNextString();
+	String value = getNextString();
+	propertyMap.put(name, value);
+}
+\end{shortlisting}
+The compiler cannot tell whether any of the strings read are duplicates, even
+though the same names and values may be repeated many times among all the files.
+%A solution to this problem is to use a 
+%sharing pool to avoid creating duplicate strings. 
+%A sharing pool is a centralized structure that stores 
+%canonical data values that would otherwise be replicated in many objects.
+%Before storing a 
+%To use a sharing pool, before storing a new
+%\class{String}, first check the pool to see if it is already there. If it is,
+%reuse it; otherwise, add the new string to the pool. 
+%One catch is that if you end up adding many strings to
+%the pool that are never reused, then you will waste memory, since the pool
+%structure itself has overhead. So you need to have a good idea
+%which strings are likely to have duplicate values.
+%%As an example, suppose you need to load configuration information from a file,
+%%where they are stored as a long list of tables that map property names to
+%value. Here is code to read and store a single table entry.
+%The names come from a small set
+%of 16 distinct names. The values are strings come from
+%a set of strings unknown at development time, but a set that is small in size;
+%there aren't going to be many distinct values, but you are unwilling or unable
+%to nail them down at compile time. How can these maps be stored in a memory
+%efficient way?
+%Without any special effort, each instance of this kind of configuration map
+%would store the some subset of same 16 key strings. Furthermore, each map would
+%store duplicates of the values. The following code snippet has those two
+%aspects of duplication:
+Fortunately, 
+ Java provides a built-in mechanism for sharing \class{Strings}, called 
+\emph{interning}\index{String interning}, where the JVM maintains a pool of
+shared strings. So if you know that the input files will have many duplicates,
+you can modify the code as follows:
+\begin{shortlisting}
+void handleNextEntry() {
+	String name = getNextString().intern();
 	Object value = getNextString().intern();
 	map.put(key, value);
 }
 \end{shortlisting} 
+ This code calls \code{intern} on each newly created string.
+If the string has not already been saved, it is added to the internal string
+pool, and a pointer to it is returned. Otherwise, the new string is a
+duplicate, and a previously saved string is returned.
 
-So just some support the JVM does give you for sharing low level data. 
-There’s no support for sharing high-level data like data types. 
-There is something called String.intern where basically, for a given string, 
-you can say to the JDK, I want you to share this string for me. 
-What happens is that you call string.intern with a new string that you create, 
-and it will give you back a pointer either to that same string, meaning I didn’t have 
-this here in this pool yet, but now I do, or to someone elses string that is already in the 
-pool that matches that. So it is only sharing strings that someone has asked to intern. 
-It shares at the level of the string object. There is some misconception that it shares the 
-char array. It actually sharing a string object itself, which means that if you know you are 
-using this pattern, == comparison works, probably still safer to use .equals, because in some 
-cases the code changes. Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
+There are semantic implications of interning
+strings that you should be aware of. Under the covers, the JVM is storing unique
+string values as sharable objects. But a string consists of two objects,
+a \class{String} and a \code{char} array, and it makes a difference which of
+these the JVM makes sharable. For example, consider the code: 
+\begin{shortlisting}
+    String name1 = getNextString();
+    String name2 = getNextString();
+    System.out.println(name1 == name2);
+    System.out.println(name1.equals(name2));
+\end{shortlisting}
+If \code{name1} and
+\code{name2} both store the same string value, then the first print statement
+will print \code{false}, and the second print statement will print \code{true}.
+This is because  \code{equals} compares the \code{char} arrays of the two
+strings, while \code{==} compares the identities. Compare this with code that
+interns these strings:
+\begin{shortlisting}
+    String name1 = getNextString().intern();
+    String name2 = getNextString().intern();
+    System.out.println(name1 == name2);
+    System.out.println(name1.equals(name2));
+\end{shortlisting}
+In this case,  both print statements
+print \code{true}. This is because when you intern strings with the same
+value, the \class{String} objects themselves are shared. Therefore, if you are
+interning strings, you need to be careful and avoid depending on \code{==} for identity semantics. 
+If you want the value of two strings to be
+equal \emph{only if} they are the same object, then don't use interning.
+If your program just uses \code{equals} for string comparison, you are safe.
+
+ Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
 intern everything, because internally, the JVM is keeping some kind of map, and there is some 
 kind of  per entry cost,  so there is a cost, it has to be worth sharing. 
 There’s a myth floating around that using this can cause memory leaks, and there actually was a 
