@@ -13,17 +13,13 @@ does not change during an execution. This chapter describes various
 opportunities and techniques that you can use for sharing, including a few
 low-level mechanisms that Java provides.
 
-\section{Sharing Strings}
+\section{String Literals and Sharing}
 
-It is common for the heap to contain many duplicate strings.
-Duplicate string literals, known at compile-time, are shared automatically.
-So duplicates in the heap are strings that are created on-the-fly,
-during execution. Their values cannot be determined at compile-time, so 
-the compiler cannot decide to share them.
-
-For example, for following code, the compiler generates two unique strings,
-``Harry'' and ``Tom'', and these strings are stored in \emph{perm
-space}, which is a JVM permanent memory area.
+The JVM stores string literals in a \emph{string constant pool}. Since strings
+are immutable, it is safe for the JVM to eliminate duplicates, and keep just
+one copy of each literal string. In the following code, the JVM stores two
+strings, \code{``Harry''} and \code{``Tom''} in the constant pool, and
+\code{name1} and \code{name3} share the string \code{``Harry''}.
 \begin{shortlisting}
 class BunchOfStrings {
 	String name1 = ``Harry'';
@@ -31,6 +27,59 @@ class BunchOfStrings {
 	String name3 = ``Harry'';
 }
 \end{shortlisting}
+Even when duplicate string literals are loaded
+from different classes and different packages, the JVM stores just a single
+copy.
+
+However, when a new string is created during execution, it is stored in the
+heap by default, and it is possible to end up with a lot of string duplication.
+In fact, duplicate string data is a leading cause of bloat. One way to avoid
+string duplication is to convert dynamic strings to static strings, if
+possible. As an example, suppose you are reading in property name-value pairs from 
+files into tables:
+\begin{shortlisting}
+class ConfigurationProperties {
+    ..
+	void handleNextEntry() {
+		String propertyName = getNextString();
+		String propertyValue = getNextString();
+		propertyMap.put(propertyName, propertyValue);
+	}
+}
+\end{shortlisting}
+The compiler cannot tell whether any of the strings read in are duplicates. If 
+there are only 16 distinct property names in all of the input pairs, these
+property names will be duplicated many times in the heap.
+However, if you know in advance that there are only 16 properties, then you can
+use an enumerated type, so that the strings are represented as integers at
+runtime. 
+\begin{shortlisting}
+enum PropertyName = {...};
+ 
+void handleNextEntry() {
+PropertyName key = getNextPropertyName(); 
+Object value = getNextString().intern();
+ map.put(key, value);
+}
+\end{shortlisting}
+
+
+A common
+error is to create a new string when you don't have to. For example, in the
+following code, there is no need to create new strings from the literals.
+\begin{shortlisting}
+class BunchOfStringCopies {
+	String name1 = new String{``Harry''};
+	String name2 = new String{``Tom''};
+	String name3 = new String{``Harry''};
+}
+\end{shortlisting}
+Even if the standard library is smart enough to share the character arrays, this
+code still creates redundant \code{String} objects.
+
+\section{Sharing Dynamic Strings}
+
+
 
 As another example, suppose you are reading in property name-value pairs from 
 files into tables:
@@ -116,27 +165,46 @@ If you want the value of two strings to be
 equal \emph{only if} they are the same object, then don't use interning.
 If your program just uses \code{equals} for string comparison, you are safe.
 
- Obviously, there is a cost in doing this, a memory cost, so you shouldn’t 
-intern everything, because internally, the JVM is keeping some kind of map, and there is some 
-kind of  per entry cost,  so there is a cost, it has to be worth sharing. 
-There’s a myth floating around that using this can cause memory leaks, and there actually was a 
-version of this Sun’s JVM in 1 or 2 that had a leak, where they were’nt freeing up this memory. 
-That’s long been fixed.
+The JVM implements interning in native code, not at the Java level, and stores
+interned strings in \emph{perm space}, not the heap. If perm space
+fills up, you will get an error message like: \code{java.lang.OutOfMemoryError:
+PermGen Space}. Its size can be increased by setting the PermSize and
+MaxPermSize command line arguments. To avoid memory leaks, the JVM performs
+garbage collection on interned strings. 
 
-It’s implemented in native code, not Java level, in most JVMs.  
-The benefit is that hopefully it’s less than having 1,000 copies of the same string. 
-So there will be an entry cost of one copy, if you don’t have sufficient sharing, it won’t save. 
- You don’t want to intern all your strings if they aren’t shared. 
- If they are shared to some extent then that savings will …
-
-So you can hit perm space limits. This memory is allocated in JVM’s perm space, 
-so if you intern enough stuff, you can get an out of memory of the perm space. 
-There is a JVM flag you can set to up the limit of the perm space. I believe that’s the same 
-story on IBM, but haven’t been able to verify the details. A few developers told me it is. 
+Interned strings are stored by the JVM in a table,
+ so there is additional memory overhead for each interned string. 
+Therefore, you need to be careful to intern strings only when you know that
+ there would be expensive duplication otherwise. Indiscrimately interning
+ strings wastes memory. Even though this
+ memory is not part of the heap, native memory costs add up also.
+ 
+ %    * Literal strings within the same class in the same package represent
+%     references to the same String object. * Literal strings within different
+ %    classes in the same package represent references to the same String
+%     object. * Literal strings within different classes in different packages
+ %    likewise represent references to the same String object. * Strings
+ %    computed by constant expressions are computed at compile time and then
+   %  treated as if they were literals. * Strings computed by concatenation at
+    % run time are newly created and therefore distinct.
+ 
 
 
 \section{Statics/Enumeration}
 
+Be careful about new String();
+
+It is possible to do even better, if you have the luxury of modifying both ends of 
+the communication channel, i.e. both the serialization and this deserialization code. 
+There are only 16 distinct names used in all instances of this configuration map. 
+This seems like a perfect case for an enumerated type. An enumerated type can be used to represent 
+strings as numbers at runtime. The only place the strings are stored is in the string constant pool. 
+Each class, when compiled, keeps a pool of the strings that are used by code in that class. 
+In this way, an enumerated type is an even more highly optimized sharing pool than that provided by 
+the interning mechanism:
+enum PropertyName = {...}; void handleNextEntry() {
+PropertyName key = getNextPropertyName(); Object value = getNextString().intern(); map.put(key, value);
+}
 example from Nick.
 
 \section{Sharing Scalars}
