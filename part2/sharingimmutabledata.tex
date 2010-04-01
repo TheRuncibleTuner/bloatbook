@@ -1,19 +1,135 @@
 \chapter{Sharing Immutable Data}
 
-So far, we have been concerned with representation overhead.
+So far, we have been concerned with the overhead of a representation.
 But what about the data itself? If you examine any Java heap, you will
 find that a
 large amount of the data is duplicated. At one extreme, 
 there may be thousands of copies of the same boxed
 integers, especially 0 and 1. At the other extreme, there may be many identical
 copies of small data structures that have the same shape and data values.
-And, of course, duplicate strings are very common.
-To save memory, you can share data and data structures, provided that
-does not change during an execution. This chapter describes various
-opportunities and techniques that you can use for sharing, including a few
-low-level mechanisms that Java provides.
+And, of course, duplicate strings are extremely common.
+This chapter describes various
+opportunities and techniques that you can use for sharing data to avoid
+duplication, including a few low-level mechanisms that Java provides.
 
-\section{String Literals and Sharing}
+\section{Sharing String Literals}
+\label{literals}
+
+The JVM stores string literals in a \emph{string constant pool} when its class
+is loaded. However, when a new string is created during execution, it is stored
+in the heap, without any check for duplication. String duplication is one of the
+most common and expensive sources of bloat. As we have seen, even small
+strings incur a large overhead. Fortunately, it is not hard to eliminate string
+duplication. One technique is to represent strings as static literals whenever possible, 
+and avoid dynamic
+creation.
+
+ As an example, suppose you are
+reading in property name-value pairs from files into tables:
+\begin{shortlisting}
+class ConfigurationProperties {
+    ..
+	void handleNextEntry() {
+		String propertyName = getNextString();
+		String propertyValue = getNextString();
+		propertyMap.put(propertyName, propertyValue);
+	}
+}
+\end{shortlisting}
+The compiler cannot tell whether any of the strings read in are duplicates. If 
+there are just a few distinct property names in all of the input pairs, these
+property names will be duplicated many times in the heap.
+
+However, if you know in advance what all of the property names are, then you can
+define them in advance as static strings, which are shared among the
+entries of \code{propertyMap}.
+\begin{shortlisting}
+class PropertyNames {
+	public static String numberOfUnits = ``NUM_UNITS'';
+	public static String minWidgets = ``MIN_WIDGETS'';
+	..
+}
+
+class ConfigurationWithStaticProperties {
+    void handleNextEntry() {
+       String propertyName = getNextPropertyName(); 
+       String propertyValue = getNextString();
+       propertyMap.put(propertyName, propertyValue);
+    }
+}
+\end{shortlisting}
+One copy of each property name is stored in the string constant pool, and there
+are no duplicates in the heap. Alternatively, you could use an enumeration type,
+instead of string literals for the property names, perhaps a better stylistic
+choice.
+
+A common
+ mistake is to create a new string when you don't have to. For example, in the
+following code, there is no need to create new strings from literals.
+\begin{shortlisting}
+class PropertyNames {
+	public static String numberOfUnits = new String(``NUM_UNITS'');
+	public static String minWidgets = new String(``MIN_WIDGETS'');
+	..
+}
+\end{shortlisting}
+Even though the standard library is smart enough not to duplicate the
+character arrays, this code still creates redundant \code{String} objects in
+the heap.
+
+Using static strings to eliminate dulication is only possible when the string
+values are know in advance. 
+Section~\ref{sec:sharing-poos} introduces the notion of a sharing pool for
+sharing dynamic data. Section~\ref{sec:java-mechanisms} describes how to use the
+Java internal string pool to eliminate duplication under the covers.
+
+\section{Sharing Pools}
+\label{sec:sharing-pools}
+
+Suppose your application creates a lot of duplicate data, but you don't
+know the data values before execution. 
+You can still avoid duplication by using a \emph{sharing pool}, as shown in 
+Figure~\ref{fig:sharing-pool}. In Figure~\ref{fig:sharing-pool}(a), objects
+A and B point to identical data structures.
+Figure~\ref{fig:sharing-pool} shows objects A and B sharing the same data
+structure, which is stored in a sharing pool.
+
+\callout{callout:sharing-pool}{Sharing Pool}{
+A \emph{sharing pool} is a centralized structure that stores 
+canonical data values that would otherwise be replicated in many objects.
+A sharing pool itself is usually a some sort of hash table, although it
+could be implemented in other ways. 
+}
+
+There are several issues that you need to be aware of before using a sharing
+pool.
+\paragraph{Shared objects must be immutable.}
+
+\paragraph{Sharing objects changes identity semantics.}
+
+\paragraph{Sharing pools should not be used if there is limited sharing.}
+
+\paragraph{Shared objects should be garbage collected.}
+
+
+
+\section{Java Mechanisms for Sharing Data}
+\label{sec:java-mechanisms}
+
+The following
+pseudo-code shows what happens under the covers when you want to create or use a
+shared object:
+
+\begin{shortlisting}
+    share(sharedObject) { 
+        if (sharingPool contains a copy of sharedObject) {
+        	return copy of sharedObject;  
+        } else {
+            add sharedObject to sharingPool;
+            return sharedObject;
+        }
+    }
+\end{shortlisting}
 
 The JVM stores string literals in a \emph{string constant pool}. Since strings
 are immutable, it is safe for the JVM to eliminate duplicates, and keep just
@@ -27,71 +143,23 @@ class BunchOfStrings {
 	String name3 = ``Harry'';
 }
 \end{shortlisting}
-Even when duplicate string literals are loaded
-from different classes and different packages, the JVM stores just a single
-copy.
 
-However, when a new string is created during execution, it is stored in the
-heap by default, and it is possible to end up with a lot of string duplication.
-In fact, duplicate string data is a leading cause of bloat. One way to avoid
-string duplication is to convert dynamic strings to static strings, if
-possible. As an example, suppose you are reading in property name-value pairs from 
-files into tables:
-\begin{shortlisting}
-class ConfigurationProperties {
-    ..
-	void handleNextEntry() {
-		String propertyName = getNextString();
-		String propertyValue = getNextString();
-		propertyMap.put(propertyName, propertyValue);
-	}
-}
-\end{shortlisting}
-The compiler cannot tell whether any of the strings read in are duplicates. If 
-there are only 16 distinct property names in all of the input pairs, these
-property names will be duplicated many times in the heap.
-However, if you know in advance that there are only 16 properties, then you can
-use an enumerated type, so that the strings are represented as integers at
-runtime. 
-\begin{shortlisting}
-enum PropertyName = {...};
- 
-void handleNextEntry() {
-PropertyName key = getNextPropertyName(); 
-Object value = getNextString().intern();
- map.put(key, value);
-}
-\end{shortlisting}
+ You can do this type of storage
+optimization, which replaces run-time strings by compile-time literals, 
+provided you know what the strings are in advance at
+compile-time. 
 
+As described in the next few sections, Java makes it easy to
+share strings and \code{Integers}. For sharing other kinds of data, you have to
+implement your own sharing pool. However, in all cases, there are a several
+issues that you should be aware of.
 
-A common
-error is to create a new string when you don't have to. For example, in the
-following code, there is no need to create new strings from the literals.
-\begin{shortlisting}
-class BunchOfStringCopies {
-	String name1 = new String{``Harry''};
-	String name2 = new String{``Tom''};
-	String name3 = new String{``Harry''};
-}
-\end{shortlisting}
-Even if the standard library is smart enough to share the character arrays, this
-code still creates redundant \code{String} objects.
 
 \section{Sharing Dynamic Strings}
 
-
-
-As another example, suppose you are reading in property name-value pairs from 
-files into tables:
-\begin{shortlisting}
-void handleNextEntry() {
-	String name = getNextString();
-	String value = getNextString();
-	propertyMap.put(name, value);
-}
-\end{shortlisting}
-The compiler cannot tell whether any of the strings read are duplicates, even
-though the same names and values may be repeated many times among all the files.
+Suppose your application creates a lot of duplicate strings, but you don't
+know what they are before the application runs. You still have an opportunity
+to reduce duplication by using a dynamic string pool to share strings.
 %A solution to this problem is to use a 
 %sharing pool to avoid creating duplicate strings. 
 %A sharing pool is a centralized structure that stores 
@@ -118,19 +186,28 @@ though the same names and values may be repeated many times among all the files.
 %store duplicates of the values. The following code snippet has those two
 %aspects of duplication:
 Fortunately, 
- Java provides a built-in mechanism for sharing \class{Strings}, called 
-\emph{interning}\index{String interning}, where the JVM maintains a pool of
-shared strings. So if you know that the input files will have many duplicates,
-you can modify the code as follows:
+ Java provides a built-in string pool, maintained in the JVM internal \emph{perm 
+space}. The mechanism for using the string pool is called
+\emph{interning}\index. In the configuration property example from
+seciton~\ref{literals}, property
+name duplication was eliminated using an enumeration type, but not
+property value duplication. Suppose there are many duplicated values, but you
+don't know them at compile-time. The following code interns the property value
+strings read in, which eliminates duplication during execution.
 \begin{shortlisting}
-void handleNextEntry() {
-	String name = getNextString().intern();
-	Object value = getNextString().intern();
-	map.put(key, value);
+enum PropertyName = {...};
+ 
+ class ConfigurationPropertiesWithInterning {
+    void handleNextEntry() {
+       PropertyName propertyName = getNextPropertyName(); 
+       String propertyValue = getNextString().intern();
+       propertyMap.put(propertyName, propertyValue);
+    }
 }
-\end{shortlisting} 
- This code calls \code{intern} on each newly created string.
-If the string has not already been saved, it is added to the internal string
+\end{shortlisting}
+
+By calling \code{intern} on each newly created string,
+if the string has not already been saved, it is added to the internal string
 pool, and a pointer to it is returned. Otherwise, the new string is a
 duplicate, and a previously saved string is returned.
 
@@ -189,27 +266,21 @@ Therefore, you need to be careful to intern strings only when you know that
     % run time are newly created and therefore distinct.
  
 
+\paragraph{Sharing Scalars}
+Also, recently the boxed scalars, I think this started in 1.5, maybe 1.6, that they have these 
+methods called valueOf, where they will do some sharing for you. So if you think you will have 
+a lot of copies of a Capital Integer, for example, they won’t share all of them, not like intern,
+ where they always share this thing. They allocate a cache at the beginning of very commonly used 
+ integers, commonly used across all applications, so it’s not dynamically determined. 
+ Somebody at compile time has decided that the numbers from -100 to 100 are likely to be used 
+ a lot. So if you happen to hit one of those, you’re going to get a shared one. If you don’t, 
+ you’ll get a new Cap Integer or Float, or whatever you are sharing here. So you have to be  
+ a little careful using this. You definitely can’t assume that you can use ==. 
+ Because sometimes you are going to get objects that are shared, and sometimes you are going to 
+ get …  So this is sort of a funny mechanism here.
 
-\section{Statics/Enumeration}
 
-Be careful about new String();
-
-It is possible to do even better, if you have the luxury of modifying both ends of 
-the communication channel, i.e. both the serialization and this deserialization code. 
-There are only 16 distinct names used in all instances of this configuration map. 
-This seems like a perfect case for an enumerated type. An enumerated type can be used to represent 
-strings as numbers at runtime. The only place the strings are stored is in the string constant pool. 
-Each class, when compiled, keeps a pool of the strings that are used by code in that class. 
-In this way, an enumerated type is an even more highly optimized sharing pool than that provided by 
-the interning mechanism:
-enum PropertyName = {...}; void handleNextEntry() {
-PropertyName key = getNextPropertyName(); Object value = getNextString().intern(); map.put(key, value);
-}
-example from Nick.
-
-\section{Sharing Scalars}
-
-\section{Wrong data container}
+\section{Wrong Data Container}
 \section{Sharing Strings}
 
 So what they were doing there, was they were saving both a binary version, and an ASCII 
@@ -239,21 +310,6 @@ I would guess is statically determined. That it has a small number of values tha
 predict at compile time, and in that case you can have some final statics that are determined 
 at compile time, and everyone can point to them. Pretty simple.
 
-\section{Sharing Scalars}
-
-Also, recently the boxed scalars, I think this started in 1.5, maybe 1.6, that they have these 
-methods called valueOf, where they will do some sharing for you. So if you think you will have 
-a lot of copies of a Capital Integer, for example, they won’t share all of them, not like intern,
- where they always share this thing. They allocate a cache at the beginning of very commonly used 
- integers, commonly used across all applications, so it’s not dynamically determined. 
- Somebody at compile time has decided that the numbers from -100 to 100 are likely to be used 
- a lot. So if you happen to hit one of those, you’re going to get a shared one. If you don’t, 
- you’ll get a new Cap Integer or Float, or whatever you are sharing here. So you have to be  
- a little careful using this. You definitely can’t assume that you can use ==. 
- Because sometimes you are going to get objects that are shared, and sometimes you are going to 
- get …  So this is sort of a funny mechanism here.
-
-\section{Pooling Data}
 
 
 5.6 Redundant Objects
