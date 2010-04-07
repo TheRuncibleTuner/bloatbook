@@ -1,7 +1,7 @@
 \chapter{Sharing Immutable Data}
 
 So far, we have been concerned with the wasteful overhead that results from
-a data representation. But what about the data itself? If you examine any Java
+data representation. But what about the data itself? If you examine any Java
 heap, you will find that a
 large amount of the data is duplicated. At one extreme, 
 there are often thousands of copies of the same boxed
@@ -21,13 +21,14 @@ most common sources of memory waste, they are also very expensive, since even
 small strings incur a large overhead. Fortunately, it is not
 hard to eliminate string duplication. 
 
- One technique is to represent strings as static 
-literals whenever possible. A duplication problem arises when dynamically
- created strings
-are stored in the heap without any check to see if they already
-exist. String literals are stored in a
+ One technique is to represent strings as  
+literals whenever possible. Duplication problems arise because dynamically
+ created \class{String}s
+are stored in the heap without checking whether they already
+exist. \class{String} literals, on the other hand, are stored in a
 \emph{string constant pool} when classes
-are loaded, where they can be shared.  
+are loaded, where they are shared. Therefore, there is a big advantage to
+\class{String} literals.
 
  As an example, suppose an application
 reads in property name-value pairs from files into tables:
@@ -41,12 +42,12 @@ class ConfigurationProperties {
 	}
 }
 \end{shortlisting}
-The strings stored in \code{propertyMap} are all created dynamically. If 
+The \class{String}s stored in \code{propertyMap} are created dynamically. If 
 there are just a few distinct property names in all of the input pairs, these
 property names will be duplicated many times in the heap.
 
 However, if you know in advance what all of the property names are, then you can
-define them as static strings, which can be shared among the
+define them once as \class{String} literals, which can be shared among the
 entries of \code{propertyMap}.
 \begin{shortlisting}
 class PropertyNames {
@@ -64,15 +65,13 @@ class ConfigurationWithStaticProperties {
 }
 \end{shortlisting}
 The \code{getNextPropertyName} method reads in a property name, and returns
-a pointer to a property name literal. The
-property name literal strings themselves
- are stored once in the string constant pool,
-not in the heap. Alternatively, instead of using string literals, 
-an enumeration type of property names may be a better stylistic choice.
+a pointer to a property name literal, stored in the JVM string
+constant pool. Alternatively, defining an enumeration
+type to encode property names may be a better stylistic choice.
 
 A common
- mistake is to create a new string unnecessarily. For example, in the
-following code, there is no need to create new strings from literals.
+ mistake is to create a new \class{String}  from a \class{String} literal,
+ which is usually completely unnecessary:
 \begin{shortlisting}
 class PropertyNames {
 	public static String numberOfUnits = 
@@ -82,12 +81,12 @@ class PropertyNames {
 	..
 }
 \end{shortlisting}
-Even though the standard library is smart enough not to share the
-character arrays in this case, this code still creates redundant \code{String}
+Even though the standard library is smart enough to share
+character arrays in this case, this code still creates redundant \class{String}
 objects in the heap.
 
-Using static strings to eliminate dulication is only possible when the string
-values are known in advance. 
+Using \class{String} literals to avoid dulication is only possible when the
+\class{String} values are known in advance. 
 Section~\ref{sec:sharing-pools} introduces the notion of a sharing pool for
 sharing dynamic data. Section~\ref{sec:sharing-strings} describes the Java
 string interning mechanism, which uses a built-in string sharing pool to
@@ -125,13 +124,12 @@ have unintended side effects. For example,
 changing A in Figure~\ref{fig:sharing-pool}(b), 
 also changes the value of B.
 
-\paragraph{Sharing objects changes identity semantics.} 
-The result of equality testing should be the same, whether or
-not objects are shared.
+\paragraph{The result of equality testing should be the same, whether or
+not objects are shared.}
  In particular, you should never use == on shared objects.
 In Figure~\ref{fig:sharing-pool}, \code{A==B} is false in
 Figure~\ref{fig:sharing-pool}(a) and true in Figure~\ref{fig:sharing-pool}(b),
- which can lead to very subtle bugs. It is a bad idea to use == in any case,
+ which can lead to very subtle bugs. It is dangerous to use == in any case,
  unless exact object identity is really required.
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
@@ -139,7 +137,7 @@ A sharing pool itself adds
 memory costs, including additional per-entry costs. If there is not
 much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
-extra cost, and memory is being wasted instead of saved. 
+extra cost, and memory will be wasted instead of saved. 
 
 \paragraph{Shared objects should be garbage collected.}
 In Figure~\ref{fig:sharing-pool}(b), the sharing pool stores an object
@@ -148,8 +146,8 @@ with garbage, that is, items that were once needed but not any more. If the
 sharing pool is not purged of these unused items, there is a memory
 leak that can eventually use up all of memory.
 
-Fortunately, Java provides a few built in mechanisms that make sharing data
-straightforward, and take care of some of these concerns.
+Fortunately, Java provides a few built in mechanisms that take care of some of
+these concerns.
 
 \section{String Interning}
 \label{sec:sharing-strings}
@@ -163,19 +161,19 @@ straightforward, and take care of some of these concerns.
 %structure itself has overhead. So you need to have a good idea
 %which strings are likely to have duplicate values.
 
- Since string duplication is so common, Java provides a built-in string pool
- for sharing \class{String}s, implemented by the native JVM and maintained in
+ Since \class{String} duplication is so common, Java provides a built-in string
+ pool for sharing \class{String}s, implemented by the native JVM and maintained in
  its internal \emph{perm space}. To share a \class{String}, you simply call the
  method \code{intern} on it, and everything is taken care of automatically.
-Since strings are immutable, sharing is safe. However, the rule about not
-using == on shared strings still holds.
+Since \class{String}s are immutable, sharing is safe. However, the rule about
+not using == still holds on shared \class{String}s.
   
 In the example from section~\ref{literals},
 \class{ConfigurationWithStaticProperties} eliminates property
 name duplication but not
 property value duplication. Suppose you know that there are
-not too many distinct values, but you don't know what they are. Property
-values are perfect candidates for interning.
+not too many distinct values, but you don't know what they are. In this case,
+property values are perfect candidates for interning.
 \begin{shortlisting}
  
  class ConfigurationPropertiesWithInterning {
@@ -187,14 +185,15 @@ values are perfect candidates for interning.
 }
 \end{shortlisting}
 
-The call to \code{intern} will add the new property value string
+The call to \code{intern} adds the new property value \class{String}
  to the internal string
 pool if it isn't there already, and return a pointer to it. Otherwise, the
-new string is a duplicate, and a previously saved string is returned.
+new \class{String} is a duplicate, and a previously saved \class{String} is
+returned.
 
-Even though interned strings are not stored in the heap, they do incur native
-memory overhead, and native memory is not free.
- Interning strings indiscriminately wastes memory and can result in an
+Even though interned \class{String} are not stored in the heap, they do incur
+native memory overhead, and native memory is not free.
+ Interning \class{String}s indiscriminately wastes memory and can result in an
  exception: \code{java.lang.OutOfMemoryError:PermGen Space}. 
 There are JVM parameters to adjust the perm space size:
 XX:PermSize=128m sets perm size to 128 megabytes, and -XX:MaxPermSize=512m sets
@@ -241,8 +240,8 @@ There is a JVM parameter to change the size of the \class{Integer} sharing pool:
 Beyond strings and boxed \class{Integer}s, there are often other kinds of
 duplicated objects and data structures consuming large portions of the heap. 
 There is no built-in Java mechanism to share objects or data
-structures in general, so you have to implement a sharing pool from scratch.
-All of the sharing pool issues from Section~\ref{sec:sharing-pools} need to be
+structures in general, so you have to implement a sharing pool for them from
+scratch. All of the sharing pool issues from Section~\ref{sec:sharing-pools} need to be
 addressed. The shared objects or structures must be immutable, they must not be
 compared using ==, there must be sufficient memory savings from sharing to
 justify the sharing pool, and the sharing pool must be not cause a memory leak. 
@@ -258,7 +257,7 @@ to release annotations that are no longer associated with any node, so they can
 be garbage collected.  The second requirement prevents a memory leak. 
 
 Interestingly, none of the common collection classes meet these
-requirements out-of-the-box. A \class{HashSet}\<Annotation\> stores
+requirements out-of-the-box. A \class{HashSet} can store
 \class{Annotation}s uniquely, but retrieving an existing \class{Annotation} is not easy. 
 The first requirement is best implemented as a \class{HashMap} mapping
 \class{Annotation}s to themselves:
@@ -318,59 +317,56 @@ As this example shows,  Java's weak referencing capability has subtle
 semantics and is not easy to use. Weak referencing is a lifetime management
 facility, and is discussed in greater detail in Chapter~\ref{??} .
 
-\section{Using The Right Container}
+\section{StringBuffer vs. String}
 
-Analysis of what’s wrong with this example.
-So this was an example from one of the Lotus frameworks, from Sametime Gateway, and this 
-was one piece of a session connection, and like all the other examples, it’s one piece of a 
-data puzzle with other problems and other sources of costs. It was kind of a medium scale run. 
-We saw that the biggest part of this data structure had sessions 110 of them. Each of them had 2 
-StringBuffers, and that was taking the bulk of the space here.  We looked in to it, and they had 
-quite a few different problems. We saw these StringBuffers sitting in the long lived heap, and 
-thought, why would anyone store stringbuffers as permanent memory. Typically stringbuffers are 
-used as temporaries. They have very aggressive storage allocation, kind of like the collectio
-ns, 
-with the thought in mind that you are going to grow them. You are going to be editing them.  
-Typically, long-lived memory doesn’t have that problem. Typically, Strings in particular, you 
-build them up, and then they are pretty stable. So it seems sort of strange. Usually 
-StringBuffer
- is 40\% empty space, because it has a doubling algorithm for allocating them.
- The other strange thing was that they had 3 of them per session, and then there was the 
- question of whether they needed them at all. Turns out we looked at the code, and they had a 
- confluence of 3 different issues going on here. First of all, they had a somewhat delegated 
- design, and again, this was one of the consequences that delegated designs can have, where it 
- causes coding pattern to be duplicated. So in this case, for a completely different reason, 
- they had taken their session objects and split them into 3 parts. And they had some good design 
- reasons for doing that for some replication functionality they needed. But along with that, 
- they took a coding pattern that said that everytime they call toString on this thing for some 
- logging purpose, we’re going to save the contents of that String so that we don’t have to 
- recomputed it. That was really their main problem, that they didn’t realize how much space 
- they were 
-taking 
-up by saving this computation. And sometimes that’s indeed worth it. 
-That you compute something and hold onto it.  In this case they realized they didn’t need to hold 
-onto that much stuff. So in this case they had 3 problems. One is they were holding onto it, 
-and it got multiplied by 3 because it was a delegated design. The second problem was they were 
-holding onto it, and they may not need to. The third problem was they were going to hold onto it,
- 
-StringBuffer was the wrong thing to use.  In the end, they would have been better off 
-trimming the StringBuffer, or just calling toString on it, and getting a shorter 
-String out of it.
+It is well-known that \class{StringBuffer} is more efficient than
+\class{String} for performing string concatenation. Since \class{String}s are
+immutable, concatenating \class{String}s involves allocating a temporary
+\code{char} array, copying the \class{String}s into it, and then constructing
+a result \class{String}. A \class{StringBuffer}, on the other hand, is mutable.
+If the \class{StringBuffer} capacity is sufficient, then \class{String}s
+can be concatenated by simply appending them to the \class{StringBuffer}.
+
+However, long-lived \class{StringBuffer}s can waste memory. Usually a
+\class{StringBuffer} is 40\% empty space, since they double in size whenever
+they need to be reallocated. Typically, after a string is built up in the
+\class{StringBuffer}, it is stable, at which point it should be converted 
+to a \class{String}, so that the \class{StringBuffer} can be
+garbage collected. Using \class{StringBuffer}s to facilitate
+building a \class{String} is fine, but they should be used only as temporaries.
 
 
+\section{Summary} 
 
-The JVM stores string literals in a \emph{string constant pool}. Since strings
-are immutable, it is safe for the JVM to eliminate duplicates, and keep just
-one copy of each literal string. In the following code, the JVM stores two
-strings, \code{``Harry''} and \code{``Tom''} in the constant pool, and
-\code{name1} and \code{name3} share the string \code{``Harry''}.
-\begin{shortlisting}
-class BunchOfStrings {
-	String name1 = ``Harry'';
-	String name2 = ``Tom'';
-	String name3 = ``Harry'';
-}
-\end{shortlisting}
+Not only are Java heaps bloated from too much overhead, they
+are also bloated from duplicated data. If you know that your application
+generates many copies of the same data, then you should find a way to share the
+data. Java provides several built-in sharing mechanisms:
 
- 
+\begin{itemize}
+  \item The JVM maintains a native sharing
+  pool for \class{Strings}. Use \class{String} interning to make use of this
+  sharing pool.
+  \item The standard library maintains a fixed size pool for
+   a fixed range of  \class{Integer}s. You should use \code{valueOf} to create
+   \class{Integer}s instead of a constructor.
+\end{itemize}
+Additionally, Java provides a weak referencing mechanism, which can be used to
+implement your own sharing pool.
+
+These mechanisms appear to be clumsy addons that were necessary to solve
+problems that came up in practice. But they are better than nothing, and
+without them, it would be much harder to share data. 
+Whether or not you use these mechanisms, you should remember these four rules:
+\begin{itemize}
+  \item Shared objects must be immutable.
+  \item The result of equality testing should be the same, whether or
+not objects are shared.  
+  \item Sharing pools should not be used if there is limited sharing.
+  \item Shared objects should be garbage collected.
+\end{itemize}
+
+
+
+
 
