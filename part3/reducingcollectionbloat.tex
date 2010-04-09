@@ -1,7 +1,7 @@
 \chapter{Reducing Collection Bloat}
 
  Relationships in an
-entity-relationship model are almost always implemented in Java using the
+entity-relationship model are typically implemented in Java using the
 standard library collection classes. While a simple 1:1 relationship can be
 implemented with a single map, more complex 1:n, n:1, and m:n are usually 
 implemented with collections inside other
@@ -16,56 +16,86 @@ Why would they have bothered implementing expandable
 structures and clever hashing algorithms for only a few entries?
 This mismatch between collection implementation and usage is 
 a leading cause of memory bloat. The basic cost of a collection, even an
-empty collection, is high. Creating millions of small collections multiplies
-this basic infrastructure cost, which is all overhead, to fill the heap.
+empty collection, is remarkably high. Creating millions of small collections
+multiplies this basic infrastructure cost, which is all overhead, filling the
+heap.
  
- This chapter describes the basic costs of common collection classes, and shows
- how to mitigate the small-collections problem to reduce memory bloat.
+ This chapter shows
+ how to mitigate the many-small-collections problem to reduce memory bloat.
  
  \section{Choosing The Right Collection}
 
-There are many ways to implement a relationship. Conveniently, Java collection
-classes make this decision easy: for a
+There are many ways to implement a relationship. Conveniently, Java
+collection classes make decisions easy: for a
 set, use \class{HashSet}, for a map, use \class{HashMap}. 
 If you need ordering, there are various lists; if you need sorted order, use
 \class{TreeMap}. However, sometimes the obvious choice is more general than
-what you really need, and you pay a price of excessive memory bloat. 
+necessary, and can lead to excessive memory bloat. 
 
-To illustrate, consider a graph with the edges represented by nodes mapped to 
-sets of other nodes. This kind of multi-valued map is very commonly implemented
-using a \class{HashMap}, with nested \class{HashSet}s as values.
-Figure ?? shows an entity-collection diagram for this example.
+To illustrate an overly general representation, consider a graph with 100,000
+nodes that have four edges on average. 
+An obvious implementation is to use a multi-valued \class{HashMap}, where the
+ keys are nodes and the values are \class{HashSet}s of edges. 
+ Figure\~ref{fig:graph-hashset} shows an entity-collection diagram for the
+ graph.
+ \begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part3/Figures/graph-hashset.pdf}
+  \caption{A 100,000 node graph, stored as a
+  \class{HashMap} from \class{Nodes} to \class{HashSets} of \class{Edges}.}
+  \label{fig:graph-hashset}
+\end{figure}
+%Sun library --  Empty HashSet -- 136 bytes
+% 16 bytes HashSet (header + pointer)
+% 40 byptes HashMap Object 
+% 80 bytes empty array of entries
 
+%HashMapEntry:  24 bytes:  header + 4 fields (value, key, next, hash)
+% 4 entries -- 96 bytes
+% total overhead for 4 entry hashset: 232 bytes
+% 100,000 hashsets with 4 entries is 22.13MB
 
+% HashMap size: 40 for header + 8 for array header
+% 24 bytes per entry + 6 per entry in the array (assume extra for growth space)
+% so for 100,000 entries, thats 48 + 3,000,000 bytes = 2.86MB
+This example shows how easy it is to generate a lot of small collections with a very high overhead, 
+in this case 100,000 four-element \class{HashSets} with a bloat factor of 89\%.
+This implementation of a multi-valued map is very common and
+reasonable, except when the \class{HashSets} are small,  there is a huge
+amount of overhead relative to the data size.
 
- the planning system was implementing what is know as a level
-graph. A level graph is a graph with nodes and the graph has multiple levels, where each node has different edges at each level. So same nodes at each level, different edges 
-at each level. And this is the data structure they were using to implement the 
-edges in the level graph. The idea here is that they basically had an index to 
-map a vertex and a level, so this was a map where its key is a multipart key, 
-where it took a vertex and a level, and it mapped that to a set of edges. 
-For every vertex, at each level, there could be multiple edges. 
-This is a fairly common pattern, actually 2 common patterns. 
-One, it’s a map using a multipart key, and the other is a multi-valued map, 
-where each value is a set of orderless values.  When we analyzed this with the 
-developer, the costs were pretty surprising, as I said, this example like all 
-the others, is a small to medium scale run, and something that needed to scale 
-much larger.
+ %the planning system was implementing what is know as a level
+ 
+%graph. A level graph is a graph with nodes and the graph has multiple levels,
+%%where each node has different edges at each level. So same nodes at each
+%level, different edges at each level. And this is the data structure they were
+%using to implement the edges in the level graph. The idea here is that they
+%basically had an index to map a vertex and a level, so this was a map where
+%its key is a multipart key, where it took a vertex and a level, and it mapped
+%that to a set of edges. For every vertex, at each level, there could be
+%multiple edges. This is a fairly common pattern, actually 2 common patterns. 
+%One, it’s a map using a multipart key, and the other is a multi-valued map, 
+%where each value is a set of orderless values.  When we analyzed this with the 
+%developer, the costs were pretty surprising, as I said, this example like all 
+%the others, is a small to medium scale run, and something that needed to scale 
+%much larger.
 
-The developers saw this, he was pretty surprised at the costs we found. Just 
-thinking through the health, we found that the overhead of the representation 
-of this was 83\% overhead. So it was a pretty unhealthy design, and that would
-be the case at any scale. The other thing is that like all our other examples, 
-this was one problem among many in the same application. There are lots and lots 
-of problems. That’s what we see. Not just like you find one hot area and you’re 
-done. Usually it’s a pileup of different things. In this case, no matter how many 
-vertices you added to this, you never amortize this 83\% overhead. So something
-is wrong with this design. So let’s take it apart a little bit. Let’s 
-look at just the side where they are implementing just the multivalue part of 
-this multi-key, multi-value design. They were implementing using hashsets to 
-represent the set of edges for each node at a particular level. That might seem 
-like a reasonable idea. Until when we actually looked at the cost, the developer 
-and us were pretty surprised when it turned out that there was a relatively small 
+%The developers saw this, he was pretty surprised at the costs we found. Just 
+%thinking through the health, we found that the overhead of the representation 
+%of this was 83\% overhead. So it was a pretty unhealthy design, and that would
+%be the case at any scale. The other thing is that like all our other examples, 
+%this was one problem among many in the same application. There are lots and
+%lots of problems. That’s what we see. Not just like you find one hot area and
+%you’re done. Usually it’s a pileup of different things. In this case, no
+%matter how many vertices you added to this, you never amortize this 83\%
+%overhead. So something is wrong with this design. So let’s take it apart a
+%little bit. Let’s look at just the side where they are implementing just the
+%multivalue part of this multi-key, multi-value design. 
+
+%They were implementing using hashsets to 
+%represent the set of edges for each node at a particular level. That might seem 
+%like a reasonable idea. Until when we actually looked at the cost, the
+developer and us were pretty surprised when it turned out that there was a relatively small 
 number of edges in each of these sets. The average number was 4.5, and almost all 
 the sets had a pretty small number. That’s a pattern we see time and time again. 
 There is some kind of set or list used to represent very, very small number of 
@@ -114,7 +144,9 @@ has a bunch of bookkeeping fields in it, that really are rarely needed,
 and certainly not needed all together. It has a bunch of fields to keep different 
 views of the hashmap that you might want. The map interface says that you can 
 compute a collection of all the entries, all the keys, and all the values.
- And HashMAp caches all of those. So every HashMap, and every HashSet, is paying these three pointer costs, which is an extra 12 bytes. In fact, you rarely use all three together, and it’s not all that common to use even one of them. 
+ And HashMAp caches all of those. So every HashMap, and every HashSet, is paying these three 
+ pointer costs, which is an extra 12 bytes. In fact, you rarely use all three together, and 
+ it’s not all that common to use even one of them. 
 
 The other thing is that the hashmap entry itself is storing a hashcode. 
 It’s maintaining a hashcode, even though the most common cases are keys, 
@@ -125,7 +157,7 @@ with possibly the wrong benchmarks, or was this based on some assumptions?
 In this case, it was sort of another cautionary tale for library designers of 
 the danger of premature optimizations. 
 
-Transforming FIXED SIZE COLLECTIONS
+\section{Transforming Fixed Size Collections}
 
 Getting back to our example, the developer looked and said, I actually 
 don’t need the hashset functionality, because the only difference in functionality 
@@ -172,7 +204,7 @@ structure by 68\%. And again, that’s a constant overhead as this things scales
 up, so that was great. Just so you don’t think –
 
 
-Properly SIZING COLLECTIONS
+\section{Properly Sizing Collections}
 
  Let’s talk a little bit about default sizes and growth policies, and that 
  sort of thing. So this is a little hypothetical experiment here. We’re getting 
@@ -224,7 +256,7 @@ and I’m not quite sure why they’ve done that. Actually that’s not really true.
  worth setting the default in these cases where you know you have mostly these 
  small collections. 
 
-Avoiding EMPTY COLLECTIONS
+\section{Avoiding Empty Collections}
 
 A related problem is empty collections, and this is super, super common. 
 People are eagerly initializing things, and without realizing that the empty 
@@ -276,7 +308,9 @@ empty, if you are going to have a lot of them, and also, there’s a little bit
 of variation, both having to do with whether you’ve made the size default or not, 
 and also what kinds of collection class you are choosing.
 
-REDUCING NUMBER OF COLLECTIONS
+\section{Reducing The Number of Collections}
+
+Next chapter??
 
 This next example is a thought experiment, based on the previous example, the
 level graph. This is an archetypal pattern of a multikey map. There are lots of 
@@ -334,7 +368,9 @@ this pair, in addition to the high hahsmap per entry cost already, it is worse
 than what we traded off in the first design. So anyway, this was surprising 
 because not only because it was only a small amount better than 1, but it was 
 so much worse than 2. And so I actually was preparing this slide ready to make 
-the opposite point, what a great design it was, then I worked through the numbers, I was pretty surprised. The lesson is, you really have to measure this stuff and work through it. The costs aren’t obvious.
+the opposite point, what a great design it was, then I worked through the numbers,
+ I was pretty surprised. The lesson is, you really have to measure this stuff and work through 
+ it. The costs aren’t obvious.
 
 People don’t do this until they have a problem. Don’t have tools. Either they 
 don’t know things are this bad. It’s just a collection, just an integer. Or the 
