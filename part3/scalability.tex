@@ -1,9 +1,23 @@
 \chapter{Scalability}
 
-So that was all about small collections, and their problems. We kind of segwayed into the other half of the collection problem, which are collections that have high per entry costs. Typically large collections, but not always. Our design 3 really suffered from that. Basically, it has a high constant cost per entry. Just like our tree map did last week in the  health example. So each of these, just the per vertex and level cost here, is 48 bytes. It’s 28 bytes per enty in this hahsmap, and 20 for the pair objects.  It’s a constant cost that won’t be amortized. This is a theme that shows up in a lot of Java collections, in particular larger ones. Just a quick look at the per entry costs.
-They are fairly high other than for arraylists. HashMap and HashSet is 28 or  36. ArrayList is the lowest I’ve seen. and LinkedList is 24 for again, this is purely because there is a separate object in the collection, delegating to your object. And that doesn’t include the cost of any boxing you have to do on your side to introduce a pair class, or a cap int, or anything like that.  That could easily double some of these numbers.
+So that was all about small collections, and their problems. We kind of segwayed into the other 
+half of the collection problem, which are collections that have high per entry costs. Typically 
+large collections, but not always. Our design 3 really suffered from that. Basically, it 
+has a high constant cost per entry. Just like our tree map did last week in the  health example. 
+So each of these, just the per vertex and level cost here, is 48 bytes. It’s 28 bytes per enty 
+in this hahsmap, and 20 for the pair objects.  It’s a constant cost that won’t be amortized.
+ This is a theme that shows up in a lot of Java collections, in particular larger ones. 
+ Just a quick look at the per entry costs.
+They are fairly high other than for arraylists. HashMap and HashSet is 28 or  36. ArrayList 
+is the lowest I’ve seen. and LinkedList is 24 for again, this is purely because there is a 
+separate object in the collection, delegating to your object. And that doesn’t include the cost 
+of any boxing you have to do on your side to introduce a pair class, or a cap int, or anything 
+like that.  That could easily double some of these numbers.
 
-So it’s pretty common to see that in large collections, like in example we just saw. Another case is when you have nested small to medium sized collections, that still have enough entries to have high per entry costs. And this was the case in the SIP container that ws being used in the SAametime Presence server. This also had a requirement of maintaining a large number of subscriptions active at the same time. So this is handling stuff like when you’re sametime window is open, telling you who’s on line, what everyone’s status is. So this has to keep some huge number of statuses sessions active for various people. And so what they did here is the presence server employed the sip container to use a feature in websphere to store information in sessionstate about each of these subscriptions. So there’s quite a few layers in between, and basically they had 7 properties of each subscription they used to store. Basically, each of the 7 properties had a name, a string, and some kind of value, and most of the values were scalars. There some cases where they weren’t, but just for simplicity here. They just called the websphere, and websphere, said to add this to the sessionstate for each of these properties. And websphere stores the session state in some framework it has, as a hashtable of attributes and values. So it just stores each string with the values. Now fortunately, they did something really good here.   All of the subscriptions were storing the same 7 attributes so all the attributes were the same. At a higher level, presence server was sharing the strings. So at least they didn’t’ have 20,000 copies of the same seven property names, when they had 20,000 subscriptions. But what was costing the so much here the hashtable per entry costs, and the cost of boxing up all of these scalars, because that’s what websphere interface requires to store all these things. It was attribute, and cap object property. So this was something that was obscured by all the layers between. The decision is it’s very hard to say webshpere, fix this code for us, because that code is being used by all kinds of people, all over the place. So fortunately they came up with a pretty reasonable solution, which was that the presence server packaged all 7 of their properties into a single object, and then stored that subscription property object as a megaproperty, and that cut the per entry cost by 7. So that is an interesting hybrid example. Still relatively small collections, but it was really the per entry costs that were getting them. We’ve seen this a number of times.
+So it’s pretty common to see that in large collections, like in example we just saw. Another case 
+is when you have nested small to medium sized collections, that still have enough entries to have 
+high per entry costs. And this was the case in the SIP container that ws being used in the SAametime 
+Presence server. This also had a requirement of maintaining a large number of subscriptions active at the same time. So this is handling stuff like when you’re sametime window is open, telling you who’s on line, what everyone’s status is. So this has to keep some huge number of statuses sessions active for various people. And so what they did here is the presence server employed the sip container to use a feature in websphere to store information in sessionstate about each of these subscriptions. So there’s quite a few layers in between, and basically they had 7 properties of each subscription they used to store. Basically, each of the 7 properties had a name, a string, and some kind of value, and most of the values were scalars. There some cases where they weren’t, but just for simplicity here. They just called the websphere, and websphere, said to add this to the sessionstate for each of these properties. And websphere stores the session state in some framework it has, as a hashtable of attributes and values. So it just stores each string with the values. Now fortunately, they did something really good here.   All of the subscriptions were storing the same 7 attributes so all the attributes were the same. At a higher level, presence server was sharing the strings. So at least they didn’t’ have 20,000 copies of the same seven property names, when they had 20,000 subscriptions. But what was costing the so much here the hashtable per entry costs, and the cost of boxing up all of these scalars, because that’s what websphere interface requires to store all these things. It was attribute, and cap object property. So this was something that was obscured by all the layers between. The decision is it’s very hard to say webshpere, fix this code for us, because that code is being used by all kinds of people, all over the place. So fortunately they came up with a pretty reasonable solution, which was that the presence server packaged all 7 of their properties into a single object, and then stored that subscription property object as a megaproperty, and that cut the per entry cost by 7. So that is an interesting hybrid example. Still relatively small collections, but it was really the per entry costs that were getting them. We’ve seen this a number of times.
 
 So now just some special purpose cases of thes high per entry costs. That example from last week, Treemap of mapping doubles to doubles, and this was the real-world case that it came from. this is actually 1.2 or 1.4G structure. There were 52 treemaps, and in total there were 13 million entries in them. And the per entry costs was what 88 bytes per entry, again, same reasons. The alternative is to just use a collection that is optimized for scalars. This is super, super common. In fact there was a document processing application that where pretty similar kind of thing mapping Integers to Integers. In general collections of scalars suffer from these kinds of problems. And the solution is to have a specialized collection, outside the java collection for scalars. One of the issues is to standardize them somehow.
 
@@ -41,5 +55,146 @@ UNMODIFIED MAP
 So here’ another example, of unmodifiable, now this was from NetFlix, which Nick analyzed, it was an IBM customer, and in this case, we don’t know exactly what this was, some kind of cache of titles they maintained, and it had also a 2-level structure to it, and it had in this particular run 2 million of these inner maps, taking up about .5G, and when we looked inside there, what we found, was that each of those maps was an unmodifiable map, wrapping a smaller hashmap, so they had 2 problems. One was why they had the small hashmaps, and that’s a separate issue, but even the unmodifiable hashmap was pretty substantial. This was a 64 bit JVM, I think this was a SUN JVM, so the cost was even double of what we say before, it was 56 bytes for each of these wrappers. It was a pretty hefty cost. So this is the kind of thing where – this is a functionality that. Unmodifiable is pretty useful for development time, to avoid programming errors, but it’s not clear that especifallly, this fine grain, that in deployment you would want to keep a feature like that in there, this is pretty expensive.  
 
 There’s a whole set of Java wrapped collections, for type checking, for modifiable, and that’s the general pattern. That’s a nice programming pattern, and it certainly simplified the class hierarchy. I read some of the notes from the designers of these collection classes, about why they made these choices, and they said it would just have complicated the class hierarchy in the Java collection classes to have all these combinations there. And that makes perfect sense when you have a few large collections. But in this kind of case, when you have lots and lots of small collections, it really adds up. On this JVM, this is 1.4.2, maybe this we sun 1.5 the cost is 28 bytes per each of these wrapper objects, which is pretty substantial. So that’s including its header, its bookkeeping, and the pointers. That’s ok for large collections, for small collections, it really adds up. 
+
+\section{Reducing The Number of Collections}
+
+Next chapter??
+
+This next example is a thought experiment, based on the previous example, the
+level graph. This is an archetypal pattern of a multikey map. There are lots of 
+different ways to implement it. In my own coding, it’s come up quite a bit. 
+I think it’s very easy to do the easy thing, and the costs are very surprising. 
+I’ve worked through 3 implementations, and we can see the implications. 
+Let’s just get back to the problem statement again. We have a level graph. 
+We have a bunch of nodes, and let’s assume it’s a small number of levels, 
+but we want this thing to scale up to lots of nodes, lots of vertices. Each 
+vertex has some number of edges at each level. So how do we represent the mapping 
+of I want to take a vertex and level, and map it into a set of edges. 
+
+A very simple implementation of this is to have a high level index of vertices, 
+and for each vertex, I have a map that tells me what the edges are for each 
+level. That’s a pretty simple way to implement this thing. I have certainly 
+implemented many things like this. It’s kind of intuitive, and so I did the 
+computation. Let’s say we have 10,000 vertices, and on average, 5 levels for 
+which there are edges for each vertex, and let’s assume that the total number 
+of edges is relatively small. Then we have about 10,000 hashmaps, we have these 
+10,000 inner hashmaps. We have this outer one. So 10,001 times the cost of a 
+hashmap, the fixed cost. Then we have 60,000 hashmap entries. We have the 10,000 
+up here that get you to these, and we have the 50,000 down here that are the 
+vertices times the levels. The total cost was 2.6 MB, I’m using 1.2 numbers here. 
+Will be higher with current J9. 
+
+Let’s look at another design. Let’s still keep the current nested hashmap design, 
+but invert the order of the collections. So all the same assumptions, we have 5 
+levels, but this time we’re going to have one hashmap at the top, a relatively 
+small hashmap where the key is the level rather than the vertex, and that’s 
+going to have each of those is going to be mapped to hashmap of vertices. 
+So this has 6 fixed hashmap costs, and it has 50,005 per entry costs, per 
+hashmap entry, 50,005 entries. The result is  1.4MB, compared to the  
+2.6 MB of the previous representation. So we get a 46\% reduction here, 
+just by flipping the order of the collections, just by eliminating hashmap 
+fixed costs. This is obviously not going to work if you have some huge number
+of levels compared to the number of vertices you have. But if you know you have a 
+small number of levels compared to the vertices, then this is a great design. 
+And it is consistently better than the first design, no matter how many vertices 
+you have, as long as you have a very small number of levels. So this is a
+ pretty good design, as long as you can  predict that we hve very few levels.
+
+A third design which I thought was well this What about just flattening out the 
+hahsmap, that should be better than both of them. So what I did was I made a 
+single level Hashmap, it’s got 50,000 entries in it, and I introduced a pair 
+class, which has a vertex and the level. And I’m not counting whether I can box 
+the level or not. Let’s assume for now that the level is an int that’s inlined 
+into the pair, just for simplicity. The cost of this is one fixed cost for the 
+hashmap, now we have 50,000 hashmap entry cost, and we now have 50,000 pair 
+objects. So the result is that this thing 2.4 MB and that was actually pretty 
+surprising to me. I thought this one was going to be a lot better than number 1, 
+and it turns out htat it was only 11\% better than number 1 in this case,
+That’s because this pair class was so expensive, so the delegation cost has bitten 
+us again, which seems the recurring theme in Java footprint, that introducing 
+this pair, in addition to the high hahsmap per entry cost already, it is worse 
+than what we traded off in the first design. So anyway, this was surprising 
+because not only because it was only a small amount better than 1, but it was 
+so much worse than 2. And so I actually was preparing this slide ready to make 
+the opposite point, what a great design it was, then I worked through the numbers,
+ I was pretty surprised. The lesson is, you really have to measure this stuff and work through 
+ it. The costs aren’t obvious.
+
+People don’t do this until they have a problem. Don’t have tools. Either they 
+don’t know things are this bad. It’s just a collection, just an integer. Or the 
+tools are so hard to use, no easy way to do it until they have a crisis. 
+
+The garbage collector is not the answer to this. Garbage collector’s realm is 
+cleaning up temporaries. This is a problem of long lived-objects. The gc is not 
+addressing these things at all. People have the assumption that the JIT, 
+the garbage collector, things are magically being taken care of. There’s no 
+footprint optimization being done in any commercial JITs. 
+
+Because Java has a gc, they don’t give you the tools to do your own memory 
+management, and these are the tools you need to figure out how big things are.
+
+We’re making logical decisions, but Java is forcing us to manage it as physical 
+things. Object oriented storage. Just how limited, you really hit it with the 
+idea the GC is going to everything for it, so there are no other tools for 
+managing storage. Simplified java modeling scheme – no unions, all the little 
+tricks you have in C++ just don’t exist in Java. 
+
+Model driven development, tools should give you the ability to choose the right 
+implementation. The developer is interestedin the data model. UML to Java 
+transformation should just do the work for you.
+
+I did a quick comparison of the 3 different designs and this was based on 
+assuming there was a small number of levels, and many vertices. 
+Designs 1 and 2 – shows the number of levels and how many bytes per extra 
+vertex it’s going to cost you. This shows you there is a constant difference 
+between designs 1 and 2. In other words, it doesn’t matter how many levels 
+I have, within a small number of levels. One is always going to be worse than 2, 
+by a constant per vertex factor. Wherease 3, has a more complicated pattern. 
+3 is sensitive to the number of levels. The tradeoff between design 3 and 
+design 1 really requires being able to predict how many levels you have here. 
+So, my sense on this is that if I have to pick a design, 2 is the best design, 
+unless I really think I might have a large number of levels. 
+
+The big cost of the pair is not the duplication. 
+The big cost is the delegation cost. It’s the object header overhead, 
+and the pointer to the pair object. The actual duplication of the pointer 
+to the ??, one of those is duplicated in each of the other designs anyway. 
+It’s the delegation cost that’s so expensive. This JVM is 20 bytes per entry, 
+and that’s what pushed it over the edge here.
+
+et’s look at the key side of things. Here, he implemented each key as an 
+arraylist with 2 elements in it. The vertex and the level. This was a lot more 
+expensive than he thought it was going to be. We were a little bit puzzled, why
+ someone would use an arraylist, when you know the thing always having 2 entries 
+ in it.
+ -----------------
+ 
+  It turns out, just from reading various developers blogs, this is a super 
+ common programming idiom that people use. It is based on the fact that Java 
+ doesn’t have very good support for structured constants, and so he wanted to 
+ code something very quickly where he can code test cases , and there’s a method 
+ call, array.asList, whereh you can give it a structured constant with 2 eleemnts 
+ and it will turn it into this list for you, and that allowed him to generate 
+ some constant test cases very easily.   This is very easy way to code, and it 
+ has 2 problems, One is that the arrayList itself is expensive. The other is that 
+ the Java collections require you to box any scalars, since they are only 
+ collections of Objects, don’t allow collections of scalars. So there is a boxing 
+ cost of cap Integer, which we saw last week, is a magnification factor of 4. 
+ It’s a 4 byte scalar integer on a 32-bit JVM, into a 16 byte Cap Integer. 
+ Just taking a look inside this array list and seeing what makes it so expensive. 
+ Like all the other Java collections, there’s a wrapper object, and a few 
+ bookkeeping fields of questionable value for some use cases, and then it has an
+object array. At a minimum, you are paying 2-object cost. Now arrayLists per 
+entry costs are quite good. Only 4 bytes per entry, But the fixed cost is still 
+relatively high. It’s not hashset or hashmap. It’s still 40 bytes on this JVM.
+ A little bit more on the newer J9 with Harmony classes. So this still was a 
+ pretty expensive choice, for something that doesn’t really need collection 
+ functionality, because there are a fixed number of elements all of the time. 
+
+So he was able to replace that by a Pair class, that had 2 fields in it, and he 
+actually inlined the int as one of the fields. And the other field was a pointer 
+to the vertex. And was able to reduce the overhead of this side of the data 
+structure by 68\%. And again, that’s a constant overhead as this things scales
+up, so that was great. Just so you don’t think –
 
 
