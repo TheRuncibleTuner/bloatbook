@@ -65,43 +65,50 @@ contain only 32 bytes of data.
 
 This implementation of a $1:n$ map is very common and
 appears to be quite reasonable. However, when $n$ is small, 
-the basic overhead from small \class{HashSets} 
-overwhelms the data. Figure~\ref{fig:hashset} shows why a \class{HashSet} has
- such a high fixed overhead, even before any elements are added. Some of the
+the \class{HashSet} infrastructure overhead
+overwhelms the data. Figure~\ref{fig:hashset} shows why a \class{HashSet}
+has such a high overhead. Some of the
  overhead is Java-related, and cannot be avoided. Other overhead is the result
- of hardcoded assumptions about expected usage, that ends up being wasteful in
- the many-small-collection context.
+ of hard-coded assumptions about expected usage. The infrastructure is designed
+ for fast access to a very large \class{HashSet}, with needs far different 
+from one with a handful of entries.
+ \begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part3/Figures/hashset.pdf}
+  \caption{The internal structure of a \class{HashSet} showing how
+  implementation assumptions waste memory.}
+  \label{fig:hashset}
+\end{figure}
 
 \paragraph{Reusing HashMap} Internally, a \class{HashSet} is just a wrapper,
-delegating all its work to a \class{HashMap}.
- The implementators apparently assumed that internal 
-reuse is more important than keeping fixed overhead costs low, which indicates
-that they didn't expect to have a lot of small hashsets, and
-fixed costs are amortized for large \class{HashSets}. 
-In particular in library code that is used in many contexts, specialized
-implementations are often needed and reuse is sometimes a misplaced value.
-
-In this case, the reuse has a fixed cost of 16 bytes per \class{HashSet}.
-It also has a per entry cost because 
-each \class{HashMap\$Entry} stores a key and a value, and \class{HashSet} only
-uses the key. The value points to a constant. So \class{HashMap} is
+delegating all of its work to a \class{HashMap}.
+This decision to reuse the \class{HashMap} code instead of specializing
+\class{HashSet} costs an extra 16 bytes, which is reasonable if
+\class{HashSets} are big and the fixed overhead costs are amortized away. 
+Unfortunately, fixed cost is magnified when there are many
+small \class{HashSets}. 
+Also, \class{HashMap} is
 more general than needed.
+Each \class{HashMap\$Entry} stores a key and a
+value, and \class{HashSet} only uses the key, so four bytes are wasted per
+entry. Sometimes specialization is a better option than reuse, especially for
+library classes, where the usage patterns are not known in advance.
+
   
 \paragraph{Open Chaining} \class{HashMap} itself is fairly
- expensive. The \class{HashMap} object itself is just a container, that points
- to the actual array of entries, which is necessary in Java. is using open
- chaining, which means that each hashmap entry turns into a hashmapentry object,It delegates its work to an array,
-  sort of a necessity in Java, and it also has a number of bookkeeping fields,
- we will talk about in a minute.  On top of  it, 
+ expensive. First, the \class{HashMap} object is just a container pointing
+ to the actual array of entries. This delegation is necessary in Java.
+ Secondly, \class{HashMap} uses an
+ open chaining algorithm, which means that each entry requires its own
+ \class{HashMap\$Entry} object,
+ 
+   On top of  it, 
 the default size of the array, if you don’t specify something is 16. 
  So you get 16 size array, and this is all fixed cost. Before we have even
 gotten to the cost of the actual entries in it. 
 
- similar to the treemap example last week. 
- S
- HashMap is 
-expensive just for HashMap. It could be much more specialized for HashSet. 
-And we also have the default size of the array. The third problem is that hashmap 
+
+ The third problem is that hashmap 
 has a bunch of bookkeeping fields in it, that really are rarely needed, 
 and certainly not needed all together. It has a bunch of fields to keep different 
 views of the hashmap that you might want. The map interface says that you can 
@@ -119,7 +126,7 @@ with possibly the wrong benchmarks, or was this based on some assumptions?
 In this case, it was sort of another cautionary tale for library designers of 
 the danger of premature optimizations.
 
-O the end result is that HashSet is a pretty poor choice if you have small sets. 
+The end result is that HashSet is a pretty poor choice if you have small sets. 
  At least with its current implementation. Obviously, it’s worth measuring here. 
  And indeed the developer did, and was able to solve the problem. Some other 
  lessons in here about what the developers of hashset must have been thinking, 
