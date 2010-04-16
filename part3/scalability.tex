@@ -1,4 +1,15 @@
-\chapter{Scalability}
+\chapter{Nested Collections}
+
+WHere talk about per-entry costs?
+
+Lists in Maps -- if phased, then make a big list; array list. 
+If fixed, then can use a scalar map.
+Scalar maps -- there are cheaper versions out there for integer maps.
+
+Somewhere -- Lots of small strings; can be replaces by one big string and
+offset/length into it. (THis is scalar data overhead..).
+
+
 
 So that was all about small collections, and their problems. We kind of segwayed into the other 
 half of the collection problem, which are collections that have high per entry costs. Typically 

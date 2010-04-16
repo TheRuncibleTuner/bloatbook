@@ -18,30 +18,31 @@ This mismatch between collection implementation and usage is
 a leading cause of memory bloat. The basic cost of a collection, even an
 empty collection, is remarkably high. Creating millions of small collections
 multiplies this basic infrastructure cost, which is all overhead, filling the
-heap.
- 
- This chapter shows
+heap. This chapter shows
  how to mitigate the many-small-collections problem to reduce memory bloat.
  
  \section{Choosing The Right Collection}
 
-There are many ways to implement a relationship. Conveniently, Java
-collection classes make decisions easy: for a
-set, use \class{HashSet}, for a map, use \class{HashMap}. 
-If you need ordering, there are various lists; if you need sorted order, use
-\class{TreeMap}. However, sometimes the obvious choice is more general than
-necessary, and can lead to excessive memory bloat. 
+The standard Java collections vary widely in now much memory they use.
+Not surprisingly, the more functionality a collection provides, the more
+memory it uses. At one end of the spectrum, a simple \class{ArrayList} is the
+most memory efficient, and at the other end, something like a
+\class{ConcurrentHashMap} offers sophisticated concurrent access
+control, and has extremely large overhead. 
+The use of overly general collections, that provide more functionality than
+really needed, is a common pattern leading to excessive memory bloat.
+Since collection class implementations is hidden, it's
+easy to see how this happens.
 
-To illustrate an overly general representation, consider a graph with 100,000
-nodes that have four edges on average. 
-An obvious implementation is to use a multi-valued \class{HashMap}, where the
- keys are nodes and the values are \class{HashSet}s of edges. 
- Figure\~ref{fig:graph-hashset} shows an entity-collection diagram for the
+To illustrate, consider a graph with 100,000 nodes that have four edges each, on
+average. An obvious implementation is to use a
+\class{HashMap}, where the keys are nodes and the values are \class{HashSet}s of edges. 
+ Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for a
  graph.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/graph-hashset.pdf}
-  \caption{A 100,000 node graph, stored as a
+  \caption{A 100,000-node graph, stored as a
   \class{HashMap} from \class{Nodes} to \class{HashSets} of \class{Edges}.}
   \label{fig:graph-hashset}
 \end{figure}
@@ -58,15 +59,36 @@ An obvious implementation is to use a multi-valued \class{HashMap}, where the
 % HashMap size: 40 for header + 8 for array header
 % 24 bytes per entry + 6 per entry in the array (assume extra for growth space)
 % so for 100,000 entries, thats 48 + 3,000,000 bytes = 2.86MB
-This example shows how easy it is to generate a lot of small collections with a very high overhead, 
-in this case 100,000 four-element \class{HashSets} with a bloat factor of 89\%. Each \class{HashSet} 
-by itself is 232 bytes of overhead, while four \class{Edges} have
-contain only 32 bytes of data.
+%
+% Edge 16*400,000 = 6.4 million = 
 
-This implementation of a $1:n$ map is very common and
-appears to be quite reasonable. However, when $n$ is small, 
-the \class{HashSet} infrastructure overhead
-overwhelms the data. Figure~\ref{fig:hashset} shows why a \class{HashSet}
+There are several bloat problems here. The first problem is that 
+ 100,000 very small \class{HashSets} each consume 232 bytes,
+ all overhead. It's hard to think of a good reason why such a heavy-weight
+ structure like \class{HashSet} should ever be used for just a handful of entries.
+ For small sets, \class{ArrayList} is almost always a better choice.
+\class{HashSet} maintains uniqueness and provides fast access, but uniqueness
+can be enforced by linear scanning without significant performance loss. 
+Figure~\ref{fig:graph-arraylist} 
+shows improved memory usage with \class{ArrayList}.
+
+\section{Fixed Size Collections}
+
+Replacing \class{HashSet} by \class{ArrayList} helps, but it is not the end
+of the story. The second problem in Figure~\ref{fig:graph-hashset} is the
+implementation of \class{Edge}, which uses an \class{ArrayList} to store the
+edges.  
+ 
+ 
+\section{The Cost Of Collections}
+
+This example shows the importance of comparing costs of different collection
+choices. It's instructive to look more closely at an example of a collection,
+to understand how memory is being used. \class{HashSet} is particularly
+interesting, being both typical and bloated. 
+
+
+ Figure~\ref{fig:hashset} shows why a \class{HashSet}
 has such a high overhead. Some of the
  overhead is Java-related, and cannot be avoided. Other overhead is the result
  of hard-coded assumptions about expected usage. The infrastructure is designed
@@ -93,62 +115,47 @@ Each \class{HashMap\$Entry} stores a key and a
 value, and \class{HashSet} only uses the key, so four bytes are wasted per
 entry. Sometimes specialization is a better option than reuse, especially for
 library classes, where the usage patterns are not known in advance.
-
   
 \paragraph{Open Chaining} \class{HashMap} itself is fairly
  expensive. First, the \class{HashMap} object is just a container pointing
  to the actual array of entries. This delegation is necessary in Java.
  Secondly, \class{HashMap} uses an
- open chaining algorithm, which means that each entry requires its own
- \class{HashMap\$Entry} object,
+ open chaining algorithm, which means that clashing entries are chained in a
+ linked list. With open chaining, each entry requires its own
+ \class{HashMap\$Entry} object and an extra level of indirection.
  
-   On top of  it, 
-the default size of the array, if you don’t specify something is 16. 
- So you get 16 size array, and this is all fixed cost. Before we have even
-gotten to the cost of the actual entries in it. 
+\paragraph{Default Array Size} 
+A \class{HashMap}, which is used to implement a \class{HashSet}, has a default
+size of 16 entries, which means that its array of entries has an initial
+size of 16. If most \class{HashSets} have only a few entries, this wastes space. 
+For example, a \class{HashSet} with five entries wastes 44 bytes.
 
 
- The third problem is that hashmap 
-has a bunch of bookkeeping fields in it, that really are rarely needed, 
-and certainly not needed all together. It has a bunch of fields to keep different 
-views of the hashmap that you might want. The map interface says that you can 
-compute a collection of all the entries, all the keys, and all the values.
- And HashMAp caches all of those. So every HashMap, and every HashSet, is paying these three 
- pointer costs, which is an extra 12 bytes. In fact, you rarely use all three together, and 
- it’s not all that common to use even one of them. 
+\paragraph{Bookkeeping Fields} \class{HashMap} allows callers to iterate over its set of keys,
+ its set of its
+values, and its set of its entries. These sets are cached once they are created.
+Every \class{HashMap}, and every \class{HashSet} has three pointers
+to store these sets, which is an extra 12 bytes.
+However, its not that common to use
+any of these sets, and very rare to use more than one set at a time.
+ Certainly for \class{HashSet}, 
+there is never a need for a set of values.
+  
+ Additionally, each \class{HashMap\$Entry} stores a hashcode, which is an
+ unnecessary redundant field. The most common keys are either
+ \class{Strings}, which store their own hashcode, or \class{Integers}, whose
+ hashcodes are easy to compute. 
 
-The other thing is that the hashmap entry itself is storing a hashcode. 
-It’s maintaining a hashcode, even though the most common cases are keys, 
-either strings, store their own hashcode. Or integers, where the hashcode 
-computation is pretty trivial. So that’s also a misplaced optimization, 
-and you have to ask the question. Was this based on an empirical study, 
-with possibly the wrong benchmarks, or was this based on some assumptions? 
-In this case, it was sort of another cautionary tale for library designers of 
-the danger of premature optimizations.
+Show the cost of all collections: include per entry cost.
+How to calculate: fixed  objects (used in any collection) + 
+expandable costs (array size + per
+entry costs)
 
-The end result is that HashSet is a pretty poor choice if you have small sets. 
- At least with its current implementation. Obviously, it’s worth measuring here. 
- And indeed the developer did, and was able to solve the problem. Some other 
- lessons in here about what the developers of hashset must have been thinking, 
- and really for anyone who is developing a library of framework that is going to 
- be used higher up. Basically, they hardcoded in a lot of the assumptions about 
- its expected usage.
- 
-
-\section{Transforming Fixed Size Collections}
-
-Getting back to our example, the developer looked and said, I actually 
-don’t need the hashset functionality, because the only difference in functionality 
-between a hashset and an array list is that the hashset was guaranteeing 
-uniqueness, and it turns out the developer was already guaranteeing uniqueness 
-in the loading code, so this was just put in as an extra failsafe thing, just in 
-case there was a bug in the higher level code. When the developer saw this, 
-he said, that extra check is not worth the cost. Was able to replace this with an 
-arraylist, and for this piece of the structure was able to get 77\% savings
-pretty easily.  Obviously, if we could have collections that worried about all 
-of this stuff for you. A set that grows more gracefully, that you didn’t have to 
-pay a high fixed cost for a tiny little set, then it would be very nice.
-
+ Show the cost of a HashSet (includes HashMap.
+More generally, the cost includes fixed objects + expandable objects;
+See table in figure ?? for 
+See figure ?? that shows each of these in terms of their fixed costs and
+expandable costs.
 L
 \section{Properly Sizing Collections}
 
@@ -254,3 +261,4 @@ empty, if you are going to have a lot of them, and also, there’s a little bit
 of variation, both having to do with whether you’ve made the size default or not, 
 and also what kinds of collection class you are choosing.
 
+\section{Replacing Collections With Classes}
