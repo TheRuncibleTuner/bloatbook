@@ -42,7 +42,18 @@
 \usepackage{multirow}
 
 \usepackage{subfigure}
+
+
+%%% [NMM} this goofy defines a subfloat environment that lets us have verbatim
+% and shortlistings inside of subfigures (begin subfloat, begin minipage, then
+% begin verbatim)
 \newcommand{\subfigureautorefname}{\figureautorefname}
+\newbox\subfigbox \makeatletter
+\newenvironment{subfloat} {\def\caption##1{\gdef\subcapsave{\relax##1}}%
+\let\subcapsave\@empty \setbox\subfigbox\hbox
+\bgroup} {\egroup
+\subfigure[\subcapsave]{\box\subfigbox}} \makeatother
+%%%
 
 
 \usepackage{color}
