@@ -14,9 +14,16 @@ don't fit in a given size of Java heap, there are three solutions at your
 disposal. 
 
 \paragraph{Throw Hardware At It} The first solution you may consider is buying
-more memory for the target platform.
+more memory for the target platform. If your budget allows for this, then by
+all means you should strongly consider doing so.
 
-\paragraph{Swap Objects in and Out of the Java Heap}
+\paragraph{Shuttle Objects in and Out of the Java Heap} Rather than attempting to
+fit all of your objects into a single heap, you can swap them in and out, on
+demand. If the logic of your application allows for recomputing the data stored
+in these objects, you need to be careful to compare the recreation cost with the
+costs of marshalling objects. You can choose to marshall objects to and from a
+local disk, or you can use one of several frameworks that provide a distributed
+key-value map.
 
 \paragraph{Break the Java Mold} Despite being an object-oriented language, there
 is nothing in the Java language that prevents you from storing objects in a
