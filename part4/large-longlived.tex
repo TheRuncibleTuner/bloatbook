@@ -4,26 +4,36 @@
 \chapter{Extreme Scalability of Long-lived Data}
 \label{chapter:large-long-lived}
 
+All of the tuning advice presented so far in this book can only get you so far.
 Sometimes, despite your best efforst of tuning entities and collections, your
 application's objects still do not fit into the memory constraints of the target
-platform. All of the tuning advice presented so far in this book can only get you
-so far. Therefore, even though objects that live forever are free from the bugs
-that riddle objects with correlated lifetime, managing a great number of
-long-lived objects nevertheless comes with its own challenges. When your objects
-don't fit in a given size of Java heap, there are three solutions at your
-disposal. 
+platform. Managing a great number of long-lived objects therefore comes with its
+own set of challenges, even though objects these objects are free from the bugs
+that riddle those with correlated lifetime. To manage objects that, after a
+reasonable amount of tuning, still don't fit into the heap, you have three
+solutions at your disposal: throw money at the problem, implement a kind of
+demand paging, or code your data models in a non-object oriented way.
 
 \paragraph{Throw Hardware At It} The first solution you may consider is buying
-more memory for the target platform. If your budget allows for this, then by
-all means you should strongly consider doing so.
+more memory for the target platform. If your budget allows for this, then by all
+means you should strongly consider doing so. There are some downsides to keep in
+mind. The first is heap size limits. At some point, you will need to switch from
+a 32-bit JVM to a 64-bit JVM. This switch will result in a large increase in
+overhead. As discussed earlier, the amount of blowup resulting from a switch to a
+64-bit JVM depends on the degree of delegation in your data models. A 64-bit JVM
+only adds overhead to the extent that your data models have headers and pointers.
+The alternative, running with compressed references, limits you to around 32GB
+of memory, and imposes a few percent slowdown. In addition, running with a
+large heap can result in increases in the length and fluctuations in pause
+times.
 
 \paragraph{Shuttle Objects in and Out of the Java Heap} Rather than attempting to
-fit all of your objects into a single heap, you can swap them in and out, on
-demand. If the logic of your application allows for recomputing the data stored
-in these objects, you need to be careful to compare the recreation cost with the
-costs of marshalling objects. You can choose to marshall objects to and from a
-local disk, or you can use one of several frameworks that provide a distributed
-key-value map.
+fit all of your objects into a single heap, you can store them outside of the
+Java heap, and swap them in (and out), on demand. If the logic of your
+application allows for recomputing the data stored in these objects, you need to
+be careful to compare the recreation cost with the costs of marshalling objects.
+You can choose to marshall objects to and from a local disk, or you can use one
+of several frameworks that provide a distributed key-value map.
 
 \paragraph{Break the Java Mold} Despite being an object-oriented language, there
 is nothing in the Java language that prevents you from storing objects in a
