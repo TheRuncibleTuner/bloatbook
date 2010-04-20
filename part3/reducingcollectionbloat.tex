@@ -25,9 +25,9 @@ heap. This chapter shows
 
 The standard Java collections vary widely in now much memory they use.
 Not surprisingly, the more functionality a collection provides, the more
-memory it uses. At one end of the spectrum, a simple \class{ArrayList} is the
-most memory efficient, and at the other end, something like a
-\class{ConcurrentHashMap} offers sophisticated concurrent access
+memory it uses. Collections range from a simple, highly efficient
+\class{ArrayList} to
+\class{ConcurrentHashMap}, which offers sophisticated concurrent access
 control, and has extremely large overhead. 
 The use of overly general collections, that provide more functionality than
 really needed, is a common pattern leading to excessive memory bloat.
@@ -36,9 +36,10 @@ easy to see how this happens.
 
 To illustrate, consider a graph with 100,000 nodes that have four edges each, on
 average. An obvious implementation is to use a
-\class{HashMap}, where the keys are nodes and the values are \class{HashSet}s of edges. 
- Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for a
- graph.
+\class{HashMap}, where the keys are nodes and the values are \class{HashSets}
+of edges. A node is an \class{Integer}, and an edge consists of two
+\class{Integers}, a node number and an edge weight.
+Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for the graph.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/graph-hashset.pdf}
@@ -60,40 +61,36 @@ average. An obvious implementation is to use a
 % 24 bytes per entry + 6 per entry in the array (assume extra for growth space)
 % so for 100,000 entries, thats 48 + 3,000,000 bytes = 2.86MB
 %
-% Edge 16*400,000 = 6.4 million = 
+% Edge 16*400,000 = 6.4 million = 6.1MB
+%
+% ArrayList container is 24 bytes (header, size, modcount, pointer) 
+% Default array size os 10 -- 10*4+12 = 52 rounds to 56
+% ArrayList is 80 (56+24) for 4 entries.
+% 100,000 ArrayLists is: 8,000,000 bytes
 
 There are several bloat problems here. The first problem is that 
- 100,000 very small \class{HashSets} each consume 232 bytes,
- all overhead. It's hard to think of a good reason why such a heavy-weight
- structure like \class{HashSet} should ever be used for just a handful of entries.
- For small sets, \class{ArrayList} is almost always a better choice.
-\class{HashSet} maintains uniqueness and provides fast access, but uniqueness
-can be enforced by linear scanning without significant performance loss. 
-Figure~\ref{fig:graph-arraylist} 
-shows improved memory usage with \class{ArrayList}.
+ each of the 100,000 very small \class{HashSets} consumes 232 bytes, all
+ overhead. It's hard to think of a good reason why such a heavy-weight
+ structure should ever be used for storing around four entries, and yet, this is
+ a very common pattern. For small sets, \class{ArrayList}
+ is almost always a better choice. \class{HashSet} maintains uniqueness
+  and provides fast access, but enforcing uniqueness
+is not always needed. If uniqueness is
+important, it can be easily implemented, 
+often without significant performance when lists are small. 
+ Figure~\ref{fig:graph-arraylist} shows improved memory usage with
+\class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead, almost
+a third as much as a \class{HashSet}.
 
-\section{Fixed Size Collections}
-
-Replacing \class{HashSet} by \class{ArrayList} helps, but it is not the end
-of the story. The second problem in Figure~\ref{fig:graph-hashset} is the
-implementation of \class{Edge}, which uses an \class{ArrayList} to store the
-edges.  
- 
- 
 \section{The Cost Of Collections}
 
-This example shows the importance of comparing costs of different collection
-choices. It's instructive to look more closely at an example of a collection,
-to understand how memory is being used. \class{HashSet} is particularly
-interesting, being both typical and bloated. 
-
-
- Figure~\ref{fig:hashset} shows why a \class{HashSet}
-has such a high overhead. Some of the
- overhead is Java-related, and cannot be avoided. Other overhead is the result
- of hard-coded assumptions about expected usage. The infrastructure is designed
- for fast access to a very large \class{HashSet}, with needs far different 
-from one with a handful of entries.
+Let's look at why a \class{HashSet} is so much bigger than an \class{ArrayList}. 
+Some of the \class{HashSet} memory overhead is Java-related and
+unavoidable. Other overhead is the result of hard-coded assumptions and design
+goals, as shown in~\ref{fig:hashset.pdf}. For example, the
+\class{HashSet} implementation assumes \class{HashSets} will be very large, 
+and trades memory space in favor of performance. 
+Here are the causes of unnecessary \class{HashSet} bloat.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/hashset.pdf}
@@ -141,22 +138,53 @@ any of these sets, and very rare to use more than one set at a time.
  Certainly for \class{HashSet}, 
 there is never a need for a set of values.
   
- Additionally, each \class{HashMap\$Entry} stores a hashcode, which is an
- unnecessary redundant field. The most common keys are either
+ \paragraph{Extra Per-Entry Costs} Each \class{HashMap\$Entry} stores a
+ hashcode, which is an unnecessary redundant field. The most common keys are either
  \class{Strings}, which store their own hashcode, or \class{Integers}, whose
  hashcodes are easy to compute. 
 
-Show the cost of all collections: include per entry cost.
-How to calculate: fixed  objects (used in any collection) + 
-expandable costs (array size + per
-entry costs)
+An \class{ArrayList} is much simpler than a
+\class{HashSet}. It is really just an expandable array, consisting of a
+wrapper object and an array of entries, as shown in Figure~\ref{fig:arraylist}.
+ \class{ArrayList} is better than \class{HashSet} in two ways. First, it has a
+ lower fixed cost, which means that \class{ArrayLists} with just a few elements
+ is smaller than a \class{HashSet} of the same elements. Fixed costs include
+ wrapper objects and unitialized array elements. The fact that \class{HashSet}
+ delegates to \class{HashMap} dramatically inflates its fixed cost. 
+ 
+ Secondly, \class{ArrayList} has a lower per-entry cost, which means that
+ \class{ArrayList} scales much better than \class{HashSet}. The per-entry cost
+ of an \class{ArrayList} entry is 4 bytes, the cost of an entry array pointer.
+ The per-entry cost of a \class{HashSet} is an array pointer plus a
+ \class{HashMap\$Entry}, which is 28 bytes. So \class{ArrayList}  is better
+ both for small and large sets.
 
- Show the cost of a HashSet (includes HashMap.
-More generally, the cost includes fixed objects + expandable objects;
-See table in figure ?? for 
-See figure ?? that shows each of these in terms of their fixed costs and
-expandable costs.
-L
+Table~\ref{tab:collection-costs} shows the empty-collection costs of four basic
+collections, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and \class{HashSet}. These costs have been
+calculated based on the the Sun JVM and ?? library, using the techniques
+described in Chapter~\ref{}. There various other Java standard library
+implementations in circulation have costs
+similar to these. You can calculate them by the same methodology as used here.
+
+\begin{table}
+  \centering
+ %\includegraphics[width=.70\textwidth]{part2/Figures/chapter4/object-overhead.pdf}
+ % \includegraphics{eight-char-string}
+ \begin{tabular}{llll} \toprule
+ 	 Collection & Fixed Cost & Per-Entry Cost & Default Size \\ \midrule
+ 	ArrayList & 80 bytes & 4 bytes & 10 entries \\
+ 	LinkedList &  &  & \\
+ 	HashMap & 120 bytes & 28 bytes & 16 entries \\
+ 	HashSet & 136 bytes & 28 bytes & 16 entries \\
+ 	\bottomrule
+ \end{tabular}
+  \caption{The cost breakdown of four basic Java standard library collections
+  with default size and no entries. The fixed cost includes the memory needed
+  for taking the default collection size. The per-entry cost is used to
+  determine scalability.}
+  \label{tab:collection-costs}
+\end{table} 
+
 \section{Properly Sizing Collections}
 
  Let’s talk a little bit about default sizes and growth policies, and that 
@@ -260,5 +288,15 @@ digit anything in Java, but 48 is a pretty high number for something that’s
 empty, if you are going to have a lot of them, and also, there’s a little bit 
 of variation, both having to do with whether you’ve made the size default or not, 
 and also what kinds of collection class you are choosing.
+
+\section{Fixed Size Collections}
+
+Replacing \class{HashSet} by \class{ArrayList} helps, but it is not the end
+of the story. The second problem in Figure~\ref{fig:graph-hashset} is the
+implementation of \class{Edge}, which uses an \class{ArrayList} to store the
+a target node and an edge label, both \class{Integers}. Even though
+\class{ArrayList} is the least expensive collection, its functionality too
+general to use for this purposeps6.
+ 
 
 \section{Replacing Collections With Classes}
