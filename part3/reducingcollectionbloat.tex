@@ -80,8 +80,8 @@ is not always needed. If uniqueness is
 important, it can be enforced for an \class{ArrayList} 
  with a little extra code, and usually without significant performance loss when
  sets are small. Figure~\ref{fig:graph-arraylist} shows improved memory usage with
-\class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead, almost
-a third as much as a \class{HashSet}.
+\class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead, less than
+a third of \class{HashSet}.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/graph-arraylist.pdf}
@@ -89,8 +89,9 @@ a third as much as a \class{HashSet}.
   \class{HashMap} from nodes to \class{ArrayLists} of edges.}
   \label{fig:graph-arraylist}
 \end{figure}
-This simple change saves almost 15MB, but the bloat factor of 96.7\% is still
-quite large. We explain how to reduce this more in later sections.
+This simple change saves 14.59MB, which is 24\%, but the bloat factor of 96.7\%
+is still quite large. This means that there is a lot of room for further
+improvement, as shown later.
 
 \section{The Cost Of Collections}
 \label{sec:collectioncost}
@@ -184,7 +185,7 @@ similar to these. You can calculate them using the same methodology.
  %\includegraphics[width=.70\textwidth]{part2/Figures/chapter4/object-overhead.pdf}
  % \includegraphics{eight-char-string}
  \begin{tabular}{llll} \toprule
- 	 Collection & Fixed Cost & Per-Entry Cost & Default Size \\ \midrule
+ 	 Collection & Fixed Cost & Per-Entry Cost & Default Capacity \\ \midrule
  	ArrayList & 80 bytes & 4 bytes & 10 entries \\
  	LinkedList & 48 bytes & 24 bytes & 1 sentinel entry \\
  	HashMap & 120 bytes & 28 bytes & 16 entries \\
@@ -192,8 +193,8 @@ similar to these. You can calculate them using the same methodology.
  	\bottomrule
  \end{tabular}
   \caption{The cost breakdown of four basic Java standard library collections
-  with default size and no entries. The fixed cost is for the
-   default collection size. The per-entry cost is used to
+  with default size and no entries. The fixed cost includes an array whose
+   size equals the default capacity. The per-entry cost is used to
   determine scalability.}
   \label{tab:collection-costs}
 \end{table} 
@@ -204,9 +205,9 @@ Collections such as \class{HashMap} and \class{ArrayList} store their entries in
 arrays, which grow by reallocation and copying. 
 By default, entry arrays are allocated with extra capacity,
 to avoid paying these growth costs too often. 
- This is why the initial capacity of an \class{ArrayList} is 10 rather than 2, 
-and why its capacity increases by
-50\% when it fills up and is reallocated. 
+ This is why the initial capacity of an \class{ArrayList} is 10 rather than zero
+ or one, and why its capacity increases by
+50\% when it fills up and needs to be reallocated. 
 Similarly, the capacity of a \class{HashMap} starts at 16, and grows by a
 factor of 2 when the \class{HashMap} becomes 75\% full. Unless you take explicit
 action, element arrays are almost always too big.
@@ -239,12 +240,12 @@ empty array slots can add up to significant bloat problem.
  100,000 \class{ArrayLists} with four entries on average, and 400,000
  \class{ArrayLists} with two entries each. Trimming these \class{ArrayLists}
  saves 15.2 million bytes, as shown in Figure~\ref{fig:trimmed-graph}. The
- total size is reduced from ?? to ??, and the bloat factor from 96.7\% to
+ total size is reduced by 32\%, and the bloat factor went from 96.7\% to
  95.3\%. This is still rather high, but there are more optimizations ahead.
  % 100,000 * (10-4)*4 = 2,400,000 bytes
  % 400,000 * (10-2)*4 = 12,800,000 byptes
  % total is 15,200,000
- 
+
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/trimmed-graph.pdf}
@@ -254,51 +255,75 @@ empty array slots can add up to significant bloat problem.
 \end{figure}
  
 There is no \code{trimToSize} method for \class{HashSets} and \class{HashMaps},
-but it is possible set the initial capacity using a constructor parameter.
+but it is possible to pass the initial capacity and load factor as constructor
+parameters. However, you have to ask yourself whether you really want to use a
+\class{HashSet} or \class{HashMap} for collections with fewer than 16 elements.
+Perhaps there is a more memory-efficient solution, like \class{ArrayList}. 
   
-can also have initial sizes so that they are smaller, but have to ask yourself why you are using HashSets for small sets,
- rather than a less expensive data structure.
- 
-
-Talk about LinkedLists\ldots
- The default size initially for an empty collection is 0, so they’re still
- allocating the array with 0 size. Where as the Sun and older JVM’s are always 
- allocating 10 element collection. But on the Harmony classes, the new J9, 
- after you add the first element, they jump it to 12. It’s pretty hard not to 
- get those big jumps in these collection classes. HashMap, the default is 16, 
- and HashSet as well, since it’s based on HashMap. So it’s definitely 
- worth setting the default in these cases where you know you have mostly these 
- small collections. 
- 
- Note: Harmony classes have initials size of 0, but then jump it to 12 once the
- first element is added.
- 
+A \class{LinkedList} is another alternative for small collections, and are
+better than \class{ArrayLists} if the collections are changing a lot. The
+24 byte per-entry cost is larger, but there is no element array, and only one
+extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
 
-A related problem is empty collections, and this is super, super common. 
-People are eagerly initializing things, and without realizing that the empty 
-collections are pretty costly too. This was the case from JPMorgan 
-Chase critsit, that Nick did, and in fact in SessionState, which had all sorts 
-of other stuff in it, had these profile objects in it, which were profiles of 
-customers, and each of those profiles was a highly delegated design, we saw it 
-last week, each one had 40 instances hidden inside that box. 
+Too many empty collections is another common problem. A quick look inside empty
+collections shows that they are not all that empty. All the standard Java collections
+eagerly allocate their subsidiary objects, which means that every empty
+collection consists of two objects, including two object headers, a pointer,
+plus whatever bookkeeping fields they have. 
+According to Table~\ref{tab:collection-cost}, an empty \class{HashMap} consumes
+120 bytes, and an empty \class{ArrayList} consumes 80
+bytes, assuming a default initial size. 
+Even if the initial size is zero, empty collections are still
+large. A zero-sized \class{HashMap} consumes 56 bytes, and a zero-sized
+\class{ArrayList} consumes 40 bytes. Empty \class{HashSets} are even bigger.
 
-For those of you who weren’t here last week, this notation is kind of a UML-like 
-notation This is a logical data structure and these boxes are hiding other classes.
- The octagonal shaped ones are collections, things implementing relationships. 
- SO profile had quite a few classes inside it, and they all had the same coding 
- pattern in them, where they had these arraylists hanging off of them. 
- In one case it was to track the history of modifications in various fields. 
- In total, each usersession data had 210 empty arraylists hanging off of it, 
- which was rather expensive in this little example here. They were paying  
- 8MB in this of just empty arraylists. So what are the remedies here? 
- The simplest thing is to lazily allocate these things. Along with lazy 
- allocation, there’s a nice static method in the collections class, 
-called emptyset, where it will return you a pointer to a singleton empty set 
-that has all the functionality of a set. EmptySet, EmptyList, EmptyMap, and 
-those are great since you can point to them, and the size method will still work,
-iterators will still work, all that stuff will still work, and you don’t have 
+An empty collection problem is caused by eager initialization, that is,
+allocating collections before they are actually needed, and often they are
+never be needed. Suppose the graph in Figure~\ref{fig:trimmed-graph}
+was initialized by the code:
+\begin{shortlisting}
+ArrayList nodes;
+HashMap graph;
+int numNodes;
+   ..
+   public void initGraph() {
+       ..
+       for (i = 0; i < numNodes; i++) {
+          graph.put(nodes.get(i), new ArrayList());
+       }
+   }
+\end{shortlisting}
+Initially, each node is mapped to an empty edge \class{ArrayList}, so there are
+100,000 empty \class{ArrayLists} before any edges are inserted. 
+Suppose 25\% of the nodes in the final graph still have no
+edges. Since edge \class{ArrayLists} have already been trimmed to size, 
+each of the 25,000 empty \class{ArrayLists} consumes 40 bytes. If 
+\class{ArrayLists} are allocated only for nodes with edges,
+ .95MB can be saved.
+
+ In general, lazy allocation avoids creating too many empty collections.
+ That is, instead of initializing all of the collections that you think you
+ may need, allocate them on-demand, just before inserting an edge. On-demand
+ allocation requires more checking code, to avoid \code{NullPointerExceptions}.
+ 
+ Alternatively, you can initialize collection fields to reference static empty collections,
+  including \code{EMPTY_SET},
+ \code{EMPTY_LIST}, and \code{EMPTY_MAP}. For example, 
+ calling static method \code{Colletions.emptyList} to initialize edges 
+ maps all nodes to a singleton immutable static \class{ArrayList}, and avoids
+ creating empty \class{ArrayLists}:
+ \begin{shortlisting}
+ public void initGraph() {
+       ..
+       for (i = 0; i < numNodes; i++) {
+          graph.put(nodes.get(i), Collections.emptyList());
+       }
+   }
+ \end{shortlisting}
+Furthermore, don't have so much checking, the size method and iterators will
+still work, iterators will still work, all that stuff will still work, and you don’t have 
 to allocate an empty collection. The only bad thing with those 2 patterns, 
 and you really have to watch out for, is if you give out any references to your 
 collections before they’ve been allocated. Because once you give out a 
@@ -307,10 +332,7 @@ into this other form that’s actually populated. And that’s a serious issue in Ja
  But if you can hide the references within the class, then this is very easy 
  to fix. 
 
-So just a quick look inside the empty collections, you can see that they are not 
-all that empty. So all the standard Java collections eagerly allocate their 
-subsidiary objects, which means that every empty collection consists of 2 objects, 
-2 object headers, a pointer, plus whatever bookkeeping fields they have. 
+S
 So you get these rippling effects, you have a really high level code, that’s 
 eagerly initializing some package, and it’s eagerly initializing some thing else,
  and eventually it’s initializing some collection, and the collection is doing 
