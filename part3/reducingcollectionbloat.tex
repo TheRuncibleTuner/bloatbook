@@ -281,8 +281,12 @@ large. A zero-sized \class{HashMap} consumes 56 bytes, and a zero-sized
 
 An empty collection problem is caused by eager initialization, that is,
 allocating collections before they are actually needed, and often they are
-never be needed. Suppose the graph in Figure~\ref{fig:trimmed-graph}
-was initialized by the code:
+never eventually needed. When an application allocates an empty
+collection before it is needed, the collection class allocates an empty
+array before it is needed, which is why there is so expensive. 
+
+Suppose the graph
+in Figure~\ref{fig:trimmed-graph} was initialized by the code:
 \begin{shortlisting}
 ArrayList nodes;
 HashMap graph;
@@ -301,16 +305,22 @@ Suppose 25\% of the nodes in the final graph still have no
 edges. Since edge \class{ArrayLists} have already been trimmed to size, 
 each of the 25,000 empty \class{ArrayLists} consumes 40 bytes. If 
 \class{ArrayLists} are allocated only for nodes with edges,
- .95MB can be saved.
-
+ .95MB can be saved, as shown in Figure~\ref{fig:empty-array}.
+\begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part3/Figures/empty-array.pdf}
+  \caption{The graph example without initial empty \class{ArrayLists}.}
+  \label{fig:empty-array}
+\end{figure}
+ 
  In general, lazy allocation avoids creating too many empty collections.
  That is, instead of initializing all of the collections that you think you
  may need, allocate them on-demand, just before inserting an edge. On-demand
  allocation requires more checking code, to avoid \code{NullPointerExceptions}.
  
  Alternatively, you can initialize collection fields to reference static empty collections,
-  including \code{EMPTY_SET},
- \code{EMPTY_LIST}, and \code{EMPTY_MAP}. For example, 
+  including \code{EMPTY\_SET},
+ \code{EMPTY\_LIST}, and \code{EMPTY\_MAP}. For example, 
  calling static method \code{Colletions.emptyList} to initialize edges 
  maps all nodes to a singleton immutable static \class{ArrayList}, and avoids
  creating empty \class{ArrayLists}:
@@ -322,31 +332,15 @@ each of the 25,000 empty \class{ArrayLists} consumes 40 bytes. If
        }
    }
  \end{shortlisting}
-Furthermore, don't have so much checking, the size method and iterators will
-still work, iterators will still work, all that stuff will still work, and you don’t have 
-to allocate an empty collection. The only bad thing with those 2 patterns, 
-and you really have to watch out for, is if you give out any references to your 
-collections before they’ve been allocated. Because once you give out a 
-reference, you expect people to hold on to it, then there’s no way to morph it 
-into this other form that’s actually populated. And that’s a serious issue in Java.
- But if you can hide the references within the class, then this is very easy 
- to fix. 
+This code avoids checking whether the \class{ArrayList} exists at every use,
+since for example, the size method and iterators work. However, you have to be
+careful not to let the references to the static empty collections escape its
+immediate context. 
+If you give out any references to your collections before they’ve been
+allocated, then there’s no way to update this escaped empty-collection reference
+once an actual collection is allocated. 
+ 
 
-S
-So you get these rippling effects, you have a really high level code, that’s 
-eagerly initializing some package, and it’s eagerly initializing some thing else,
- and eventually it’s initializing some collection, and the collection is doing 
- the same thing; it says, well I’m just going ahead and allocate my array, 
-it’s not clear why, it’s either ease of coding, or to avoid an if statement 
-check at runtime, it’s not clear. So another area is to see if there’s any 
- performance benefit to this, or is this something that can be changed very 
-easily. And juust a quick look at the cost of the empty collections. 
-What strikes me – these are the number from both sun and IBM. What strikes
-me is that the smallest number here is 48, so there’s certainly no single 
-digit anything in Java, but 48 is a pretty high number for something that’s 
-empty, if you are going to have a lot of them, and also, there’s a little bit 
-of variation, both having to do with whether you’ve made the size default or not, 
-and also what kinds of collection class you are choosing.
 
 \section{Fixed Size Collections}
 
@@ -355,7 +349,7 @@ of the story. The second problem in Figure~\ref{fig:graph-hashset} is the
 implementation of \class{Edge}, which uses an \class{ArrayList} to store the
 a target node and an edge label, both \class{Integers}. Even though
 \class{ArrayList} is the least expensive collection, its functionality too
-general to use for this purposeps6.
+general to use for this purpose.
  
 
 \section{Replacing Collections With Classes}
