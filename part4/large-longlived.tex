@@ -114,6 +114,37 @@ enum Color {
 	\label{fig:exampleGraph}
 \end{figure}
 
+\begin{figure}
+\begin{subfloat}
+\begin{minipage}[b]{0.44\textwidth}
+\begin{shortlisting}
+class Node {
+   Color color;
+   List<Edge> parent;
+   List<Edge> child1;
+   List<Edge> child2;
+}
+\end{shortlisting}
+\end{minipage}
+\caption{Concrete classes}
+\end{subfloat}
+\begin{subfloat}
+\begin{minipage}[b]{0.56\textwidth}
+\begin{shortlisting}
+public Node(Color color) {
+   color = color;
+   parents = new ArrayList();
+   children = new ArrayList();
+}
+\end{shortlisting}
+\end{minipage}
+\caption{Node constructor that uses the default \class{ArrayList} constructor.}
+\label{fig:node-obvious-constructor}
+\end{subfloat}
+\caption{A straightforward implementation of the Node interface.}
+\label{fig:node-obvious-impl}
+\end{figure}
+
 \autoref{fig:graph-interfaces} shows the interfaces for a \class{Graph},
 \class{Node}, and \class{Edge} that one must implement. A common implementation
 strategy, applied to the \class{Node} and \class{Edge} data types, is a
@@ -130,37 +161,6 @@ versions of each other. The nodes and edges, and relations between them, are
 objects that can be manipulated using normal object oriented practices; e.g. you
 can write \texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads
 as a fairly natural, albeit verbose, expression of what you intend.
-
-\begin{figure}
-\begin{subfloat}
-\begin{minipage}[b]{0.44\textwidth}
-\begin{shortlisting}
-class Node {
-   Color color;
-   List<Edge> parent;
-   List<Edge> child1;
-   List<Edge> child2;
-}
-\end{shortlisting}
-\end{minipage}
-\caption{Concrete classes}
-\end{subfloat}
-\begin{subfloat}
-\begin{minipage}[b]{0.57\textwidth}
-\begin{shortlisting}
-public Node(Color color) {
-   color = color;
-   parents = new ArrayList();
-   children = new ArrayList();
-}
-\end{shortlisting}
-\end{minipage}
-\caption{Node constructor that uses the default \class{ArrayList} constructor.}
-\label{fig:node-obvious-constructor}
-\end{subfloat}
-\caption{A straightforward implementation of the Node interface.}
-\label{fig:node-obvious-impl}
-\end{figure}
 
 \paragraph{A Straightforward Implementation}
 Without any thought for memory concerns, the constructor for a node would be as
@@ -194,18 +194,26 @@ nodes per gigabyte of heap. An ideal implementation, with no storage costs
 beyond the necessary 16 bytes of pointers, would be able to support 65
 million nodes per gigabyte of heap.
 
+\paragraph{Optimizing the Implementation}
 If every node has exactly the same number of incoming and outgoing edges, an easy
-alternative implementation presents itself. You can specialize the
-implementation for this structural special case, and thereby eliminate the waste
-that comes from allowing a flexible number of incident edges.
-\autoref{fig:node-tuned-impls}a shows an implementation of a Node that does
-away with collections, but maintains the Edge abstraction.
-\autoref{fig:node-tuned-impls}b shows an optimized Node implementation that
-does away with the Edge abstraction. This implementation loses some expressive
-power, for the benefit of being able to store larger graphs.
+alternative implementation presents itself. You can specialize the implementation
+for this structural special case, and thereby eliminate the waste that comes from
+allowing a flexible number of incident edges. \autoref{fig:node-tuned-impls}a
+shows an implementation of the \class{Node} interface that does away with
+collections, but maintains the \class{Edge} abstraction. On top of the ideal
+implementation, the cost per node is one object header plus two pointers for each
+of the three \class{Edge} objects: an additional $3*(2*12 + 2*4)$ bytes, for a
+total of 112 bytes. This cost is 1/3rd the cost of the initial implementation,
+though 7 times that of the ideal implementation. This implementation supports
+just over 9 million nodes per gigabyte of heap.
 
-This implementation is preferable to the original one, even if many nodes have
-no parents, or fewer than two children.
+Even if many nodes have no parents, or fewer than two children., this specialized
+implementation remains preferable to the original one that uses collections. This
+is because an empty collection consumes no less than then the one pointer that
+the optimized implementation costs; this is the case if you point to the
+singleton \code{Collections.emptyList()}. In the case when a node has one child,
+then a list must be allocated, whose expense, even if the list has only a single
+entry, will always be higher than a single pointer. 
 
 \begin{figure}
 \begin{subfloat}
@@ -242,9 +250,29 @@ no object has more than one parent and no more than two children.}
 \label{fig:node-tuned-impls}
 \end{figure} 
 
-This implementation avoids the, in this case, unnecessary overhead of
-collections for representing relations. 
+\autoref{fig:node-tuned-impls}b shows a yet more highly optimized \class{Node}
+implementation that does away with the \class{Edge} abstraction. This latter
+implementation approaches the ideal implementation, in its capacity for storing
+large graphs. You must still pay one object header per node, resulting in a
+per-node memory cost of 16 bytes for the pointers plus 12 bytes for the header.
+At this unit cost, a one gigabyte heap would support 37 million nodes.
 
+Though quite scalable, this implementation lacks in some expressive power,
+compared to the other implementations presented so far. For example, without an
+\class{Edge} abstraction, you will find it more difficult to extend the graph
+interface to support edge labels. Doing so is not impossible, of course, but the
+code to access such an edge label will no longer be as straightforward as
+\texttt{node.getChildren().\-get(1).getLabel()}. Instead, edge labels must be
+fetched from the graph model itself, such as via \texttt{graph.getEdge(from,
+to).getLabel()}. Unless you are careful in implementing this API, ever edge label
+query will require a hash table lookup. Shortly, we will discuss the
+complexities, but benefits, of the latter style of API.
+
+You saw how a fair degree of compactness is possible, if you are willing and able
+to specialize the code to handle only a limited degree of functionality. However,
+using a fully object-oriented design, it is impossible, in Java at least, to
+achieve a design with both compactness of storage and the generality to handle a
+variety of graph structures.
 
 
 
