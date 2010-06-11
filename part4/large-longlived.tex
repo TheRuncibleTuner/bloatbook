@@ -115,6 +115,7 @@ enum Color {
 \end{figure}
 
 \begin{figure}
+\centering
 \begin{subfloat}
 \begin{minipage}[b]{0.44\textwidth}
 \begin{shortlisting}
@@ -129,7 +130,7 @@ class Node {
 \caption{Concrete classes}
 \end{subfloat}
 \begin{subfloat}
-\begin{minipage}[b]{0.56\textwidth}
+\begin{minipage}[b]{0.568\textwidth}
 \begin{shortlisting}
 public Node(Color color) {
    color = color;
@@ -195,27 +196,31 @@ beyond the necessary 16 bytes of pointers, would be able to support 65
 million nodes per gigabyte of heap.
 
 \paragraph{Optimizing the Implementation}
-If every node has exactly the same number of incoming and outgoing edges, an easy
-alternative implementation presents itself. You can specialize the implementation
-for this structural special case, and thereby eliminate the waste that comes from
-allowing a flexible number of incident edges. \autoref{fig:node-tuned-impls}a
-shows an implementation of the \class{Node} interface that does away with
-collections, but maintains the \class{Edge} abstraction. On top of the ideal
-implementation, the cost per node is one object header plus two pointers for each
-of the three \class{Edge} objects: an additional $3*(2*12 + 2*4)$ bytes, for a
-total of 112 bytes. This cost is 1/3rd the cost of the initial implementation,
-though 7 times that of the ideal implementation. This implementation supports
-just over 9 million nodes per gigabyte of heap.
+By specializing your code to handle only a limited degree of functionality, you
+can achieve a fair degree of compactness without much effort. If every node has
+exactly the same number of incoming and outgoing edges, an easy alternative
+implementation presents itself. You can specialize the implementation for this
+structural special case, and thereby eliminate the waste that comes from allowing
+a flexible number of incident edges.
+\autoref{fig:node-tuned-impls}a shows an implementation of the \class{Node}
+interface that does away with collections. On top of the ideal implementation,
+the cost per node is one object header plus two pointers for each of the three
+\class{Edge} objects. On top of the 16 byte ideal cost, this implementation costs
+an additional $3*(2*12 + 2*4)$ bytes, for a total of 112 bytes. This cost is
+1/3rd the cost of the initial implementation, though 7 times that of the ideal
+implementation. This implementation supports just over 9 million nodes per
+gigabyte of heap.
 
-Even if many nodes have no parents, or fewer than two children., this specialized
+Even if many nodes have no parents, or fewer than two children, this specialized
 implementation remains preferable to the original one that uses collections. This
 is because an empty collection consumes no less than then the one pointer that
-the optimized implementation costs; this is the case if you point to the
+this collection-free implementation costs; this is the case if you point to the
 singleton \code{Collections.emptyList()}. In the case when a node has one child,
 then a list must be allocated, whose expense, even if the list has only a single
-entry, will always be higher than a single pointer. 
+entry, will always be higher than a single pointer.
 
 \begin{figure}
+\centering
 \begin{subfloat}
 \begin{minipage}[b]{0.38\textwidth}
 \begin{shortlisting}
@@ -230,7 +235,7 @@ class Node {
 \label{fig:node-no-collections}
 \caption{No collections}
 \end{subfloat}
-%\qquad
+\qquad
 \begin{subfloat}
 \begin{minipage}[b]{0.38\textwidth}
 \begin{shortlisting}
@@ -251,32 +256,84 @@ no object has more than one parent and no more than two children.}
 \end{figure} 
 
 \autoref{fig:node-tuned-impls}b shows a yet more highly optimized \class{Node}
-implementation that does away with the \class{Edge} abstraction. This latter
-implementation approaches the ideal implementation, in its capacity for storing
-large graphs. You must still pay one object header per node, resulting in a
-per-node memory cost of 16 bytes for the pointers plus 12 bytes for the header.
-At this unit cost, a one gigabyte heap would support 37 million nodes.
+implementation that stores pointers to \class{Node}s, rather than \class{Edge}s.
+One somewhat extreme variant of this implementation does not store \class{Edge}
+objects at all. This \class{Edge}-free implementation approaches the ideal
+implementation, in its capacity for storing large graphs. You must still pay one
+object header per node, for the \class{Node} objects themselves. Thus, this
+impementation has a per-node memory cost of 16 bytes for the pointers plus 12
+bytes for the header. At this unit cost, a one gigabyte heap would support 37
+million nodes.
 
-Though quite scalable, this implementation lacks in some expressive power,
-compared to the other implementations presented so far. For example, without an
-\class{Edge} abstraction, you will find it more difficult to extend the graph
-interface to support edge labels. Doing so is not impossible, of course, but the
-code to access such an edge label will no longer be as straightforward as
-\texttt{node.getChildren().\-get(1).getLabel()}. Instead, edge labels must be
-fetched from the graph model itself, such as via \texttt{graph.getEdge(from,
-to).getLabel()}. Unless you are careful in implementing this API, ever edge label
-query will require a hash table lookup. Shortly, we will discuss the
+Though quite scalable, this implementation presents several complications.
+First, if the API specifies that \code{Node.getChildren()} returns a list of
+edges, then an \class{Edge}-free storage strategy must return facades that route
+the edge operations properly. The same issue holds for an implementation that
+stores only a single parent pointer: how can one efficiently support an
+interface that expects a list of edges, if the storage contains only a single
+pointer? The following implementation does not work:
+
+\begin{shortlisting}
+public List<Edge> getParent() {
+   List<Edge> list = new ArrayList<Edge>();
+   list.add(parent);
+   return list;
+}
+\end{shortlisting}
+
+In addition to being quite expensive, in creating a list for every call to
+\code{getParent}
+
+lacks
+in expressive power compared to the other implementations presented so far. For example you will find it more
+difficult to extend the graph interface to support edge labels. Doing so is not
+impossible, of course, but requires some careful planning, and thinking outside
+the Java box.
+
+\paragraph{Supporting Edge Properties in Optimized Implementations}
+
+You may choose to store the edges in a side data structure, such as a map.
+However, except in the case where , but this will not have much benefit
+
+
+If \class{Node.getChildren()} returns a list of nodes, rather than a list of
+edges, then the code to access an edge label of the second child of a node can no
+longer be \texttt{node.getChildren().\-get(1).getLabel()}. This way of traversing
+the graph leads to a node, not an edge! If the API instead returns an
+\class{Edge} You don't even have the option of implementing the edge
+abstraction, under the covers. That is, you cannot both avoid storing \class{Edge} objects and yet support an external interface of
+\class{Edge}s:
+
+\begin{shortlisting}
+public class Node {
+   private Node parent; // field stores Node, not Edge
+   public Edge getParent() { // API returns an Edge
+      
+   }
+}
+\end{shortlisting}
+
+Instead, edge labels must be fetched from
+the graph model itself, such as via \texttt{graph.getEdge(from, to).getLabel()}.
+
+Furthermore, without some care, every edge label query will require a hash table
+lookup.
+
+
+Java, as it currently stands, makes certain access patterns difficult. Using a
+fully object-oriented Java design, it is impossible to achieve both compactness
+of storage and the generality to handle a variety of graph structures. To do so
+requires coding in a style that is not conventionally object oriented.
+
+
+
+ Shortly, we will discuss the
 complexities, but benefits, of the latter style of API.
 
-You saw how a fair degree of compactness is possible, if you are willing and able
-to specialize the code to handle only a limited degree of functionality. However,
-using a fully object-oriented design, it is impossible, in Java at least, to
-achieve a design with both compactness of storage and the generality to handle a
-variety of graph structures. To do so requires coding in a style that is not
-conventionally object oriented.
 
 
-\section{Breaking the Mold of Objects}
+
+\section{Breaking the Mold of Object Orientation}
 \label{sec:fortran-style}
 
 \subsection{The Bulk Sharing Pool}
