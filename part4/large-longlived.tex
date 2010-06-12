@@ -282,27 +282,48 @@ public List<Edge> getParent() {
 \end{shortlisting}
 
 In addition to being quite expensive, in creating a list for every call to
-\code{getParent}
-
-lacks
-in expressive power compared to the other implementations presented so far. For example you will find it more
-difficult to extend the graph interface to support edge labels. Doing so is not
-impossible, of course, but requires some careful planning, and thinking outside
-the Java box.
+\code{getParent}, this implementation lacks in expressive power compared to the
+other implementations presented so far. For example you will find it more
+difficult to extend the graph interface to support edge labels.
+Adding edge labels with low overhead is not impossible, but requires some careful
+planning, and thinking outside the Java box.
 
 \paragraph{Supporting Edge Properties in Optimized Implementations}
 
-You may choose to store the edges in a side data structure, such as a map.
-However, except in the case where , but this will not have much benefit
+If \code{Node.getChildren()} returns a list of nodes, rather than a list
+of edges, then the code to access an edge label of the second child of a node can
+no longer be \texttt{node.getChildren().\-get(1).getLabel()}. This way of
+traversing the graph leads to a node, not an edge! Instead, edge labels must be
+fetched from some larger entity, such as the graph model itself: e.g.
+\texttt{graph.getEdge(from, to).getLabel()}. Without some care, every edge label
+query will require a hash table lookup. The same is true if
+\code{Node.getChildren()} returns a list of edges, but your implementaton for
+\class{Node} stores pointers to nodes.
+In both cases, your design necessitates storing the edge labels in a side data
+structure.
+
+This would work well if only a small fraction of the edges have labels.
+Otherwise, the costs of the map infrastructure may very well overwhelm the cost
+of the labels. If each label consumes 4 bytes of actual data; a quick look back
+at
+\autoref{tab:collection-costs} shows that the per-entry cost of a \class{HashMap}
+is 28 bytes. If, without edge labels, your implementation supports 37 million
+nodes per gigabyte of heap, then adding edge labels, in the optimal fashion, will
+decrease your capacity to 33.5 million nodes per gigabyte. If you store them in a
+\class{HashMap}, your capacity will decrease to 19 million nodes per gigabyte. In
+this case, the penalty of using a map, a 2x reduction in scalability, is
+especially high because the implementation, i.e. one supporting 37 million nodes,
+was highly tuned. The more highly tuned your memory model, the larger the
+negative repurcussions of subsequent bad choices.
 
 
-If \class{Node.getChildren()} returns a list of nodes, rather than a list of
-edges, then the code to access an edge label of the second child of a node can no
-longer be \texttt{node.getChildren().\-get(1).getLabel()}. This way of traversing
-the graph leads to a node, not an edge! If the API instead returns an
-\class{Edge} You don't even have the option of implementing the edge
-abstraction, under the covers. That is, you cannot both avoid storing \class{Edge} objects and yet support an external interface of
-\class{Edge}s:
+
+
+%NMM WTF was i trying to say here? 20100611
+% If the API instead returns an
+%\class{Edge} You don't even have the option of implementing the edge
+%abstraction, under the covers. That is, you cannot both avoid storing
+%\class{Edge} objects and yet support an external interface of \class{Edge}s:
 
 \begin{shortlisting}
 public class Node {
@@ -313,11 +334,7 @@ public class Node {
 }
 \end{shortlisting}
 
-Instead, edge labels must be fetched from
-the graph model itself, such as via \texttt{graph.getEdge(from, to).getLabel()}.
 
-Furthermore, without some care, every edge label query will require a hash table
-lookup.
 
 
 Java, as it currently stands, makes certain access patterns difficult. Using a
