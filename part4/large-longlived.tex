@@ -311,10 +311,10 @@ is 28 bytes. If, without edge labels, your implementation supports 37 million
 nodes per gigabyte of heap, then adding edge labels, in the optimal fashion, will
 decrease your capacity to 33.5 million nodes per gigabyte. If you store them in a
 \class{HashMap}, your capacity will decrease to 19 million nodes per gigabyte. In
-this case, the penalty of using a map, a 2x reduction in scalability, is
+this case the penalty of using a map, nearly a 2x reduction in scalability, is
 especially high because the implementation, i.e. one supporting 37 million nodes,
 was highly tuned. The more highly tuned your memory model, the larger the
-negative repurcussions of subsequent bad choices.
+negative repercussions of subsequent bad choices.
 
 
 
@@ -324,23 +324,19 @@ negative repurcussions of subsequent bad choices.
 %\class{Edge} You don't even have the option of implementing the edge
 %abstraction, under the covers. That is, you cannot both avoid storing
 %\class{Edge} objects and yet support an external interface of \class{Edge}s:
+%\begin{shortlisting}
+%public class Node {
+   %private Node parent; // field stores Node, not Edge
+   %public Edge getParent() { // API returns an Edge
+%   }
+%}
+%\end{shortlisting}
 
-\begin{shortlisting}
-public class Node {
-   private Node parent; // field stores Node, not Edge
-   public Edge getParent() { // API returns an Edge
-      
-   }
-}
-\end{shortlisting}
-
-
-
-
-Java, as it currently stands, makes certain access patterns difficult. Using a
-fully object-oriented Java design, it is impossible to achieve both compactness
-of storage and the generality to handle a variety of graph structures. To do so
-requires coding in a style that is not conventionally object oriented.
+% Java, as it currently stands, makes certain access patterns difficult.
+Using a fully object-oriented Java design, it is impossible to achieve both
+compactness of storage and the generality to handle a variety of graph
+structures. To do so requires coding in a style that is not conventionally object
+oriented.
 
 
 
