@@ -370,12 +370,12 @@ engineering perspective.
  
 \paragraph{Insufficiencies of Pure Object Orientation}
 This activity of tuning the original graph implementation has lead to two
-difficult ends. First, the difficulty of supporting nodes with widely varying
-numbers of parents and children. If all nodes had only a very small number of incident
+difficult ends. First, it is difficul to support nodes with widely
+varying numbers of parents and children. If all nodes had only a very small number of incident
 edges, or a very large number, then specialized implementations are possible.
 Second, optimizing storage has come at the expense of easy extensibility; one
 can remove the use of \class{Edge} objects, but, to support edge labels 
-requires either expensive maps to parallel data structures, or extensive
+requires either expensive maps to parallel data structures, or 
 pollution of data types not directly connected to the planned extension.
 
 Using a fully object-oriented Java design, it is impossible to achieve both
@@ -391,8 +391,13 @@ oriented.
 
 
 
-\section{Breaking the Mold of Object Orientation}
+\section{Breaking the Mold of Objects}
 \label{sec:fortran-style}
+
+These examples, which work through various optimizations of representing
+relationships, illustrate the interplay of storage optimization and API design.
+Very often, achieving a high level of memory efficiency requires breaking what
+would generally considered to be the object orientation of an API.
 
 \subsection{The Bulk Sharing Pool}
 \label{sec:bulk-sharing-pool}
