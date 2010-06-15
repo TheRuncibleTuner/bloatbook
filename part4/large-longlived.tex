@@ -394,16 +394,66 @@ oriented.
 \section{Breaking the Mold of Objects}
 \label{sec:fortran-style}
 
-These examples, which work through various optimizations of representing
-relationships, illustrate the interplay of storage optimization and API design.
-Very often, achieving a high level of memory efficiency requires breaking what
-would generally considered to be the object orientation of an API.
+These examples have worked through various optimizations of representing
+relationships, and illustrate the interplay of storage optimization and API
+design. Very often, achieving a high level of memory efficiency requires breaking
+what would generally considered to be the object orientation of an API.
 
 \subsection{The Bulk Sharing Pool}
 \label{sec:bulk-sharing-pool}
 
 The bulk storage that backs a set of data items, each of the same type. Objects
 share the data by indexing into the pool.
+
+\begin{figure}
+\centering
+	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool1}}
+	\quad
+	\subfigure[Interning.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool2}}
+	\quad
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool3}}
+	\subfigure[The memory consumed by one million strings, each of length 10
+	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
+	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
+	\caption{If your application has many long-lived, but small, arrays of
+	primitive data, it could suffer from high overhead. Interning avoids
+	duplication. On top of interning, a Bulk Sharing Pool offers the additional
+	potential for you to eliminate the primitive array wrappers, and so can be
+	beneficial if there are still a large number of unique sequences.}
+	\label{fig:bulk-sharing-pool}
+\end{figure}
+
+%\begin{tabular}{c|ccc}
+%\toprule
+%Fraction Distinct & normal & interning & bulk sharing
+%\\ \midrule
+%1\% & 55.3MB & 34.5MB & 11.6MB
+%\\
+%10\% & 55.3MB & 36.4MB & 13.5MB
+%\\
+%20\% & 55.3MB & 38.5MB & 15.6MB
+%\\
+%30\% & 55.3MB & 40.6MB & 17.7MB
+%\\
+%40\% & 55.3MB & 42.7MB & 19.8MB
+%\\
+%50\% & 55.3MB & 44.8MB & 21.9MB
+%\\
+%60\% & 55.3MB & 46.9MB & 24.0MB
+%\\
+%70\% & 55.3MB & 49.0MB & 26.1MB
+%\\
+%80\% & 55.3MB & 51.1MB & 28.2MB
+%\\
+%90\% & 55.3MB & 53.2MB & 30.3MB
+%\\
+%100\% & 55.3MB & 55.3MB & 32.4MB
+%\\ \bottomrule
+%\end{tabular}
+% normal = interning at 100%
+%interning: 1000000*( 0.5*(10 + 12) + 32 + 4)/1024/1024
+%BSP: 1000000*( .8*(10 + 12) + 8 + 4)/1024/1024
+
 
 \subsection{Column-oriented Storage}
 \label{sec:column-oriented}
