@@ -402,20 +402,58 @@ or the storage.
 
 \subsection{Supporting Singleton Sets}
 
-\subsection{The Bulk Sharing Pool}
+\subsection{Bulk Sharing of Immutable Data}
 \label{sec:bulk-sharing-pool}
 
+Primitive arrays are often the repository for most of your application's actual
+data. If your application has a few large primitive arrays, then the overhead of
+the arrays will be dwarfed by the actual data contained therein. A common problem
+with Java applications is that they have many small primitive arrays.
+\index{Small Primitive Arrays} If the large majority of your actual data is in
+these primitive arrays, and the average length of each array is 10 characters,
+then your application will have a memory bloat factor of at least 44\%
+% 16/(10*2 + 16)
+--- almost half of your heap will be wasted on the object headers of the
+primitive arrays. The problem grows worse if these primitive arrays are wrapped
+inside of objects such as \class{String} or \class{ByteArrayOutputStream}. If
+wrapped inside of \class{String} objects, then your applicaiton is doomed to a
+memory bloat factor of at least 70\%.
+% (16+32)/(10*2+16+32)
 
-The bulk storage that backs a set of data items, each of the same type. Objects
-share the data by indexing into the pool.
+If these primitive arrays store only a small number of distinct sequences, this
+problem of high overhead can, at least indirectly, be addressed by
+interning.\index{Interning} Earlier, \autoref{sec:sharing-strings} discussed
+string interning. If your primitive data is string data, then you can use the
+\jres built-in mechansm for pooling this data, so that only one copy of each
+string is kept in memory. For non-string data, you will have to roll your own
+solution. In any case, however, interning only \emph{indirectly} tackles the
+problem at hand. By keeping only a single canonical copy of the primitive data,
+you eliminate the primitive array headers for the duplicates.
+
+By eliminating many duplicates via interning, you stand to save lots of memory,
+but your memory bloat factor will still be quite high. Instead of a bloat factor
+of 70\%, with interning your heap will have a bloat factor of 62\%.
+\autoref{fig:bulk-sharing-pool}a and \autoref{fig:bulk-sharing-pool}b illustrate
+a simple case of interning. Of three strings, there are two duplicate ``grape''
+sequences. The residual high overhead is due to the remaining primitive array
+object headers, and all of the \class{String} objects; none of the \class{String}
+objects are not eliminated by interning. Interning removes only the duplicate
+primitive array overheads.
+
+You could eliminate the \class{String} objects by 
+
+In order to eliminate all of the primitive array overheads, and The bulk storage
+that backs a set of data items, each of the same type. Objects share the data by indexing into the pool.
 
 \begin{figure}
 \centering
-	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool1}}
-	\quad
-	\subfigure[Interning.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool2}}
-	\quad
-	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.3\textwidth]{part4/Figures/bulksharingpool3}}
+	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool1}}
+	\qquad
+	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool2}}
+	\qquad
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool3}}
+	\qquad
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool4}}
 	\subfigure[The memory consumed by one million strings, each of length 10
 	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
 	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
