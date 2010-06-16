@@ -394,13 +394,17 @@ oriented.
 \section{Breaking the Mold of Objects}
 \label{sec:fortran-style}
 
-These examples have worked through various optimizations of representing
-relationships, and illustrate the interplay of storage optimization and API
-design. Very often, achieving a high level of memory efficiency requires breaking
-what would generally considered to be the object orientation of an API.
+The examples of the previous section worked through various optimizations of
+representing relationships, and illustrated the interplay of storage optimization
+and API design. Very often, achieving a high level of memory efficiency requires
+breaking what would generally considered to be the object orientation of the API
+or the storage.
+
+\subsection{Supporting Singleton Sets}
 
 \subsection{The Bulk Sharing Pool}
 \label{sec:bulk-sharing-pool}
+
 
 The bulk storage that backs a set of data items, each of the same type. Objects
 share the data by indexing into the pool.
