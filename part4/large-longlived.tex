@@ -411,14 +411,14 @@ the arrays will be dwarfed by the actual data contained therein. A common proble
 with Java applications is that they have many small primitive arrays.
 \index{Small Primitive Arrays} If the large majority of your actual data is in
 these primitive arrays, and the average length of each array is 10 characters,
-then your application will have a memory bloat factor of at least 44\%
-% 16/(10*2 + 16)
+then your application will have a memory bloat factor of 61\%
+% 16/(10 + 16)
 --- almost half of your heap will be wasted on the object headers of the
 primitive arrays. The problem grows worse if these primitive arrays are wrapped
 inside of objects such as \class{String} or \class{ByteArrayOutputStream}. If
-wrapped inside of \class{String} objects, then your applicaiton is doomed to a
-memory bloat factor of at least 70\%.
-% (16+32)/(10*2+16+32)
+wrapped inside of \class{String} objects, then your application is doomed to a
+memory bloat factor of 83\%.
+% (16+32)/(10+16+32)
 
 If these primitive arrays store only a small number of distinct sequences, this
 problem of high overhead can, at least indirectly, be addressed by
@@ -426,24 +426,51 @@ interning.\index{Interning} Earlier, \autoref{sec:sharing-strings} discussed
 string interning. If your primitive data is string data, then you can use the
 \jres built-in mechansm for pooling this data, so that only one copy of each
 string is kept in memory. For non-string data, you will have to roll your own
-solution. In any case, however, interning only \emph{indirectly} tackles the
-problem at hand. By keeping only a single canonical copy of the primitive data,
-you eliminate the primitive array headers for the duplicates.
-
-By eliminating many duplicates via interning, you stand to save lots of memory,
-but your memory bloat factor will still be quite high. Instead of a bloat factor
-of 70\%, with interning your heap will have a bloat factor of 62\%.
+solution. In any case, however, interning only tackles a part of the problem at
+hand. By keeping only a single canonical copy of the primitive data, you
+eliminate the primitive array headers for the duplicates.
 \autoref{fig:bulk-sharing-pool}a and \autoref{fig:bulk-sharing-pool}b illustrate
 a simple case of interning. Of three strings, there are two duplicate ``grape''
 sequences. The residual high overhead is due to the remaining primitive array
 object headers, and all of the \class{String} objects; none of the \class{String}
-objects are not eliminated by interning. Interning removes only the duplicate
+objects are eliminated by interning. Interning removes only the duplicate
 primitive array overheads.
 
-You could eliminate the \class{String} objects by 
+By eliminating many duplicates via interning, you stand to save a large amount of
+memory, but your memory bloat factor will still be quite high. Instead of a bloat
+factor of 83\%, with interning your heap will have a bloat factor of at least
+88\%.
+% 3*(16+32)/(10*2+3*(16+32))
+This value is a lower bound, because there is another curious problem that arises
+when handling duplicate data. If there is a bounded number of distinct sequences,
+but an increasingly large number of total sequences, your memory bloat factor can
+approach 100\%. In this case, the per-sequence memory overhead grows with the
+number of sequences, but the amount of actual data is bounded by the number of
+distinct sequences.
 
-In order to eliminate all of the primitive array overheads, and The bulk storage
-that backs a set of data items, each of the same type. Objects share the data by indexing into the pool.
+There are two further optimizations open to you, but these require deeper
+changes. Both optimizations store all of the sequences in a single, large array.
+This storage style is an example of optimizing for a bulk of uniformly typed data
+that is accessed in a uniform, and stylized, fashion. Why pay the expense of many
+small primitive arrays, if your code does not need each sequence to be a Java
+object? If you will never synchronize or reflect on sequences, as objects, then
+the primitive array header is a needless expense.
+\autoref{fig:bulk-sharing-pool}c illustrates this bulk storage of the sequences
+in a single large array. You pay the primitive array overhead just once, across
+all pooled sequences, rather than for every sequence. 
+%In this case, your heap
+%will have a memory bloat factor of
+% 3*(16+32)/(10*2+3*(16+32))
+
+To achieve the ultimate in memory efficiency, you must also eliminate the
+\class{String} wrapper objects. This last step requires the most work on your
+part. If you have the luxury of modifying the class definitions for the objects
+that contain the string wrappers, then you can replace every pointer to a string
+with two numbers. These numbers store indices into the single large
+array of bulk data, and demark the sequence that the string wrapper would have
+contained. You are essentially inlining the offset and length fields that every
+Java \class{String} object has, and doing away with the hashcode field and the
+extra header and pointers. This eliminates almost all sources of overhead.
 
 \begin{figure}
 \centering
@@ -451,9 +478,9 @@ that backs a set of data items, each of the same type. Objects share the data by
 	\qquad
 	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool2}}
 	\qquad
-	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool3}}
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool3}}
 	\qquad
-	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool4}}
+	\subfigure[Bulk	sharing	pool, no wrappers.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool4}}
 	\subfigure[The memory consumed by one million strings, each of length 10
 	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
 	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
@@ -465,37 +492,20 @@ that backs a set of data items, each of the same type. Objects share the data by
 	\label{fig:bulk-sharing-pool}
 \end{figure}
 
-%\begin{tabular}{c|ccc}
-%\toprule
-%Fraction Distinct & normal & interning & bulk sharing
-%\\ \midrule
-%1\% & 55.3MB & 34.5MB & 11.6MB
-%\\
-%10\% & 55.3MB & 36.4MB & 13.5MB
-%\\
-%20\% & 55.3MB & 38.5MB & 15.6MB
-%\\
-%30\% & 55.3MB & 40.6MB & 17.7MB
-%\\
-%40\% & 55.3MB & 42.7MB & 19.8MB
-%\\
-%50\% & 55.3MB & 44.8MB & 21.9MB
-%\\
-%60\% & 55.3MB & 46.9MB & 24.0MB
-%\\
-%70\% & 55.3MB & 49.0MB & 26.1MB
-%\\
-%80\% & 55.3MB & 51.1MB & 28.2MB
-%\\
-%90\% & 55.3MB & 53.2MB & 30.3MB
-%\\
-%100\% & 55.3MB & 55.3MB & 32.4MB
-%\\ \bottomrule
-%\end{tabular}
-% normal = interning at 100%
-%interning: 1000000*( 0.5*(10 + 12) + 32 + 4)/1024/1024
-%BSP: 1000000*( .8*(10 + 12) + 8 + 4)/1024/1024
-
+\autoref{fig:bulk-sharing-pool}d charts the memory consumption of the four
+implementations: using normal Java \class{Strings} without any attempt to remove
+duplicates; using Java's built-in string interning mechiansm; using a bulk
+sharing pool; and using a bulk sharing pool without any \class{String} wrappers.
+The chart also includes a series comparison with the amount of memory consumed by
+actual data.  The chart shows memory consumption of each implementation for
+varying degrees of distinctness of the strings, for an case with one million
+strings of length 10 characters each.
+For example, if 500 thousand of the million strings are distinct (which
+corresponds to the 50\% point in the chart), the normal implementation consumes
+65 megabytes, the interning implementation consumes 50 megabytes, the bulk
+sharing pool implementation consumes 44 megabytes, and the bulk implementation
+without string wrappers consumes 17 megabytes. There are 500 thousand
+distinct characters, so the actual data consumes about 10 megabytes.
 
 \subsection{Column-oriented Storage}
 \label{sec:column-oriented}
