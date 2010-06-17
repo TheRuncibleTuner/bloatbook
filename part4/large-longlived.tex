@@ -398,9 +398,13 @@ The examples of the previous section worked through various optimizations of
 representing relationships, and illustrated the interplay of storage optimization
 and API design. Very often, achieving a high level of memory efficiency requires
 breaking what would generally considered to be the object orientation of the API
-or the storage.
+or the storage. The main goals are to support a combination of flexibility and
+scalability that is not possible when following the precepts of object
+orientation.
 
 \subsection{Supporting Singleton Sets}
+
+
 
 \subsection{Bulk Sharing of Immutable Data}
 \label{sec:bulk-sharing-pool}
@@ -435,6 +439,27 @@ sequences. The residual high overhead is due to the remaining primitive array
 object headers, and all of the \class{String} objects; none of the \class{String}
 objects are eliminated by interning. Interning removes only the duplicate
 primitive array overheads.
+
+
+\begin{figure}
+\centering
+	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool1}}
+	\qquad
+	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool2}}
+	\qquad
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool3}}
+	\qquad
+	\subfigure[Bulk	sharing	pool, no wrappers.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool4}}
+	\subfigure[The memory consumed by one million strings, each of length 10
+	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
+	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
+	\caption{If your application has many long-lived, but small, arrays of
+	primitive data, it could suffer from high overhead. Interning avoids
+	duplication. On top of interning, a Bulk Sharing Pool offers the additional
+	potential for you to eliminate the primitive array wrappers, and so can be
+	beneficial if there are still a large number of unique sequences.}
+	\label{fig:bulk-sharing-pool}
+\end{figure}
 
 By eliminating many duplicates via interning, you stand to save a large amount of
 memory, but your memory bloat factor will still be quite high. Instead of a bloat
@@ -471,26 +496,6 @@ array of bulk data, and demark the sequence that the string wrapper would have
 contained. You are essentially inlining the offset and length fields that every
 Java \class{String} object has, and doing away with the hashcode field and the
 extra header and pointers. This eliminates almost all sources of overhead.
-
-\begin{figure}
-\centering
-	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool1}}
-	\qquad
-	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool2}}
-	\qquad
-	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool3}}
-	\qquad
-	\subfigure[Bulk	sharing	pool, no wrappers.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool4}}
-	\subfigure[The memory consumed by one million strings, each of length 10
-	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
-	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
-	\caption{If your application has many long-lived, but small, arrays of
-	primitive data, it could suffer from high overhead. Interning avoids
-	duplication. On top of interning, a Bulk Sharing Pool offers the additional
-	potential for you to eliminate the primitive array wrappers, and so can be
-	beneficial if there are still a large number of unique sequences.}
-	\label{fig:bulk-sharing-pool}
-\end{figure}
 
 \autoref{fig:bulk-sharing-pool}d charts the memory consumption of the four
 implementations: using normal Java \class{Strings} without any attempt to remove
