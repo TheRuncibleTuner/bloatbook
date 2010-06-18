@@ -391,7 +391,7 @@ oriented.
 
 
 
-\section{Breaking the Mold of Objects}
+\section{Breaking the Mold of Object Orientation}
 \label{sec:fortran-style}
 
 The examples of the previous section worked through various optimizations of
@@ -404,7 +404,50 @@ orientation.
 
 \subsection{Supporting Singleton Sets}
 
+% If the distribution of the sizes of these sets is starkly bimodal, where most
+% of the sets are either fairly large, or
 
+One common case, when using collections, is that many of them contain zero or
+only a single element. It seems silly to pay the expense of a full-fledged
+collection for these special cases. The Java standard library offers has a
+partial solution to the case of many empty collections, in the form of the family
+of factor methods that include \code{Collections.emptySet()} and
+\code{Collections.emptyList()}.
+\index{Empty Collections}
+These are partial solutions, because they only handle the case of unchanging
+collections. There is no provision, in the standard libraries, for optimized
+storage of single-entry collections. Consider our graph from the previous
+section:
+\begin{shortlisting}
+class Node {
+	Color color;
+	List<Edge> parents;
+	List<Edge> children;
+}
+\end{shortlisting}
+The previous section proposed an optimization for the special case of nodes with
+at most one parent. If this were always the case, for every single node ever
+created by your application, then it is valid, and indeed a good idea,
+to change the \class{Node} class definition to inline the pointer to that
+potential part. If it is only sometimes the case, then this trick does not work.
+
+You can regain a degree of flexibility, at the expense of some added coding
+complexity. First, you must update the \class{Edge} interface to indicate that an
+edge is also capable of acting as a singleton list of edges:
+\begin{shortlisting}
+interface Edge extends List<Edge> {
+}
+\end{shortlisting}
+Second, you must update your edge implementations to implement the boilerplate of
+the \class{List<Edge>} interface; this part is straightforward. It then becomes
+possible to have a single node implementation that supports arbitrary numbers of
+parents, but is also optimized the special case of nodes with only a single
+parent. This is possible, without your having to change the fields of the
+\class{Node} class in any way. The final change you need to make 
+
+
+By specifying that the parents of a node are a \class{List<Edge>},
+you are forced to 
 
 \subsection{Bulk Sharing of Immutable Data}
 \label{sec:bulk-sharing-pool}
