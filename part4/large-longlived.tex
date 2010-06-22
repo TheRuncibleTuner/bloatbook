@@ -96,8 +96,8 @@ interface Graph {
 }
 interface Node {
 	Color getColor();
-	List<Edge> getChildren();
-	List<Edge> getParents();
+	Set<Edge> getChildren();
+	Set<Edge> getParents();
 }
 interface Edge {
 	Node getFrom();
@@ -121,9 +121,9 @@ enum Color {
 \begin{shortlisting}
 class Node {
    Color color;
-   List<Edge> parent;
-   List<Edge> child1;
-   List<Edge> child2;
+   Set<Edge> parent;
+   Set<Edge> child1;
+   Set<Edge> child2;
 }
 \end{shortlisting}
 \end{minipage}
@@ -134,12 +134,12 @@ class Node {
 \begin{shortlisting}
 public Node(Color color) {
    color = color;
-   parents = new ArrayList();
-   children = new ArrayList();
+   parents = new HashSet<Edge>();
+   children = new HashSet<Edge>();
 }
 \end{shortlisting}
 \end{minipage}
-\caption{Node constructor that uses the default \class{ArrayList} constructor.}
+\caption{Node constructor that uses the default \class{HashSet} constructor.}
 \label{fig:node-obvious-constructor}
 \end{subfloat}
 \caption{A straightforward implementation of the Node interface.}
@@ -154,7 +154,7 @@ straightforward mapping of interfaces to concrete classes.
 \class{Node} data type. Following this
 strategy, the \class{Node} class has three fields, to store its \class{Color}
 and the relations to children and parents; these relations are implemented with a
-standard collection, likely an \class{ArrayList}. The \class{Edge} class has two
+standard collection, likely a \class{HashSet}. The \class{Edge} class has two
 fields, to store pointers to the source and target nodes. This implementation is
 easy to implement. It is also easy to maintain: changes to the interfaces can be
 directly mapped to changes to the implementation, because the two are parallel
@@ -167,17 +167,20 @@ as a fairly natural, albeit verbose, expression of what you intend.
 Without any thought for memory concerns, the constructor for a node would be as
 shown in \autoref{fig:node-obvious-constructor}. In this implementation, the
 memory cost per node is three pointers plus two collections of default size. As
-\autoref{tab:collection-costs} shows, the the default constructor of an
-\class{ArrayList} allocates an array to hold 10 elements; the per-collection cost
-is 80 bytes and the per-entry cost is 4 bytes. If no node has more than 10
-parents or 10 children, then each node will consume one object header plus $3*4 +
-2*(80 + 10*4)$, or $264$ bytes. If, on average, a node has one parent and 2
-children, then 68 bytes (27\%) of this cost is wasted on null pointers. The 80
-bytes (31\%) spent on the parent collection is unnecessary, for those nodes that
-have exactly one parent. Even an optimally structured list which includes just
-one pointer for a list with one entry would still impose two pointer costs to
-reference a single parent node (one pointer to reference the list, one for the
-list to reference the parent node).
+\autoref{tab:collection-costs} shows, the the default constructor of a
+\class{HashSet} allocates an array to hold 16 elements; the per-collection cost
+is 136 bytes and the per-entry cost is 28 bytes. If, on average, a node has one
+parent and 2 children, then each node will consume one object header plus $3*4
++2*136 + 2*3*28$, or $464$ bytes; using \class{ArrayList} instead of a hash map
+would cost $3*4+ 2*(80 + 10*4)$, or $264$ bytes. Both choices result in 24\% of
+memory wasted on null pointers.
+% hashset: 112=14 entries at 4 bytes each, times two for parents and children 
+% arraylist: 68=8 entries at 4 bytes each, times two for parents and children
+The 136 bytes (29\%) spent on the parent collection is unnecessary, for those
+nodes that have exactly one parent. Even an optimally structured set which
+includes just one pointer for a set with one entry would still impose two pointer
+costs to reference a single parent node: one pointer to reference the set, one
+for the set to reference the parent node.
 
 In addition to the cost of the nodes are the cost of the edges objects. By
 objectifying each edge, this implementation pays a cost of one object header
@@ -215,8 +218,8 @@ Even if many nodes have no parents, or fewer than two children, this specialized
 implementation remains preferable to the original one that uses collections. This
 is because an empty collection consumes no less than then the one pointer that
 this collection-free implementation costs; this is the case if you point to the
-singleton \code{Collections.emptyList()}. In the case when a node has one child,
-then a list must be allocated, whose expense, even if the list has only a single
+singleton \code{Collections.emptySet()}. In the case when a node has one child,
+then a set must be allocated, whose expense, even if the set has only a single
 entry, will always be higher than a single pointer.
 
 \begin{figure}
@@ -269,33 +272,33 @@ Though quite scalable, this implementation presents several complications. First
 is the obvious limitation to at most one parent and at most two children per
 node. Second, an \class{Edge}-free storage strategy dictates that the
 \class{Node} API also be updated so that \code{Node.getChildren()} and
-\code{getParents()} return a list of nodes, rather than a list of edges. You
+\code{getParents()} return a set of nodes, rather than a set of edges. You
 cannot avoid storing \class{Edge} objects and yet support an external interface
 of \class{Edge}s The same issue holds for an implementation that stores only a
 single parent pointer: how can one efficiently support an interface that expects
-a list of edges, if the storage contains only a single pointer? If you don't make
+a set of edges, if the storage contains only a single pointer? If you don't make
 this API change, and instead choose to return facades that route the edge
 operations properly, users of the API will be in for some surprises. The
 following implementation does not work:
 \begin{shortlisting}
-public List<Edge> getParent() {
-   List<Edge> list = new ArrayList<Edge>();
-   list.add(parent);
-   return list;
+public Set<Edge> getParent() {
+   Set<Edge> set = new HashSet<Edge>();
+   set.add(parent);
+   return set;
 }
 \end{shortlisting}
 This implementation will not reflect any updates that the caller makes to the
-returned list. It also violates the implicit reference-equality contract of
+returned set. It also violates the implicit reference-equality contract of
 interfaces in Java: two calls to the \code{getParents()} interface must have
 reference, i.e. \code{==}, equality. If possible, you can update
 the written specification for the interface to indicate that a read-only
-\emph{copy} of the parent list is returned. Unforunately, neither of these
+\emph{copy} of the parent set is returned. Unforunately, neither of these
 policies can be statically enforced, and are hence prone to misuse.
 Worse, if the interface design is out of the
 scope of changes you can make, then you are out of luck and must cache the
-returned list somewhere, so as to preserve reference equality.
+returned set somewhere, so as to preserve reference equality.
 
-Third, in addition to being quite expensive, in creating a list for every call to
+Third, in addition to being quite expensive, in creating a set for every call to
 \code{getParent}, this implementation lacks in expressive power compared to the
 other implementations presented so far. For example you will find it more
 difficult to extend the graph interface to support edge labels. Adding edge
@@ -303,8 +306,8 @@ labels with low overhead is not impossible, but requires some careful planning,
 and thinking outside the Java box.
 
 \paragraph{Difficulties of Supporting Edge Properties in Optimized
-Implementations} If the API method \code{Node.getChildren()} returns a list of
-nodes, rather than a list of edges, then the code to access an edge label of the
+Implementations} If the API method \code{Node.getChildren()} returns a set of
+nodes, rather than a set of edges, then the code to access an edge label of the
 second child of a node can no longer be
 \texttt{node.getChildren().\-get(1).getLabel()}. This way of traversing the graph
 leads to a node, not an edge! Instead, edge labels must be fetched from some
@@ -421,8 +424,8 @@ section:
 \begin{shortlisting}
 class Node {
 	Color color;
-	List<Edge> parents;
-	List<Edge> children;
+	Set<Edge> parents;
+	Set<Edge> children;
 }
 \end{shortlisting}
 The previous section proposed an optimization for the special case of nodes with
@@ -433,21 +436,49 @@ potential part. If it is only sometimes the case, then this trick does not work.
 
 You can regain a degree of flexibility, at the expense of some added coding
 complexity. First, you must update the \class{Edge} interface to indicate that an
-edge is also capable of acting as a singleton list of edges:
+edge is also capable of acting as a singleton set of edges:
 \begin{shortlisting}
-interface Edge extends List<Edge> {
+interface Edge extends Set<Edge> {
 }
 \end{shortlisting}
+
 Second, you must update your edge implementations to implement the boilerplate of
-the \class{List<Edge>} interface; this part is straightforward. It then becomes
+the \class{Set<Edge>} interface; this part is straightforward. For example,
+you must implement all of the mutating methods, such as insertion and removal,
+to thow an unsupported operation exception. This ugliness wouldn't be necessary
+if the standard library had an interface that represented an unmodifiable set;
+instead, an unmodifiable set is only a hidden implementation constructed via
+the \class{Collections.unmodifiable} family of factory methods.
+
+Now you have an edge that is also a singleton set of edges. It then becomes
 possible to have a single node implementation that supports arbitrary numbers of
 parents, but is also optimized the special case of nodes with only a single
 parent. This is possible, without your having to change the fields of the
-\class{Node} class in any way. The final change you need to make 
+\class{Node} class in any way: a field \class{Set<Edge> parents} can,
+transparently, be either an optimized singleton, or a more general set.
+
+So far, the changes necessary to implement this optimization have been local in
+scope. They have not violated any principles of abstraction, because changes have
+been isolated to the \class{Edge} details. The final change you need to make
+requires some abstraction-violating changes. This implementation of the
+constructor and \class{addParent} do not specialize for a singleton set:
+
+\begin{shortlisting}
+class Node {
+   public Node() { // Node constructor
+      this.parents = new HashSet<Edge>();
+      \ldots
+   }
+   public void addParent(Node parent) {
+   }
+}
+\end{shortlisting} 
 
 
-By specifying that the parents of a node are a \class{List<Edge>},
-you are forced to 
+
+% what?
+%By specifying that the parents of a node are a \class{List<Edge>},
+%you are forced to 
 
 \subsection{Bulk Sharing of Immutable Data}
 \label{sec:bulk-sharing-pool}
