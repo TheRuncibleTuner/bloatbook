@@ -461,20 +461,49 @@ So far, the changes necessary to implement this optimization have been local in
 scope. They have not violated any principles of abstraction, because changes have
 been isolated to the \class{Edge} details. The final change you need to make
 requires some abstraction-violating changes. This implementation of the
-constructor and \class{addParent} do not specialize for a singleton set:
+constructor and \class{addParent} does not specialize for small collections:
 
 \begin{shortlisting}
 class Node {
-   public Node() { // Node constructor
-      this.parents = new HashSet<Edge>();
-      \ldots
-   }
-   public void addParent(Node parent) {
-   }
+  public Node() { // Node constructor
+     this.parents = new HashSet<Edge>();
+  }
+  public void addParent(Node parent) {
+     parents.add(new Edge(this. parent));
+  }
 }
 \end{shortlisting} 
 
+In order to take advantage of the edge-as-singleton-set optimization, you must
+pollute the node's \code{addParent} implemnetation. Here is an implementation
+that optimizes both for empty and singleton sets:
 
+\begin{shortlisting}
+class Node {
+  public Node() { // Node constructor
+     this.parents = Collections.emptySet();
+  }
+  public void addParent(Node parent) {
+     if (parents.size() == 0) parents = new HashSet<Edge>();
+     else if (parents.size() == 1) {
+        Edge firstParent = parents.iterator().next();
+        parents = new HashSet<Edge>();
+        parents.add(firstParent);
+     }
+     parents.add(new Edge(this. parent));
+  }
+}
+\end{shortlisting} 
+
+This data abstraction violation is unfortunate and only avoidable be
+reintroducing the very wrappers you have sought to avoid. It would be nice if
+\code{Edge.add()}, i.e. the implementation of the \class{Set} interface, would
+result in a rerouting of all pointers to that edge to instead point to a proper
+set. However, in Java, it is not possible to have \code{Edge.add()} to change its
+storage. The Smalltalk language\index{Smalltalk} provides a
+\code{become} primitive\index{\texttt{become} primitive} that does exactly this,
+though at a nontrivial runtime expense: in the worst case, every \code{become}
+requires a full garbage collection.
 
 % what?
 %By specifying that the parents of a node are a \class{List<Edge>},
