@@ -648,9 +648,60 @@ Consider the simple example graph from
 \autoref{fig:example-storing-relations-graph}, which has been updated in
 \autoref{fig:example-storing-relations-graph-with-node-numbers} to include a
 dense index for each node. The indices are natural numbers that range, in this
-example from 1--9, with no gaps.
+example from 1--9, with no gaps. If each node has a dense index, then each node
+attributes can be stored in a flattened form. If you store the data compactly,
+you can avoid much of the pointer and header overhead that plagues most normal
+object oriented storage representations.
+
+\index{COBOL}
+\index{Pascal}
+\index{Arrays of records}
+To store data compactly, you have two options: either store data in the style of
+C, Pascal, or COBOL arrays of records, or in the style of Fortran parallel
+arrays. An array of C structs, or Pascal records, stores the fields of the structures
+densely. The fields of each record are stored back to back in the array, without
+intervening pointers or headers. If the records of node attributes are stored in
+an array called \code{nodeAttributes}:
+\begin{shortlisting}
+// this is C code
+typedef struct NodeAttributes {
+   Color color;
+} NodeAttributes;
+NodeAttributes[] nodeAttr;
+\end{shortlisting}
+then, to retrieve the color of the node
+with index 5 becomes \code{nodeAttr[5].color}.
+
+Unfortunately, Java does not allow for arrays of structures. If the storage size
+of every field is known, and fixed, you can mimic this storage structure in Java,
+to a point. However, if your records have fields of varying types, this style of
+programming can boils down to doing the very same work you would do for
+marshalling data in and out of the Java heap. If the first and third attributes
+of your nodes are of \class{byte} size and the second is of \class{int} size,
+then accessing the third field of the node with index 5 is tricky. It requires
+treating the entire record as a bit bucket, and shifting and masking
+appropriately.
 
 \newcommand{\light}[1]{\footnotesize{\textcolor{Lighter}{#1}}}
+
+\index{Fortran}
+\index{Parallel arrays}
+The alternative is to store your data in a Fortran style, where each attribute is
+stored in its own array. With this storage structure, you avoid the messy details
+of addressing fields with a non-uniformly typed record. In this style, you
+express collections of objects, rather than individual objects. The individuals
+are represented by indices. Instead of having a class for a node, you have a
+class for a group of nodes that participate, together, in a graph or several
+related graphs:
+\begin{shortlisting}
+class NodeModel {
+	Color[] colors;
+	public Color getColor(int nodeIndex) {
+		return colors[nodeIndex];
+	}
+}
+\end{shortlisting}
+\autoref{fig:fortran-style} gives an example of a graph with 9 nodes.
 
 \begin{figure}
 \centering
@@ -701,10 +752,61 @@ index.]{
 \\ \vspace{0mm}
 }
 }
-\caption{A graph of nodes and edges can be represented as a set of parallel
-arrays --- a column-oriented approach to storage. Edge attributes, along with
-additional node attributes, would be stored in additional columns.}
+\caption{A graph of nodes and edges can be represented
+as a set of parallel arrays --- a column-oriented approach to storage, in the
+style of Fortran. Edge attributes, along with additional node attributes, would
+be stored in additional columns.}
+\label{fig:fortran-style}
 \end{figure}
+
+If you need the convenience of an actual \class{Node} instance, you can have a
+bit of both worlds. As long as you use the node objects
+only for temporary purposes, then you have a good chance of avoiding a memory
+footprint problem. These transient node objects act as facades to the
+\class{NodeModel}, but require a reference to the \class{NodeModel} and the
+node's index. 
+\begin{shortlisting}
+class TransientNode {
+   NodeModel nodeModel;
+   int nodeIndex;
+   public Color getColor() {
+      return nodeModel.getColor(nodeIndex);
+   }
+}
+\end{shortlisting}
+Though it has one extra field, on top of the earlier node implementations, for
+the \class{NodeModel} reference, as long as it is transient, it could be fine.
+This is something that requires experimentation in your setup. With transient
+node facades, you are trading off more time spent in garbage collection for
+convenience and the greater assurances you get from strong typing, compared to
+passing around integers throughout your code, to represent node indices.
+If these result in big drags in performance for your use cases, remember
+that there is no absolute need for these transient node facades. You must also
+be careful to either disallow, by convention, reference equality checks against
+transient nodes, or cache any created objects.
+
+The edges of a graph can be represented as two parallel arrays, storing the
+source and target node indices of each edge, as shown in
+\autoref{fig:fortran-style}c, and prototyped here:
+\begin{shortlisting}
+class EdgeModel {
+   int[] from;
+   int[] to;
+   public int getEdgeFrom(int i) {
+      return from[i];
+   }
+   public int getEdgeTo(int i) {
+      return to[i];
+   }
+}
+\end{shortlisting}
+However, this edge representation cannot efficiently support graph
+traversals. From this model, it is hard to retrieve the outgoing or
+incoming edges from a given node. This is because there is no connection between
+a node index and an index into the edge model. Properly representing edges
+requires a bit more work. Even a \class{TransientEdge} class would not help 
+
+\paragraph{Representing Edges in a Column-oriented Storage Model}
 
 \begin{figure}
 \centering
@@ -776,6 +878,10 @@ additional node attributes, would be stored in additional columns.}
 \\ \vspace{0mm}
 }
 }
+\label{fig:fortran-style-edge-optimization}
 \end{figure}
 
+\paragraph{Limitations of Column-oriented Storage}
+
 \section{Memory Mapping and Marshalling}
+
