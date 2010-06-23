@@ -193,6 +193,7 @@ consumption are of primary importance.
 \begin{figure}
 \centering
 \subfigure[Example graph.]{
+\label{fig:example-storing-relations-graph}
 \shortstack{
 	\includegraphics[width=0.3\textwidth]{part4/Figures/exampleGraph}
 	\\ \vspace{5mm}
@@ -611,10 +612,10 @@ class Node {
 \end{shortlisting} 
 
 This data abstraction violation is unfortunate and only avoidable by
-reintroducing the very wrappers you have sought to avoid. It would be nice if
+reintroducing the very wrappers you have sought to eliminate. It would be nice if
 \code{Edge.add()}, i.e. the implementation of the \class{Set} interface, could
 reroute of all pointers to this edge to point to a proper set. However, in Java,
-it is not possible to have \code{Edge.add()} change the edge's reference
+it is not possible to have \code{Edge.add()} change this edge's reference
 identity. Doing so would require a level of indirection, where edges are
 referenced via \emph{handles}, pointers to pointers, rather than direct
 pointers.\index{Handles} An \class{ArrayList} does this, by wrapping an object
@@ -636,6 +637,145 @@ but common, case, every call to \code{become} requires a full garbage collection
 \index{Column-based Storage}
 
 It would be nice if you could avoid the overhead of collections, without having
-to  To avoid the overhead of collections altogether
+to pollute your code with special cases. It would also be nice if you could add
+edge or node properties, without having to worry about the interaction of their
+storage with the storage of the relations themselves. If your main use of the
+relational information is for traversals that don't modify the graph structure
+itself, then there is an opportunity to dramatically reduce the overheads of
+storing this information.
+
+Consider the simple example graph from
+\autoref{fig:example-storing-relations-graph}, which has been updated in
+\autoref{fig:example-storing-relations-graph-with-node-numbers} to include a
+dense index for each node. The indices are natural numbers that range, in this
+example from 1--9, with no gaps.
+
+\newcommand{\light}[1]{\footnotesize{\textcolor{Lighter}{#1}}}
+
+\begin{figure}
+\centering
+\subfigure[Example graph, where each node has been assigned a dense integer
+index.]{
+\label{fig:example-storing-relations-graph-with-node-numbers}
+	\includegraphics[width=0.3\textwidth]{part4/Figures/exampleGraph-withNodeNumbers}
+}
+\quad
+\subfigure[The node attribute.]{
+\shortstack{
+\begin{tabular}{ll}
+\multicolumn{1}{r}{\light{index}} & \multicolumn{1}{l}{\textbf{Color}}
+\\ \toprule
+\light{0} & LightGray \\ \midrule
+\light{1} & White \\ \midrule
+\light{2} & White \\ \midrule
+\light{3} & LightGray \\ \midrule
+\light{4} & LightGray \\ \midrule
+\light{5} & DarkGray \\ \midrule
+\light{6} & DarkGray \\ \midrule
+\light{7} & DarkGray \\ \midrule
+\light{8} & DarkGray \\
+\bottomrule
+\end{tabular}
+\\ \vspace{0mm}
+}
+}
+\quad
+\subfigure[Edges.]{
+\shortstack{
+\begin{tabular}{r@{~~$\rightarrow$~~}l}
+\textbf{from} & \textbf{to}
+\\ \toprule
+0 & 1 \\
+0 & 2 \\
+0 & 5 \\ \midrule
+1 & 3 \\ \midrule
+2 & 3 \\
+2 & 4 \\ \midrule
+3 & 6 \\ \midrule
+4 & 7 \\
+4 & 8 \\ \midrule
+5 & 8 \\ \midrule
+8 & 5 \\
+\bottomrule
+\end{tabular}
+\\ \vspace{0mm}
+}
+}
+\caption{A graph of nodes and edges can be represented as a set of parallel
+arrays --- a column-oriented approach to storage. Edge attributes, along with
+additional node attributes, would be stored in additional columns.}
+\end{figure}
+
+\begin{figure}
+\centering
+\subfigure[Node attributes.]{
+\shortstack{
+\begin{tabular}{ll|ll|ll}
+& & \multicolumn{2}{c|}{\textbf{Children}} &
+\multicolumn{2}{c}{\textbf{Parents}} \\
+\light{index} & \multicolumn{1}{l|}{\textbf{Color}} &
+\multicolumn{1}{l}{\textbf{EdgeIndex}} & \multicolumn{1}{l|}{\textbf{Num}} & 
+\multicolumn{1}{l}{\textbf{EdgeIndex}} &
+\multicolumn{1}{l}{\textbf{Num}} \\ \toprule
+\light{0} & LightGray & 0  & 3 & -- & 0 \\
+\light{1} & White     & 3  & 1 & 0  & 1 \\
+\light{2} & White     & 4  & 2 & 1  & 1 \\
+\light{3} & LightGray & 6  & 1 & 2  & 2 \\
+\light{4} & LightGray & 7  & 2 & 4  & 1 \\
+\light{5} & DarkGray  & 9  & 1 & 5  & 2 \\
+\light{6} & DarkGray  & -- & 0 & 7  & 1 \\
+\light{7} & DarkGray  & -- & 0 & 8  & 1 \\
+\light{8} & DarkGray  & 10 & 1 & 9  & 2 \\
+\bottomrule
+\end{tabular}
+\\ \vspace{0mm}
+}
+}
+\quad
+\subfigure[Children edges.]{
+\shortstack{
+\begin{tabular}{ll}
+\multicolumn{1}{r}{\light{index}} &
+\multicolumn{1}{l}{\textbf{NodeIndex}} \\ \toprule
+\light{0} & 1 \\
+\light{1} & 2 \\
+\light{2} & 5 \\ \midrule
+\light{3} & 3 \\ \midrule
+\light{4} & 3 \\
+\light{5} & 4 \\ \midrule
+\light{6} & 6 \\ \midrule
+\light{7} & 7 \\
+\light{8} & 8 \\ \midrule
+\light{9} & 8 \\ \midrule
+\light{10} & 5 \\
+\bottomrule
+\end{tabular}
+\\ \vspace{0mm}
+}
+}
+\quad
+\subfigure[Parent edges.]{
+\shortstack{
+\begin{tabular}{ll}
+\multicolumn{1}{r}{\light{index}} &
+\multicolumn{1}{l}{\textbf{NodeIndex}}
+\\ \toprule
+\light{0} & 0 \\ \midrule  % 1 -> 0
+\light{1} & 0 \\ \midrule  % 2 -> 0
+\light{2} & 1 \\           % 3 -> 1
+\light{3} & 2 \\ \midrule  % 3 -> 2
+\light{4} & 2 \\ \midrule  % 4 -> 2
+\light{5} & 0 \\ \midrule  % 5 -> 0
+\light{6} & 8 \\           % 5 -> 8
+\light{7} & 3 \\ \midrule  % 6 -> 3
+\light{8} & 4 \\ \midrule  % 7 -> 4
+\light{9} & 4 \\ \midrule  % 8 -> 4
+\light{10} & 5 \\           % 8 -> 5
+\bottomrule
+\end{tabular}
+\\ \vspace{0mm}
+}
+}
+\end{figure}
 
 \section{Memory Mapping and Marshalling}
