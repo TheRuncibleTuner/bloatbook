@@ -688,11 +688,13 @@ appropriately.
 \index{Parallel arrays}
 The alternative is to store your data in a Fortran style, where each attribute is
 stored in its own array. With this storage structure, you avoid the messy details
-of addressing fields with a non-uniformly typed record. In this style, you
-express collections of objects, rather than individual objects. The individuals
-are represented by indices. Instead of having a class for a node, you have a
-class for a group of nodes that participate, together, in a graph or several
-related graphs:
+of addressing fields with a non-uniformly typed record. Furthermore, adding new
+attributes to nodes or edges is a trivial operation. Each is merely an extra
+array in the set of parallel arrays. In this style of storage, you express
+collections of objects, rather than individual objects. The individuals are
+represented by indices. Instead of having a class for a node, you have a class
+for a group of nodes that participate, together, in a graph or several related
+graphs:
 \begin{shortlisting}
 class NodeModel {
 	Color[] colors;
@@ -755,11 +757,12 @@ index.]{
 \caption{A graph of nodes and edges can be represented
 as a set of parallel arrays --- a column-oriented approach to storage, in the
 style of Fortran. Edge attributes, along with additional node attributes, would
-be stored in additional columns.}
+be stored in additional columns. The \light{index} column is not a stored
+attribute, it is only shown in the table, for clarity.}
 \label{fig:fortran-style}
 \end{figure}
 
-If you need the convenience of an actual \class{Node} instance, you can have a
+If you need the convenience of an actual \class{Node} object, you can have a
 bit of both worlds. As long as you use the node objects
 only for temporary purposes, then you have a good chance of avoiding a memory
 footprint problem. These transient node objects act as facades to the
@@ -801,12 +804,35 @@ class EdgeModel {
 }
 \end{shortlisting}
 However, this edge representation cannot efficiently support graph
-traversals. From this model, it is hard to retrieve the outgoing or
-incoming edges from a given node. This is because there is no connection between
-a node index and an index into the edge model. Properly representing edges
-requires a bit more work. Even a \class{TransientEdge} class would not help 
+traversals. There is no efficient way to retrieve the outgoing or
+incoming edges from a given node. Even a \class{TransientEdge} class would not
+help, because there is no connection between a node index and an index
+into the edge model. Properly representing edges requires a bit more work. 
 
 \paragraph{Representing Edges in a Column-oriented Storage Model}
+
+To allow for efficient traversals of the edges, you must index them, as a
+database would. First, consider the outgoing edges from a node. If the
+\class{EdgeModel} parallel arrays are sorted by the \textbf{from} attribute, then
+all of the children of a node will be stored contiguously. For example, the
+edges in \autoref{fig:fortran-style}c have been sorted in this fashion.
+At this point, it is
+easy to establish an index, as an extra attribute of the \class{NodeModel}. This
+attribute will store an index into this sorted edge model, which marks where the
+children of each node begin. Once you have this index, then you no longer need to
+store the \textbf{from} attribute in the edge model; it is implicit, in the
+combination of the edge-start attribute of the node model. If you do so,
+however, then you must also store the number of children of each node. 
+\autoref{fig:fortran-style-edge-optimization} shows an update to
+\autoref{fig:fortran-style}, where the node model now has, for the outgoing
+edges, two new attributes: \textbf{EdgeStart} and \textbf{Num}. The same thing
+can be done for the incoming edges, if we instead sort the edges of 
+\autoref{fig:fortran-style}c by the \textbf{to} attribute.
+\autoref{fig:fortran-style-edge-optimization}a also shows the two new attributes
+for the incoming edges.  For example, node 2 has two children and
+one parent. The children start at index 4 in
+\autoref{fig:fortran-style-edge-optimization}b, which shows the two children to
+be nodes 3 and 4.
 
 \begin{figure}
 \centering
@@ -878,10 +904,35 @@ requires a bit more work. Even a \class{TransientEdge} class would not help
 \\ \vspace{0mm}
 }
 }
+\caption{In order to support efficient traversal of the graph edges, you will
+need to index them. These tables update the example of
+\autoref{fig:fortran-style} to do so.}
 \label{fig:fortran-style-edge-optimization}
 \end{figure}
 
 \paragraph{Limitations of Column-oriented Storage}
+
+There are two main problems you will run into, with a column-oriented approach.
+The first has been touched on briefly: the lack of strong typing for nodes and
+edges. If everything is just an integer, your code will be buggy and hard to
+maintain. Java does not have a facility for naming types, such as \code{typedef}
+in the C language. The Java \code{enum} construct seems like it could help, but
+would require an permanent object for every node, and, besides, this construct
+is limited to around 65,000 entries per enumeration. You can use transient
+nodes, with some cost to performance, but your code must still obey an implicit
+contract, one not enforced by the \code{javac} compiler, that reference equality
+is never used on these transient facades.
+
+The second problem centers around modifications to the node or edge model. This
+style of storage works fantasically well, much better than normal Java objects,
+for certain kinds of modifications. Adding attributes to models is easy.
+Adding nodes is straigtforward. However, deleting nodes, and adding or
+removing edges from existing nodes can only be done with some extra work. For
+deletions, you would have to implement a form of garbage collection yourself.
+Nodes and edges can be marked as deleted; deleted elements would be ignored by
+normal access mechanisms. Adding edges to existing nodes is even more difficult.
+For these reasons, it is highly recommended that you only employ column-oriented
+storage for data structures that do not change in these ways.
 
 \section{Memory Mapping and Marshalling}
 
