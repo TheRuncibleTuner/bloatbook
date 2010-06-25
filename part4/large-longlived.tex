@@ -917,8 +917,8 @@ The first has been touched on briefly: the lack of strong typing for nodes and
 edges. If everything is just an integer, your code will be buggy and hard to
 maintain. Java does not have a facility for naming types, such as \code{typedef}
 in the C language. The Java \code{enum} construct seems like it could help, but
-would require an permanent object for every node, and, besides, this construct
-is limited to around 65,000 entries per enumeration. You can use transient
+this use case would require a permanent object for every node, and, besides,
+this construct is limited to around 65,000 entries per enumeration. You can use transient
 nodes, with some cost to performance, but your code must still obey an implicit
 contract, one not enforced by the \code{javac} compiler, that reference equality
 is never used on these transient facades.
