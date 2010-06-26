@@ -906,7 +906,10 @@ be nodes 3 and 4.
 }
 \caption{In order to support efficient traversal of the graph edges, you will
 need to index them. These tables update the example of
-\autoref{fig:fortran-style} to do so.}
+\autoref{fig:fortran-style} to do so.  For example, node 2 has two children and
+one parent. The children start at index 4 in
+\autoref{fig:fortran-style-edge-optimization}b, which shows the two children to
+be nodes 3 and 4.}
 \label{fig:fortran-style-edge-optimization}
 \end{figure}
 
@@ -934,5 +937,41 @@ normal access mechanisms. Adding edges to existing nodes is even more difficult.
 For these reasons, it is highly recommended that you only employ column-oriented
 storage for data structures that do not change in these ways.
 
-\section{Memory Mapping and Marshalling}
+\section{Serialization}
+\index{Serialization}
 
+There are often situations where your data structures must be shuttled in and out
+of the Java heap. Your application might be distributed across multiple
+processing nodes that are connected by a network, rather than a distributed
+shared memory. It is possible that your your data structures do not fit into
+available physical memory, and so, rather than relying on the operating system's
+paging functionality, you may find that you must implement a facility for doing
+so more efficiently. Sometimes, you have enough physical memory, but are
+constrained by available address space.\index{Address space exhasution} This is
+especially likely to happen if you are running on a 32-bit \jre; e.g. if you run
+with a 1.5 gigabyte Java heap, and have one hundred thousand more more loaded
+classes, you run the risk of exhausting the 2 gigabyte limit that most 32-bit
+operating systems have, for each process. On many 32-bit versions of the Windows
+operating system, and on 31-bit IBM mainframes, the address space limit is even
+lower than 2 gigabytes. It might also be that you have a need to perform
+relational queries against your Java data structures, and are considering storing
+them in a relational store to avoid having to implement the querying logic
+yourself. Your reality might also be some combination of these.
+
+It is important to remember that, in Java, the terms marshalling and
+serialization are not synonymous. Serialization is the process of writing out the
+bits, and the form of those bits. Marshalling, in the Java lexicon, is
+serialization plus the assurance that all parties in the communication can agree
+upon the version of the code that generated those bits. Without this agreement,
+it can become difficult to manage evolving code bases, in the face of legacy
+installations. This disparity of terminology is somewhat unique to Java, but the
+distinction is nonetheless important. This book does not address the issues of
+compatibility of code bases, other than to observe that, if your use case does
+not require handling code skew, then you have options that will perform much
+better than using the built-in Java marshalling mechanisms.
+
+Java provides several built-in mechanisms for marshalling your objects into and
+out of the Java heap.
+
+\subsection{Memory Mapping}
+\index{Memory Mapping}
