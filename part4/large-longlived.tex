@@ -941,37 +941,88 @@ storage for data structures that do not change in these ways.
 \index{Serialization}
 
 There are often situations where your data structures must be shuttled in and out
-of the Java heap. Your application might be distributed across multiple
-processing nodes that are connected by a network, rather than a distributed
-shared memory. It is possible that your your data structures do not fit into
-available physical memory, and so, rather than relying on the operating system's
-paging functionality, you may find that you must implement a facility for doing
-so more efficiently. Sometimes, you have enough physical memory, but are
-constrained by available address space.\index{Address space exhasution} This is
-especially likely to happen if you are running on a 32-bit \jre; e.g. if you run
-with a 1.5 gigabyte Java heap, and have one hundred thousand more more loaded
-classes, you run the risk of exhausting the 2 gigabyte limit that most 32-bit
-operating systems have, for each process. On many 32-bit versions of the Windows
-operating system, and on 31-bit IBM mainframes, the address space limit is even
-lower than 2 gigabytes. It might also be that you have a need to perform
-relational queries against your Java data structures, and are considering storing
-them in a relational store to avoid having to implement the querying logic
-yourself. Your reality might also be some combination of these.
+of the Java heap. Your application might be distributed across multiple boxes
+that are connected by a network, rather than a distributed shared memory. It is
+possible that your your data structures do not fit into available physical
+memory, and so, rather than relying on the operating system's paging
+functionality, you may find that you must implement a facility for doing so more
+efficiently. Sometimes, you have enough physical memory, but are constrained by
+available address space.\index{Address space exhasution} This is especially
+likely to happen if you are running on a 32-bit \jre; e.g. if you run with a 1.5
+gigabyte Java heap, and have one hundred thousand more more loaded classes, you
+run the risk of exhausting the 2 gigabyte limit that most 32-bit operating
+systems have, for each process. On many 32-bit versions of the Windows operating
+system, and on 31-bit IBM mainframes, the address space limit is even lower than
+2 gigabytes. It might also be that you have a need to perform relational queries
+against your Java data structures, and are considering storing them in a
+relational store to avoid having to implement the querying logic yourself. Your
+reality might also be some combination of these.
 
 It is important to remember that, in Java, the terms marshalling and
-serialization are not synonymous. Serialization is the process of writing out the
+serialization are not synonymous. Serialization is the task of writing out the
 bits, and the form of those bits. Marshalling, in the Java lexicon, is
 serialization plus the assurance that all parties in the communication can agree
 upon the version of the code that generated those bits. Without this agreement,
 it can become difficult to manage evolving code bases, in the face of legacy
 installations. This disparity of terminology is somewhat unique to Java, but the
-distinction is nonetheless important. This book does not address the issues of
-compatibility of code bases, other than to observe that, if your use case does
-not require handling code skew, then you have options that will perform much
-better than using the built-in Java marshalling mechanisms.
+distinction is nonetheless important. 
 
-Java provides several built-in mechanisms for marshalling your objects into and
-out of the Java heap.
+This book does not address the issues of compatibility of code bases, other than
+to observe that, if your use case does not require handling code skew, then you
+have options that will perform much better than using the built-in Java
+marshalling mechanisms. Java provides several built-in mechanisms for marshalling
+your objects into and out of the Java heap. TODO finish
+
 
 \subsection{Memory Mapping}
 \index{Memory Mapping}
+
+One way to bring data in and out of Java is via memory mapped I/O. Memory mapping
+is a common trick used that is used by C programmers seeking the ultimate in
+performance.  For example, when you memory map a file into your address space,
+you can treat the file as if it were an array. Reads and writes to the array are
+reflected as disk reads or writes, usually at the page granularity. Actual disk
+I/O may not occur with every array access. This is the case if the operating
+system deems that it has enough physical memory to keep the written pages in
+memory, and you haven't specified that array writes should be written through to
+disk every time. Reads may be serviced from this cache, as well. In this way,
+memory mapped I/O can have the benefit of well-tested caching that balances that
+performance needs of all processes running on your machine, without any work on
+your part.
+
+Since the cache is managed by the operating system, cached pages persist across
+process boundaries. Therefore, if your application runs as multiple steps, each
+in a separate process, then storing your data structures in memory mapped files
+can result in a combination of caching and serialization-free persistence. The
+unwritten buffers will eventually find their way to disk, but this needn't happen
+when one process terminates. Used to its utmost, memory mapping can additionally
+offer copy-free bulk transfers of memory to and from other processes, disk, or
+the network.
+
+\paragraph{The \code{java.nio} Library}
+\index{\code{java.nio} library}
+As of Java 1.4, a memory mapping facility is provided by the \code{java.nio}
+library. This Java library manifests data as \class{ByteBuffer} objects. Using
+this common interface, you can access four repositories of data: network, disk,
+the native heap, and the Java heap. The latter two can serve only as transient
+repositories for your data, but you avoid the expense of having to create a file
+on disk --- an expensive proposition, on most file systems, if done frequently.
+
+You may find it useful to have the option to have some data stored in transient
+storage, and others in persistent storage, backed by files on disk, and interact
+with both using the same API. The \code{java.nio} library lets you do this. An
+important advantage of using native \class{ByteBuffer} storage, over Java heap
+storage, is that your application can run on arbitrarily large inputs without the
+constraints of a fixed-maximum size Java heap.
+
+No matter where the data is stored, you also have a choice of whether to use
+standard Java byte ordering, or the byte ordering of the platform on which the
+application is executing. Of course, this only matters if the data values you are
+accessing are larger than a byte. On top of a \class{ByteBuffer}, you can layer
+other primitive-type views. For example, the instance method
+\code{ByteBuffer.asIntBuffer()} returns an \class{IntBuffer} that takes care of
+any bit manipulations that are necessary to access the data as Java integers. If
+you have chosen to use native byte ordering, then accessing the elements of an
+\class{IntBuffer} on a 32-bit \jre requires no bit manipulation.
+
+
