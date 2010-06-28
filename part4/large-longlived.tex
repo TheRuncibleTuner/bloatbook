@@ -793,8 +793,7 @@ source and target node indices of each edge, as shown in
 \autoref{fig:fortran-style}c, and prototyped here:
 \begin{shortlisting}
 class EdgeModel {
-   int[] from;
-   int[] to;
+   int[] from, to;
    public int getEdgeFrom(int i) {
       return from[i];
    }
@@ -1018,12 +1017,14 @@ Java heap.
 \paragraph{Memory Mapping in Java}
 \index{\code{java.nio} library}
 As of Java 1.4, a memory mapping facility is provided by the \code{java.nio}
-library. This Java library manifests data as \class{ByteBuffer} objects. Using
-this common interface, you can access four repositories of data: network
-transmissions, files on disk, memory allocations in the native heap, and
-allocations in the Java heap. While the latter two can serve only as transient
-repositories for your data, they avoid the expense of having to create a file on
-disk --- an expensive operation, on most file systems, if done frequently.
+library. This Java library manifests data as \class{ByteBuffer} objects. This
+interface mimics an array, providing random access and bulk \code{get} and
+\code{put} methods, but no insertion or deletion operations. Using this common
+interface, you can access four repositories of data: network transmissions, files
+on disk, memory allocations in the native heap, and allocations in the Java heap.
+While the latter two can serve only as transient repositories for your data, they
+avoid the expense of having to create a file on disk --- an expensive operation,
+on most file systems, if done frequently.
 
 You may find it useful to have the option to have some data stored in transient
 storage, and others in persistent storage, backed by files on disk, and interact
@@ -1057,7 +1058,27 @@ IntBuffer mapAsIntegers(File file) {
 \paragraph{Memory Mapping Your Column-oriented Storage}
 
 There is a beneficial combination of memory mapping and a column-oriented
-approach to storing your data.
+approach to storing your data. The interface to all memory mappings is an
+array, and a column-oriented storage structure stores data as arrays. The
+update, from the previous \class{EdgeModel} is easy, but requires a notion of a
+namespace for each edge model. The namespace is necessary so that the model can
+be mapped in from disk:
+
+\begin{shortlisting}
+class EdgeModel {
+   IntBuffer from, to;
+   public EdgeModel(File namespace) { // constructor
+      from = mapAsIntegers(new File(namespace, "from"));
+      to = mapAsIntegers(new File(namespace, "to"));
+   }
+   public int getEdgeFrom(int i) {
+      return from.get(i);
+   }
+   public int getEdgeTo(int i) {
+      return to.get(i);
+   }
+}
+\end{shortlisting}
 
 \paragraph{Difficulties with Memory Mapping in Java}
 
