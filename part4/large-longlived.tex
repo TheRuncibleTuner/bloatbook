@@ -970,43 +970,60 @@ distinction is nonetheless important.
 This book does not address the issues of compatibility of code bases, other than
 to observe that, if your use case does not require handling code skew, then you
 have options that will perform much better than using the built-in Java
-marshalling mechanisms. Java provides several built-in mechanisms for marshalling
-your objects into and out of the Java heap. TODO finish
+marshalling mechanisms. In Java, there are several commonly available mechanisms
+for marshalling your objects into and out of the Java heap. These include the
+built-in Java object serialization, the Apache \class{XMLSerializer} and
+\class{XMLDeserializer}. There is also a variety of libraries that provide a
+mapping between Java objects and a relational backing store; an example is
+RedHat's \class{Hibernate}. All of these come with a fair amount of expense,
+because the \emph{operational} form of the data, that is the way the bits are
+laid out as your Java code operates on them, is different from the serialized
+form. Therefore, use of these serialization libraries usually entails an
+expensive translation between two disparate storage formats.
 
 
 \subsection{Memory Mapping}
 \index{Memory Mapping}
 
-One way to bring data in and out of Java is via memory mapped I/O. Memory mapping
+One way to bring data in and out of Java without paying a marshalling expense
+is via memory mapped I/O. When you \emph{memory map} a file into your address
+space, you can treat the file as if it were an array. Reads and writes to the
+array are reflected as disk reads or writes, and these operations are usually
+done at a page granularity. Actual disk I/O may not occur with every array
+access. This is the case if the operating system decides that it has enough
+physical memory to keep the written pages in memory, and you haven't specified
+that array writes should be written through to disk every time. Reads may be
+serviced from this cache, as well. In this way, memory mapped I/O can have the
+benefit of well-tested caching that balances that performance needs of all
+processes running on your machine, without any work on your part.  Memory mapping
 is a common trick used that is used by C programmers seeking the ultimate in
-performance.  For example, when you memory map a file into your address space,
-you can treat the file as if it were an array. Reads and writes to the array are
-reflected as disk reads or writes, usually at the page granularity. Actual disk
-I/O may not occur with every array access. This is the case if the operating
-system deems that it has enough physical memory to keep the written pages in
-memory, and you haven't specified that array writes should be written through to
-disk every time. Reads may be serviced from this cache, as well. In this way,
-memory mapped I/O can have the benefit of well-tested caching that balances that
-performance needs of all processes running on your machine, without any work on
-your part.
+performance.
 
 Since the cache is managed by the operating system, cached pages persist across
 process boundaries. Therefore, if your application runs as multiple steps, each
 in a separate process, then storing your data structures in memory mapped files
 can result in a combination of caching and serialization-free persistence. The
-unwritten buffers will eventually find their way to disk, but this needn't happen
-when one process terminates. Used to its utmost, memory mapping can additionally
-offer copy-free bulk transfers of memory to and from other processes, disk, or
-the network.
+unwritten buffers may eventually find their way to disk (if the underlying file
+is not deleted first), but this needn't happen when one process terminates.
 
-\paragraph{The \code{java.nio} Library}
+Used to its utmost, memory mapping can additionally offer one-copy bulk
+transfers of memory to and from other processes, disk, or the network. For
+example, say your application takes data from the network and writes it to
+disk. If you memory map the network input buffers and the output file, and issue
+bulk transfers from the input to the output, then it is possible that the
+operating system will transfer the data directly from the network buffers to the
+disk buffers, without first copying them out of the kernel, or into the
+Java heap.
+
+\paragraph{Memory Mapping in Java}
 \index{\code{java.nio} library}
 As of Java 1.4, a memory mapping facility is provided by the \code{java.nio}
 library. This Java library manifests data as \class{ByteBuffer} objects. Using
-this common interface, you can access four repositories of data: network, disk,
-the native heap, and the Java heap. The latter two can serve only as transient
-repositories for your data, but you avoid the expense of having to create a file
-on disk --- an expensive proposition, on most file systems, if done frequently.
+this common interface, you can access four repositories of data: network
+transmissions, files on disk, memory allocations in the native heap, and
+allocations in the Java heap. While the latter two can serve only as transient
+repositories for your data, they avoid the expense of having to create a file on
+disk --- an expensive operation, on most file systems, if done frequently.
 
 You may find it useful to have the option to have some data stored in transient
 storage, and others in persistent storage, backed by files on disk, and interact
@@ -1025,4 +1042,62 @@ any bit manipulations that are necessary to access the data as Java integers. If
 you have chosen to use native byte ordering, then accessing the elements of an
 \class{IntBuffer} on a 32-bit \jre requires no bit manipulation.
 
+An example use of this library to create an integer array-like view over a file
+is:
 
+\begin{shortlisting}
+IntBuffer mapAsIntegers(File file) {
+   ByteBuffer buffer = new RandomAccessFile(file).getChannel().map(MapMode.READ_WRITE,0,file.length());
+   // use platform, not Java, byte ordering
+   buffer.order(ByteOrder.nativeOrder());
+   return buffer.asIntBuffer();
+}
+\end{shortlisting}
+
+\paragraph{Memory Mapping Your Column-oriented Storage}
+
+There is a beneficial combination of memory mapping and a column-oriented
+approach to storing your data.
+
+\paragraph{Difficulties with Memory Mapping in Java}
+
+If you decide to use memory mapping, you will run into several pernicious and
+interconnected problems. These problems are independent of those previously
+discussed coding issues that stem from a choice to use column-oriented storage.
+Each memory mapped file consumes only as much physical memory as is
+available and which the operating system decides is worthy to allocate to the
+map, as it balances the competing memory needs of the processes. This is nice,
+but, unfortunately, each mapped \class{ByteBuffer} consumes a swath of 
+address space equal to the full size of the map. The operating system does not
+manage address space in the same way that it manages physical memory.
+
+The primary problem comes from the lack of an unmapping facility in the
+\code{java.nio} library. You can not explicitly unmap a mapped area! Instead, and
+in direct contradiction of widely published best practices, the library takes
+care of unmapping in the \code{finalize} method of the mapped \class{ByteBuffer}.
+The timing of unmapping is therefore at the whim of garbage collection and the
+subsequent scheduling of the finalizer thread. If you application allocates very
+little in the way of temporary objects, but uses memrmoy mapping extensively, you
+will have failures due to address space exhaustion.
+
+This implementation decision has a strong negative interaction with the second
+problem: the \jre does not, upon address space exhaustion, attempt to run a
+garbage collection and finalization pass, in order to clear out mapped byte
+buffers. Therefore, you may suffer from \class{OutOfMemoryException} failures,
+due to running out of address space, despite the fact that many of your mapped
+regions are actually ready to be unmapped.
+
+The third problem you may encounter is primarily to be found on Windows
+platforms. The Windows operating system does not allow a file to be removed from
+the file system if there are existing memory maps over any part of the file.
+This, combined with the inability to explicitly unmap a mapped region, can lead
+to a situation where files remain on disk when you no longer need them.
+For example, this can happen if there is a point in your code where you know the
+file is no longer necessary, but there exist references from live
+objects or the stack to the \class{ByteBuffer} object that represents the memory
+mapping. Since the \class{ByteBuffer} facade is not garbage collectible, then
+its \code{finalize} method will not be called, and hence the unmapping will not
+occur.
+
+There is a set of policies you can follow to reduce the likelihood of such
+problems.
