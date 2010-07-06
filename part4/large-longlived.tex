@@ -581,7 +581,7 @@ constructor and \class{addParent} does not specialize for small collections:
 
 \begin{shortlisting}
 class Node {
-  public Node() { // Node constructor
+  public Node() { // constructor
      this.parents = new HashSet<Edge>();
   }
   public void addParent(Node parent) {
@@ -596,7 +596,7 @@ that optimizes both for empty and singleton sets:
 
 \begin{shortlisting}
 class Node {
-  public Node() { // Node constructor
+  public Node() { // constructor
      this.parents = Collections.emptySet();
   }
   public void addParent(Node parent) {
