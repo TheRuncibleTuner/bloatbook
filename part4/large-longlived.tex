@@ -1082,28 +1082,32 @@ class EdgeModel {
 
 \paragraph{Difficulties with Memory Mapping in Java}
 
-If you decide to use memory mapping, you will run into several pernicious and
-interconnected problems. These problems are independent of those previously
-discussed coding issues that stem from a choice to use column-oriented storage.
-Each memory mapped file consumes only as much physical memory as is
-available and which the operating system decides is worthy to allocate to the
-map, as it balances the competing memory needs of the processes. This is nice,
-but, unfortunately, each mapped \class{ByteBuffer} consumes a swath of 
-address space equal to the full size of the map. The operating system does not
-manage address space in the same way that it manages physical memory.
+Each memory mapped file consumes only as much \emph{physical} memory as is
+available and which the operating system decides, in its balancing act, is worthy
+to allocate to the mapping. While all major operating system manage consumption
+of physical memory, they do not similarly manage address space consumption. Thus,
+each mapped \class{ByteBuffer} consumes a swath of address space equal to the
+\emph{full} size of the map. For this reason, if you decide to use memory
+mapping, you will run into several pernicious and interconnected problems. These
+problems are orthogonal to any problems that stem from a choice to use
+column-oriented storage.
 
 The primary problem comes from the lack of an unmapping facility in the
-\code{java.nio} library. You can not explicitly unmap a mapped area! Instead, and
-in direct contradiction of widely published best practices, the library takes
-care of unmapping in the \code{finalize} method of the mapped \class{ByteBuffer}.
-The timing of unmapping is therefore at the whim of garbage collection and the
-subsequent scheduling of the finalizer thread. If you application allocates very
-little in the way of temporary objects, but uses memrmoy mapping extensively, you
-will have failures due to address space exhaustion.
+\code{java.nio} library. You can not explicitly unmap a mapped area. Instead,
+and, quite oddly, in direct contradiction of widely published best practices, the
+library takes care of unmapping in the \code{finalize} method of the mapped
+\class{ByteBuffer}. This leaves the timing of unmapping at the whim of garbage
+collection and the subsequent scheduling of the finalizer thread. If you
+application allocates very little in the way of temporary objects, but uses
+memory mapping extensively, you will have failures due to address space
+exhaustion. The garbage collector won't run, because plenty of Java heap is
+available for allocation. However, memory mappings fail, because the process's
+address space is fully consumed by older mappings, many of which would be
+unmapped if the garbage collector were only to run.
 
 This implementation decision has a strong negative interaction with the second
 problem: the \jre does not, upon address space exhaustion, attempt to run a
-garbage collection and finalization pass, in order to clear out mapped byte
+garbage collection and finalization pass in order to clear out mapped byte
 buffers. Therefore, you may suffer from \class{OutOfMemoryException} failures,
 due to running out of address space, despite the fact that many of your mapped
 regions are actually ready to be unmapped.
@@ -1111,14 +1115,43 @@ regions are actually ready to be unmapped.
 The third problem you may encounter is primarily to be found on Windows
 platforms. The Windows operating system does not allow a file to be removed from
 the file system if there are existing memory maps over any part of the file.
-This, combined with the inability to explicitly unmap a mapped region, can lead
-to a situation where files remain on disk when you no longer need them.
-For example, this can happen if there is a point in your code where you know the
-file is no longer necessary, but there exist references from live
-objects or the stack to the \class{ByteBuffer} object that represents the memory
-mapping. Since the \class{ByteBuffer} facade is not garbage collectible, then
-its \code{finalize} method will not be called, and hence the unmapping will not
-occur.
+This, combined with the inability to explicitly unmap a mapping, can lead to a
+situation where files remain on disk when you no longer need them. For example,
+this can happen if there is a point in your code where you know the file is no
+longer necessary, but there exist references from live objects or the stack to
+the \class{ByteBuffer} object that represents the memory mapping. Since the
+\class{ByteBuffer} facade is not garbage collectible, then its \code{finalize}
+method will not be called, and hence the unmapping will not occur.
 
 There is a set of policies you can follow to reduce the likelihood of such
-problems.
+problems. First, if possible, you should implement a correlated lifetime pattern
+for the \class{ByteBuffer} objects. If these objects become garbage collectible
+as soon as a phase or request completes, or correlated object is collected, then
+the \code{ByteBuffer.finalize} method will be called as soon as possible after
+that correlated event occurs. Next, you must trap all memory mapping failures,
+force a garbage collection and finalization pass, and then retry the memory
+mapping; doing this several times in a loop is recommended. Third, on some
+versions of the \jre, you will find that a memory mapping failure results in the
+\jre terminating the process. This was one, by the \jre developers, with the
+thought that a memory mapping failure was a sign of catastrophic failure. You
+know now that this is not the case, it is rather a symptom of the overall poor
+design of the \code{java.nio} library. To work around this problem, you can set
+up a security policy that disables calls to \code{System.exit}, though you must
+be careful that your own code does not rely on this call.
+
+The last good design principal, when using memory mapping in Java, is to rely on
+file-based memory mappings as little as possible. If you need only temporary
+mappings, then consider using the anonymous mappings described earlier:
+\begin{shortlisting}
+IntBuffer allocateAnonymousInts(int numBytes) {
+   ByteBuffer buffer = ByteBuffer.allocateDirect(numBytes);
+   buffer.order(ByteOrder.nativeOrder());
+   return buffer.asIntBuffer();
+}
+\end{shortlisting}
+When using anonymous maps, you must be aware of the default limits on these
+native allocations. With Sun \jres, you can configure the maximum allowed number
+of bytes allocated in this way via the command line argument
+\code{-XX:MaxDirectMemorySize}; this option takes the same arguments as the
+\code{-Xmx} setting. With IBM \jres, you do not need to specify a maximum value.
+
