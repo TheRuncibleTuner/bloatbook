@@ -161,74 +161,6 @@ through understanding the lifetime requirements of these data structures.
 % How does Java heap consumption vary over time? Which heap size fluctuations
 % indicate a problem, and which are expected behavior? \end{example}
 
-\begin{figure}
-	\centering
-	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps}
-	\caption{Memory consumption, over time, typical of a web application server.}
-	\label{fig:timeline-base-session-temps}
-\end{figure}
-
-\section{Permanently Resident}
-\label{sec:forever-lifetime}
-\index{Permanently Resident Objects}
-
-\autoref{fig:timeline-base-session-temps} shows the timeline of memory
-consumption of our example server 
-during and shortly after its initial startup.
-During the startup interval, the server preloads catalog data into
-the Java heap. Then, the server is warmed with with two test requests.
-The total height of the area
-under the curves represents the memory consumption at that point in time. 
-The preloaded catalog
-data will be used for the entire duration of the server process.
-\index{Objects That Live Forever}
-Therefore, the Java objects that represent this catalog are objects that are
-needed forever. In the timeline picture, this data is respresented by the lowest area, labeled
-\emph{baseline}. Notice how it ramps up quickly, and then, after the server has
-reached a ``warmed up'' state, memory consumption of this baseline data evens out
-on a plateau for the remainder of the run.
-
-\paragraph{Permanently Resident Objects in Practice}
-
-In the above example, a \class{DateFormat} object was created in every loop
-iteration and used only once. We can improve this situation by creating and using
-a single formatter for the duration of the run. The Java API documentation, in
-writing at least, encourages this behavior, but leaves the burden of doing so on
-you. You must be careful to remember that it is not safe to do so in multiple
-threads. The next chapter will discuss remedies to this problem. The updated code
-for the \code{parse} method would be:
-
-\begin{shortlisting}
-static final DateFormat fmt = new DateFormat.getInstance();
-
-Date parse(String string) {
-	return fmt.parse(string, new ParsePosition(0));
-}
-\end{shortlisting} 
-
-
-\section{Correlated with External Event}
-\index{Lifetime Requirement, Correlated with External Event}
-\label{sec:correlated-with-need}
-
-After the server is warmed up, it begins to process client requests. Imagine
-interacting with a commerce site with a web browser. First you browse around,
-looking for items that you like, and add them to your shopping cart. Eventually,
-you may authenticate and complete a purchase. As you browse and buy, the server
-maintains some state, to remember aspects of what you have done so far. For
-example, the server stores the incremental state of multi-step transactions,
-those that span multiple page views. This session state, at least the part of it
-stored in the Java heap, will go away soon after your browsing session is
-complete. In the timeline figure, this portion of memory is labeled
-\emph{sessions}. It ramps up while a session is in progress, and then, in the
-example illustrated here, soon all of that session memory should be reclaimed.
-
-These session state objects need to be kept around for operations that span
-several independent operations, and are possibly used across multiple threads.
-They are used beyond the scope of a phase, are not correlated with another
-object, but don't live forever.
-
-
 \section{Temporaries}
 \label{sec:temporary-lifetime}
 \index{Temporary Objects}
@@ -248,16 +180,22 @@ pile up, waiting for the next garbage collection, they contribute more and more
 to memory footprint. Normally, once the \jre runs a garbage collection, these
 temporaries no longer in use will no longer contribute to heap consumption.
 
-In this way, temporary objects
-\emph{fill up the headroom} in the heap.\index{Heap Headroom} If there is a
-large amount of heap space unused by the longer-lived objects, then the
-temporaries can be reclaimed less often. This is a good thing, because a
-garbage collection is an expensive proposition.
-\index{Heap Size Settings} \index{Maximum Heap Size} \index{-Xmx command line
-setting} When configuring your application, you may specify a maximum heap size.
-It should certainly be larger than the baseline and session data. How much
-larger than that? This choice directly affects the amount of \emph{headroom},
- that is the amount of space available for temporaries to pile up.
+In this way, temporary objects \emph{fill up the headroom} in the
+heap.\index{Heap Headroom} If there is a large amount of heap space unused by the
+longer-lived objects, then the temporaries can be reclaimed less often. This is a
+good thing, because a garbage collection is an expensive proposition. \index{Heap
+Size Settings} \index{Maximum Heap Size} \index{-Xmx command line setting} When
+configuring your application, you may specify a maximum heap size. It should
+certainly be larger than the baseline and session data. How much larger than
+that? This choice directly affects the amount of \emph{headroom}, that is the
+amount of space available for temporaries to pile up.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps}
+	\caption{Memory consumption, over time, typical of a web application server.}
+	\label{fig:timeline-base-session-temps}
+\end{figure}
 
 \paragraph{Temporaries in Practice}
 If your application is like most Java applications, it creates a large number of
@@ -379,6 +317,8 @@ very problem. By passing a \class{ParsePosition}, one can parse substrings of a
 string without having to create temporary strings (at the expense of creating
 temporary \class{ParsePosition} objects).
 
+
+
 \section{Time-space Tradeoffs}
 \index{Time-Space Tradeoffs}
 The example server caches data from an expensive third-party data source. Caching
@@ -395,14 +335,6 @@ to occupy an even greater amount of heap space, it is possible that there would
 no longer be room to fit session data. The result in this case would be failures
 in client requests.
 
-\begin{figure}
-	\centering
-	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-cache}
-	\caption{When a cache is in use, this leaves less headroom for temporary
-	object allocation, often resulting in more frequent garbage collections.}
-	\label{fig:timeline-base-session-temps-with-cache}
-\end{figure}
-
 Sizing caches is important, but tricky to get right.
 \autoref{sec:time-space-tradeoffs} gives strategies for implementing caches in
 Java. If the data to be cached is stored on a local disk, then another strategy
@@ -410,6 +342,14 @@ to caching is to use \emph{memory mapping}. \autoref{sec:memory-mapping}
 describes how to utilize built-in Java functionality that lets you take advantage
 of the underlying operating system's demand paging functionality to take care of
 caching for you.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\textwidth]{part4/Figures/lifetime/timeline-base-session-temps-with-cache}
+	\caption{When a cache is in use, this leaves less headroom for temporary
+	object allocation, often resulting in more frequent garbage collections.}
+	\label{fig:timeline-base-session-temps-with-cache}
+\end{figure}
 
 \section{Correlated Lifetimes}
 \label{sec:correlated-lifetime}
@@ -581,6 +521,80 @@ errors. \autoref{chapter:tools} describes tooling that can help you
 detect and fix the bugs that make it into your finished application.
 
 
+\section{Correlated with External Event}
+\index{Lifetime Requirement, Correlated with External Event}
+\label{sec:correlated-with-need}
+
+After the server is warmed up, it begins to process client requests. Imagine
+interacting with a commerce site with a web browser. First you browse around,
+looking for items that you like, and add them to your shopping cart. Eventually,
+you may authenticate and complete a purchase. As you browse and buy, the server
+maintains some state, to remember aspects of what you have done so far. For
+example, the server stores the incremental state of multi-step transactions,
+those that span multiple page views. This session state, at least the part of it
+stored in the Java heap, will go away soon after your browsing session is
+complete. In the timeline figure, this portion of memory is labeled
+\emph{sessions}. It ramps up while a session is in progress, and then, in the
+example illustrated here, soon all of that session memory should be reclaimed.
+
+These session state objects need to be kept around for operations that span
+several independent operations, and are possibly used across multiple threads.
+They are used beyond the scope of a phase, are not correlated with another
+object, but don't live forever.
+
+\section{Permanently Resident}
+\label{sec:forever-lifetime}
+\index{Permanently Resident Objects}
+
+\autoref{fig:timeline-base-session-temps} shows the timeline of memory
+consumption of our example server 
+during and shortly after its initial startup.
+During the startup interval, the server preloads catalog data into
+the Java heap. Then, the server is warmed with with two test requests.
+The total height of the area
+under the curves represents the memory consumption at that point in time. 
+The preloaded catalog
+data will be used for the entire duration of the server process.
+\index{Objects That Live Forever}
+Therefore, the Java objects that represent this catalog are objects that are
+needed forever. In the timeline picture, this data is respresented by the lowest area, labeled
+\emph{baseline}. Notice how it ramps up quickly, and then, after the server has
+reached a ``warmed up'' state, memory consumption of this baseline data evens out
+on a plateau for the remainder of the run.
+
+\paragraph{Permanently Resident Objects in Practice}
+
+In the above example, a \class{DateFormat} object was created in every loop
+iteration and used only once. We can improve this situation by creating and using
+a single formatter for the duration of the run. The Java API documentation, in
+writing at least, encourages this behavior, but leaves the burden of doing so on
+you. You must be careful to remember that it is not safe to do so in multiple
+threads. The next chapter will discuss remedies to this problem. The updated code
+for the \code{parse} method would be:
+
+\begin{shortlisting}
+static final DateFormat fmt = new DateFormat.getInstance();
+
+Date parse(String string) {
+	return fmt.parse(string, new ParsePosition(0));
+}
+\end{shortlisting} 
+
+There are other cases where your application routinely accesses data structures
+for the duration of the program's run. For example, if your application loads in
+trace information from a file and visualizes it, then the data models for the
+trace data cannot be optimized away entirely. Sometimes it is possible, but not
+practical from a performance perspective, to reload this data. You could
+architect your program so that subsets of the trace data are re-parsed as they
+are needed. Unfortunately, the resulting performance, or the complexity of the
+code, may suffer drastically. If so, these data structures must, for practical
+purposes, reside permanently in the heap.
+
+\paragraph{When Objects Don't Fit}
+Sometimes, despite your best efforts at tuning these long-lived data structures,
+the structures still don't fit within your given Java heap constraints.
+\autoref{chapter:large-long-lived} discusses strategies for coping with this
+situation.
 
 % introduced by example in this chapter, and
 %Many objects are either temporaries or needed for
