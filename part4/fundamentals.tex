@@ -1,16 +1,17 @@
 % TODO maybe introduce weaks and softs??
 
-\chapter{Memory Fundamentals}
+\chapter{Java Memory Fundamentals}
 
-Before getting into the details of how to implement your lifetime requirements,
-it is important to understand some of what the fundamentals of memory management
-in languages like Java. The Java language has a \emph{managed runtime}. In part,
-this means that, as a Java program runs, a runtime environment assumes the burden
-of key aspects of memory management. This level of management includes as
-automatic garbage collection of both instances and Java classes. Therefore, Java
-has feature that govern, on your behalf, important aspects of the lifetime of
-objects. You need to appreciate what the runtime is doing for you, before
-considering how to reshape object lifetimes to better suit your needs.
+% Before getting into the details of how to implement your lifetime requirements,
+The Java language has a \emph{managed runtime}. In part, this means that, as a
+Java program runs, the Java runtime takes on the burden of key aspects of memory
+reclamation. It is important to understand what Java does for you, in forming its
+decision of when an object should be reclaimed, when devising your lifetime
+management strategy. This level of management includes as automatic garbage
+collection of both instances and Java classes. Therefore, Java has feature that
+govern, on your behalf, important aspects of the lifetime of objects. You need to
+appreciate what the runtime is doing for you, before considering how to reshape
+object lifetimes to better suit your needs.
 
 Designing a lifetime management strategy requires that you take the tools that
 Java provides, and combine them with other strategies implemented on top of Java.
