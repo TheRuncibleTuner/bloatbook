@@ -274,12 +274,11 @@ The \code{pos} object represents to the parser the position within the input
 string to begin parsing. The implementation of the \code{parse} method uses it
 early on in the process of parsing. Despite being unused for the remainder of the
 parsing, the \jre does not know this until the current iteration of the loop has
-finished. For this duration of time the object is in a kind of limbo, referenced
-by never to be used again. This limbo time also includes the entirety of the call to
-\code{System.out.println}, an operation entirely unrelated to the creation or use
-of the parse position object. Once the current loop iteration finishes, these two
-objects will exit this limbo, and become candidates for garbage
-collection.
+finished. For this duration of time the object is in a kind of limbo, where it is
+referenced but never be used again. This limbo time also includes the entirety of
+the call to \code{System.out.println}, an operation entirely unrelated to the
+creation or use of the parse position object. Once the current loop iteration
+finishes, these two objects will become candidates for garbage collection.
 
 \begin{figure}
 	\centering
@@ -342,47 +341,88 @@ collection.
 	\label{tab:limbo-exit}
 \end{table}
 
-NOT DONE HERE\ldots
-\autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
-illustrate how an object may exit limbo. 
-Still, one can't always rely on automatic mechanisms to guide an object out of
-limbo in a timely fashion.
+Depending on how the object is referenced by your application, it will
+transition from in-use to garbage-collectible in a different manner. There are
+eight ways an object may be referenced. It can be referenced by a:
 
+\begin{enumerate}
+  \item local variable of a method
+  \item static field of a class
+  \item instance field of a \class{java.util.ref.WeakReference} object
+  \item instance field of a \class{java.util.ref.SoftReference} object
+  \item instance field of a \class{java.util.ref.PhantomReference} object
+  \item thread-local storage
+  \item instance field of any other object
+  \item some combination of the above
+\end{enumerate}
 
-\paragraph{Shared Ownership}
+The first seven are cases of \emph{unique} ownership of an object. There exists
+only one path, via that particular reference, to reach the object. The eight case
+is one of \emph{shared} ownership. After your program creates an object, it
+references the object in one or more of these eight ways. The ownership of an
+object may vary over time --- as your program runs, these references will come
+and go. After some time, program execution may reach a point where the object is
+no longer under application control. At this point, the \jre is now in charge of
+its lifetime. For example, if the only reference to an object is from a field of
+some other object, and your code reassigns that reference to \code{null}, this
+becomes a point of transition, from application control to \jre control. Each of
+the eight ways of referencing an object comes with its own guidelines as to when
+this transition occurs. \autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
+summarize how an object transitions to \jre control. The following code gives
+examples of these eight patterns of ownership:
+\lstset{numbers=left,numbersep=12pt,numberstyle=\tiny\textsf}
+\begin{shortlisting}
+class Foo {
+   void bar(Object argument) {
+      Object localVariableReference1 = new ...;
+      threadLocal1.set(argument);
+      threadLocal2.set(new ...);
+      localVariableReference1 = null;
+      for (...) {
+         Object localVariableReference2 = new ...;
+         ...
+      }
+   }
 
-Who is to say that, when one calls the \code{parse} method of a
-\class{SimpleDateFormat} object, that it does not squirrel away a reference to
-the \class{ParsePosition} passed as a parameter? The API contract for
-\code{parse} makes no such claims, one way or the other. This is certainly calls
-to mind the worst of the days of explicitly managing memory in a language like C.
+   static Object staticField = new ...;
+   Object instanceField = new ...;
+   Reference weak = new WeakReference(instanceField);
+   Reference soft = new SoftReference(instanceField);
+   Reference phantom = new PhantomReference(instanceField);
+   ThreadLocal threadLocal1 = new ThreadLocal();
+   ThreadLocal threadLocal2 = new ThreadLocal();
+      
+}
+\end{shortlisting}
+\lstset{numbers=none}
+% Still, one can't always rely on automatic mechanisms to guide an object out of
+% limbo in a timely fashion.
 
-In the case where there is more than one reference to the object, the story gets
-more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
-suffices for deallocation, in Java \emph{all} references to an object must be
-assigned to \code{null}. This is tricky in many cases, because it may not be easy
-to know where all those references emanate from.
-\autoref{fig:reachability-sharing} illustrates a situation where three references
-must be clipped before an object, the darkly shaded one, becomes a candidate for
-garbage collection. There are two other important things to note in this example.
-First, just as in \autoref{fig:reachability-b}, after clipping the three
-indicated references, an entire data structure, not just that darkly shaded
-object, becomes a candidate for reclamation.
- This structure consists of the two objects contained within the lightly shaded
- region. The second important thing to note is that you needn't clip the
- backwards edge, or any edge contained entirely within the data structure you no
- longer need.
+\paragraph{GC Safe Points}
+\index{Safe Points, for Garbage Collection}
 
-\begin{figure}
-\centering
-	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
-	\caption{When an object is shared, such as the darkly shaded one shown
-	here, care must be taken to clip all non-backwards edges. Otherwise, the
-	object will not be garbage collectable.}
-	\label{fig:reachability-sharing}
-\end{figure}
+In most production \jres, garbage collection is, in normal execution, not run at
+arbitrary points in the code. For example, in the above method \code{Foo.bar},
+even though the object referred to by \code{localVariableReference1} becomes
+unreachable before the end of the invocation, most \jres will not notice this
+until a period of time after the assignment to \code{null} at line 6. This delay
+comes about because the garbage collector typically only runs when threads reach
+certain \emph{safe points} in the code. Typically, safe points include the
+beginning and end of method invocations, and the end of each loop iteration.
+Therefore, the earliest time at which the object referred to by
+\code{localVariableReference1} could be reclaimed is after the first iteration of
+the loop; it could even possibly be the end of the invocation, if the loop
+iterates zero times.
 
+This is not to say that the garbage collector runs at every safe point, or that
+it waits for all threads to reach a safe point before proceeding. Any thread that
+tries, but fails, to allocate a new object will of course result in a garbage
+collection at whatever line of code that allocation is found. At that point in
+time, the other threads will continue executing up until their next safe point,
+or their own failure to allocate memory, at which point garbage collection can
+proceed.
 
+%The rest of the discussion will not touch on this topic, instead
 
 \paragraph{Local Variable References}
 
@@ -396,12 +436,12 @@ variable that references the object: e.g. variable declared within a loop body,
 an if block, or at the top level of a method, respectively. Examples of the three
 are shown here:
 \begin{shortlisting}
-void foo(int N) {
-   var topLevelLocalVariable = new ...;
+void bar(int N) {
+   Object topLevel_LocalVariable = new ...;
    for (int i = 0; i < N; i++) {
-      var loopLocalVariable = new ...;
+      Object loop_LocalVariable = new ...;
       if (...) {
-         var ifLocalVariable = new ...;
+         Object if_LocalVariable = new ...;
       }
    }
 }
@@ -409,6 +449,7 @@ void foo(int N) {
 
 \paragraph{Field References}
 
+If an object is referenced by an instance field of another object
 In this case, the only device at your disposal is assigning references to
 objects to \code{null}. If this is the only reference to the object, i.e. that reference
 uniquely owns the object, then you are in luck. The object will now be a candiate
@@ -468,4 +509,46 @@ before it can do so.
 
 \paragraph{Thread-local Storage}
 \index{Thread-local Storage}
+
+
+\paragraph{Shared Ownership}
+
+When you invoke a library method, there is no way in Java to know what the called
+method does with your object. It could very well squirrel away a reference to any
+object reachable from arguments you pass to the invocation. Despite your best
+efforts at keeping track of which references exist to an object, it can easily
+become an uncontrolled mess once you pass these objects to third-party libraries.
+In the above example, if you call the \code{parse} method of a
+\class{SimpleDateFormat} object, the method contract says nothing about how it
+treats the given string or \class{ParsePosition} passed as parameters. 
+Consider the case where you need the string to become garbage collectible soon
+after having parsed it, but the formatter maintains a reference in order to avoid
+reparsing the same string in back to back calls. This calls
+to mind the worst of the days of explicitly managing memory in a language like C.
+
+\begin{figure}
+\centering
+	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
+	\caption{When an object is shared, such as the darkly shaded one shown
+	here, care must be taken to clip all non-backwards edges. Otherwise, the
+	object will not be garbage collectable.}
+	\label{fig:reachability-sharing}
+\end{figure}
+
+In the case where there is more than one reference to the object, the story gets
+more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
+suffices for deallocation, in Java \emph{all} references to an object must be
+assigned to \code{null}. This is tricky in many cases, because it may not be easy
+to know where all those references emanate from.
+\autoref{fig:reachability-sharing} illustrates a situation where three references
+must be clipped before an object, the darkly shaded one, becomes a candidate for
+garbage collection. There are two other important things to note in this example.
+First, just as in \autoref{fig:reachability-b}, after clipping the three
+indicated references, an entire data structure, not just that darkly shaded
+object, becomes a candidate for reclamation.
+ This structure consists of the two objects contained within the lightly shaded
+ region. The second important thing to note is that you needn't clip the
+ backwards edge, or any edge contained entirely within the data structure you no
+ longer need.
+
 
