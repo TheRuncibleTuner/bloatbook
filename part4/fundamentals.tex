@@ -1,23 +1,26 @@
 % TODO maybe introduce weaks and softs??
 
-\chapter{Java Memory Fundamentals}
+\chapter{Memory Fundamentals}
 
 % Before getting into the details of how to implement your lifetime requirements,
 The Java language has a \emph{managed runtime}. In part, this means that, as a
 Java program runs, the Java runtime takes on the burden of key aspects of memory
-reclamation. It is important to understand what Java does for you, in forming its
-decision of when an object should be reclaimed, when devising your lifetime
-management strategy. This level of management includes as automatic garbage
-collection of both instances and Java classes. Therefore, Java has feature that
-govern, on your behalf, important aspects of the lifetime of objects. You need to
-appreciate what the runtime is doing for you, before considering how to reshape
-object lifetimes to better suit your needs.
+allocation and reclamation. It is important to understand what Java does for you,
+in forming its decision of when an object should be reclaimed, when devising your
+lifetime management strategy. This level of management includes as automatic
+garbage collection of both instances and Java classes. Therefore, Java has
+feature that govern, on your behalf, important aspects of the lifetime of
+objects. Unfortunately, these features often appear in the form of low-level JVM
+hooks, or implicit behavior that you have to implicitly control, and so require
+careful coding to make correct use of them. You need to appreciate what the
+runtime is doing for you, before considering how to reshape object lifetimes to
+better suit your needs.
 
-Designing a lifetime management strategy requires that you take the tools that
-Java provides, and combine them with other strategies implemented on top of Java.
-The built-in mechanisms handle some aspects of the common patterns of object
-lifetime. Unfortunately, they often appear in the form of low-level JVM hooks,
-and so require careful coding to make correct use of them.
+%Designing a lifetime management strategy requires that you take the tools that
+%Java provides, and combine them with other strategies implemented on top of
+%Java. The built-in mechanisms handle some aspects of the common patterns of
+%object lifetime. 
+
 
 This chapter introduces the basics of the garbage collector, and how the Java
 managed runtime governs object lifetimes. Then, it walks you through the
@@ -200,7 +203,7 @@ of an class is one way to implement a permanently resident lifetime policy.
 If you wish an object's storage to be reclaimed, you must take some care. To do
 so in a language like C is simple, if bug prone. When you call \code{free} on any
 pointer to a dynamically allocated memory region, memory is immediately available
-for subsequent use.\footnote{Though it is possible to run a C program with a
+for subsequent use.\footnote{It is possible to run a C program with a
 special \code{malloc} library that introduces a simplified form of garbage
 collection.} A C style of memory management comes with well known risks, and
 commonly leads to memory errors. For example, memory might be deallocated more
@@ -383,12 +386,26 @@ object, becomes a candidate for reclamation.
 
 \paragraph{Local Variable References}
 
-If, as in the \class{ParsePosition}
-or \class{SimpleDateFormat} objects from our example, the object is referenced
-only by a local variable of a method, the \jre will not consider reclaming its
-storage until the variable's scope exits; e.g. when the loop continues to the
-next iteration, or when the method returns, depending on the scope of the
-variable that references the object. 
+If, as in the \class{ParsePosition} or \class{SimpleDateFormat} objects from our
+example, the object is referenced only by a local variable of a method, the \jre
+will begin to consider reclaming its storage once the local variable's scope
+exits. Common examples of this are when a loop continues to the next iteration,
+when the body of a clause of an if/then/else statement finishes, or when the
+method invocation returns; the specific circumstances depend on the scope of the
+variable that references the object: e.g. variable declared within a loop body,
+an if block, or at the top level of a method, respectively. Examples of the three
+are shown here:
+\begin{shortlisting}
+void foo(int N) {
+   var topLevelLocalVariable = new ...;
+   for (int i = 0; i < N; i++) {
+      var loopLocalVariable = new ...;
+      if (...) {
+         var ifLocalVariable = new ...;
+      }
+   }
+}
+\end{shortlisting}
 
 \paragraph{Field References}
 
