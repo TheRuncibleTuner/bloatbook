@@ -336,9 +336,9 @@ no longer be room to fit session data. The result in this case would be failures
 in client requests.
 
 Sizing caches is important, but tricky to get right.
-\autoref{sec:time-space-tradeoffs} gives strategies for implementing caches in
-Java. If the data to be cached is stored on a local disk, then another strategy
-to caching is to use \emph{memory mapping}. \autoref{sec:memory-mapping}
+\autoref{chapter:time-space-tradeoffs} gives strategies for implementing caches
+in Java. If the data to be cached is stored on a local disk, then another
+strategy to caching is to use \emph{memory mapping}. \autoref{sec:memory-mapping}
 describes how to utilize built-in Java functionality that lets you take advantage
 of the underlying operating system's demand paging functionality to take care of
 caching for you.

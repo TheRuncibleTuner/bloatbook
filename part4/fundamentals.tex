@@ -528,21 +528,22 @@ will now be a candiate for garbage collection.
 \end{comment}
 
 
-
-
-\paragraph{Soft and Weak References, and Reference Queues}
-\index{Soft References}
-\index{Weak References}
-
-\paragraph{Phantom References and Finalization}
-\index{Finalization of objects}
-\index{Phantom References}
-
-\paragraph{Thread-local Storage}
-\index{Thread-local Storage}
-
-
 \paragraph{Shared Ownership}
+
+\begin{figure}
+\centering
+\subfigure[Diamond sharing.]{
+	\includegraphics[height=0.25\textheight]{part4/Figures/lifetime/reachability4}
+	}
+\qquad
+\subfigure[Root sharing.]{
+	\includegraphics[height=0.22\textheight]{part4/Figures/lifetime/reachability3}
+	}
+	\caption{When an object is shared, such as the shaded ones shown
+	here, care must be taken to clip all edges from emanating from outside of the
+	region you wish to reclaim.}
+	\label{fig:reachability-sharing}
+\end{figure}
 
 When you invoke a library method, there is no way in Java to know what the called
 method does with your object. It could very well squirrel away a reference to any
@@ -556,15 +557,6 @@ Consider the case where you need the string to become garbage collectable soon
 after having parsed it, but the formatter maintains a reference in order to avoid
 reparsing the same string in back to back calls. This calls
 to mind the worst of the days of explicitly managing memory in a language like C.
-
-\begin{figure}
-\centering
-	\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability3}
-	\caption{When an object is shared, such as the darkly shaded one shown
-	here, care must be taken to clip all non-backwards edges. Otherwise, the
-	object will not be garbage collectable.}
-	\label{fig:reachability-sharing}
-\end{figure}
 
 In the case where there is more than one reference to the object, the story gets
 more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
@@ -581,5 +573,135 @@ object, becomes a candidate for reclamation.
  region. The second important thing to note is that you needn't clip the
  backwards edge, or any edge contained entirely within the data structure you no
  longer need.
+
+
+\section{Advanced Java Features}
+
+There are several important lifetime management policies that cannot be expressed
+using normal mechanisms of local variables and static and instance field
+references. For example, to implement the correlated lifetime policy described in
+\autoref{sec:correlated-lifetime} using only the mechanisms presented so far is
+difficult. In \autoref{fig:reachability-b}, there are three objects contained
+within the shaded region; these three objects will all be garbage collectible if
+the indicated dominating reference is set to \code{null}. In this way, the
+lifetime of the lower two can be correlated with the lifetime of the object
+directly pointed to by the dominating reference. This can work, in certain
+limited circumstances, but it requires that you encode the correlation in the
+class definition itself. To correlate an instance of the \class{B} class with an
+instance of the \class{A} class, you must add a field to \class{A}:
+\begin{shortlisting}
+class A {
+   B b;
+}
+\end{shortlisting}
+In addition to requiring the pollution of class definitions, it also can result
+in wasted memory. If only some \class{A} instances have a correlated \class{B},
+then you will be wasting a pointer slot for every instance of \class{A}. It turns
+out that this is how the Java standard \class{HashMap} was implemented, in its
+mechanism for maintainin a correlation between the various views (the key set,
+value set, and entry set), and the map itself:
+\begin{shortlisting}
+class HashMap {
+   Set keySet, valueSet, entrySet;
+}
+\end{shortlisting}
+This choice had a big implication on the memory bloat factor of small maps. As
+we have learned in previous chapters, every instance of a standard Java hash map
+must pay the expense for potential use of features. These features aren't
+always employed, and certain rarely together, for a single map instance.
+
+The Java language provides mechanisms that allow you more flexibility in
+implementing lifetime management policies. These advanced features are exposed
+via the \class{java.lang.ref.Reference} family of classes and thread local
+storage. Programmers very often confuse these mechanisms, and there is quite a
+bit of disinformation on the Internet; there is especially confusion over the use
+of soft and weak references. Therefore, it is important for you to take some care
+in understanding the low-level features.
+
+\paragraph{Weak References (referencing an object without inhibiting its
+reclaimability)}
+\index{Weak References}
+
+The constructor for a \class{WeakReference} takes an object as a parameter. The
+resulting instance of \class{WeakReference} is said to \emph{weakly reference}
+that other object. A weakly referenced object will be garbage collectable, or
+not, independently of being referenced from the \class{WeakReference} object; the
+weak reference provides a non-owning handle to another object. This is a
+sometimes helpful combination, to be able to refer to the object, without
+inhibiting it being reclaimed as it normally would. To tunnel through the level
+of indirection introduced by the weak reference, you call its \code{get} method.
+If this method returns \code{null}, then you know that the referenced object has
+been reclaimed. \autoref{chapter:correlted-lifetimes} discusses how to leverage
+this functionality for an alternative implementation of the correlated lifetime
+pattern.
+
+There are two issues that you must handle with care. First, even though the weak
+reference itself does not prolong the lifetime of the referenced object, once you
+call \code{get}, you now have a regular reference to that object. If this
+reference is stored in a local variable, or in a field of another object, or in a
+collection, then you have now altered its lifetime. Once normally referenced, the
+underlying object now obeys the lifetime rules discussed earlier. Second, if you
+need to be informed that the underlying object has been reclaimed, you must use
+the \emph{reference queue} mechanism, which will be discussed shortly.
+
+\paragraph{Soft References}
+\index{Soft References}
+
+The constructor for a \class{SoftReference} also takes an object as a parameter.
+The object lives as it normally would until the point in time when there are no
+other normal references to the object. When an object is only softly or weakly
+referenced, then it enters a special transitionary lifetime state. The \jre will
+keep this object around, for as long as there is enough free Java heap. Once heap
+grows tight, the \jre will begin treating the soft references as if they were
+weak references --- the soft references that the \jre choses to discard will no
+longer inhibit the reclaimability of the softly referenced objects. This
+discarding of soft references is sometimes referred to as ``clearing'' soft
+references.
+
+The Java language specification makes no specific requirements as to how \jre
+implementations should chose which soft references to discard. The only
+requirement is that the \jre must have cleared \emph{all} soft references before
+it throws an \class{OutOfMemoryException}. That is, it must have reclaimed all
+objects that are uniquely owned by soft (or soft and weak) references before it
+gives up, and fails due to heap exhaustion. Early \jres tended to make poor
+decisions, when choosing how to clear soft references. One \jre would wait until
+the heap was exhausted, at which point it would clear all soft references. Most
+1.5 and 1.6 \jres use a more sophisticated least recently used (LRU) heuristic.
+They keep track of the last time \code{get} was called, on a
+per-\class{SoftReference} basis, and begin to clear soft references if their
+last use was long ago. Sometimes, they measure this distance relative to the
+rate of object allocation; this modified heuristic will not clear soft
+references if your application isn't allocating objects at a high rate.
+
+For those \jres that use some sort of LRU heuristic, soft references can form the
+basis for implementing caches. You must be careful not to depend on this
+heuristic blindly. You should first run an experiment against the \jre to which
+you intend to deploy: implement a simple cache with soft references (see
+\autoref{chapter:time-space-tradeoffs}); enable verbose garbage collection, and
+observe the messages that indicate soft references being cleared. With an
+LRU-based soft reference clearing heuristic, you should observe that clearing
+occurs at a constant rate. If you observe lulls and spikes in clearing, then you
+must not depend on soft references for implementing your caches!
+
+\paragraph{The Soft Reference Condundrum}
+
+
+\paragraph{Reference Queues}
+\index{Reference Queues}
+
+
+
+
+\begin{shortlisting}
+Rf
+\end{shortlisting}
+
+\paragraph{Phantom References and Finalization}
+\index{Finalization of objects}
+\index{Phantom References}
+
+\paragraph{Thread-local Storage}
+\index{Thread-local Storage}
+
 
 
