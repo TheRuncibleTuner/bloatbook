@@ -55,11 +55,14 @@ garbage.
 	\subfigure[A live data
 	structure.]{\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability1}}
 	\hspace{0.18\textwidth}
-	\subfigure[Then, a link is clipped.]{\label{fig:reachability-b}\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability2}}
+	\subfigure[Then, the dominating reference is
+	clipped.]{\label{fig:reachability-b}\includegraphics[width=0.445\textwidth]{part4/Figures/lifetime/reachability2}}
 	\caption{The garbage collector uses the references between objects to
 	determine what objects are collectable. The data structure on the left is
-	filled entirely with live objects; the one on the right, after a link is
-	clipped, now contains some collectable objects.}
+	filled entirely with live objects. The one on the right, after a link is
+	clipped, now contains some collectable objects; all objects reachable only by
+	traversing a \emph{dominating reference}, i.e. those \emph{dominated objects},
+	will be collectable, as well.}
 	\label{fig:reachability}
 \end{figure}
 
@@ -80,7 +83,7 @@ owner of the shaded objects. The graph property that describes unique ownership
 is called \emph{dominance}; \index{Dominance} the clipped reference is said to
 dominate those objects that it uniquely owns.
 
-\paragraph{The Collection Schedule}
+\paragraph{The Collection Schedule and Safe Points}
 The garbage collector does not reclaim memory immediately after an object's last
 use. Instead, to amortize the costs involved in reclamation, the garbage
 collector often lets reclaimable objects pile up for a while, and reclaims memory
@@ -92,6 +95,54 @@ the collector reclaims unused memory, and the process starts again. In this way,
 memory consumption over time often assumes a sawtooth edge, such as those shown
 in \autoref{fig:timeline-base-session-temps-with-cache}.
 \index{Sawtooth Pattern}
+
+\paragraph{GC Safe Points}
+\index{Safe Points, use for Garbage Collection}
+
+In most production \jres, garbage collection is, in normal execution, not run at
+arbitrary points in the code. For example, in the above method \code{Foo.bar},
+even though the object referred to by \code{localVariableReference1} becomes
+unreachable before the end of the invocation, most \jres will not notice this
+until a period of time after the assignment to \code{null} at line 6. This delay
+comes about because the garbage collector typically only runs when threads reach
+certain \emph{safe points} in the code. Safe points commonly include the
+beginning or end of method invocations, the end of each loop iteration, and
+points surrounding native method invocations. Therefore, the earliest time at
+which the object referred to by \code{localVariableReference1} could be reclaimed
+is after the first iteration of the loop; it could even possibly be the end of
+the invocation, if the loop iterates zero times.
+
+This is not to say that the garbage collector runs at every safe point, or that
+it waits for all threads to reach a safe point before proceeding. Any thread that
+tries, but fails, to allocate a new object will of course result in a garbage
+collection at whatever line of code that allocation is found. At that point in
+time, the other threads will continue executing up until their next safe point,
+or their own failure to allocate memory, at which point garbage collection can
+proceed.
+
+\index{Safe Points, use for Garbage Collection}
+
+In most production \jres, garbage collection is, in normal execution, not run at
+arbitrary points in the code. For example, in the above method \code{Foo.bar},
+even though the object referred to by \code{localVariableReference1} becomes
+unreachable before the end of the invocation, most \jres will not notice this
+until a period of time after the assignment to \code{null} at line 6. This delay
+comes about because the garbage collector typically only runs when threads reach
+certain \emph{safe points} in the code. Safe points commonly include the
+beginning or end of method invocations, the end of each loop iteration, and
+points surrounding native method invocations. Therefore, the earliest time at
+which the object referred to by \code{localVariableReference1} could be reclaimed
+is after the first iteration of the loop; it could even possibly be the end of
+the invocation, if the loop iterates zero times.
+
+This is not to say that the garbage collector runs at every safe point, or that
+it waits for all threads to reach a safe point before proceeding. Any thread that
+tries, but fails, to allocate a new object will of course result in a garbage
+collection at whatever line of code that allocation is found. At that point in
+time, the other threads will continue executing up until their next safe point,
+or their own failure to allocate memory, at which point garbage collection can
+proceed.
+
 
 \paragraph{Configuration Settings}
 You can guide the frequency of collection, which will change the slope of this
@@ -157,8 +208,8 @@ requires a suspciously large maximum size for Permspace.
  
 \begin{example}{Class Duplication and Excessive Permspace}
 A Java Enterprise Edition (JEE) server application is deployed as 100 separate
-applications, each in its own \code{war} file. Each \code{war} file contains
-duplicate class files for logic common to some, or even all applications.
+applications, each in its own Web Application Archive (termed \code{war}) file.
+Each \code{war} file contains duplicate class files for logic common to some, or even all applications.
 The development team didn't think to worry about this, figuring that the
 \jre would notice and remove the duplication. They were wrong, due to
 requirements of the JEE specification, and suffered from excessive Permspace
@@ -172,24 +223,6 @@ the result that the class duplication is not removed. The server application
 required 500 megabytes for its Permspace heap, despite having under 100 megabytes
 of distinct class data.
 \end{example}
-
-\paragraph{The Lifetime of Statics and Class Unloading}
-\index{Class Unloading}
-\index{Static fields}
-
-The \jre allocates memory for every class, to store its static fields. This
-memory is often referred to as the \emph{class object} for the class.\index{Class
-Objects} Therefore, unless a class is \emph{unloaded} by the \jre, its class
-object will remain permanently resident. Unless you are using a module management
-system, such as OSGi~\cite{OSGi_2007}, this is unlikely to happen. Therefore,
-your design should anticipate that the memory for these static fields is
-permanently resident. This means that any static fields referencing an instance,
-rather than containing primitive data, will render that instance also permanently
-resident. Unless, that is, you take action to explicitly clip the static field
-reference, by assigning the field to null. Otherwise, that instance will be
-forever reachable along a path from some garbage collection root through the
-static field reference. In this way, storing a reference in a \code{static} field
-of an class is one way to implement a permanently resident lifetime policy.
 
 
 %% DO WE NEED THIS?
@@ -290,59 +323,8 @@ finishes, these two objects will become candidates for garbage collection.
 		\label{fig:limbo-exit}
 \end{figure}
 
-\begin{table}
-\centering
-	\begin{tabular}{ll} \toprule reachable only from  & moment
-	when object exits limbo \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
-			%
-			nothing & immediately
-        	\\
-        	%
-        	local variable & after scope exits
-        	\\ \addlinespace
-        	%
-        	instance field of an object & 
-        	when that object exits limbo %(could be \emph{never} --- memory leak)
-        	\\
-        	%
-        	static field of an object &
-        	when that object's class is unloaded
-        	%
-        	\\ \addlinespace
-        	field of \class{WeakReference} & immediately
-        	\\
-        	%
-        	field of \class{SoftReference} & approximately
-        	LRU%$^{**}$
-        	%
-        	\\
-        	$\ldots$ with \class{ReferenceQueue} & $\ldots$ then, after removed
-        	from queue
-        	%
-        	\\ \addlinespace
-        	entry in thread local storage & when that thread dies
-        	%
-        	\\ 
-        \bottomrule
-    \end{tabular}
-	\caption{When, or
-	even whether, an object becomes a candidate for reclamation depends upon how
-	your program references it. If these references aren't explicitly overwritten, e.g. by your
-	code expliclty assigning the reference to \code{null}, then an object only
-	becomes a candidate under certain restricted circumstances.
-%	The point when an object exits limbo depends on 
-	%decisions under programmer control: it depends on how the object is
-	%referenced.
-	%older {\jre}s	use very poor heuristics for handling soft references; see the
-	% body for more detail.
-	%, it will be reclaimed
-	%under certain rules, or may be part of a memory leak
-	}
-	\label{tab:limbo-exit}
-\end{table}
-
 Depending on how the object is referenced by your application, it will
-transition from in-use to garbage-collectible in a different manner. There are
+transition from in-use to garbage-collectable in a different manner. There are
 eight ways an object may be referenced. It can be referenced by a:
 
 \begin{enumerate}
@@ -356,7 +338,7 @@ eight ways an object may be referenced. It can be referenced by a:
   \item some combination of the above
 \end{enumerate}
 
-The first seven are cases of \emph{unique} ownership of an object. There exists
+The first seven are cases of unique ownership of an object. There exists
 only one path, via that particular reference, to reach the object. The eight case
 is one of \emph{shared} ownership. After your program creates an object, it
 references the object in one or more of these eight ways. The ownership of an
@@ -398,67 +380,116 @@ class Foo {
 % Still, one can't always rely on automatic mechanisms to guide an object out of
 % limbo in a timely fashion.
 
-\paragraph{GC Safe Points}
-\index{Safe Points, for Garbage Collection}
+\begin{table}
+\centering
+	\begin{tabular}{ll} \toprule uniquely owned by  & 
+	when object becomes candidate for reclamation \\ \cmidrule(r){1-1}
+	\cmidrule(l){2-2}
+			%
+			nothing & immediately
+        	\\
+        	%
+        	local variable & after scope exits, e.g. method returns
+        	\\ \addlinespace
+        	%
+        	instance field of an object & 
+        	when that object becomes reclamation candidate
+        	\\
+        	%
+        	static field of a class &
+        	when that class is unloaded
+        	%
+        	\\ \addlinespace
+        	field of \class{WeakReference} & immediately
+        	%
+        	\\
+	       	\ldots with \class{ReferenceQueue} &
+        	immediately placed on queue, then after queue is polled
+        	%
+        	\\ \addlinespace
+        	field of \class{SoftReference} & approximately
+        	LRU%$^{**}$
+        	%
+        	\\
+	       	\ldots with \class{ReferenceQueue} &
+        	after LRU, placed on queue, then after queue is polled
+        	%
+        	\\ \addlinespace
+        	entry in thread local storage & when that thread dies
+        	%
+        	\\ 
+        \bottomrule
+    \end{tabular}
+	\caption{When an object becomes a candidate for reclamation. The dominating 
+	reference can be explicitly overwritten, e.g. by your code expliclty assigning the
+	reference to \code{null}. Otherwise, an object only automatically becomes a
+	candidate under the restricted circumstances shown here.
+%	The point when an object exits limbo depends on 
+	%decisions under programmer control: it depends on how the object is
+	%referenced.
+	%older {\jre}s	use very poor heuristics for handling soft references; see the
+	% body for more detail.
+	%, it will be reclaimed
+	%under certain rules, or may be part of a memory leak
+	}
+	\label{tab:limbo-exit}
+\end{table}
+\paragraph{The Lifetime of Local Variables}
 
-In most production \jres, garbage collection is, in normal execution, not run at
-arbitrary points in the code. For example, in the above method \code{Foo.bar},
-even though the object referred to by \code{localVariableReference1} becomes
-unreachable before the end of the invocation, most \jres will not notice this
-until a period of time after the assignment to \code{null} at line 6. This delay
-comes about because the garbage collector typically only runs when threads reach
-certain \emph{safe points} in the code. Typically, safe points include the
-beginning and end of method invocations, and the end of each loop iteration.
-Therefore, the earliest time at which the object referred to by
-\code{localVariableReference1} could be reclaimed is after the first iteration of
-the loop; it could even possibly be the end of the invocation, if the loop
-iterates zero times.
+If an object is uniquely owned by a local variable of a method, the \jre will
+begin to consider reclaming its storage no sooner than when the local variable's
+scope exits. Common examples of this are when a loop continues to the next
+iteration as in the case of \code{localVariableReference2}, when the body of a
+clause of an if/then/else statement finishes, or when the method invocation
+returns as in the case of \code{localVariableReference1}. The specific
+circumstances depend on the scope of the variable that references the object. 
 
-This is not to say that the garbage collector runs at every safe point, or that
-it waits for all threads to reach a safe point before proceeding. Any thread that
-tries, but fails, to allocate a new object will of course result in a garbage
-collection at whatever line of code that allocation is found. At that point in
-time, the other threads will continue executing up until their next safe point,
-or their own failure to allocate memory, at which point garbage collection can
-proceed.
+\paragraph{The Lifetime of Statics, and Class Unloading}
+\index{Class Unloading}
+\index{Static fields}
 
-%The rest of the discussion will not touch on this topic, instead
+The \jre allocates memory for every class, to store its static fields, such as
+the one on line 13 in the above example. This memory, to store all static fields
+plus some bookkeeping information, is often referred to as the \emph{class
+object} for the class.\index{Class Objects} It is possible for the same class to
+be loaded into multiple class loaders; in this way, using more than one class
+loader lets you avoid the problem of colliding use of static fields in separately
+developed parts of the code. A static field therefore only exits scope when the
+class object is reclaimed, which occurs when the respective class is unloaded, by
+the \jre, from its class loader. 
 
-\paragraph{Local Variable References}
+If a class is never unloaded, which is likely to the be case for your
+application, then that class object will remain permanently resident. The
+\emph{default} class loader, which is the one that will be used unless you
+specify otherwise, never unloads application classes. 
 
-If, as in the \class{ParsePosition} or \class{SimpleDateFormat} objects from our
-example, the object is referenced only by a local variable of a method, the \jre
-will begin to consider reclaming its storage once the local variable's scope
-exits. Common examples of this are when a loop continues to the next iteration,
-when the body of a clause of an if/then/else statement finishes, or when the
-method invocation returns; the specific circumstances depend on the scope of the
-variable that references the object: e.g. variable declared within a loop body,
-an if block, or at the top level of a method, respectively. Examples of the three
-are shown here:
-\begin{shortlisting}
-void bar(int N) {
-   Object topLevel_LocalVariable = new ...;
-   for (int i = 0; i < N; i++) {
-      Object loop_LocalVariable = new ...;
-      if (...) {
-         Object if_LocalVariable = new ...;
-      }
-   }
-}
-\end{shortlisting}
+If you need classes to be unloaded, then you must manually specify a class loader
+to use. Unloading a class is then accomplished by ensuring that all references to
+both the class object and your custom class loader, are set to \code{null}. This
+will render the class unloadable, and will also render objects referenced by
+static fields all classes loaded into that class loader as garbage collectable.
+There exist module management systems, such as OSGi~\cite{OSGi_2007}, that
+facilitate this task.
 
-\paragraph{Field References}
+Due to these complexities, your design should generally anticipate that the
+memory for these static fields is permanently resident. This means that any
+static fields referencing an instance, rather than containing primitive data,
+will render that instance also permanently resident. Unless, that is, you take
+action to explicitly clip the static field reference, by assigning the field to
+null. Otherwise, that instance will be forever reachable along a path from some
+garbage collection root through the static field reference. In this way, storing
+a reference in a \code{static} field of an class is one way to implement a
+permanently resident lifetime policy.
 
-If an object is referenced by an instance field of another object
-In this case, the only device at your disposal is assigning references to
-objects to \code{null}. If this is the only reference to the object, i.e. that reference
-uniquely owns the object, then you are in luck. The object will now be a candiate
-for garbage collection. Its memory will be free for future allocations once the
-garbage collector notices its candidacy and takes action.
+\paragraph{The Lifetime of Instance Field References}
 
-If the object is referenced only by a
-field of another object, then it must wait for that other object to exit limbo
-before it can do so. 
+As long as an object \code{B} is dominated by an instance field of another object
+\code{A}, then these two objects will live and die together. The only device at
+your disposal to make \code{B} garbage collectable before \code{A} is to break
+all paths of references from \code{A} to \code{B}. In simple cases, where
+\code{B} is directly referenced by a field of \code{A}, then reassigning that
+reference to \code{null} will do the trick. After doing so, the \code{B} object
+will now be a candiate for garbage collection. 
 
 
 
@@ -499,7 +530,7 @@ before it can do so.
 
 
 
-\paragraph{Soft and Weak References}
+\paragraph{Soft and Weak References, and Reference Queues}
 \index{Soft References}
 \index{Weak References}
 
@@ -521,7 +552,7 @@ become an uncontrolled mess once you pass these objects to third-party libraries
 In the above example, if you call the \code{parse} method of a
 \class{SimpleDateFormat} object, the method contract says nothing about how it
 treats the given string or \class{ParsePosition} passed as parameters. 
-Consider the case where you need the string to become garbage collectible soon
+Consider the case where you need the string to become garbage collectable soon
 after having parsed it, but the formatter maintains a reference in order to avoid
 reparsing the same string in back to back calls. This calls
 to mind the worst of the days of explicitly managing memory in a language like C.
