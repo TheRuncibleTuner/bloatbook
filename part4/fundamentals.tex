@@ -683,18 +683,19 @@ references.
 
 The Java language specification makes no specific requirements as to how \jre
 implementations should chose which soft references to discard. The only
-requirement is that the \jre must have cleared \emph{all} soft references before
-it throws an \class{OutOfMemoryException}. That is, it must have reclaimed all
-objects that are uniquely owned by soft (or both soft and weak) references before
-it gives up, and fails due to heap exhaustion. Early \jres tended to make poor
-decisions, when choosing how to clear soft references. One \jre would wait until
-the heap was exhausted, at which point it would clear all soft references. Most
-1.5 and 1.6 \jres use a more sophisticated least recently used (LRU) heuristic.
-They keep track of the last time \code{get} was called, on a
-per-\class{SoftReference} basis, and begin to clear soft references if their last
-use was long ago. Sometimes, they measure this distance relative to the rate of
-object allocation; this modified heuristic will not clear soft references if your
-application isn't allocating objects at a high rate.
+requirement imposed by the language specification is that the \jre must have
+cleared \emph{all} soft references before it throws an
+\class{OutOfMemoryException}. That is, it must have reclaimed all objects that
+are uniquely owned by soft (or both soft and weak) references before it gives up,
+and fails due to heap exhaustion. Early \jres tended to make poor decisions, when
+choosing how to clear soft references. One \jre would wait until the heap was
+exhausted, at which point it would clear all soft references. Most 1.5 and 1.6
+\jres use a more sophisticated least recently used (LRU) heuristic. They keep
+track of the last time \code{get} was called, on a per-\class{SoftReference}
+basis, and begin to clear soft references if their last use was long ago.
+Sometimes, they measure this distance relative to the rate of object allocation;
+this modified heuristic will not clear soft references if your application isn't
+allocating objects at a high rate.
 
 For those \jres that use some sort of LRU heuristic, soft references can form the
 basis for implementing caches. You must be careful not to depend on this
@@ -781,6 +782,7 @@ to avoid race conditions. However, this introduces lock contention problems:
 class A {
    static ReferenceQueue<SoftReference<B>> queue;
    SoftReference<B> b;
+   
    static void cleanupQueue() {
       synchronized(queue) {
          SoftReference<B> bb;
