@@ -853,16 +853,19 @@ may have problems. The \jre knows nothing about this external state, and so will
 not schedule the finalizer thread if an external resource is exhausted.
 
 Furthermore, the specification is very lax about whether finalizers will be run
-before program termination. It is true that you can ask the \jre to attempt to
-finalize objects before the program terminates, by calling the deprecated
-\code{System.runFinalizersOnExit(true)}. However, most \jres these days run only
-a partial finalization, if you ask. It is hard for the \jre to do the right thing
-in a deadlock free manner. Should it only schedule the finalizer thread, which
-would run any pending finalization? This would be safe, and is what the \jre will
-do if you ask. But this misses all the currently-live objects that would have
-have been finalized, had the program reached a point where they were reclaimable.
-The \jre can't unwind, on exit, all the Java references thta keep those objects
-alive.
+before program termination. You can ask the \jre to attempt to finalize objects
+before the program terminates, by calling
+\code{System.runFinalizersOnExit(true)}, a deprecated part of the API. However,
+most \jres these days run only a partial finalization, if you ask. It is hard for
+the \jre to do the right thing in a deadlock free manner. Should it only schedule
+the finalizer thread, which would run any pending finalization? This would be
+safe, and is what the \jre will do if you ask. But this misses all the
+currently-live objects that would have have been finalized, had the program
+reached a point where they were reclaimable. The \jre can't unwind, on exit, all
+the Java references thta keep those objects alive. Also, there is no analogous
+request to have the \jre run a garbage collection on exit. Hence, even for those
+objects which are actually ready to be finalized, the \jre won't do so on exit.
+It is for these reasons that the API has been deprecated.
 
 \paragraph{Thread-local Storage}
 \index{Thread-local Storage}
