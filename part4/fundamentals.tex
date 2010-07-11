@@ -756,23 +756,36 @@ task, but they are necessary for most uses of weak and soft references. You can
 construct a reference wrapper with an associated reference queue. If you do so,
 then the associated object, when the \jre decides to clip the weak or soft
 reference, will not become immediately reclaimable. Instead, two special things
-happen. First, the wrapper, with the referent object in tow, will be placed on
-the associated reference queue. Second, once the wrapper is on the queue, the
-wrapper will change its behavior to strongly reference the referent object.
+happen. First, the wrapper will be placed on the associated reference queue.
+Second, once the wrapper is on the queue, the wrapper will change its behavior to
+no longer reference the referent object. The latter effect complicates the clean
+up process: the wrapper is placed on the queue, but calls to \code{get} no longer
+return the referent object. 
 
 The reference queue becomes a way for the \jre to notify you that it is ready to
-clip the reference. It is now up to you to finish the job. If you don't finish
+clip the reference.  By associating a reference queue with weak and soft
+references, you are given a cleanup hook.
+% It is now up to you to finish the job.
+With this hook, you can free up resources that are tied to the association that
+the weak or soft references has established. For example, you have have native
+resources tied to the association, such as open file descriptors. You can also
+clean up the memory consumed by the reference objects themselves, such as by
+assigning the \code{WeakReference<B> b} field to null in the example above. Since
+any calls to \code{get}, from this hook, will return \code{null}, either your
+hooks must not require access to the referent object, or you need to secure some
+other means of accessing it.
+
+One important task is cleaning up the reference queue itself. If you don't finish
 the job properly, then the reference queue will become a source of memory leaks.
 In order to detect that an object has been placed on the queue, your only
 recourse is to call the \code{poll} method of the associated reference queue.
 This will return the reference wrapper that is ready to be clipped, after
-removing it from the queue.
-
-To avoid a memory leak in the reference queue, you must call \code{poll} at least
-at the same rate at which you create reference wrappers. That is, just before you
-create a reference wrapper, you must also poll the reference queue, preferably in
-a loop, to see if any previously created wrappers are ready to be clipped. This
-sounds complicated to get right, and it is. Be careful! 
+removing it from the queue. To avoid a memory leak in the reference queue, you
+must call \code{poll} at least at the same rate at which you create reference
+wrappers. That is, just before you create a reference wrapper, you must also poll
+the reference queue, preferably in a loop, to see if any previously created
+wrappers are ready to be clipped. This sounds complicated to get right, and it
+is. Be careful!
 
 If you are directly associating an \class{A} with a \class{B}, it is 
 necessary to store the reference queue in a static field; storing it in an
@@ -799,9 +812,57 @@ class A {
 }
 \end{shortlisting}
 
-\paragraph{Phantom References and Finalization}
+
+\paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
 \index{Phantom References}
+
+Java provides two other closely related cleanup hooks, in the form of
+finalization and phantom references. These hooks are called just after the
+garbage collector has discovered that the object is collectible, but before its
+memory is reclaimed. If you implement a \code{finalize()} method in a class, then
+every instance of that class will go through a finalization process. After being
+discovered to be garbage, these instances will be enqueued on a special queue,
+usually termed the \emph{finalizer queue}. Most \jres spawn a single thread,
+termed the finalizer thread, that periodically scans the finalizer queue,
+invoking the \code{finalize} method on the enqueued objects.
+
+Phantom references offer a somewhat more refined version of this pre-reclamation
+hook. First, with phantom references, you can associate a cleanup hook on a
+per-object basis, rather than, as is the case with finalization, on a per-class
+basis. Second, phantom references give you the option of having more than one
+cleanup queue and thread, in contrast to finalization where there is a single
+finalizer queue and (usually) a single finalizer thread.
+
+You can use the hooks offered by finalization or phantom references to free up
+resources that are implicitly associated with an object. Any Java objects
+uniquely owned by this object will be reclaimed in the normal course of garbage
+collection. It is those resources that are \emph{implicitly} tied to a Java
+object, such as file descriptors, socket connections, and database resources such
+as compiled queries, that require special attention.
+
+You must be very careful in relying on finalization or phantom references. The
+Java language specification provides no assurances of how often, or even whether,
+finalization will be run on an object. In the normal course of program execution,
+eventually the finalizer will run. This is because the finalizer queue consumes
+Java heap, and hence the finalizer thread will always do whatever finalization is
+possible before the \jre gives up due to heap exhaustion. However, if your Java
+objects serve as proxies for some native, or remote, storage, and the space
+consumed by the Java proxies is small compared to the external state, then you
+may have problems. The \jre knows nothing about this external state, and so will
+not schedule the finalizer thread if an external resource is exhausted.
+
+Furthermore, the specification is very lax about whether finalizers will be run
+before program termination. It is true that you can ask the \jre to attempt to
+finalize objects before the program terminates, by calling the deprecated
+\code{System.runFinalizersOnExit(true)}. However, most \jres these days run only
+a partial finalization, if you ask. It is hard for the \jre to do the right thing
+in a deadlock free manner. Should it only schedule the finalizer thread, which
+would run any pending finalization? This would be safe, and is what the \jre will
+do if you ask. But this misses all the currently-live objects that would have
+have been finalized, had the program reached a point where they were reclaimable.
+The \jre can't unwind, on exit, all the Java references thta keep those objects
+alive.
 
 \paragraph{Thread-local Storage}
 \index{Thread-local Storage}
