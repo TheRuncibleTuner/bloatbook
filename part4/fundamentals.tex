@@ -650,6 +650,7 @@ Second, you must be careful to avoid race conditions, such as:
 \begin{shortlisting}
 class A {
    WeakReference<B> b;
+   
    B getB() {
       if (b.get() != null) {
          return b.get();
