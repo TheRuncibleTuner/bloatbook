@@ -867,8 +867,47 @@ request to have the \jre run a garbage collection on exit. Hence, even for those
 objects which are actually ready to be finalized, the \jre won't do so on exit.
 It is for these reasons that the API has been deprecated.
 
+Given these downsides, it is best for you to implement a more robust lifetime
+management strategy. If you can establish a correlated lifetime pattern, such as
+that the external storage should be reclaimed when an event occurs, or when a
+method returns, then you should do so.
+
 \paragraph{Thread-local Storage}
 \index{Thread-local Storage}
 
+The last advanced memory management feature offered by Java is the ability to
+associate memory with a thread. Thread-local storage provides a way to avoid
+synchronization costs, often at the expense of some degree of wasted memory. To
+avoid synchronization, you often need to replicate some data structures. This
+feature is, of course, only helpful if your program runs with multiple threads.
 
+Consider an example of using the \class{SecureRandom} class. Instances of this
+class provide a stream of pseudo-random numbers, in a way that is
+cryptographically strong. If you have a singleton instance of this class, you may
+experience scalability problems due to lock contention; the contention is hidden
+within the \class{SecureRandom} implementation. You can use thread-local storage
+to avoid this contention, at the (in this case, small) expense of having one
+instance per worker thread:
+\begin{shortlisting}
+class MyRandomNumberGenerator {
+   static ThreadLocal<SecureRandom> rng = new ThreadLocal<SecureRandom>() {
+      protected SecureRandom initialValue() {
+         SecureRandom random = new SecureRandom();
+         random.setSeed(/*some good seed*/);
+         return random;
+      }
+   }
+   
+   public int next() {
+      return rng.get().next(32); // need 32 bits of data
+   }
+}
+\end{shortlisting} 
 
+Data stored in thread-local storage will live as long as the thread. If you need
+the memory to be reclaimed before the thread terminates, you must explicitly set
+the storage to \code{null} via a call to \code{rng.set(null)}. If you are using
+the \class{java.util.concurrent} thread pool framework, then you can use its
+hooks that are called after a task, or after a thread, terminates. You can do so
+by extending the \class{ThreadPoolExecutor} and overriding the
+\code{afterExecute} and \code{terminated} methods, respectively.
