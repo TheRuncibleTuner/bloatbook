@@ -7,26 +7,42 @@
 
 
 \chapter{Time-space Tradeoffs}
-\label{balance-time-and-space}
+\index{Time-space Tradeoffs}
 \label{chapter:time-space-tradeoffs}
 
+Typically, objects die soon after the point in time of their last use, once all
+dominating references are removed or naturally go out of scope. Without any
+optimizations, objects live and die according to this \emph{natural lifetime}
+that was discussed in \autoref{sec:natural-lifetime}. Sometimes it is beneficial
+to extend, or shorten, the natural lifetime of an object. For example, if every
+request creates an object of the same type, with the same, or very similar,
+fields, then you should consider caching or pooling a single instance of this
+object. There are four important cases of time-space tradeoffs. The first covers
+the situation where recomputing attributes, rather than storing them, is a better
+choice. The next three cover situations where spending memory to extend the
+lifetime of certain objects saves sufficient time to be worthwhile: caches,
+sharing pools, and resource pools.
 
 
-Up till now, the lifetime requirements of objects have been treated as a hard
-truth. Every object has a \emph{natural} lifetime.
-The objects that are correlated with a program phase should naturally die when
-the phase ends. Unless, that is, there is some profit in having it live longer.
-For example, if an object with the same, or very similar, fields is created in
-subsequent requests, you may wish to extend this objects lifetime.
+%Up till now, the lifetime requirements of objects have been treated as a hard
+%truth. Every object has a \emph{natural} lifetime.
+%The objects that are correlated with a program phase should naturally die when
+%the phase ends. Unless, that is, there is some profit in having it live longer.
 
-\callout{def:naturallifetime}{The Natural Lifetime of Objects}{
-The \emph{Natural Lifetime} of an object is the duration of time governed by
-its first and last use, in the absence of any optimizations.}
+%\callout{def:naturallifetime}{The Natural Lifetime of Objects}{
+%The \emph{Natural Lifetime} of an object is the duration of time governed by
+%its first and last use, in the absence of any optimizations.}
 
-This chapter discusses when it is profitable, either in terms of time or space,
-to extend or shorten the natural lifetime of an objects. There are three
-important cases of objects that need to be reclaimed in some deferred fashion:
-caches, sharing pools, and resource pools.
+%This chapter discusses when it is profitable, either in terms of time or space,
+%to extend or shorten the natural lifetime of an objects. 
+
+\section{Computed versus Stored Attributes}
+\index{Computed versus Stored Attributes}
+If the data stored in an object is cheap to recompute or refetch from an
+external data source, then a good policy would be to treat the object as a
+temporary. Performing a few dozen machine instructions is very likely to be a
+worthwhile tradeoff, if memory consumption is the limiting resource for
+scaling up\index{Scaling Up}. 
 
 
 \section{Caches}
@@ -35,11 +51,6 @@ caches, sharing pools, and resource pools.
 
 \marginpar{A \textbf{Cache} is a map that holds expensive data values, each
 accessed by a unique key.}
-If the data stored in an object is cheap to recompute or refetch from an
-external data source, then a good policy would be to treat the object as a
-temporary. Performing a few dozen machine instructions is very likely to be a
-worthwhile tradeoff, if memory consumption is the limiting resource for
-scaling up\index{Scaling Up}. 
 You do have to be careful, though. Recall our earlier example that creates a new
 instance of the date parser \class{DateFormat} for each iteration of a
 loop. Here, as is quite common, something expensive to compute, that
@@ -210,17 +221,7 @@ persistent per thread? What's the point of a resource pool in this case?
 
 
 
-
-\section{Thread-local Storage}
-\index{Thread-local Storage}
-
-\section{Soft References}
-\index{Soft References}
-
-\section{Properly Draining a Reference Queue}
-Where does this go?
-
-\section{Tradeoffs Gone Wrong: Memory Leaks}
+%\section{Tradeoffs Gone Wrong: Memory Leaks}
 
 \begin{comment}
 
