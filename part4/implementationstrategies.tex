@@ -1,0 +1,30 @@
+\chapter{Implementation Practices for Sound Lifetime Management}
+
+Typically, objects die soon after the point in time of their last use, once all
+dominating references are removed or naturally go out of scope. Without any
+optimizations, objects live and die according to this \emph{natural lifetime}
+that was discussed in \autoref{sec:natural-lifetime}. Sometimes it is beneficial
+to extend, or shorten, the natural lifetime of an object. For example, if every
+request creates an object of the same type, with the same, or very similar,
+fields, then you should consider caching or pooling a single instance of this
+object. There are four important cases of time-space tradeoffs. The first covers
+the situation where recomputing attributes, rather than storing them, is a better
+choice. The next three cover situations where spending memory to extend the
+lifetime of certain objects saves sufficient time to be worthwhile: caches,
+sharing pools, and resource pools.
+
+
+% managing a reference queue
+
+\section{Safeguards}
+\subsection{Single Strong Reference Principle}
+\subsection{home base}
+
+\section{}
+\subsection{Annotations}
+
+\section{Safety Valves}
+
+\section{Managing Reference Queues}
+
+

@@ -1,3 +1,9 @@
+
+
+
+
+
+
 %correlated with need: saving space
 %deferred deletion: saving time
 
@@ -23,6 +29,20 @@ choice. The next three cover situations where spending memory to extend the
 lifetime of certain objects saves sufficient time to be worthwhile: caches,
 sharing pools, and resource pools.
 
+
+\begin{table}
+\centering
+	\begin{tabular}{rl}
+	\toprule
+	tradeoff mechanism & purpose \\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+	cache & amortizing time cost of a computation or data access
+	\\
+	sharing pool & amortizing space cost of duplicate data
+	\\
+	resource pool & avoiding excessive resource consumption
+	\\ \bottomrule
+	\end{tabular}
+\end{table}
 
 %Up till now, the lifetime requirements of objects have been treated as a hard
 %truth. Every object has a \emph{natural} lifetime.
@@ -145,7 +165,7 @@ headers across the elements in a pool. This is a topic that stretches notions of
 how to store data beyond the normal Java box, and so will be discussed, along
 with many similar matters, in \autoref{chapter:large-long-lived}.
 
-\section{Resource Pools: Amortizing Allocation Costs}
+\section{Resource Pools}
 \label{sec:resource-pools}
 \index{Resource Pool}
 
