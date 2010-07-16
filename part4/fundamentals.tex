@@ -705,7 +705,14 @@ basis for implementing caches. You must be careful not to depend on this
 heuristic blindly. You should first run an experiment against the \jre to which
 you intend to deploy: implement a simple cache with soft references (see
 \autoref{chapter:time-space-tradeoffs}); enable verbose garbage collection, and
-observe the messages that indicate soft references being cleared. With an
+observe the messages that indicate soft references being cleared. Making this
+observation is easier on an IBM than a Sun JVM. To do so on an IBM JVM, enable
+verbose garbage collection statistics (by adding \code{-verbose:gc} to the
+command line), and track lines of output of this form:
+\begin{shortlisting}
+<refs soft="27801" weak="3" phantom="0" dynamicSoftReferenceThreshold="19" maxSoftReferenceThreshold="32" />
+\end{shortlisting}
+It is the number of soft references you need to track. With an
 LRU-based soft reference clearing heuristic, you should observe that clearing
 occurs at a constant rate. If you observe lulls and spikes in clearing, then you
 must not depend on soft references for implementing your caches!
@@ -748,8 +755,9 @@ however, is that this construct now leaks memory. When the \class{B} objects are
 reclaimed, the map will still hold a strong reference to the reference object
 that was serving as a wrapper around that reclaimed \class{B}.
 
-\paragraph{Reference Queues}
+\paragraph{The Basics of Reference Queue Management}
 \index{Reference Queues}
+\label{sec:reference-queue-basics}
 
 Java provides \emph{reference queues} as a way to avoid this extra baggage, and
 to avoid memory leaks in the use of weak and soft references. Using reference
@@ -796,12 +804,12 @@ to poll the reference queue must be protected with critical sections, in order
 to avoid race conditions. However, this introduces lock contention problems:
 \begin{shortlisting}
 class A {
-   static ReferenceQueue<SoftReference<B>> queue;
+   static ReferenceQueue<B> refQueue;
    SoftReference<B> b;
    
    static void cleanupQueue() {
-      synchronized(queue) {
-         SoftReference<B> bb;
+      synchronized(refQueue) {
+         Reference<? extends B> bb;
          while ((bb = queue.poll()) != null) {
             // perform clean up bb
          }
@@ -813,7 +821,8 @@ class A {
    }
 }
 \end{shortlisting}
-
+\autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
+concurrency problem.
 
 \paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
