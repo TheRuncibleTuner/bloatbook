@@ -149,20 +149,68 @@ class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheSoftReference<K,V>> 
    
    protected void cleanupQueue() {
       SoftReference<V> v;
-      while( (v = refQueue.poll()) != null) { // lock contention!
+      // poll causes lock contention!
+      while( (v = refQueue.poll()) != null) {
          remove(v.k);
       }
    }
    
-   public void put(K key, V value) {
+   public V put(K key, V value) {
       cleanupQueue();
-      super.put(key, new CacheSoftReference<K,V>(key,value,refQueue));
+      return super.put(key, new CacheSoftReference<K,V>(key,value,refQueue));
    }
    
    public V get(K key) {
       cleanupQueue();
       return super.get(key);
    }
-}  
+}
 \end{shortlisting}
-This implementation still suffers from many problems. First, 
+This implementation still suffers from several critical problems. First, every
+call to \code{put} must check the reference queue for pending evictions in order
+to avoid unbounded growth of the eviction queue --- in the steady state,
+\code{put} calls are likely to cause evictions. Even though \code{get} calls
+won't cause evictions, in order to avoid pending evictions piling up as cached
+elements are discovered to be unused, every call to \code{get} must also poll for
+evictions. This can result in foiling the concurrency aspect of the
+\class{ConcurrentHashMap}. Second, if the cache as a whole goes unused for a long
+period of time, the pending evictions will pile up.
+
+The only way to fix the lock contention problem, at least as of Java 6, is to
+spawn a thread that periodically polls the reference queue for evicted entries.
+This will also fix the second problem. This spawned thread's \code{run} method
+will look just like the \code{cleanupQueue} method above, except that it should
+loop indefinitely, and call \code{refQueue.remove()} rather than \code{poll()};
+the former blocks until an eviction occurs (though you must still be careful to
+check the return value for \code{null}, despite what the Javadocs claim).
+
+At first sight, it would seem that you should be able to remove the calls to
+\code{cleanupQueue} from the \code{put} and \code{get} methods. This, after all,
+was the whole point of introducing the cleanup thread. However, this modified
+implementation, while an improvement, suffers from a new problem. Now, if you
+remove the \code{cleanupQueue} calls, when there is a large spike of \code{put}
+calls in a short period of time, you are at risk of running out of Java heap due
+to a large pileup of pending evictions.
+
+You must have a safety valve in place to prevent this situation. One possibility
+is to keep an approximate count of the number of \code{put} calls, and call
+\code{cleanupQueue} only periodically. In order to avoid lock contention in
+maintaining this count, you can do so in an unsynchronized way. There is still a
+pathologic possibility that every racey increment of the put counter won't
+actually increment the counter. If this worries you, you can use an
+\class{AtomicInteger}, at increased expense. Instead of calling
+\code{cleanupQueue} directly, the \code{put} method now calls a new
+\code{helpCleaner} method:
+\begin{shortlisting}
+   static private final int SAFETY_VALVE = 1000;
+   private void helpCleaner() {
+      if (putCount.incrementAndGet() >= SAFETY_VALVE) {
+         putCount.set(0);
+         cleanupQueue();
+      }
+   }
+\end{shortlisting}
+There is no reason for \code{get} calls to call this method. The only point of
+this safety valve is to avoid a sudden large influx of \code{put} calls. Indeed,
+in this final implementation, the \code{ConcurrentCache} class needn't override
+the \code{get} method of \code{ConcurrentHashMap}.
