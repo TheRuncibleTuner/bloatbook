@@ -32,14 +32,16 @@ coding practices.
 
 % managing a reference queue
 
-\section{Best Practices}
-\subsection{Safeguards}
-\subsubsection{Single Strong Reference Principle}
-\subsubsection{Home Base}
-\subsection{Safety Valves}
+\section{Lifetime Management Principles}
+
+\paragraph{Avoid Weak/Soft-Strong Reference Cycles}
+
+\paragraph{The Single Strong Reference Principle}	
+\paragraph{Home Base}
+\paragraph{Safety Valves}
 
 %\section{Example Applications of Lifetime Practices}
-\section{The Correlated Lifetime Pattern}
+\section{The Correlated Lifetime Patterns}
 
 \subsection{Annotations}
 
@@ -148,6 +150,8 @@ Unfortunately, both of these updated versions h?
 %%%%%%%%%
 
 
+\subsection{Phase/Request-Scoped Objects}
+
 \subsection{Listeners}
 
 \callout{listener-rule}{Listener Rule}{
@@ -254,7 +258,7 @@ with many similar matters, in \autoref{chapter:large-long-lived}.
 
 \subsection{Annotation Pool}
 
-\section{The Time-space Tradeoff Pattern}
+\section{The Time-space Tradeoff Patterns}
 There are four important cases of time-space tradeoffs. The first covers
 the situation where recomputing attributes, rather than storing them, is a better
 choice. The next three cover situations where spending memory to extend the
@@ -329,7 +333,7 @@ database uses to cache certain information about the query.
 
 
 
-\subsection{Concurrency Issues}
+\section{Concurrency Issues}
 \label{sec:lifetime-management-concurrency-issues}
 
 If your program operates with many concurrent threads, you have to program
