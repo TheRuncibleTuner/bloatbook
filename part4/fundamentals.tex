@@ -436,15 +436,70 @@ class Foo {
 	}
 	\label{tab:limbo-exit}
 \end{table}
-\paragraph{The Lifetime of Local Variables}
 
-If an object is uniquely owned by a local variable of a method, the \jre will
-begin to consider reclaming its storage no sooner than when the local variable's
-scope exits. Common examples of this are when a loop continues to the next
-iteration as in the case of \code{localVariableReference2}, when the body of a
-clause of an if/then/else statement finishes, or when the method invocation
-returns as in the case of \code{localVariableReference1}. The specific
-circumstances depend on the scope of the variable that references the object. 
+\paragraph{The Lifetime of Local Variables}
+\label{sec:lifetime-of-locals}
+Variables that are declared within a method body often have a lifetime that is
+bound to, at most, the duration of an invocation of that method.
+% If an object is uniquely owned by a local variable of a method, the \jre will
+% begin to consider reclaming its storage no sooner than when the local
+% variable's scope exits.
+Common examples of this are local variables, loop variables, and variables
+declared within some inner scope such as within the body of a loop or \code{if}
+statement. For these variables, when a loop continues to the next iteration as in
+the case of \code{localVariableReference2}, when the body of a clause of an
+if/then/else statement finishes, or when the method invocation returns as in the
+case of \code{localVariableReference1}, there is a good chance that the object
+referenced by that variable will be reclaimable.
+
+There are situations where an object may \emph{escape} the local scope in which
+it was declared.\index{Escaping Objects} In these cases, the object has
+\emph{shared ownership}\index{Shared Ownership} until this local scope exits.
+See below for further discussion of shared ownership. This is an example of an
+object escaping a local variable scope, so that it is, for the duration of that
+local scope, also owned by a static field of a class object:
+\begin{shortlisting}
+class Foo {
+   static Object static_obj;
+   
+   void foo() {
+      Object obj = new Object();
+      static_obj = obj;
+      ... // uses of obj
+   } // obj scope exits, but static_obj ownership persists
+}
+\end{shortlisting}
+The next section discusses the lifetime of static fields.
+
+The minimum that the Java language specification requires is that non-escaping
+objects that are declared within some scope inside of a method will be
+reclaimable by the time that scope exits. Many modern \jres try to optimize by
+inferring, when they can, the line of code at which an object will certainly
+never be used again. For this reason, some (but not all!) sources of memory
+drag\index{Drag} that would have been a problem with older \jres, are no longer
+an issue. For example, you can run this test program and, by inspecting the
+output, determine whether your \jre is performing this kind of optimization:
+\begin{shortlisting}
+/* Test for whether the optimizer detects that obj is reclaimable before the end of this method */
+static public void main(String[] args) {
+   Object obj = new Object() {
+      protected void finalize() {
+         System.out.println("Finalized");
+      }
+   };
+   System.out.println("StartOfLoop");
+   for (int i = 0; i < 1000000; i++) {
+       new HashSet().add(i);
+   }
+   System.out.println("EndOfLoop");
+}
+\end{shortlisting}
+If you see the \code{Finalized} message before the end of loop message, this is a
+sure sign that the \jre is being clever. Be careful to remember that seeing the
+finalized message is definitive evidence, but not seeing that message might only
+mean that your loop doesn't iterate enough times to cause a garbage collection to
+occur. You may need to experiment with the number of loop iterations, before
+coming to a conclusion.
 
 \paragraph{The Lifetime of Statics, and Class Unloading}
 \index{Class Unloading}
@@ -532,21 +587,6 @@ will now be a candiate for garbage collection.
 
 \paragraph{Shared Ownership}
 
-\begin{figure}
-\centering
-\subfigure[Diamond sharing.]{
-	\includegraphics[height=0.25\textheight]{part4/Figures/lifetime/reachability4}
-	}
-\qquad
-\subfigure[Root sharing.]{
-	\includegraphics[height=0.22\textheight]{part4/Figures/lifetime/reachability3}
-	}
-	\caption{When an object is shared, such as the shaded ones shown
-	here, care must be taken to clip all edges from emanating from outside of the
-	region you wish to reclaim.}
-	\label{fig:reachability-sharing}
-\end{figure}
-
 When you invoke a library method, there is no way in Java to know what the called
 method does with your object. It could very well squirrel away a reference to any
 object reachable from arguments you pass to the invocation. Despite your best
@@ -570,12 +610,25 @@ must be clipped before an object, the darkly shaded one, becomes a candidate for
 garbage collection. There are two other important things to note in this example.
 First, just as in \autoref{fig:reachability-b}, after clipping the three
 indicated references, an entire data structure, not just that darkly shaded
-object, becomes a candidate for reclamation.
- This structure consists of the two objects contained within the lightly shaded
- region. The second important thing to note is that you needn't clip the
- backwards edge, or any edge contained entirely within the data structure you no
- longer need.
+object, becomes a candidate for reclamation. This structure consists of the two
+objects contained within the lightly shaded region. The second important thing to
+note is that you needn't clip the backwards edge, or any edge contained entirely
+within the data structure you no longer need.
 
+\begin{figure}
+\centering
+\subfigure[Diamond sharing.]{
+	\includegraphics[height=0.25\textheight]{part4/Figures/lifetime/reachability4}
+	}
+\qquad
+\subfigure[Root sharing.]{
+	\includegraphics[height=0.22\textheight]{part4/Figures/lifetime/reachability3}
+	}
+	\caption{When an object is shared, such as the shaded ones shown
+	here, care must be taken to clip all edges from emanating from outside of the
+	region you wish to reclaim.}
+	\label{fig:reachability-sharing}
+\end{figure}
 
 \section{Advanced Java Lifetime Management Features}
  
