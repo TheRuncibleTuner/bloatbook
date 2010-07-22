@@ -34,11 +34,96 @@ coding practices.
 
 \section{Lifetime Management Principles}
 
-\paragraph{Avoid Weak/Soft-Strong Reference Cycles}
+\subsection{Avoid Weak/Soft-Strong Reference Cycles}
 
-\paragraph{The Single Strong Reference Principle}	
-\paragraph{Home Base}
-\paragraph{Safety Valves}
+\subsection{The Single Strong Owner Principle}
+
+\begin{shortlisting}
+class SingleStrongOwner {   
+   Set owned = new HashSet();
+   
+   protected void own(Object o) {
+      owned.add(o);
+   }
+}
+\end{shortlisting}
+
+\lstset{moredelim=[is][\underbar]{|}{|}}
+
+\begin{shortlisting}
+abstract class SingleStrongOwnerFactory {
+   abstract public SingleStrongOwner newOwner();
+   abstract protected void own(Object o);
+
+   public Map newMap() {
+      return new WeakHashMap() {
+         public Object put(Object key, Object value) {
+            own(key);
+            return super.put(key, value);
+         }
+      }
+   }
+}
+\end{shortlisting}
+
+It is often the case that the repository for ownership can reside within a
+thread. If so, you can leverage the thread local storage mechanism to implement
+a \class{SingleStrongOwnerFactory}:
+\begin{shortlisting}
+class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
+   ThreadLocal<SingleStrongOwner> threadLocals = new ThreadLocal<SingleStrongOwner>();
+   
+   protected void own(Object o) {
+      // the thread's SingleStrongOwner assumes ownership
+      return threadLocals.get().own();
+   }
+
+   public SingleStrongOwner newOwner() {
+      SingleStrongOwner sso = new SingleStrongOwner();
+      threadLocals.set(sso);
+      return sso;
+      // the caller will now have the only strong reference to the SingleStrongOwner repository, we maintain only a weak reference to it
+   }
+}
+\end{shortlisting}
+
+But this implementation suffers from memory drag. After the thread's task
+completes, the thread local storage maintains a reference to the
+\class{SingleStrongOwner} and all the owned objects. It will only be overwritten
+either when the same thread is scheduled to process a new task, or when the
+thread terminates. You could overcome this by adding a \code{clear} method, and
+inserting a call to it at the right place in your code:
+\begin{shortlisting}
+public void clear() {
+   threadLocals.set(null);
+}
+\end{shortlisting}
+However, this is a messy and error prone solution. An alternative solution is to
+rely on local variable scoping to automatically clean things up for you. When a
+task begins, you can grab a strong reference to the \class{SingleStrongOwner}
+repository, and have the thread local storage maintain only a weak reference to
+it:
+\begin{shortlisting}
+class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
+   ThreadLocal<WeakReference<SingleStrongOwner>> threadLocals = new ThreadLocal<WeakReference<SingleStrongOwner>>();
+      
+   protected void own(Object o) {
+      // the thread's SingleStrongOwner assumes ownership
+      return threadLocals.get().get().own();
+   }
+   
+   public SingleStrongOwner newOwner() {
+      SingleStrongOwner sso = new SingleStrongOwner();
+      threadLocals.set(new WeakReference(sso));
+      return sso;
+      // the caller has the only strong reference to the SingleStrongOwner repository, we maintain only a weak reference to it
+   }
+}
+\end{shortlisting}
+Now, all objects owned by the repository will be automatically reclaimable when
+the return value of \code{newOwner} goes out of scope.
+
+\subsection{Safety Valves}
 
 %\section{Example Applications of Lifetime Practices}
 \section{The Correlated Lifetime Patterns}
@@ -246,17 +331,14 @@ scoping, or weak references offer. A single strong owner factory pattern, where
 either a local variable of the top-most method in the request, or thread-local
 storage, holds the single strong reference to any request-scoped data:
 \begin{shortlisting}
-static ThreadLocal<SingleStrongOwnerFactory> requestLocals = new ThreadLocal<SingleStrongOwnerFactory>() {
-   public SingleStrongOwnerFactory initialValue() {
-      return new SingleStrongOwnerFactory();
-   }
-}
+SingleStrongOwnerFactory requestLocals = SingleStrongOwnerFactory.newThreadLocalFactory();
 void doLogin() {
+   SingleStrongOwner myLocals = requestLocals.newOwner();
    Object obj = new Object();
    restOfWork(obj);
-   requestLocals.set(null);
+   // when myLocals goes out of scope, all request scoped objects will automatically become reclaimable
 }
-static Map requestState = SingleStrongOwnerFactory.newMapUsingThreadLocalFactory();
+static Map requestState = requestLocals.newMap();
 void restOfWork(Object requestKey) {
    requestState.put(requestKey, ...);
 }
@@ -272,12 +354,6 @@ it so that the \class{SingleStrongOwnerFactory} is a local variable of the
 top-level request method; then, you only need to change the constructors of the
 maps and sets that store request-scoped data. There are many minor variations of
 this base implementation. You can tailor them to your specific needs.
-
-%new FactoryProvider() {
-   %public SingleStrongOwnerFactory getFactory() {
-      %return requestLocals.get();
-   %}
-%});
 
 \section{The Sharing Pool Pattern}
 \label{sec:sharing-pools}
