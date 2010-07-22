@@ -167,8 +167,8 @@ and life would be pretty easy:
 \begin{shortlisting}
 void doLogin() {
    Object obj = new Object();
-   restOfWork(obj); // where obj does not escape
-} // lifetime of obj ends
+   restOfWork(obj); // if obj does not escape ...
+} // ... then lifetime of obj automatically ends here
 \end{shortlisting}
 If, during the execution of the \code{restOfWork} method,  \code{obj} does not
 escape into some other scope, then its lifetime ends when the \code{doLogin}
@@ -376,7 +376,7 @@ how to store data beyond the normal Java box, and so will be discussed, along
 with many similar matters, in \autoref{chapter:large-long-lived}.
 
 
-\subsection{Annotation Pool}
+\subsection{Sharing Pool Special Case: The Annotation Pool Pattern}
 
 \section{The Time-space Tradeoff Patterns}
 There are four important cases of time-space tradeoffs. The first covers
