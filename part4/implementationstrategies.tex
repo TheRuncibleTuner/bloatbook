@@ -48,27 +48,56 @@ class SingleStrongOwner {
 }
 \end{shortlisting}
 
-\lstset{moredelim=[is][\underbar]{|}{|}}
+%\lstset{moredelim=[is][\underbar]{|}{|}}
 
+On its own, the \class{SingleStrongOwner} class provides a repository for strong
+references, but doesn't help much in assuring that it is the \emph{only} strong
+reference to the objects.To add this extra level of assurance requires four
+pieces of logic. First, you need to make sure that every other collection in
+which these objects are placed does not have a strong reference to the object.
+Second, it would be a big headache to have to call
+\class{SingleStrongOwner.own()} on every object that you create. This would
+heavily pollute your code and be a nightmare to maintain. You can combine the
+first two, if there are facades for the collections that take care of the
+registration process for you. Third, there are several important use cases for
+which the collections are intended to hold data for multiple tasks. Therefore,
+you can't simply associate one \class{SingleStrongOwner} repository with a
+collection; e.g. you may have a single map that contains data for multiple
+tasks, each of which needs its own repository. The final issue is how to ensure
+that the repository itself becomes reclaimable soon after you are done with it.
+A rigorous coding practice is necessary to avoid holding on to the repository
+itself for longer than necessary.
+
+You can use a factory design pattern to help. The factory should have this basic
+structure:
 \begin{shortlisting}
-abstract class SingleStrongOwnerFactory {
-   abstract public SingleStrongOwner newOwner();
-   abstract protected void own(Object o);
+class SingleStrongOwnerFactory {
+   public SingleStrongOwner newOwner() {
+      return new SingleStrongOwner();
+   }
 
-   public Map newMap() {
+   public Map newMap(SingleStrongOwner sso) {
       return new WeakHashMap() {
          public Object put(Object key, Object value) {
-            own(key);
-            return super.put(key, value);
+            sso.own(key); return super.put(key, value);
          }
       }
    }
 }
 \end{shortlisting}
+In this base implementation, the \code{newOwner} method doesn't do anything
+fancy. But it does provide factory methods for creating a map facade that takes
+care of associating ownership with a given repository, while keeping the map
+itself free of eternally persistent references to the map's contents. Once the
+repository is reclaimed, then the weakly referenced key will be reclaimed, at
+which point, or shortly thereafter, the \class{WeakHashMap} will take care of
+removing the entire entry (see \autoref{sec:weakhashmap}). From this base
+implementation, it should be easy for you to implement similar factory methods
+for the other kinds of collections, such as sets and lists.
 
 It is often the case that the repository for ownership can reside within a
 thread. If so, you can leverage the thread local storage mechanism to implement
-a \class{SingleStrongOwnerFactory}:
+a factory that provides unique ownership respositories
 \begin{shortlisting}
 class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
    ThreadLocal<SingleStrongOwner> threadLocals = new ThreadLocal<SingleStrongOwner>();
