@@ -1,6 +1,8 @@
 \documentclass[twoside,11pt,letterpaper]{newphstyle}
 %\documentclass[a5]{book}
 
+
+% this file has a bunch of tweaks to the margins and stuff
 \input{frontmatter/bookstyles}
 
 
@@ -16,32 +18,73 @@
 %% marginpar update
 
 
+
+\usepackage{xspace} % this macro magically adds a space, or not, after a word
+\usepackage{comment} % for \begin{comment} blocks
+\usepackage{booktabs} % for \toprule \bottomrule etc.
+\usepackage{colortbl} % for colored cells, not sure if we need this?
+\usepackage{multirow} % so that table cells can span multiple rows
+\usepackage{subfigure} % subfigures and subtables support
+\usepackage{graphicx} % this helps us \includegraphics pdf files and the like
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%                                       %%%%%%
+%%%%%% MACRO for thread-local storage        %%%%%%
+%%%%%%       maybe thread local storage?     %%%%%%
+%%%%%%                                       %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\tls{thread-local storage\xspace}
+\def\Tls{Thread-local storage\xspace}
+\def\TLS{Thread-local Storage\xspace}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%                                       %%%%%%
+%%%%%% MACRO for JRE                         %%%%%%
+%%%%%%       maybe JVM instead?              %%%%%%
+%%%%%%                                       %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\jre{JRE\xspace}
 \def\jres{JREs\xspace}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%                                       %%%%%%
+%%%%%% MACRO for code and class              %%%%%%
+%%%%%%       currently typewriter font       %%%%%%
+%%%%%%                                       %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\class}[1]{{\texttt{#1}\xspace}}
+\newcommand{\code}[1]{\class{#1}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%                                       %%%%%%
+%%%%%%  Stuff necessary to make the index    %%%%%%
+%%%%%%                                       %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage{makeidx} 
 \makeindex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\usepackage{comment}
-
-\usepackage{booktabs,colortbl}
 
 
 \usepackage{hyperref} \hypersetup{pdfauthor={Nick Mitchell, Edith
     Schonberg, Gary Sevitsky},pdftitle={Memory Conscious Java
     Programming},linkcolor=black,citecolor=black,filecolor=black,urlcolor=black,colorlinks=true} \def\chapterautorefname{Chapter} \def\sectionautorefname{Section} \def\subsectionautorefname{Section}
     
-%\usepackage{fullpage}
-%\usepackage{wrapfig}
 %\usepackage{float}
 %  \floatstyle{ruled}
 %  \newfloat{callout}{thp}{lop}
 %  \floatname{callout}{Things To Remember}
 
-\usepackage{xspace}
-\usepackage{multirow}
-
-\usepackage{subfigure}
 
 
 %%% [NMM} this goofy defines a subfloat environment that lets us have verbatim
@@ -103,6 +146,7 @@
   
 %}
 
+% the listings package gives us pretty nice support for formatted code listings
 \usepackage{listings}
 %\lstset{language=Java,basicstyle=\footnotesize\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
 \lstset{language=Java,basicstyle=\ttfamily,frame=tb,tabsize=4,captionpos=b,columns=flexible,breaklines}%},frame=single,backgroundcolor=\color{Light}}
@@ -115,11 +159,7 @@
 %\lstnewenvironment{longlisting}{}{}
 
 
-\usepackage{graphicx}
 
-%%% CODE MACRO
-\newcommand{\class}[1]{{\texttt{#1}\xspace}}
-\newcommand{\code}[1]{\class{#1}}
 
 \newcounter{ttr}
 \setcounter{ttr}{1}
@@ -147,47 +187,66 @@
 %% end: the callout command
 %%
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                            %%%%
+%%%%     TITLE AND AUTHORS      %%%%
+%%%%                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \title{Building Memory Efficient Java Programs}
 \author{Nick Mitchell \and Edith Schonberg \and Gary Sevitsky}
 \date{}
 
+
+
 \begin{document}
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%%%% PREFACEY STUFF %%%%
-%%%%%%%%%%%%%%%%%%%%%%%%
-\frontmatter
-\maketitle
 
-\include{frontmatter/preface}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                            %%%%
+%%%% THIS IS THE PREFACEY STUFF %%%%
+%%%%                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frontmatter  % this is a necessary book macro
+\maketitle    % insert the title
+\include{frontmatter/preface} % the preface section
 \tableofcontents
 \listoffigures
 \listoftables
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%  BODY OF BOOK  %%%%
-%%%%%%%%%%%%%%%%%%%%%%%%
-\mainmatter
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                            %%%%
+%%%%  THIS IS THE BODY OF BOOK  %%%%
+%%%%                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\mainmatter  % this is a necessary book macro
 
 \input{part1/part1}
 \input{part2/part2}
 \input{part3/part3}
 \input{part4/part4}
 
-\input{backmatter/appendices}
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%   BACK MATTER  %%%%
-%%%%%%%%%%%%%%%%%%%%%%%%
-\backmatter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                            %%%%
+%%%%   THIS IS THE BACK STUFF   %%%%
+%%%%                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{backmatter/appendices}
+\backmatter % this is a necessary book macro
 
 %\bibliographystyle{abbrv}
 \bibliographystyle{ieeetr}
 \bibliography{backmatter/bloat}
 
-\printindex
+\printindex  % the book's index
 
 \end{document}
