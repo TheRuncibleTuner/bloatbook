@@ -335,7 +335,7 @@ eight ways an object may be referenced. It can be referenced by a:
   \item instance field of a \class{java.util.ref.WeakReference} object
   \item instance field of a \class{java.util.ref.SoftReference} object
   \item instance field of a \class{java.util.ref.PhantomReference} object
-  \item thread-local storage
+  \item \tls
   \item instance field of any other object
   \item some combination of the above
 \end{enumerate}
@@ -375,7 +375,6 @@ class Foo {
    Reference phantom = new PhantomReference(instanceField);
    ThreadLocal threadLocal1 = new ThreadLocal();
    ThreadLocal threadLocal2 = new ThreadLocal();
-      
 }
 \end{shortlisting}
 \lstset{numbers=none}
@@ -417,7 +416,7 @@ class Foo {
         	after LRU, placed on queue, then after queue is polled
         	%
         	\\ \addlinespace
-        	entry in thread local storage & when that thread dies
+        	entry in \tls & when that thread dies
         	%
         	\\ 
         \bottomrule
@@ -667,11 +666,11 @@ always employed, and certain rarely together, for a single map instance.
 
 The Java language provides mechanisms that allow you more flexibility in
 implementing lifetime management policies. These advanced features are exposed
-via the \class{java.lang.ref.Reference} family of classes and thread local
-storage. Programmers very often confuse these mechanisms, and there is quite a
-bit of disinformation on the Internet; there is especially confusion over the use
-of soft and weak references. Therefore, it is important for you to take some care
-in understanding the low-level features.
+via the \class{java.lang.ref.Reference} family of classes and \tls. Programmers
+very often confuse these mechanisms, and there is quite a bit of disinformation
+on the Internet; there is especially confusion over the use of soft and weak
+references. Therefore, it is important for you to take some care in understanding
+the low-level features.
 
 To contrast the normal referencing mechanisms with these advanced features, the
 normal ways of referencing objects are typically referred to as \emph{strong}
@@ -878,8 +877,17 @@ class A {
 concurrency problem.
 
 \paragraph{The WeakHashMap}
+\index{WeakHashMap}
 \label{sec:weakhashmap}
-TODO
+
+The standard library includes an important construct, the \class{WeakHashMap},
+that is not only quite useful, but also hides most of the complexity of managing
+reference queues. A weak hashmap is a map that only weakly references its keys.
+When a key is reclaimed, the map evicts the corresponding entry. Behind the
+scenes, it uses weak references and reference queues, but you needn't worry about
+any of that. Your own code is not polluted by mention of \class{WeakReference}
+and \class{ReferenceQueue}, nor of the polling complexities necessary to keep the
+reference queue from overflowing with reclaimed keys.
 
 \paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
@@ -940,11 +948,11 @@ management strategy. If you can establish a correlated lifetime pattern, such as
 that the external storage should be reclaimed when an event occurs, or when a
 method returns, then you should do so.
 
-\paragraph{Thread-local Storage}
-\index{Thread-local Storage}
+\paragraph{\TLS}
+\tlsindex % \index{\TLS} doesn't seem to work
 
 The last advanced memory management feature offered by Java is the ability to
-associate memory with a thread. Thread-local storage provides a way to avoid
+associate memory with a thread. \Tls provides a way to avoid
 synchronization costs, often at the expense of some degree of wasted memory. To
 avoid synchronization, you often need to replicate some data structures. This
 feature is, of course, only helpful if your program runs with multiple threads.
@@ -953,7 +961,7 @@ Consider an example of using the \class{SecureRandom} class. Instances of this
 class provide a stream of pseudo-random numbers, in a way that is
 cryptographically strong. If you have a singleton instance of this class, you may
 experience scalability problems due to lock contention; the contention is hidden
-within the \class{SecureRandom} implementation. You can use thread-local storage
+within the \class{SecureRandom} implementation. You can use \tls
 to avoid this contention, at the (in this case, small) expense of having one
 instance per worker thread:
 \begin{shortlisting}
@@ -973,10 +981,18 @@ class MyRandomNumberGenerator {
 \end{shortlisting} 
 Java 7 adds a \class{ThreadLocalRandom} implementation to the standard library.
 
-Data stored in thread-local storage will live as long as the thread. If you need
+Data stored in \tls will live as long as the thread. If you need
 the memory to be reclaimed before the thread terminates, you must explicitly set
 the storage to \code{null} via a call to \code{rng.set(null)}. If you are using
 the \class{java.util.concurrent} thread pool framework, then you can use its
 hooks that are called after a task, or after a thread, terminates. You can do so
 by extending the \class{ThreadPoolExecutor} and overriding the
 \code{afterExecute} and \code{terminated} methods, respectively.
+
+\Tls, like the \class{WeakHashMap}, is an example of the \jre hiding some of the
+complexity of managing weak references. Under the covers, the \tls implementation
+uses weak references so that, if a \class{ThreadLocal} object is reclaimed, then
+the storage associated with it, for all threads, will be reclaimed, too. In some
+implementations, this will not happen immediately, because these implementations
+do not use reference queues. They use an alternative approach that at least
+keeps the amount of memory spent on stale \tls bounded.
