@@ -32,11 +32,33 @@ coding practices.
 
 % managing a reference queue
 
-\section{Lifetime Management Principles}
+%\section{Lifetime Management Principles}
 
-\subsection{Avoid Weak/Soft-Strong Reference Cycles}
+\section{The Single Strong Owner Principle}
 
-\subsection{The Single Strong Owner Principle}
+Many lifetime management bugs arise from shared ownership, that is, when an
+object that is simultaneously part of more than one data structure. When an
+object is shared, as introduced in \autoref{sec:shared-ownership}, it
+becomes hard to keep track of what actions need to be taken in order to make
+that object reclaimable by the \jre. Even if you make your best effort to avoid
+this problem, such as by using weak references, you can still have problems. The
+diamond structures described in \autoref{sec:strongweakdiamonds} are a good
+example of a case where, even with weak references, objects may stick around too
+long. What programming patterns can help to avoid these problems, so that you
+aren't left hunting down hard to diagnose memory leaks late in the development
+lifecycle?
+
+Ideally, every object would be part of only one data structure at a time. This
+would simplify lifetime management issues, because there would be no hidden
+links for you to track down and eliminate. This is of course not possible in any
+practical setting. It is necessary for multiple, probably unrelated, parts of
+the code to need access to a common set of objects. The listener pattern,
+covered in more detail below, is a common case of this. For example, in user
+interface code, both the callback handler for user events and the redraw loop
+will operate on the underlying data model that the view exposes.
+
+A more practical spin on this single-owner ideal is that every object should have
+a \emph{home base}.
 
 \begin{shortlisting}
 class SingleStrongOwner {   
@@ -96,7 +118,7 @@ implementation, it should be easy for you to implement similar factory methods
 for the other kinds of collections, such as sets and lists.
 
 It is often the case that the repository for ownership can reside within a
-thread. If so, you can leverage the thread local storage mechanism to implement
+thread. If so, you can leverage the \tls mechanism to implement
 a factory that provides unique ownership respositories
 \begin{shortlisting}
 class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
@@ -117,11 +139,11 @@ class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
 \end{shortlisting}
 
 But this implementation suffers from memory drag. After the thread's task
-completes, the thread local storage maintains a reference to the
-\class{SingleStrongOwner} and all the owned objects. It will only be overwritten
-either when the same thread is scheduled to process a new task, or when the
-thread terminates. You could overcome this by adding a \code{clear} method, and
-inserting a call to it at the right place in your code:
+completes, the \tls maintains a reference to the \class{SingleStrongOwner} and
+all the owned objects. It will only be overwritten either when the same thread is
+scheduled to process a new task, or when the thread terminates. You could
+overcome this by adding a \code{clear} method, and inserting a call to it at the
+right place in your code:
 \begin{shortlisting}
 public void clear() {
    threadLocals.set(null);
@@ -130,7 +152,7 @@ public void clear() {
 However, this is a messy and error prone solution. An alternative solution is to
 rely on local variable scoping to automatically clean things up for you. When a
 task begins, you can grab a strong reference to the \class{SingleStrongOwner}
-repository, and have the thread local storage maintain only a weak reference to
+repository, and have the \tls maintain only a weak reference to
 it:
 \begin{shortlisting}
 class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
@@ -152,7 +174,7 @@ class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
 Now, all objects owned by the repository will be automatically reclaimable when
 the return value of \code{newOwner} goes out of scope.
 
-\subsection{Safety Valves}
+%\subsection{Safety Valves}
 
 %\section{Example Applications of Lifetime Practices}
 \section{The Correlated Lifetime Patterns}
@@ -321,7 +343,7 @@ and invoke these at the end of a request. You could use the Listener lifetime
 pattern to do this. Each data structure that possibly contains request-scoped
 objects must register as a listener. Then, assuming that the request is processed
 by a single thread, you could combine the Listener lifetime pattern with a use of
-thread-local storage:
+\tls:
 \begin{shortlisting}
 /* the cleanup API */
 interface CleanupHook { ... };
@@ -349,7 +371,7 @@ that just completed, from the tangle that comes from many other concurrent
 requests.
 
 %Also, if your request spans multiple threads, then the above implementation
-%simply won't work, because it relies on thread-local storage. Support for
+%simply won't work, because it relies on \tls. Support for
 %multiple threads per request that is along the same lines would require
 %keepoing track of those threads that participated. It would be pretty
 %complicated to get the details working correctly, and maintain them.
@@ -357,8 +379,8 @@ requests.
 How can you design a foolproof strategy that is minimally invasive? It would be
 nice to piggyback on the automated reclamation that either local variable
 scoping, or weak references offer. A single strong owner factory pattern, where
-either a local variable of the top-most method in the request, or thread-local
-storage, holds the single strong reference to any request-scoped data:
+either a local variable of the top-most method in the request, or \tls, holds the
+single strong reference to any request-scoped data:
 \begin{shortlisting}
 SingleStrongOwnerFactory requestLocals = SingleStrongOwnerFactory.newThreadLocalFactory();
 void doLogin() {
