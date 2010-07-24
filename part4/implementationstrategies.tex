@@ -34,19 +34,24 @@ coding practices.
 
 %\section{Lifetime Management Principles}
 
-\section{The Single Strong Owner Principle}
+\section{The Single Strong Owner Pattern}
 
-Many lifetime management bugs arise from shared ownership, that is, when an
-object that is simultaneously part of more than one data structure. When an
-object is shared, as introduced in \autoref{sec:shared-ownership}, it
-becomes hard to keep track of what actions need to be taken in order to make
-that object reclaimable by the \jre. Even if you make your best effort to avoid
-this problem, such as by using weak references, you can still have problems. The
-diamond structures described in \autoref{sec:strongweakdiamonds} are a good
-example of a case where, even with weak references, objects may stick around too
-long. What programming patterns can help to avoid these problems, so that you
-aren't left hunting down hard to diagnose memory leaks late in the development
-lifecycle?
+Lifetime management for temporaries (the lifetime pattern discussed in
+\autoref{sec:temporary-lifetime}), and for objects that are part of only one data
+structure at a time is usually pretty straightforward. The lifetime of a
+temporary object, such as one created within a method and not used beyond the end
+of the method, will be nicely governed by local variable scoping rules.
+
+Many lifetime management bugs arise from shared ownership of non-temporary
+objects. When an object that is simultaneously part of more than one data
+structure, as introduced in \autoref{sec:shared-ownership}, it becomes hard to
+keep track of what actions need to be taken in order to make that object
+reclaimable by the \jre. Even if you make your best effort to avoid this problem,
+such as by using weak references, you can still have problems. The diamond
+structures described in \autoref{sec:strongweakdiamonds} are a good example of a
+case where, even with weak references, objects may stick around too long. What
+programming patterns can help to avoid these problems, so that you aren't left
+hunting down hard to diagnose memory leaks late in the development lifecycle?
 
 Ideally, every object would be part of only one data structure at a time. This
 would simplify lifetime management issues, because there would be no hidden
@@ -57,14 +62,31 @@ covered in more detail below, is a common case of this. For example, in user
 interface code, both the callback handler for user events and the redraw loop
 will operate on the underlying data model that the view exposes.
 
-A more practical spin on this single-owner ideal is that every object should have
-a \emph{home base}.
+A more practical spin on this single-owner ideal is that every object
+should have a \emph{home base}.
+\callout{home-base}{The Home Base as Single Strong Owner}{
+%A good design principle is to consider that every object, 
+If an object simultaneously is part of
+multiple data structures, then identify one of these as its \emph{home base}.
+The home base data structure should be the \emph{single strong owner} of this
+shared object. Every other data structure must only weakly or softly reference the
+object.}
 
+For example, consider an object that is part of a cache. While it is not in use,
+the cache is the sole owner of the objects. If it weren't for the cache holding
+a non-weak reference to the object, it would be reclaimed. When a cached object
+is being used by the program, it will likely also be part of other data
+structures; these structures may possibly span multiple threads. The cache is a
+natural home base, and any other transitory owners of the objects msut be
+designed so that their ownership is indeed transient.
+
+A first piece of implementing this single strong owner pattern is the home base
+itself:
 \begin{shortlisting}
-class SingleStrongOwner {   
+class HomeBase {   
    Set owned = new HashSet();
    
-   protected void own(Object o) {
+   public void own(Object o) {
       owned.add(o);
    }
 }
@@ -72,18 +94,18 @@ class SingleStrongOwner {
 
 %\lstset{moredelim=[is][\underbar]{|}{|}}
 
-On its own, the \class{SingleStrongOwner} class provides a repository for strong
+On its own, the \class{HomeBase} class provides a repository for strong
 references, but doesn't help much in assuring that it is the \emph{only} strong
 reference to the objects.To add this extra level of assurance requires four
 pieces of logic. First, you need to make sure that every other collection in
 which these objects are placed does not have a strong reference to the object.
 Second, it would be a big headache to have to call
-\class{SingleStrongOwner.own()} on every object that you create. This would
+\class{HomeBase.own()} on every object that you create. This would
 heavily pollute your code and be a nightmare to maintain. You can combine the
 first two, if there are facades for the collections that take care of the
 registration process for you. Third, there are several important use cases for
 which the collections are intended to hold data for multiple tasks. Therefore,
-you can't simply associate one \class{SingleStrongOwner} repository with a
+you can't simply associate one \class{HomeBase} repository with a
 collection; e.g. you may have a single map that contains data for multiple
 tasks, each of which needs its own repository. The final issue is how to ensure
 that the repository itself becomes reclaimable soon after you are done with it.
@@ -93,15 +115,15 @@ itself for longer than necessary.
 You can use a factory design pattern to help. The factory should have this basic
 structure:
 \begin{shortlisting}
-class SingleStrongOwnerFactory {
-   public SingleStrongOwner newOwner() {
-      return new SingleStrongOwner();
+class HomeBaseFactory {
+   public HomeBase newOwner() {
+      return new HomeBase();
    }
 
-   public Map newMap(SingleStrongOwner sso) {
+   public Map newMap(HomeBase home) {
       return new WeakHashMap() {
          public Object put(Object key, Object value) {
-            sso.own(key); return super.put(key, value);
+            home.own(key); return super.put(key, value);
          }
       }
    }
@@ -121,25 +143,25 @@ It is often the case that the repository for ownership can reside within a
 thread. If so, you can leverage the \tls mechanism to implement
 a factory that provides unique ownership respositories
 \begin{shortlisting}
-class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
-   ThreadLocal<SingleStrongOwner> threadLocals = new ThreadLocal<SingleStrongOwner>();
+class ThreadLocal_HomeBaseFactory extends HomeBaseFactory {
+   ThreadLocal<HomeBase> threadLocals = new ThreadLocal<HomeBase>();
    
    protected void own(Object o) {
-      // the thread's SingleStrongOwner assumes ownership
+      // the thread's HomeBase assumes ownership
       return threadLocals.get().own();
    }
 
-   public SingleStrongOwner newOwner() {
-      SingleStrongOwner sso = new SingleStrongOwner();
-      threadLocals.set(sso);
-      return sso;
-      // the caller will now have the only strong reference to the SingleStrongOwner repository, we maintain only a weak reference to it
+   public HomeBase newOwner() {
+      HomeBase home = new HomeBase();
+      threadLocals.set(home);
+      return home;
+      // the caller will now have the only strong reference to the HomeBase repository, we maintain only a weak reference to it
    }
 }
 \end{shortlisting}
 
 But this implementation suffers from memory drag. After the thread's task
-completes, the \tls maintains a reference to the \class{SingleStrongOwner} and
+completes, the \tls maintains a reference to the \class{HomeBase} and
 all the owned objects. It will only be overwritten either when the same thread is
 scheduled to process a new task, or when the thread terminates. You could
 overcome this by adding a \code{clear} method, and inserting a call to it at the
@@ -151,23 +173,23 @@ public void clear() {
 \end{shortlisting}
 However, this is a messy and error prone solution. An alternative solution is to
 rely on local variable scoping to automatically clean things up for you. When a
-task begins, you can grab a strong reference to the \class{SingleStrongOwner}
+task begins, you can grab a strong reference to the \class{HomeBase}
 repository, and have the \tls maintain only a weak reference to
 it:
 \begin{shortlisting}
-class ThreadLocal_SingleStrongOwnerFactory extends SingleStrongOwnerFactory {
-   ThreadLocal<WeakReference<SingleStrongOwner>> threadLocals = new ThreadLocal<WeakReference<SingleStrongOwner>>();
+class ThreadLocal_HomeBaseFactory extends HomeBaseFactory {
+   ThreadLocal<WeakReference<HomeBase>> threadLocals = new ThreadLocal<WeakReference<HomeBase>>();
       
    protected void own(Object o) {
-      // the thread's SingleStrongOwner assumes ownership
+      // the thread's HomeBase assumes ownership
       return threadLocals.get().get().own();
    }
    
-   public SingleStrongOwner newOwner() {
-      SingleStrongOwner sso = new SingleStrongOwner();
-      threadLocals.set(new WeakReference(sso));
-      return sso;
-      // the caller has the only strong reference to the SingleStrongOwner repository, we maintain only a weak reference to it
+   public HomeBase newOwner() {
+      HomeBase home = new HomeBase();
+      threadLocals.set(new WeakReference(home));
+      return home;
+      // the caller has the only strong reference to the HomeBase repository, we maintain only a weak reference to it
    }
 }
 \end{shortlisting}
@@ -382,9 +404,9 @@ scoping, or weak references offer. A single strong owner factory pattern, where
 either a local variable of the top-most method in the request, or \tls, holds the
 single strong reference to any request-scoped data:
 \begin{shortlisting}
-SingleStrongOwnerFactory requestLocals = SingleStrongOwnerFactory.newThreadLocalFactory();
+HomeBaseFactory requestLocals = new ThreadLocal_HomeBaseFactory();
 void doLogin() {
-   SingleStrongOwner myLocals = requestLocals.newOwner();
+   HomeBase myLocals = requestLocals.newOwner();
    Object obj = new Object();
    restOfWork(obj);
    // when myLocals goes out of scope, all request scoped objects will automatically become reclaimable
@@ -401,7 +423,7 @@ and sets that store request-scoped data. You only need to alter the
 as you make sure to call \code{requestLocals.set(null)}, then any request-scoped
 objects will be reclaimable immediately after the request completes --- all using
 the normal, built-in scoping rules. It would be even better if you could arrange
-it so that the \class{SingleStrongOwnerFactory} is a local variable of the
+it so that the \class{HomeBaseFactory} is a local variable of the
 top-level request method; then, you only need to change the constructors of the
 maps and sets that store request-scoped data. There are many minor variations of
 this base implementation. You can tailor them to your specific needs.
