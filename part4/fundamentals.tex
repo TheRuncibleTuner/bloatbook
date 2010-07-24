@@ -889,6 +889,61 @@ any of that. Your own code is not polluted by mention of \class{WeakReference}
 and \class{ReferenceQueue}, nor of the polling complexities necessary to keep the
 reference queue from overflowing with reclaimed keys.
 
+\paragraph{The Danger of Diamonds}
+
+Using a construct such as \class{WeakHashMap} is not a guarantee of success. The
+danger lies in there being another reference to the key that is not a weak
+reference. If this strong reference comes from the key data structure itself,
+then there is no problem. It is expected that, for the expected lifetime of an
+entry, there will be a strong reference that comes from another data structure
+--- this is the reference that you expect to keep the entry alive. The main
+danger lies in a second strong reference emanating from the value data structure
+of a key's entry in the map. If you insert values that strongly reference the
+key, as illustrated in \autoref{fig:strongweakdiamonds} then the key will very
+likely never be uniquely owned by the weak reference, even after the expected
+strong reference is reclaimed.
+
+\begin{figure}[h]   % NMM added [h] just to make formatting look good on 201007023, not necessary
+\centering
+	\includegraphics[width=0.6\textwidth]{part4/Figures/lifetime/strongweakdiamonds}
+	\caption{Despite your best efforts to use weak references correctly, if you
+	introduce a second strong reference in a way that forms a
+	\emph{diamond} shape (the shaded region), it will likely never be reclaimed.}
+	% [NMM] not sure if we need to give it a name, but, for now
+	\label{fig:strongweakdiamonds}
+\end{figure}
+
+As is shown in the figure, this problematic reference structure has a diamond
+shape. The top of the diamond is the \code{Entry} object of the map, from which
+emanate two paths to the key, the weak reference from the \code{Entry} to the
+key, and the strong reference path that flows through the value. In
+\autoref{fig:strongweakdiamonds}, the darkly shaded object has a good chance of
+never being reclaimed. 
+
+In the following code, if \code{loopback} is true, then the \code{Finalized}
+message will never appear.
+\begin{shortlisting}
+static public Object setupCycle(boolean loopback) {
+   class Cycle {
+       Object loopback;
+   }
+   class Entry {
+       Object key;
+       Cycle value;
+   }
+   Object key = new Object() {
+           protected void finalize() {
+               System.out.println("Finalized");
+           }
+       };
+   Entry e = new Entry();
+   e.key = new WeakReference(key);
+   e.value = new Cycle();
+   if (loopback) e.value.loopback = key;
+   return e;
+}
+\end{shortlisting}
+
 \paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
 \index{Phantom References}
