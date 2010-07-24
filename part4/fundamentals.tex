@@ -892,6 +892,7 @@ and \class{ReferenceQueue}, nor of the polling complexities necessary to keep th
 reference queue from overflowing with reclaimed keys.
 
 \paragraph{The Danger of Diamonds}
+\label{sec:strongweakdiamonds}
 
 Using a construct such as \class{WeakHashMap} is not a guarantee of success. The
 danger lies in there being another reference to the key that is not a weak
