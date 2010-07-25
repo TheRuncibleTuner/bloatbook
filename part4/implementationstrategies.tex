@@ -456,6 +456,9 @@ must be replaced with a \code{WeakReference<T> t}.
 
 \subsection{Listeners}
 
+Another common instance of the correlated lifetime pattern that is easy to mess
+up is the listener pattern. A common implementation strategy 
+
 \callout{listener-rule}{Listener Rule}{
 Listener queues should weakly reference the callback object. This obviates to
 maintain and debug code that explicitly deregisters the callback hook from the
