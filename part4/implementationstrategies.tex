@@ -319,15 +319,21 @@ class AnnotationMap<T,A> extends WeakHashMap<T, A> {
 }
 \end{shortlisting}
 
-This implementation works well. Soon after an annotated T instance is reclaimed,
-the \class{WeakHashMap} will automatically take care of removing the annotation
-entry from the map. If your annotations are more than simple objects like dates,
-then you have to be very careful to avoid the strong-weak diamond problem
-described in \autoref{sec:strongweakdiamonds}. This problematic situation can
-arise if an annotation, either directly or via some chain of fields, strongly
-references the annotated object. This is a common and innocent mistake, when
-you code in a way that avoids the messiness of creating a reverse lookup map,
-from annotations to annotated objects:
+This implementation works well, at least for single-threaded programs. Soon after
+an annotated T instance is reclaimed, the \class{WeakHashMap} will automatically
+take care of removing the annotation entry from the map. If your application has
+multiple threads concurrently accessing and creating these annotations, then you
+will suffer from lock contention.
+\autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
+problem.
+
+There is a more immediate potential problem, however. If your annotations are
+more than simple objects like dates, then you have to be very careful to avoid
+the strong-weak diamond problem described in \autoref{sec:strongweakdiamonds}.
+This problematic situation can arise if an annotation, either directly or via
+some chain of fields, strongly references the annotated object. This is a common
+and innocent mistake, when you code in a way that avoids the messiness of
+creating a reverse lookup map, from annotations to annotated objects:
 \begin{shortlisting}
 class TimestampAnnotation<T> {
    T t;
@@ -457,12 +463,21 @@ must be replaced with a \code{WeakReference<T> t}.
 \subsection{Listeners}
 
 Another common instance of the correlated lifetime pattern that is easy to mess
-up is the listener pattern. A common implementation strategy 
-
-\callout{listener-rule}{Listener Rule}{
-Listener queues should weakly reference the callback object. This obviates to
+up is the listener pattern. A common implementation strategy is to have the list
+of listeners be a list of strong references to the callback functions. The Java
+Swing implementation of \class{JComponent} stores an \class{EventListenerList}
+instance, which has an array of strong references to the callback handlers. This
+implementation strategy has the benefit of being uniform: independent of whether
+the listener list, or some other collection, is the home base for the callbacks,
+you follow the same approach. Unfortunately, this approach requires that you
 maintain and debug code that explicitly deregisters the callback hook from the
-listener queue.}
+listener queue.
+
+To avoid this source of bugs, you must follow the single strong owner principle.
+You must choose which of the listener list or some other collection is the home
+base for the callbacks. For example, if you already have a place to store the
+callbacks, then the listener list can be created by a call to that home base
+factory: {ListenerList list = factory.newList()}.  
 
 \subsection{Phase/Request-Scoped Objects}
 
