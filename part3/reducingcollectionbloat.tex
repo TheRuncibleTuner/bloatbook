@@ -245,9 +245,10 @@ action, element arrays are almost always too big.
  This should save quite a bit of space, since there are 100,000
  \class{ArrayLists} with four entries on average, and 400,000
  \class{ArrayLists} with two entries each. In fact, trimming these
- \class{ArrayLists} saves 15.2 million bytes, as shown in Figure~\ref{fig:trimmed-graph}. The
- total size is reduced by 32\%, and the bloat factor went from 96.7\% to
- 95.3\%. This is still rather high, but there are more optimizations ahead.
+ \class{ArrayLists} saves 15.2 million bytes, as shown in
+ Figure~\ref{fig:trimmed-graph}. The total size is reduced by 25.6\%, and the
+ bloat factor goes from 94.6\% to 92.7\%. This is still rather high, but there
+ are more optimizations ahead.
  % 100,000 4 entry arrays == a 4 entry array is 32 bytes (16+12=28, rounds up
  % to 32)
  % So each array saves (56-32)=24 bytes.  100,000*24=2,400,000 bytes saved
@@ -263,13 +264,13 @@ action, element arrays are almost always too big.
   \label{fig:trimmed-graph}
 \end{figure}
  
-\class{HashSets} and \class{HashMaps} do not have \code{trimToSize} methods.
+\class{HashSets} and \class{HashMaps} do not have \code{trimToSize} methods,
 but it is possible to pass the initial capacity and load factor as constructor
 parameters when creating a \class{HashSet} or \class{HashMap}. 
 However, before changing the initial capacity, you should
-to ask yourself whether using a \class{HashSet} or \class{HashMap} at all is a
-wise decision. If you are going to end up with many collections with fewer
-than 16 elements, perhaps there is a more memory-efficient solution, like
+ask yourself whether using a \class{HashSet} or \class{HashMap} is a
+wise decision in the first place. If you are going to end up with many
+collections with fewer than 16 elements, perhaps there is a more memory-efficient solution, like
 \class{ArrayList}.
   
 A \class{LinkedList} is another alternative for small collections, and are
@@ -279,26 +280,25 @@ extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
 
-Too many empty collections is another common problem. A quick look inside empty
-collections shows that they are not all that empty. All the standard Java collections
-eagerly allocate their subsidiary objects, which means that every empty
-collection consists of two objects, including two object headers, a pointer,
-plus whatever bookkeeping fields they have. 
-According to Table~\ref{tab:collection-cost}, an empty \class{HashMap} consumes
+Too many empty collections filling the heap is another common problem. A quick
+look inside an empty collection shows that it is not all that empty. 
+According to Table~\ref{tab:collection-costs}, an empty \class{HashMap} consumes
 120 bytes, and an empty \class{ArrayList} consumes 80
 bytes, assuming a default initial size. 
 Even if the initial size is zero, empty collections are still
 large. A zero-sized \class{HashMap} consumes 56 bytes, and a zero-sized
 \class{ArrayList} consumes 40 bytes. Empty \class{HashSets} are even bigger.
 
-An empty collection problem is caused by eager initialization, that is,
-allocating collections before they are actually needed, and often they are
-never eventually needed. When an application allocates an empty
-collection before it is needed, the collection class allocates an empty
-array before it is needed, which is why there is so expensive. 
+Empty collection problems are generally caused by eager initialization, that is,
+allocating collections before they are actually needed. Exacerbating this
+problem, collections themselves also allocate their internal objects in an eager
+fashion. For example, \class{HashMap} allocates its entry array before any entries are inserted.
+You might think that eager initialization is not such a big problem, since
+entries will be added eventually. However, often collections are allocated
+just in case they are needed later, and remain empty throughout the execution.
 
 Suppose the graph
-in Figure~\ref{fig:trimmed-graph} was initialized by the code:
+in Figure~\ref{fig:trimmed-graph} is initialized by the code:
 \begin{shortlisting}
 ArrayList nodes;
 HashMap graph;
@@ -311,17 +311,18 @@ int numNodes;
        }
    }
 \end{shortlisting}
-Initially, each node is mapped to an empty edge \class{ArrayList}, so there are
-100,000 empty \class{ArrayLists} before any edges are inserted. 
-Suppose 25\% of the nodes in the final graph still have no
-edges. Since edge \class{ArrayLists} have already been trimmed to size, 
-each of the 25,000 empty \class{ArrayLists} consumes 40 bytes. If 
-\class{ArrayLists} are allocated only for nodes with edges,
- .95MB can be saved, as shown in Figure~\ref{fig:empty-array}.
+Initially, each node is mapped to an empty edge \class{ArrayList}, so there
+are 100,000 empty \class{ArrayLists} before any edges are inserted.
+As the graph is populated, many of these \class{ArrayLists} will become
+non-empty, but it is likely that a good number of nodes have no edges. 
+If 25\% of the nodes in the final graph still have no edges, there will be
+25,000 empty \class{ArrayLists}, which consume .95MB after calling
+\code{trimToSize}. Figure~\ref{fig:empty-array} shows the entity-collection
+diagram after removing 25,000 empty edge \class{ArrayLists}.
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/empty-array.pdf}
-  \caption{The graph example without initial empty \class{ArrayLists}.}
+  \caption{The graph example without empty \class{ArrayLists}.}
   \label{fig:empty-array}
 \end{figure}
  
