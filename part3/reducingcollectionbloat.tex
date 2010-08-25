@@ -326,17 +326,17 @@ diagram after removing 25,000 empty edge \class{ArrayLists}.
   \label{fig:empty-array}
 \end{figure}
  
- In general, lazy allocation avoids creating too many empty collections.
+ Delaying allocation avoids creating too many empty collections.
  That is, instead of initializing all of the collections that you think you
  may need, allocate them on-demand, just before inserting an edge. On-demand
  allocation requires more checking code, to avoid \code{NullPointerExceptions}.
  
  Alternatively, you can initialize collection fields to reference static empty collections,
-  including \code{EMPTY\_SET},
- \code{EMPTY\_LIST}, and \code{EMPTY\_MAP}. For example, 
- calling static method \code{Colletions.emptyList} to initialize edges 
- maps all nodes to a singleton immutable static \class{ArrayList}, and avoids
- creating empty \class{ArrayLists}:
+ including EMPTY\_SET,
+ EMPTY\_LIST, and EMPTY\_MAP. For example, 
+ calling static method \code{Colletions.emptyList} to initialize edge
+ \class{ArrayLists} maps all nodes to a singleton immutable static
+ \class{ArrayList}, so that no empty \class{ArrayLists} are created:
  \begin{shortlisting}
  public void initGraph() {
        ..
@@ -345,24 +345,33 @@ diagram after removing 25,000 empty edge \class{ArrayLists}.
        }
    }
  \end{shortlisting}
-This code avoids checking whether the \class{ArrayList} exists at every use,
-since for example, the size method and iterators work. However, you have to be
-careful not to let the references to the static empty collections escape its
-immediate context. 
-If you give out any references to your collections before they’ve been
-allocated, then there’s no way to update this escaped empty-collection reference
+This initialization avoids the need to check whether an \class{ArrayList}
+exists at every use. For example, the size method and iterators will just work.
+However, you have to be careful not to let any references to static empty
+collections escape its immediate context. 
+If you give out a reference to a static empty collection, 
+then there’s no way to update this escaped empty-collection reference
 once an actual collection is allocated. 
- 
-
 
 \section{Fixed Size Collections}
 
 Replacing \class{HashSet} by \class{ArrayList} helps, but it is not the end
-of the story. The second problem in Figure~\ref{fig:graph-hashset} is the
-implementation of \class{Edge}, which uses an \class{ArrayList} to store the
-a target node and an edge label, both \class{Integers}. Even though
-\class{ArrayList} is the least expensive collection, its functionality too
-general to use for this purpose.
- 
+of the story. Another problem that is easily fixed is the implementation of
+\class{Edge} is overly-general. In particular, we know that the
+\class{ArrayList} in \class{Edge} will never be bigger than two entries, so 
+it is not necessary to use an expandable array --- a simple array will do.
+An \class{ArrayList} consists of a wrapper object and an array. Replacing
+an \class{ArrayList} by an array eliminates the 24 byte wrapper object for  
+each edge. This simple change eliminates 9.16 megabytes, as shown in 
+Figure~\ref{fig:arraylist-to-array}.
+\begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
+  \caption{The graph example with edge \class{ArrayLists} replaced by simple
+  fixed-size arrays.}
+  \label{fig:arraylist-to-array}
+\end{figure}
+
+
 
 \section{Replacing Collections With Classes}
