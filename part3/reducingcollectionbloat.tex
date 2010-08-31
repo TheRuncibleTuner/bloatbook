@@ -69,9 +69,9 @@ Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for the graph.
 % 400,000 ArrayLists is: 32,000,000 bytes
 
 This is a hugely bloated structure with a bloat factor of 95.7\%.
-There are several problems here, that we will address one by one.
- The first problem is that edges are represented by 100,000 very small
- \class{HashSets}, each consuming 232 bytes, which is all overhead. It's hard to
+There are multiple problems here, that we will address in this chapter one by
+one. The first problem is a collection choice problem, namely, the edges are
+represented by 100,000 very small \class{HashSets}, each consuming 232 bytes, which is all overhead. It's hard to
  think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern arises in almost all
  applications. For small sets, \class{ArrayList} is almost always a better choice. 
@@ -90,10 +90,7 @@ approximately a third the size of a \class{HashSet}.
   \class{HashMap} from nodes to \class{ArrayLists} of edges.}
   \label{fig:graph-arraylist}
 \end{figure}
-This simple change saves 14.49MB, which is 20.4\%, but the bloat factor of
-94.6\% is still quite large. This means that there is a lot of room for further
-improvement, as we show later.
-
+This simple change saves 14.49MB, which is a reduction of 20.4\%. 
 \section{The Cost Of Collections}
 \label{sec:collectioncost}
 Let's look at why a \class{HashSet} is so much bigger than an \class{ArrayList}. 
@@ -201,6 +198,7 @@ similar to these. You can calculate them using the same methodology.
 \end{table} 
 
 \section{Properly Sizing Collections}
+\label{sec:proper-size}
 
 Collections such as \class{HashMap} and \class{ArrayList} store their entries in
 arrays. When these arrays become full, a larger array is allocated
@@ -246,9 +244,7 @@ action, element arrays are almost always too big.
  \class{ArrayLists} with four entries on average, and 400,000
  \class{ArrayLists} with two entries each. In fact, trimming these
  \class{ArrayLists} saves 15.2 million bytes, as shown in
- Figure~\ref{fig:trimmed-graph}. The total size is reduced by 25.6\%, and the
- bloat factor goes from 94.6\% to 92.7\%. This is still rather high, but there
- are more optimizations ahead.
+ Figure~\ref{fig:trimmed-graph}. The total size is reduced by 25.6\%.
  % 100,000 4 entry arrays == a 4 entry array is 32 bytes (16+12=28, rounds up
  % to 32)
  % So each array saves (56-32)=24 bytes.  100,000*24=2,400,000 bytes saved
@@ -258,7 +254,7 @@ action, element arrays are almost always too big.
 
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/trimmed-graph.pdf}
+ \includegraphics[width=.70\textwidth]{part3/Figures/trimmed-graph.pdf}
   \caption{The graph example after all of the \class{ArrayLists} have been
   trimmed by calling the \code{trimToSize} method.}
   \label{fig:trimmed-graph}
@@ -280,9 +276,9 @@ extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
 
-Too many empty collections filling the heap is another common problem. A quick
-look inside an empty collection shows that it is not all that empty. 
-According to Table~\ref{tab:collection-costs}, an empty \class{HashMap} consumes
+Too many empty collections is another common problem that fills up space in the
+heap. A quick look inside an empty collection shows that it is not all that
+empty. According to Table~\ref{tab:collection-costs}, an empty \class{HashMap} consumes
 120 bytes, and an empty \class{ArrayList} consumes 80
 bytes, assuming a default initial size. 
 Even if the initial size is zero, empty collections are still
@@ -318,7 +314,9 @@ non-empty, but it is likely that a good number of nodes have no edges.
 If 25\% of the nodes in the final graph still have no edges, there will be
 25,000 empty \class{ArrayLists}, which consume .95MB after calling
 \code{trimToSize}. Figure~\ref{fig:empty-array} shows the entity-collection
-diagram after removing 25,000 empty edge \class{ArrayLists}.
+diagram after removing 25,000 empty edge \class{ArrayLists}. Note that
+there are now only 75,000 edge \class{ArrayLists} shown, and since there are
+no more empty \class{ArrayLists}, the average fanout increases to 5.33. 
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/empty-array.pdf}
@@ -326,7 +324,7 @@ diagram after removing 25,000 empty edge \class{ArrayLists}.
   \label{fig:empty-array}
 \end{figure}
  
- Delaying allocation avoids creating too many empty collections.
+ Delaying allocation prevents creating too many empty collections.
  That is, instead of initializing all of the collections that you think you
  may need, allocate them on-demand, just before inserting an edge. On-demand
  allocation requires more checking code, to avoid \code{NullPointerExceptions}.
@@ -355,15 +353,22 @@ once an actual collection is allocated.
 
 \section{Fixed Size Collections}
 
-Replacing \class{HashSet} by \class{ArrayList} helps, but it is not the end
-of the story. Another problem that is easily fixed is the implementation of
-\class{Edge} is overly-general. In particular, we know that the
-\class{ArrayList} in \class{Edge} will never be bigger than two entries, so 
-it is not necessary to use an expandable array --- a simple array will do.
+An important property of Java collections is that they can grow to be
+arbitrarily big. As seen in Section~\ref{sec:proper-size}, the ability to
+expand in size incurs a memory cost, including wrapper objects and growth room.
+If you know that the size of a collection is fixed, or that it has a maximum size, then
+expandibility is an unnecessary function. Often, it is sufficient to use a
+simple Java array, and not use a collection at all.  
+
+In the graph example, the \class{ArrayList} in \class{Edge} will never be bigger
+than two entries, so it is not necessary to use an expandable array --- a simple array will do.
 An \class{ArrayList} consists of a wrapper object and an array. Replacing
 an \class{ArrayList} by an array eliminates the 24 byte wrapper object for  
-each edge. This simple change eliminates 9.16 megabytes, as shown in 
-Figure~\ref{fig:arraylist-to-array}.
+each edge. 
+
+This simple change eliminates 9.16 megabytes, as shown in 
+Figure~\ref{fig:arraylist-to-array}(a). The two-entry arrays are now part of the
+\class{Edge} node, and the \class{ArrayList} node has gone away.
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
@@ -372,6 +377,33 @@ Figure~\ref{fig:arraylist-to-array}.
   \label{fig:arraylist-to-array}
 \end{figure}
 
+This is another example of choosing a collection which is overly-general. In
+this case, you don't need a collection at all. Using \class{ArrayList}
+for storing fixed- or bounded-size arrays is a
+common practice that can be easily avoided.
+
+There is one final optimization that can be performed on the \class{Edge}
+class. Namely, making the two \class{Integers} fields of \class{Edge} instead
+of elements of an array, as shown in Figure
+Figure~\ref{fig:arraylist-to-array}(a). This optimization eliminates the
+array object, which saves 24 bytes per edge. In effect, these steps have transformed a dynamic
+representation of a type, where the fields may not be known at compile-time, to
+a class, where the fields are known, saving 48 bytes per edge. 
+
+The final entity collection diagram is shown in Figure~\ref{fig:final}. 
+
+Using fixed-size arrays or \class{ArrayLists} to store fields is a common
+pattern in Java. For example, when reading records from a database, it is a
+common practice to store the data fields of a record in an array or
+\class{ArrayList}. If you do not know that the fields are until execution, then
+this representation makes sense.  Even though using an array or
+\class{ArrayList} introduces extra objects, there is often no alternative.
+Sometimes programmers chose to represent fields in arrays for more flexibility.
+However, if you do know the structure in advance, it is far better space-wise
+to inline these fields in a class definition,
 
 
-\section{Replacing Collections With Classes}
+All in all, how much space has been saved??  Show entity-collection at end, and
+reduction in bloat factor.
+
+\section{Summary}
