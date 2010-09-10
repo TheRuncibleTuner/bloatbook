@@ -254,7 +254,7 @@ action, element arrays are almost always too big.
 
  \begin{figure}
   \centering
- \includegraphics[width=.70\textwidth]{part3/Figures/trimmed-graph.pdf}
+ \includegraphics[width=.80\textwidth]{part3/Figures/trimmed-graph.pdf}
   \caption{The graph example after all of the \class{ArrayLists} have been
   trimmed by calling the \code{trimToSize} method.}
   \label{fig:trimmed-graph}
@@ -353,31 +353,32 @@ once an actual collection is allocated.
 
 \section{Fixed Size Collections}
 
-An important property of Java collections is that they can grow to be
-arbitrarily big. As seen in Section~\ref{sec:proper-size}, the ability to
-expand in size incurs a memory cost, including wrapper objects and growth room.
-If you know that the size of a collection is fixed, or that it has a maximum size, then
-expandibility is an unnecessary function. Often, it is sufficient to use a
+Java collections can grow to be
+arbitrarily big, but, as we have seen, this functionality comes at a cost.
+Collections include wrapper objects, and those collections that have entry
+arrays are sized with extra growth room. If you know that the size
+of a collection is fixed, the the ability to expand a collection is an
+unnecessary function, and some of the overhead can be eliminated. Often, it is sufficient to use a
 simple Java array, and not use a collection at all.  
 
-In the graph example, the \class{ArrayList} in \class{Edge} will never be bigger
-than two entries, so it is not necessary to use an expandable array --- a simple array will do.
-An \class{ArrayList} consists of a wrapper object and an array. Replacing
-an \class{ArrayList} by an array eliminates the 24 byte wrapper object for  
-each edge. 
-
-This simple change eliminates 9.16 megabytes, as shown in 
-Figure~\ref{fig:arraylist-to-array}(a). The two-entry arrays are now part of the
-\class{Edge} node, and the \class{ArrayList} node has gone away.
+Let's look more closely at an \class{Edge} in the graph example, shown in
+Figure~\ref{fig:edges}(a). An \class{Edge} object is a wrapper containing a
+two-element \class{ArrayList}. The \class{ArrayList} object is itself another
+wrapper pointing to an \class{Integer} array. 
+Since an \class{Edge} will never store more than two \class{Integers}, it is 
+not necessary to store these in an \class{Arraylist} --- a simple array will do.
+This change, eliminating the \class{ArrayList} object, removes 24 bytes per
+\class{Edge}, as shown in Figure~\ref{fig:edges}(b), adding up to 9.16MB.
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
-  \caption{The graph example with edge \class{ArrayLists} replaced by simple
-  fixed-size arrays.}
-  \label{fig:arraylist-to-array}
+ \includegraphics[width=.80\textwidth]{part3/Figures/Edges.pdf}
+  \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
+  \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
+  eliminates another 24 bytes.}
+  \label{fig:edges}
 \end{figure}
 
-This is another example of choosing a collection which is overly-general. In
+This is an example of choosing a collection which is overly-general. In
 this case, you don't need a collection at all. Using \class{ArrayList}
 for storing fixed- or bounded-size arrays is a
 common practice that can be easily avoided.
@@ -385,13 +386,13 @@ common practice that can be easily avoided.
 There is one final optimization that can be performed on the \class{Edge}
 class. Namely, making the two \class{Integers} fields of \class{Edge} instead
 of elements of an array, as shown in Figure
-Figure~\ref{fig:arraylist-to-array}(a). This optimization eliminates the
-array object, which saves 24 bytes per edge. In effect, these steps have transformed a dynamic
-representation of a type, where the fields may not be known at compile-time, to
+Figure~\ref{fig:edges}(c). This optimization eliminates the
+array object, which saves another 24 bytes per edge, which is another 9.16MB.
+
+
+In effect, these two steps have
+transformed a dynamic representation of a type, where the fields may not be known at compile-time, to
 a class, where the fields are known, saving 48 bytes per edge. 
-
-The final entity collection diagram is shown in Figure~\ref{fig:final}. 
-
 Using fixed-size arrays or \class{ArrayLists} to store fields is a common
 pattern in Java. For example, when reading records from a database, it is a
 common practice to store the data fields of a record in an array or
@@ -402,8 +403,23 @@ Sometimes programmers chose to represent fields in arrays for more flexibility.
 However, if you do know the structure in advance, it is far better space-wise
 to inline these fields in a class definition,
 
-
-All in all, how much space has been saved??  Show entity-collection at end, and
-reduction in bloat factor.
+These transformations are the final optimizations on the graph example.
+The resulting entity-collection diagram is shown in
+Figure~\ref{fig:arraylist-to-array}. The total size from the first
+entity-collection diagram in Figure~\ref{fig:graph-hashset} has been reduced by
+68\%, and the bloat factor has gone from 95.7\% to 86.6\%. The size reduction
+is quite significant, but why is the bloat factor still so high? The answer is
+that the cost of the per entry overhead of each value in the \class{HashMap} is
+still very high compared to the cost of two \class{Integers}. This cost is
+harder to eliminate in Java. The next chapter talks more about per-entry costs,
+and various techniques to reduce bloat.
+\begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
+  \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
+  \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
+  eliminates another 24 bytes.}
+  \label{fig:arraylist-to-array}
+\end{figure}
 
 \section{Summary}
