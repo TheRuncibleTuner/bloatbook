@@ -354,19 +354,20 @@ once an actual collection is allocated.
 \section{Fixed Size Collections}
 
 Java collections can grow to be
-arbitrarily big, but, as we have seen, this functionality comes at a cost.
-Collections include wrapper objects, and those collections that have entry
-arrays are sized with extra growth room. If you know that the size
-of a collection is fixed, the the ability to expand a collection is an
-unnecessary function, and some of the overhead can be eliminated. Often, it is sufficient to use a
+arbitrarily big, but this functionality comes at a cost.
+Collections include wrapper objects, and 
+may be sized with extra growth room. If
+you know that the size of a collection is fixed, having the ability to expand
+the collection is unnecessary, and it is better to choose a cheaper alternative.
+In fact, often you can use a
 simple Java array, and not use a collection at all.  
 
-Let's look more closely at an \class{Edge} in the graph example, shown in
-Figure~\ref{fig:edges}(a). An \class{Edge} object is a wrapper containing a
-two-element \class{ArrayList}. The \class{ArrayList} object is itself another
+Let's look more closely at an \class{Edge} in the graph example in
+Figure~\ref{fig:edges}(a). An \class{Edge} object is a wrapper containing an
+ \class{ArrayList}, which is just another
 wrapper pointing to an \class{Integer} array. 
-Since an \class{Edge} will never store more than two \class{Integers}, it is 
-not necessary to store these in an \class{Arraylist} --- a simple array will do.
+Since an \class{Edge} will never hold more than two \class{Integers}, it isn't 
+necessary to store these in an \class{Arraylist} --- a simple array will do.
 This change, eliminating the \class{ArrayList} object, removes 24 bytes per
 \class{Edge}, as shown in Figure~\ref{fig:edges}(b), adding up to 9.16MB.
 \begin{figure}
@@ -377,9 +378,8 @@ This change, eliminating the \class{ArrayList} object, removes 24 bytes per
   eliminates another 24 bytes.}
   \label{fig:edges}
 \end{figure}
-
-This is an example of choosing a collection which is overly-general. In
-this case, you don't need a collection at all. Using \class{ArrayList}
+This is an example of choosing an overly-general collection. In
+this situation, you don't need a collection at all. Using \class{ArrayList}
 for storing fixed- or bounded-size arrays is a
 common practice that can be easily avoided.
 
@@ -391,35 +391,64 @@ array object, which saves another 24 bytes per edge, which is another 9.16MB.
 
 
 In effect, these two steps have
-transformed a dynamic representation of a type, where the fields may not be known at compile-time, to
-a class, where the fields are known, saving 48 bytes per edge. 
-Using fixed-size arrays or \class{ArrayLists} to store fields is a common
+transformed a dynamic representation of a type, where field values are stored in
+arrays or \class{ArrayLists}, into a static representation, namely, a class.
+Using fixed-size arrays or \class{ArrayLists} to store fields is a typical
 pattern in Java. For example, when reading records from a database, it is a
 common practice to store the data fields of a record in an array or
 \class{ArrayList}. If you do not know that the fields are until execution, then
-this representation makes sense.  Even though using an array or
-\class{ArrayList} introduces extra objects, there is often no alternative.
-Sometimes programmers chose to represent fields in arrays for more flexibility.
+this representation makes sense. 
+Even though this representation introduces extra objects, there is often no alternative.
 However, if you do know the structure in advance, it is far better space-wise
 to inline these fields in a class definition,
 
-These transformations are the final optimizations on the graph example.
-The resulting entity-collection diagram is shown in
+This is the end of the optimizations on small collections.
+The final entity-collection diagram for the graph example is shown in
 Figure~\ref{fig:arraylist-to-array}. The total size from the first
 entity-collection diagram in Figure~\ref{fig:graph-hashset} has been reduced by
-68\%, and the bloat factor has gone from 95.7\% to 86.6\%. The size reduction
-is quite significant, but why is the bloat factor still so high? The answer is
-that the cost of the per entry overhead of each value in the \class{HashMap} is
-still very high compared to the cost of two \class{Integers}. This cost is
-harder to eliminate in Java. The next chapter talks more about per-entry costs,
-and various techniques to reduce bloat.
+68\%, which is quite significant. The bloat factor has gone from 95.7\% to
+86.6\%, and you might wonder why the bloat factor is still so high? The answer
+is that the overhead of nesting an \class{ArrayList} in a \class{HashMap} is
+still very high compared to the data, which is just two \class{Integers}. 
+The next chapter talks more about high per-entry costs,
+and various techniques to reduce the cost of nested collections.
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
-  \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
-  \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
-  eliminates another 24 bytes.}
+  \caption{Final entity-collection diagram for the graph example.}
   \label{fig:arraylist-to-array}
 \end{figure}
 
 \section{Summary}
+
+This chapter describes a number of ways to mitigate high memory costs from too
+many small collections:
+\begin{itemize}
+  \item Choose the most memory-efficient collection for the job at hand. In
+  particular when collections have at most a few elements in them, you don't
+  need expensive functionality like hashing. 
+  \item Make sure collections are properly sized. If you know that a collection
+  will not grow any more, then there is no reason to maintain extra room for
+  growth.
+  \item Avoid lots of empty collections. It is common to allocate collections 
+ ahead of time, whether or not they will eventually ever be used. If you
+ postpone creating them until they are needed, often you will end up with fewer collections, 
+ and no empty collections.
+ \item Use arrays instead of \class{ArrayLists} when you know the maximum size
+ of the \class{ArrayLists} in advance.
+ \item Avoid dynamic types, where field values are stored in arrays or
+ \class{ArrayLists} instead of object fields, if possible. It's better to use a
+ class to represent a type, if the type is really static.
+\end{itemize}
+
+Small collections have a fixed-size overhead, which is there as soon as the
+collection is allocated. Fixed costs are amortized when collections are big,
+but when they have only a few elements, the fixed overhead dominates the memory
+cost. The fixed costs of collections is provided in
+Section~\ref{sec:collectioncost} to help you make an informed choice. 
+Next chapter looks at per-entry costs of larger collections and nested
+collections.
+ 
+
+
+
