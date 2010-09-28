@@ -402,16 +402,17 @@ Even though this representation introduces extra objects, there is often no alte
 However, if you do know the structure in advance, it is far better space-wise
 to inline these fields in a class definition,
 
-This is the end of the optimizations on small collections.
-The final entity-collection diagram for the graph example is shown in
-Figure~\ref{fig:arraylist-to-array}. The total size from the first
-entity-collection diagram in Figure~\ref{fig:graph-hashset} has been reduced by
-68\%, which is quite significant. The bloat factor has gone from 95.7\% to
-86.6\%, and you might wonder why the bloat factor is still so high? The answer
+The resultin g entity-collection diagram for the graph example is shown in
+Figure~\ref{fig:arraylist-to-array}. The total size, from the first
+entity-collection diagram in Figure~\ref{fig:graph-hashset}, has been reduced
+by 68\% , which is quite significant. The bloat factor has gone from 95.7\% to
+86.6\%. You might wonder why the bloat factor is still so high? The answer
 is that the overhead of nesting an \class{ArrayList} in a \class{HashMap} is
-still very high compared to the data, which is just two \class{Integers}. 
-The next chapter talks more about high per-entry costs,
-and various techniques to reduce the cost of nested collections.
+still very high compared to the data, which is just two \class{Integers}. There
+is still one more simple optimization that can be performed, namely, replacing
+the \class{Integers} by primitive \code{int} fields in \class{Edge}.
+Calculating the bloat factor after making this transformation is left as an
+exercise for the reader.
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
@@ -421,8 +422,8 @@ and various techniques to reduce the cost of nested collections.
 
 \section{Summary}
 
-This chapter describes a number of ways to mitigate high memory costs from too
-many small collections:
+This chapter describes a number of ways to mitigate high memory costs when your
+program has many small collections:
 \begin{itemize}
   \item Choose the most memory-efficient collection for the job at hand. In
   particular when collections have at most a few elements in them, you don't
