@@ -1,5 +1,31 @@
-\part{Modeling Data Types}
+\part{Managing the Lifetime of Data}
 
-\input{part2/delegation}
-\input{part2/reducingobjectbloat}
-\input{part2/sharingimmutabledata}
+\input{part2/commonpatterns}
+\input{part2/fundamentals}
+\input{part2/implementationstrategies}
+
+
+
+%Story
+%-------
+%data has a natural lifetime
+	%you can use the above mechanisms to manage
+%sometimes we extend lifetime to optimize (for time)
+%sometimes we shorten lifetime to optimize (for space)
+
+
+%Problems:
+	%Temps -- saving time
+	%Making things fit
+		%Things you need
+		%Things you can recompute
+
+		
+		
+		
+%Chapter 1: Natural Lifetimes
+	%- if scopes don't coincide with lifetime
+	%- actual lifetime may be different from natural lifetime, for performance reasons
+%Chapter 2: Getting Lifetime Correct
+%Chapter 3: Getting It Small and Fast
+

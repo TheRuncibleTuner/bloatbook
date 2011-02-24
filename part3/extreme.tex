@@ -50,7 +50,7 @@ storing objects in a ``Fortran style''.
 
 \begin{figure}
 \centering
-	\includegraphics[width=\textwidth]{part4/Figures/maxActualData}
+	\includegraphics[width=\textwidth]{part3/Figures/extreme/maxActualData}
 	\caption{The amount of actual data you can store in your entities depends on
 	the degree of delegation in your entities, and the per-entry overhead of the collection in which these entities
 	reside. This chart assumes a limit of 1 gigabyte of Java heap.}
@@ -97,16 +97,16 @@ primitive array overheads.
 
 \begin{figure}
 \centering
-	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool1}}
+	\subfigure[Three normal	\class{Strings}.]{\includegraphics[width=0.425\textwidth]{part3/Figures/extreme/bulksharingpool1}}
 	\qquad
-	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part4/Figures/bulksharingpool2}}
+	\subfigure[Interning.]{\includegraphics[width=0.425\textwidth]{part3/Figures/extreme/bulksharingpool2}}
 	\qquad
-	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool3}}
+	\subfigure[Bulk	sharing	pool.]{\includegraphics[width=0.36\textwidth]{part3/Figures/extreme/bulksharingpool3}}
 	\qquad
-	\subfigure[Bulk	sharing	pool, no wrappers.]{\includegraphics[width=0.36\textwidth]{part4/Figures/bulksharingpool4}}
+	\subfigure[Bulk	sharing	pool, no wrappers.]{\includegraphics[width=0.36\textwidth]{part3/Figures/extreme/bulksharingpool4}}
 	\subfigure[The memory consumed by one million strings, each of length 10
 	bytes, for varying degrees degrees of distinctness; e.g. 10\% means that
-	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part4/Figures/bulksharingpool_consumptionchart.pdf}}
+	there are only 100,000 distinct strings.]{\includegraphics[width=\textwidth]{part3/Figures/extreme/bulksharingpool_consumptionchart.pdf}}
 	\caption{If your application has many long-lived, but small, arrays of
 	primitive data, it could suffer from high overhead. Interning avoids
 	duplication. On top of interning, a Bulk Sharing Pool offers the additional
@@ -195,7 +195,7 @@ consumption are of primary importance.
 \subfigure[Example graph.]{
 \label{fig:example-storing-relations-graph}
 \shortstack{
-	\includegraphics[width=0.3\textwidth]{part4/Figures/exampleGraph}
+	\includegraphics[width=0.3\textwidth]{part3/Figures/extreme/exampleGraph}
 	\\ \vspace{5mm}
 	}
 }
@@ -710,7 +710,7 @@ class NodeModel {
 \subfigure[Example graph, where each node has been assigned a dense integer
 index.]{
 \label{fig:example-storing-relations-graph-with-node-numbers}
-	\includegraphics[width=0.3\textwidth]{part4/Figures/exampleGraph-withNodeNumbers}
+	\includegraphics[width=0.3\textwidth]{part3/Figures/extreme/exampleGraph-withNodeNumbers}
 }
 \quad
 \subfigure[The node attribute.]{

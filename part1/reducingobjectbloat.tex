@@ -68,7 +68,7 @@ what the fill rate is, then using delegation to save memory may end up
 backfiring.
 \begin{figure}
   \centering
- \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/12-byte-graph.pdf}
+ \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/12-byte-graph.pdf}
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted by delegating 12
   bytes of memory to a side object. The x-axis is the fill rate, and the
@@ -90,7 +90,7 @@ the lines start to converge, since the fixed delegation cost becomes relatively
 less important.
 \begin{figure}
   \centering
- \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/rarely-used.pdf}
+ \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used.pdf}
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted for different
   delegated field sizes. The x-axis is the fill rate, and the y-axis is the
@@ -349,7 +349,7 @@ strings go away, you have a different footprint problem, namely,
 saving character arrays which are too big.
 \begin{figure}
   \centering
- \includegraphics[width=.90\textwidth]{part2/Figures/chapter4/substring.pdf}
+ \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/substring.pdf}
  % \includegraphics{eight-char-string}
   \caption{A string and a substring share the same character array. The length
   and offset fields are needed for the substring, but are redundant

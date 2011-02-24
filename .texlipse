@@ -1,0 +1,13 @@
+#TeXlipse project settings
+#Thu Jan 13 10:33:40 EST 2011
+builderNum=2
+outputDir=
+makeIndSty=
+bibrefDir=
+outputFormat=pdf
+tempDir=
+mainTexFile=bloatbook.tex
+outputFile=bloatbook.pdf
+langSpell=
+markDer=true
+srcDir=

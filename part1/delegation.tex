@@ -13,7 +13,7 @@ not the programmer, manages storage, and the \jre has the freedom to implement
 its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the number of bytes needed to store primitive data types. These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
 \begin{table}
   \centering
-%\includegraphics[width=.50\textwidth]{part2/Figures/chapter4/primitive-byte-sizes.pdf}
+%\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
 \begin{tabular}{lc} \toprule
 	Primitive data type & Number of bytes \\ \midrule
 	boolean, byte & 1 \\
@@ -42,7 +42,7 @@ costs imposed by two \jres, SUN Java 6 (update 14) and IBM Java 6 (SR4), both fo
 32-bit architectures.
 \begin{table}
   \centering
- %\includegraphics[width=.70\textwidth]{part2/Figures/chapter4/object-overhead.pdf}
+ %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
  % \includegraphics{eight-char-string}
  \begin{tabular}{lll} \toprule
  	& Sun Java 6 (u14) & IBM Java 6 (SR4) \\ \midrule
@@ -64,7 +64,7 @@ scalars.
 
 \begin{table}
   \centering
-%\includegraphics[width=.70\textwidth]{part2/Figures/chapter4/boxed-scalar-sizes.pdf}
+%\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/boxed-scalar-sizes.pdf}
 	\begin{tabular}{lccccccc} \toprule
     	& & \multicolumn{3}{c}{Sun Java 6 (u14)} & \multicolumn{3}{c}{IBM Java 6
     	(SR4)} \\ \cmidrule(r){3-5} \cmidrule(l){6-8}
@@ -211,7 +211,7 @@ wrapper \class{String} object and a \class{char} array.) The memory layout for
 a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part2/Figures/chapter4/employee-status.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/modelingdatatypes/employee-status.pdf}
  % \includegraphics{eight-char-string}
   \caption{The memory layout for an employee ``John Doe".}
   \label{fig:employee-status}
@@ -282,7 +282,7 @@ class EmailAddress extends ContactMethod {
 \end{shortlisting}
  \begin{figure}
   \centering
- \includegraphics[width=\textwidth]{part2/Figures/chapter4/employee-status-fine-grained.pdf}
+ \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/employee-status-fine-grained.pdf}
  % \includegraphics{eight-char-string}
   \caption{The memory layout for an employee with an emergency contact.}
   \label{fig:employee-status-fine-grained}
@@ -337,7 +337,7 @@ class ContactPerson {
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size and the bloat factor have been reduced.
  \begin{figure}
   \centering
- \includegraphics[width=\textwidth]{part2/Figures/chapter4/refactored-fine-grain.pdf}
+ \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/refactored-fine-grain.pdf}
  % \includegraphics{eight-char-string}
   \caption{Memory layout for refactored emergency contact.}
   \label{fig:refactored-fine-grain}
@@ -385,7 +385,7 @@ level, and track changes to each \class{ContactPerson}. With this solution, you
 do not need such a fine-grained data model, and the update tracking functionality is 1/4 the cost.
 \begin{figure}
   \centering
- \includegraphics[width=.70\textwidth]{part2/Figures/chapter4/big-base-class.pdf}
+ \includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/big-base-class.pdf}
  % \includegraphics{eight-char-string}
   \caption{The cost of associating \class{UndateInfo} with every
   \class{ContactMethod}.}
@@ -412,7 +412,7 @@ Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the
  \begin{figure}
   \centering
 
- \includegraphics[width=0.8\textwidth]{part2/Figures/chapter4/8-char-string-64-bit.pdf}
+ \includegraphics[width=0.8\textwidth]{part1/Figures/modelingdatatypes/8-char-string-64-bit.pdf}
  % \includegraphics{eight-char-string}
   \caption{The memory layout for an 8 character string by a 64-bit \jre.}
   \label{fig:8-char-string-64-bit}

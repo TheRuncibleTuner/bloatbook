@@ -53,10 +53,10 @@ garbage.
 \begin{figure}
 \centering
 	\subfigure[A live data
-	structure.]{\includegraphics[width=0.3\textwidth]{part4/Figures/lifetime/reachability1}}
+	structure.]{\includegraphics[width=0.3\textwidth]{part2/Figures/lifetime/reachability1}}
 	\hspace{0.18\textwidth}
 	\subfigure[Then, the dominating reference is
-	clipped.]{\label{fig:reachability-b}\includegraphics[width=0.445\textwidth]{part4/Figures/lifetime/reachability2}}
+	clipped.]{\label{fig:reachability-b}\includegraphics[width=0.445\textwidth]{part2/Figures/lifetime/reachability2}}
 	\caption{The garbage collector uses the references between objects to
 	determine what objects are collectable. The data structure on the left is
 	filled entirely with live objects. The one on the right, after a link is
@@ -164,7 +164,7 @@ setting. One such scenario, of increasing ceiling level, is illustrated in
 
 \begin{figure}
 \centering
-	\includegraphics[width=0.6\textwidth]{part4/Figures/nursery}
+	\includegraphics[width=0.6\textwidth]{part2/Figures/lifetime/nursery}
 	\caption{Oftentimes, the Java heap is split into two sub-heaps. The nursery
 	space stores newly-allocated objects, and the mature space stores objects that
 	have been tenured. The garbage collector tenures an object after it
@@ -269,7 +269,7 @@ will make use of the data stored in its fields. \autoref{fig:typical-lifecycle}
 illustrates the lifecycle of a typical object in a well behaved application.
 
 \begin{figure}
-	\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle}
+	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
 	\caption{Timeline of the life of a typical object.}
 	\label{fig:typical-lifecycle}
 \end{figure}
@@ -317,7 +317,7 @@ finishes, these two objects will become candidates for garbage collection.
 
 \begin{figure}
 	\centering
-	\includegraphics[width=\textwidth]{part4/Figures/lifetime/states}
+	\includegraphics[width=\textwidth]{part2/Figures/lifetime/states}
 	\caption{After its last use, an object enters a kind of limbo: the application
 	is done with it, but it is not yet a candidate for garbage collection. When an
 	object exits this limbo depends on the way it is referenced by your
@@ -566,17 +566,17 @@ will now be a candiate for garbage collection.
 	\centering
 %	\subfigure[The lifecycle of a typical object and its data.]{
 	%\label{fig:typical-lifecycle1}
-			%\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle}
+			%\includegraphics[width=0.95\textwidth]{part2/Figures/lifetime/object-lifecycle}
 	%}
 	\subfigure[A situation where there are long periods between uses of an
 	object's data.]{
 	\label{fig:typical-lifecycle2a}
-		\includegraphics[width=0.95\textwidth]{part4/Figures/lifetime/object-lifecycle-lulls}
+		\includegraphics[width=0.95\textwidth]{part2/Figures/lifetime/object-lifecycle-lulls}
 	}
 	\subfigure[The lifecycle of the data  that is loaded from
 	disk three times, and the objects that store it.]{
 	\label{fig:typical-lifecycle2b}
-		\includegraphics[width=0.9\textwidth]{part4/Figures/lifetime/object-lifecycle2}
+		\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle2}
 	}
 	\caption{Examples of Natural and Actual lifetimes.}
 	\label{fig:typical-lifecycle2}
@@ -619,11 +619,11 @@ within the data structure you no longer need.
 \begin{figure}
 \centering
 \subfigure[Diamond sharing.]{
-	\includegraphics[height=0.25\textheight]{part4/Figures/lifetime/reachability4}
+	\includegraphics[height=0.25\textheight]{part2/Figures/lifetime/reachability4}
 	}
 \qquad
 \subfigure[Root sharing.]{
-	\includegraphics[height=0.22\textheight]{part4/Figures/lifetime/reachability3}
+	\includegraphics[height=0.22\textheight]{part2/Figures/lifetime/reachability3}
 	}
 	\caption{When an object is shared, such as the shaded ones shown
 	here, care must be taken to clip all edges from emanating from outside of the
@@ -908,7 +908,7 @@ strong reference is reclaimed.
 
 \begin{figure}[h]   % NMM added [h] just to make formatting look good on 201007023, not necessary
 \centering
-	\includegraphics[width=0.6\textwidth]{part4/Figures/lifetime/strongweakdiamonds}
+	\includegraphics[width=0.6\textwidth]{part2/Figures/lifetime/strongweakdiamonds}
 	\caption{Despite your best efforts to use weak references correctly, if you
 	introduce a second strong reference in a way that forms a
 	\emph{diamond} shape (the shaded region), it will likely never be reclaimed.}

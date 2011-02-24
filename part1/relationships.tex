@@ -1,4 +1,4 @@
-\chapter{Reducing Collection Bloat}
+\chapter{Using Collections: Relationships}
 
  Relationships in an
 entity-relationship model are typically implemented in Java using the
@@ -42,7 +42,7 @@ of two \class{Integers}, a node number and an edge weight.
 Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for the graph.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/graph-hashset.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/graph-hashset.pdf}
   \caption{A 100,000-node graph, stored as a
   \class{HashMap} from nodes to \class{HashSets} of edges.}
   \label{fig:graph-hashset}
@@ -85,7 +85,7 @@ important, it can be enforced for an \class{ArrayList}
 approximately a third the size of a \class{HashSet}.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/graph-arraylist.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/graph-arraylist.pdf}
   \caption{A 100,000-node graph, stored as a
   \class{HashMap} from nodes to \class{ArrayLists} of edges.}
   \label{fig:graph-arraylist}
@@ -102,7 +102,7 @@ Here is a breakdown of \class{HashSet} design decisions leading to
 unnecessary bloat, as illustrated in Figure~\ref{fig:hashset}.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/hashset.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/hashset.pdf}
   \caption{The internal structure of a \class{HashSet} showing how
   implementation assumptions waste memory.}
   \label{fig:hashset}
@@ -159,7 +159,7 @@ Lower fixed cost means that an \class{ArrayList} with just a few
  delegates to \class{HashMap} dramatically inflates its fixed cost. 
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/arraylist.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/arraylist.pdf}
   \caption{The internal structure of an \class{ArrayList}, which has a
   relatively low fixed overhead, and is scalable.}
   \label{fig:arraylist}
@@ -180,7 +180,7 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
   \centering
- %\includegraphics[width=.70\textwidth]{part2/Figures/chapter4/object-overhead.pdf}
+ %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
  % \includegraphics{eight-char-string}
  \begin{tabular}{llll} \toprule
  	 Collection & Fixed Cost & Per-Entry Cost & Default Capacity \\ \midrule
@@ -254,7 +254,7 @@ action, element arrays are almost always too big.
 
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/trimmed-graph.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/trimmed-graph.pdf}
   \caption{The graph example after all of the \class{ArrayLists} have been
   trimmed by calling the \code{trimToSize} method.}
   \label{fig:trimmed-graph}
@@ -319,7 +319,7 @@ there are now only 75,000 edge \class{ArrayLists} shown, and since there are
 no more empty \class{ArrayLists}, the average fanout increases to 5.33. 
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/empty-array.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/empty-array.pdf}
   \caption{The graph example without empty \class{ArrayLists}.}
   \label{fig:empty-array}
 \end{figure}
@@ -372,7 +372,7 @@ This change, eliminating the \class{ArrayList} object, removes 24 bytes per
 \class{Edge}, as shown in Figure~\ref{fig:edges}(b), adding up to 9.16MB.
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/Edges.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/Edges.pdf}
   \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
   \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
   eliminates another 24 bytes.}
@@ -415,7 +415,7 @@ Calculating the bloat factor after making this transformation is left as an
 exercise for the reader.
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part3/Figures/arraylist-to-array.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/arraylist-to-array.pdf}
   \caption{Final entity-collection diagram for the graph example.}
   \label{fig:arraylist-to-array}
 \end{figure}
