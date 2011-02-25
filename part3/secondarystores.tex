@@ -1,3 +1,224 @@
 \chapter{Working with Secondary Stores}
+
 \section{Serialization}
+\index{Serialization}
+
+There are often situations where your data structures must be shuttled in and out
+of the Java heap. Your application might be distributed across multiple boxes
+that are connected by a network, rather than a distributed shared memory. It is
+possible that your your data structures do not fit into available physical
+memory, and so, rather than relying on the operating system's paging
+functionality, you may find that you must implement a facility for doing so more
+efficiently. Sometimes, you have enough physical memory, but are constrained by
+available address space.\index{Address space exhasution} This is especially
+likely to happen if you are running on a 32-bit \jre; e.g. if you run with a 1.5
+gigabyte Java heap, and have one hundred thousand more more loaded classes, you
+run the risk of exhausting the 2 gigabyte limit that most 32-bit operating
+systems have, for each process. On many 32-bit versions of the Windows operating
+system, and on 31-bit IBM mainframes, the address space limit is even lower than
+2 gigabytes. It might also be that you have a need to perform relational queries
+against your Java data structures, and are considering storing them in a
+relational store to avoid having to implement the querying logic yourself. Your
+reality might also be some combination of these.
+
+It is important to remember that, in Java, the terms marshalling and
+serialization are not synonymous. Serialization is the task of writing out the
+bits, and the form of those bits. Marshalling, in the Java lexicon, is
+serialization plus the assurance that all parties in the communication can agree
+upon the version of the code that generated those bits. Without this agreement,
+it can become difficult to manage evolving code bases, in the face of legacy
+installations. This disparity of terminology is somewhat unique to Java, but the
+distinction is nonetheless important. 
+
+This book does not address the issues of compatibility of code bases, other than
+to observe that, if your use case does not require handling code skew, then you
+have options that will perform much better than using the built-in Java
+marshalling mechanisms. In Java, there are several commonly available mechanisms
+for marshalling your objects into and out of the Java heap. These include the
+built-in Java object serialization, the Apache \class{XMLSerializer} and
+\class{XMLDeserializer}. There is also a variety of libraries that provide a
+mapping between Java objects and a relational backing store; an example is
+RedHat's \class{Hibernate}. All of these come with a fair amount of expense,
+because the \emph{operational} form of the data, that is the way the bits are
+laid out as your Java code operates on them, is different from the serialized
+form. Therefore, use of these serialization libraries usually entails an
+expensive translation between two disparate storage formats.
+
+
+
 \section{Memory mapping}
+\label{sec:memory-mapping}
+\index{Memory Mapping}
+
+One way to bring data in and out of Java without paying a marshalling expense
+is via memory mapped I/O. When you \emph{memory map} a file into your address
+space, you can treat the file as if it were an array. Reads and writes to the
+array are reflected as disk reads or writes, and these operations are usually
+done at a page granularity. Actual disk I/O may not occur with every array
+access. This is the case if the operating system decides that it has enough
+physical memory to keep the written pages in memory, and you haven't specified
+that array writes should be written through to disk every time. Reads may be
+serviced from this cache, as well. In this way, memory mapped I/O can have the
+benefit of well-tested caching that balances that performance needs of all
+processes running on your machine, without any work on your part.  Memory mapping
+is a common trick used that is used by C programmers seeking the ultimate in
+performance.
+
+Since the cache is managed by the operating system, cached pages persist across
+process boundaries. Therefore, if your application runs as multiple steps, each
+in a separate process, then storing your data structures in memory mapped files
+can result in a combination of caching and serialization-free persistence. The
+unwritten buffers may eventually find their way to disk (if the underlying file
+is not deleted first), but this needn't happen when one process terminates.
+
+Used to its utmost, memory mapping can additionally offer one-copy bulk
+transfers of memory to and from other processes, disk, or the network. For
+example, say your application takes data from the network and writes it to
+disk. If you memory map the network input buffers and the output file, and issue
+bulk transfers from the input to the output, then it is possible that the
+operating system will transfer the data directly from the network buffers to the
+disk buffers, without first copying them out of the kernel, or into the
+Java heap.
+
+\paragraph{Memory Mapping in Java}
+\index{\code{java.nio} library}
+As of Java 1.4, a memory mapping facility is provided by the \code{java.nio}
+library. This Java library manifests data as \class{ByteBuffer} objects. This
+interface mimics an array, providing random access and bulk \code{get} and
+\code{put} methods, but no insertion or deletion operations. Using this common
+interface, you can access four repositories of data: network transmissions, files
+on disk, memory allocations in the native heap, and allocations in the Java heap.
+While the latter two can serve only as transient repositories for your data, they
+avoid the expense of having to create a file on disk --- an expensive operation,
+on most file systems, if done frequently.
+
+You may find it useful to have the option to have some data stored in transient
+storage, and others in persistent storage, backed by files on disk, and interact
+with both using the same API. The \code{java.nio} library lets you do this. An
+important advantage of using native \class{ByteBuffer} storage, over Java heap
+storage, is that your application can run on arbitrarily large inputs without the
+constraints of a fixed-maximum size Java heap.
+
+No matter where the data is stored, you also have a choice of whether to use
+standard Java byte ordering, or the byte ordering of the platform on which the
+application is executing. Of course, this only matters if the data values you are
+accessing are larger than a byte. On top of a \class{ByteBuffer}, you can layer
+other primitive-type views. For example, the instance method
+\code{ByteBuffer.asIntBuffer()} returns an \class{IntBuffer} that takes care of
+any bit manipulations that are necessary to access the data as Java integers. If
+you have chosen to use native byte ordering, then accessing the elements of an
+\class{IntBuffer} on a 32-bit \jre requires no bit manipulation.
+
+An example use of this library to create an integer array-like view over a file
+is:
+
+\begin{shortlisting}
+IntBuffer mapAsIntegers(File file) {
+   ByteBuffer buffer = new RandomAccessFile(file).getChannel().map(MapMode.READ_WRITE,0,file.length());
+   // use platform, not Java, byte ordering
+   buffer.order(ByteOrder.nativeOrder());
+   return buffer.asIntBuffer();
+}
+\end{shortlisting}
+
+\paragraph{Memory Mapping Your Column-oriented Storage}
+
+There is a beneficial combination of memory mapping and a column-oriented
+approach to storing your data. The interface to all memory mappings is an
+array, and a column-oriented storage structure stores data as arrays. The
+update, from the previous \class{EdgeModel} is easy, but requires a notion of a
+namespace for each edge model. The namespace is necessary so that the model can
+be mapped in from disk:
+
+\begin{shortlisting}
+class EdgeModel {
+   IntBuffer from, to;
+   public EdgeModel(File namespace) { // constructor
+      from = mapAsIntegers(new File(namespace, "from"));
+      to = mapAsIntegers(new File(namespace, "to"));
+   }
+   public int getEdgeFrom(int i) {
+      return from.get(i);
+   }
+   public int getEdgeTo(int i) {
+      return to.get(i);
+   }
+}
+\end{shortlisting}
+
+\paragraph{Difficulties with Memory Mapping in Java}
+
+Each memory mapped file consumes only as much \emph{physical} memory as is
+available and which the operating system decides, in its balancing act, is worthy
+to allocate to the mapping. While all major operating system manage consumption
+of physical memory, they do not similarly manage address space consumption. Thus,
+each mapped \class{ByteBuffer} consumes a swath of address space equal to the
+\emph{full} size of the map. For this reason, if you decide to use memory
+mapping, you will run into several pernicious and interconnected problems. These
+problems are orthogonal to any problems that stem from a choice to use
+column-oriented storage.
+
+The primary problem comes from the lack of an unmapping facility in the
+\code{java.nio} library. You can not explicitly unmap a mapped area. Instead,
+and, quite oddly, in direct contradiction of widely published best practices, the
+library takes care of unmapping in the \code{finalize} method of the mapped
+\class{ByteBuffer}. This leaves the timing of unmapping at the whim of garbage
+collection and the subsequent scheduling of the finalizer thread. If you
+application allocates very little in the way of temporary objects, but uses
+memory mapping extensively, you will have failures due to address space
+exhaustion. The garbage collector won't run, because plenty of Java heap is
+available for allocation. However, memory mappings fail, because the process's
+address space is fully consumed by older mappings, many of which would be
+unmapped if the garbage collector were only to run.
+
+This implementation decision has a strong negative interaction with the second
+problem: the \jre does not, upon address space exhaustion, attempt to run a
+garbage collection and finalization pass in order to clear out mapped byte
+buffers. Therefore, you may suffer from \class{OutOfMemoryException} failures,
+due to running out of address space, despite the fact that many of your mapped
+regions are actually ready to be unmapped.
+
+The third problem you may encounter is primarily to be found on Windows
+platforms. The Windows operating system does not allow a file to be removed from
+the file system if there are existing memory maps over any part of the file.
+This, combined with the inability to explicitly unmap a mapping, can lead to a
+situation where files remain on disk when you no longer need them. For example,
+this can happen if there is a point in your code where you know the file is no
+longer necessary, but there exist references from live objects or the stack to
+the \class{ByteBuffer} object that represents the memory mapping. Since the
+\class{ByteBuffer} facade is not garbage collectible, then its \code{finalize}
+method will not be called, and hence the unmapping will not occur.
+
+There is a set of policies you can follow to reduce the likelihood of such
+problems. First, if possible, you should implement a correlated lifetime pattern
+for the \class{ByteBuffer} objects. If these objects become garbage collectible
+as soon as a phase or request completes, or correlated object is collected, then
+the \code{ByteBuffer.finalize} method will be called as soon as possible after
+that correlated event occurs. Next, you must trap all memory mapping failures,
+force a garbage collection and finalization pass, and then retry the memory
+mapping; doing this several times in a loop is recommended. Third, on some
+versions of the \jre, you will find that a memory mapping failure results in the
+\jre terminating the process. This was one, by the \jre developers, with the
+thought that a memory mapping failure was a sign of catastrophic failure. You
+know now that this is not the case, it is rather a symptom of the overall poor
+design of the \code{java.nio} library. To work around this problem, you can set
+up a security policy that disables calls to \code{System.exit}, though you must
+be careful that your own code does not rely on this call.
+
+The last good design principal, when using memory mapping in Java, is to rely on
+file-based memory mappings as little as possible. If you need only temporary
+mappings, then consider using the anonymous mappings described earlier:
+\begin{shortlisting}
+IntBuffer allocateAnonymousInts(int numBytes) {
+   ByteBuffer buffer = ByteBuffer.allocateDirect(numBytes);
+   buffer.order(ByteOrder.nativeOrder());
+   return buffer.asIntBuffer();
+}
+\end{shortlisting}
+When using anonymous maps, you must be aware of the default limits on these
+native allocations. With Sun \jres, you can configure the maximum allowed number
+of bytes allocated in this way via the command line argument
+\code{-XX:MaxDirectMemorySize}; this option takes the same arguments as the
+\code{-Xmx} setting. With IBM \jres, you do not need to specify a maximum value.
+
+
