@@ -69,7 +69,7 @@ relational information is for traversals that don't modify the graph structure
 itself, then there is an opportunity to dramatically reduce the overheads of
 storing this information.
 
-\subsection{Representing Datatypes}
+\paragraph{Breaking the Mold of Object Orientation}
 
 Consider the simple example graph from
 \autoref{fig:example-storing-relations-graph}, which has been updated in
@@ -235,7 +235,7 @@ incoming edges from a given node. Even a \class{TransientEdge} class would not
 help, because there is no connection between a node index and an index
 into the edge model. Properly representing edges requires a bit more work. 
 
-\subsection{Representing Relationships}
+\paragraph{Representing Relationships in a Column-oriented Storage Model}
 
 To allow for efficient traversals of the edges, you must index them, as a
 database would. First, consider the outgoing edges from a node. If the
@@ -339,7 +339,7 @@ be nodes 3 and 4.}
 \label{fig:fortran-style-edge-optimization}
 \end{figure}
 
-\subsection{Limitations of Column-oriented Storage}
+\paragraph{Limitations of Column-oriented Storage}
 
 There are two main problems you will run into, with a column-oriented approach.
 The first has been touched on briefly: the lack of strong typing for nodes and
@@ -363,7 +363,7 @@ normal access mechanisms. Adding edges to existing nodes is even more difficult.
 For these reasons, it is highly recommended that you only employ column-oriented
 storage for data structures that do not change in these ways.
 
-\section{Bulk Storage of Variable-Length, Immutable Data}
+\section{Bulk Storage of Variable-length, Immutable Data (Strings)}
 \label{sec:bulk-sharing-pool}
 \index{Bulk Sharing Pool}
 

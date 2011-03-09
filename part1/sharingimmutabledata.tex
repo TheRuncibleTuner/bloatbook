@@ -318,25 +318,6 @@ As this example shows,  Java's weak referencing capability has subtle
 semantics and is not easy to use. Weak referencing is a lifetime management
 facility, and is discussed in greater detail in Chapter~\ref{??} .
 
-\section{StringBuffer vs. String}
-
-It is well-known that \class{StringBuffer} is more efficient than
-\class{String} for performing string concatenation. Since \class{String}s are
-immutable, concatenating \class{String}s involves allocating a temporary
-\code{char} array, copying the \class{String}s into it, and then constructing
-a result \class{String}. A \class{StringBuffer}, on the other hand, is mutable.
-If the \class{StringBuffer} capacity is sufficient, then \class{String}s
-can be concatenated by simply appending them to the \class{StringBuffer}.
-
-However, long-lived \class{StringBuffer}s can waste memory. Usually a
-\class{StringBuffer} is 40\% empty space, since they double in size whenever
-they need to be reallocated. Typically, after a string is built up in the
-\class{StringBuffer}, it is stable, at which point it should be converted 
-to a \class{String}, so that the \class{StringBuffer} can be
-garbage collected. Using \class{StringBuffer}s to facilitate
-building a \class{String} is fine, but they should be used only as temporaries.
-
-
 \section{Summary} 
 
 Not only are Java heaps bloated from too much overhead, they
