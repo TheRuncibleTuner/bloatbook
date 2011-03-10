@@ -201,6 +201,14 @@ XX:PermSize=128m sets perm size to 128 megabytes, and -XX:MaxPermSize=512m sets
 the maximum perm size to 512 megabytes. Fortunately, the JVM performs garbage
 collection on the internal string pool, so there is no danger of a memory leak.
 
+TODO: shorten this to a quick forward reference. There is an
+important variant of a sharing pool called the Bulk Sharing Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
+memor costs of storing data. However, rather than mitigate the costs of data
+duplication, a bulk sharing pool aims to amortize the costs of Java object
+headers across the elements in a pool. This is a topic that stretches notions of
+how to store data beyond the normal Java box, and so will be discussed, along
+with many similar matters, in \autoref{chapter:large-long-lived}.
+
  %    * Literal strings within the same class in the same package represent
 %     references to the same String object. * Literal strings within different
  %    classes in the same package represent references to the same String
@@ -266,57 +274,6 @@ The first requirement is best implemented as a \class{HashMap} mapping
  	HashMap<Annotation><Annotation>   (1)
 \end{shortlisting}
 
-For the second requirement, Java provides some support for releasing unused
-items from collections, namely, \class{WeakReference}s and \class{WeakHashMap}s. 
-A \class{WeakReference} is an object wrapper. An object that is referenced by
-a \class{WeakReference} can be reclaimed by the garbage
-collector if there are no other strong references to it. A \class{WeakHashMap}
-is a hashmap that stores keys as \class{WeakReferences}. That is, when there are no
-strong references to a key, the entire entry is freed for garbage collection. 
- For example, we want an \class{Annotation} to
-go away when its associated \class{Node}s are no longer used.
-This can be implemented by a \class{WeakHashMap}:
-\begin{shortlisting}
-   WeakHashMap<Node><Annotation> nodeAnnotations;        (2)
-\end{shortlisting}
-
-This looks close to what we need. So let's modify (1) to be a
-\class{WeakHashMap}, so that when an \class{Annotation} is no longer used,
- its sharing pool entry is freed for
-garbage collection:
-\begin{shortlisting}
-   WeakHashMap<Annotation><Annotation> sharingPool;     
-\end{shortlisting}
-This should do it. Wrong! Both the key and the value of the sharingPool
- reference the same \class{Annotation} object. The key is a
-weak reference, but the value is a strong reference, which prevents an
-\class{Annotation} object from every being released. The value must also be a
-\class{WeakReference}. Here is the correct
-implementation of a sharing pool for \class{Annnotation}s:
-\begin{shortlisting}
-class AnnotationFactory {
-   static WeakHashMap<Annotation, WeakReference<Annotation>>sharingPool = 
-                   new WeakHashMap<Annotation, WeakReference<Annotation>>();
-    
-    public Annotation getAnnotation(Annotation annotation) {
-        if (annotation == null) return null;
-        WeakReference<Annotation> wref = sharingPool.get(annotation);
-        if (wref != null) {
-            Annotation oldAnnotation = wref.get();
-            if (oldAnnotation != null) {
-                return oldAnnotation;
-            }
-        }
-        sharingPool.put(annotation, new WeakReference(annotation));
-        return annotation;
-    }
-    ..
-}
-\end{shortlisting}
-
-As this example shows,  Java's weak referencing capability has subtle
-semantics and is not easy to use. Weak referencing is a lifetime management
-facility, and is discussed in greater detail in Chapter~\ref{??} .
 
 \section{Summary} 
 

@@ -30,106 +30,358 @@ dies when it should. The correlated lifetime and time-space tradeoff patterns ar
 the most difficult cases to get right, and so those most in need of rigorous
 coding practices.
 
-% managing a reference queue
+Implementing a correlated lifetime pattern in a way that does not result in
+memory drag or memory leaks is difficult. There are four important cases:
+annotations, sharing pools, listeners, and phase/request-scoped objects.
 
-%\section{Lifetime Management Principles}
+\section{Tools: Weak References and Weak Maps}
 
+\section{Annotations}
 
-\section{The Sharing Pool Pattern}
-\label{sec:sharing-pools}
-\index{Sharing Pool}
-
-\marginpar{A \textbf{Sharing Pool} stores canonical instances of data values that
-would otherwise be replicated in many objects.} It is very common for
-applications to store many copies of the same data in multiple data structures.
-This is especially a problem with strings. Heaps can often store the same string
-dozens or even hundreds of times. The sharing pool pattern is a way to amortize
-the memory cost of data over many uses of it that overlap in time. If they don't
-overlap in time, then you might still find it beneficial to amortize the
-construction time, but this is a different lifetime pattern. It is a time-space
-tradeoff, rather than a space-reduction optimization; see the resource pool
-pattern below.
-
-The general shape of the solution lies in a \emph{canonicalizing map}, one that
-maps a new data structure to a previously constructed data structure with the
-same shape and data values. Once you have made the decision to extend the
-lifetime of an object, of those canonical instances, you have introduced a
-lifetime management problem.
-
-
-\begin{example}{Duplicate Strings}
-You application loads data from a file. This data contains a large number of
-name-value maps that will be used frequently throughout program execution.
-These maps represent configuration information. The names come from a small set
-of 16 distinct names. The set of string values 
-is unknown at development time, but is known to be small;
-you know there aren't going to be many distinct values, but you are unwilling or
-unable to nail them down at compile time. How can these maps be stored in a memory
-efficient way?
-\end{example}
-
-Without any special effort, each instance of this kind of configuration map
-would store the some subset of same 16 key strings. Furthermore, each map would
-store duplicates of the values. The following code snippet has those two
-aspects of duplication:
+If you don't have the luxury to change a class definition, but need to associate
+some information with it, then your only choice is to use a map. To ensure that
+the lifetime of the annotation is correlated with the lifetime of the annotated
+object, you can use a \class{WeakHashMap}. \autoref{sec:weakhashmap} introduced
+this utility class, that is part of the standard library. For example, to
+associate a class \class{A} with a class \class{T}:
 
 \begin{shortlisting}
-Map<String,String> map = new HashMap<String,String>();
-void handleNextEntry() {
-   String key = getNextString();
-   String value = getNextString();
-   map.put(key, value);
+class AnnotationMap<T,A> extends WeakHashMap<T, A> {
+   public void annotate(T t, A a) {
+      super.put(t, a);
+   }
 }
-\end{shortlisting} 
+\end{shortlisting}
 
-Java provides a built-in mechanism for sharing the contents of strings across
-many string instances. By \emph{interning}\index{String interning} a Java
-\class{String}, you ensure that the returned \class{String} will only have
-distinct storage if it is a string value that hasn't been interned yet. You can
-modify the first try as follows:
+This implementation works well, at least for single-threaded programs. Soon after
+an annotated T instance is reclaimed, the \class{WeakHashMap} will automatically
+take care of removing the annotation entry from the map. If your application has
+multiple threads concurrently accessing and creating these annotations, then you
+will suffer from lock contention.
+\autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
+problem.
 
+There is a more immediate potential problem, however. If your annotations are
+more than simple objects like dates, then you have to be very careful to avoid
+the strong-weak diamond problem described in \autoref{sec:strongweakdiamonds}.
+This problematic situation can arise if an annotation, either directly or via
+some chain of fields, strongly references the annotated object. This is a common
+and innocent mistake, when you code in a way that avoids the messiness of
+creating a reverse lookup map, from annotations to annotated objects:
 \begin{shortlisting}
-void handleNextEntry() {
-   String key = getNextString().intern();
-   String value = getNextString().intern();
-   map.put(key, value);
+class TimestampAnnotation<T> {
+   T t;
+   Date date;
+   
+   public TimestampAnnotation(T t) {
+      this.t = t;
+      this.date = new Date();
+   }
 }
-\end{shortlisting} 
+\end{shortlisting}
+But this example will result in the annotation map leaking memory. You must have
+the annotaitons weakly reference the annotated object, i.e. the \code{T t} field
+must be replaced with a \code{WeakReference<T> t}. 
+%Careful application of the
+%single strong owner principle would help to avoid these mistakes. For example,
+%you could offer a factory method 
 
-It is possible to do even better, if you have the luxury of modifying both ends
-of the communication channel, i.e. both the serialization and this
-deserialization code. There are only 16 distinct names used in all instances of
-this configuration map. This seems like a perfect case for an enumerated type. An
-enumerated type can be used to represent strings as numbers at runtime. The only
-place the strings are stored is in the string constant pool\index{Java's Constant
-Pools}. Each class, when compiled, keeps a pool of the strings that are used by
-code in that class. In this way, an enumerated type is an even more highly
-optimized sharing pool than that provided by the interning mechanism. 
+%\begin{example}{Timestamp Annotation}
+%How can you associate a timestamp with an object in a way that avoids memory
+%leaks and that scales well to a highly concurrent workload?
+%\end{example}
+%
+%We can start with the following code:
+%
+%\begin{shortlisting}
+%class TimestampAnnotation<T> {
+	%T t;
+	%long timestamp;
+%}
+%List annotations;
+%for (String string : inputList) {
+	%...
+	%annotations.add(new WeakReference(new Wrapper<String>(string)));
+	%...
+%}
+%\end{shortlisting}
+%
+%Despite your use of \class{WeakReference}, you would find that neither the main
+%object (the strings), nor the annotations, would ever be collected. This code
+%has two memory leaks. One of the leaks is due to a
+%violation of the first principal of the use of weak references: the annotations
+%strongly reference the objects being annotated. It is not always this easy to
+%debug problems in using weak references. Your application will hold on to
+%objects that you didn't expect. Quite often, it is difficult to even know that
+%there is a problem in the first place! The application may behave normally,
+%except that it will consume more memory than necessary; if this extra memory
+%consumption pushes it over your maximum heap size, then your application will
+%crash --- you will know something is wrong, but diagnosing this type of
+%problem, a memory leak\index{Memory Leak}, is quite difficult. It is better to
+%keep the three principles of weak references in mind, and design in a way that
+%avoids memory leaks in the first place. Your annotations can be modified to use
+%a \class{WeakReference} to the main object:
+%
+%\begin{shortlisting}
+%class TimestampAnnotation<T> {
+	%WeakReference<T> t; // annotation only weakly refs main object
+	%long timestamp;
+%	
+	%TimestampAnnotation(T t) {
+		%this.t = new WeakReference(t);
+	%}
+%}
+%\end{shortlisting}
+%
+%In this case, the annotation has no normal references to the annotated object,
+%and so it obides by the first rule of weak references. If you remember from
+%\autoref{chapter:delegation}, the code can be improved further to avoid the
+%cost of delegation. This version of the annotation class extends
+%\class{WeakReference}:
+%
+%\begin{shortlisting}
+%class TimestampAnnotation<T> extends WeakReference<T> {
+	%long timestamp;
+%	
+%	TimestampAnnotation(T t) {
+		%super(t);
+	%}
+%}
+%\end{shortlisting}
+%
+%Unfortunately, both of these updated versions h?
+%%%%%%%
+% old version??
+%You could store the annotations in a map that is keyed by the
+%original object, say of type \class{T}:
+%
+%\begin{shortlisting}
+%Map<T, Date> timestamps = new HashMap<T, Date>();
+%
+%void addTimestamp(T t) {
+	%timestamps.put(t, new Date());
+%}
+%Date getTimestamp(T t) {
+%	return timestamps.get(t);
+%}
+%\end{shortlisting}
+%
+%This solution will function correctly, but suffers from a \emph{memory
+%leak}\index{Memory Leak}. As the application runs, it will consume greater
+%amounts of Java heap, up until the point when the \jre runs out of heap space
+%to allocate any more objects. This solution leaks memory, because the
+%\code{timestamps} map introduces a reference to the main objects. When the
+%garbage collector scans the heap to see which objects are still alive, the
+%references in this map will be among those that keep the objects alive. The
+%next chapter discusses these issues in more detail. An improved solution would
+%use the \class{WeakHashMap} from the Java standard libraries. By replacing the
+%initialization of the \code{timestamps} map, we have the same functionality as
+%before, but no memory leak.
+%
+%\begin{shortlisting}
+%Map<T, Date> timestamps = new WeakHashMap<T, Date>();
+%\end{shortlisting}
+%
+%Note that this same situation can hold even if you are able to modify the class
+%definition. A common scenario requires annotations on only a subset of all
+%instances of a class. In this case, is it not worth paying the memory cost to
+%have the ability to annotate every single instance. Therefore, this is another
+%case where a solution of side annotations, stored in a \class{WeakHashMap},
+%shines.
+%%%%%%%%%
 
-Enumerated types offer an additional opportunity for decreased memory bloat.
-Since, in this example, the keys can be represented as an enumerated type, you
-can use the \class{EnumMap} to store the mapping. It is over 3 times as space
-efficient as a \class{HashMap}, consuming only 28 bytes per collection and 8
-bytes per entry compared to 120 bytes per collection and 28 bytes per entry for a
-\class{HashMap}.
-
+\section{Sharing Immutable Data Safely}
+\paragraph{Review of Sharing Pools}
+\paragraph{Implementing a Leak-free Sharing Pool}
+\paragraph{A Trickier Example: An Annotation Pool}
+For the second requirement, Java provides some support for releasing unused
+items from collections, namely, \class{WeakReference}s and \class{WeakHashMap}s. 
+A \class{WeakReference} is an object wrapper. An object that is referenced by
+a \class{WeakReference} can be reclaimed by the garbage
+collector if there are no other strong references to it. A \class{WeakHashMap}
+is a hashmap that stores keys as \class{WeakReferences}. That is, when there are no
+strong references to a key, the entire entry is freed for garbage collection. 
+ For example, we want an \class{Annotation} to
+go away when its associated \class{Node}s are no longer used.
+This can be implemented by a \class{WeakHashMap}:
 \begin{shortlisting}
-enum PropertyName = {...};
-Map<PropertyName,String> map = new EnumMap<PropertyName,String>(PropertyName.class);
-void handleNextEntry() {
-   PropertyName key = getNextPropertyName();
-   Object value = getNextString().intern();
-   map.put(key, value);
-}
-\end{shortlisting} 
+   WeakHashMap<Node><Annotation> nodeAnnotations;        (2)
+\end{shortlisting}
 
-There is an important variant of a sharing pool called the Bulk Sharing Pool.
-Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
-memor costs of storing data. However, rather than mitigate the costs of data
-duplication, a bulk sharing pool aims to amortize the costs of Java object
-headers across the elements in a pool. This is a topic that stretches notions of
-how to store data beyond the normal Java box, and so will be discussed, along
-with many similar matters, in \autoref{chapter:large-long-lived}.
+This looks close to what we need. So let's modify (1) to be a
+\class{WeakHashMap}, so that when an \class{Annotation} is no longer used,
+ its sharing pool entry is freed for
+garbage collection:
+\begin{shortlisting}
+   WeakHashMap<Annotation><Annotation> sharingPool;     
+\end{shortlisting}
+This should do it. Wrong! Both the key and the value of the sharingPool
+ reference the same \class{Annotation} object. The key is a
+weak reference, but the value is a strong reference, which prevents an
+\class{Annotation} object from every being released. The value must also be a
+\class{WeakReference}. Here is the correct
+implementation of a sharing pool for \class{Annnotation}s:
+\begin{shortlisting}
+class AnnotationFactory {
+   static WeakHashMap<Annotation, WeakReference<Annotation>>sharingPool = 
+                   new WeakHashMap<Annotation, WeakReference<Annotation>>();
+    
+    public Annotation getAnnotation(Annotation annotation) {
+        if (annotation == null) return null;
+        WeakReference<Annotation> wref = sharingPool.get(annotation);
+        if (wref != null) {
+            Annotation oldAnnotation = wref.get();
+            if (oldAnnotation != null) {
+                return oldAnnotation;
+            }
+        }
+        sharingPool.put(annotation, new WeakReference(annotation));
+        return annotation;
+    }
+    ..
+}
+\end{shortlisting}
+
+As this example shows,  Java's weak referencing capability has subtle
+semantics and is not easy to use. Weak referencing is a lifetime management
+facility, and is discussed in greater detail in Chapter~\ref{??} .
+
+
+\section{Listeners}
+
+Another common instance of the correlated lifetime pattern that is easy to mess
+up is the listener pattern. A common implementation strategy is to have the list
+of listeners be a list of strong references to the callback functions. The Java
+Swing implementation of \class{JComponent} stores an \class{EventListenerList}
+instance, which has an array of strong references to the callback handlers. This
+implementation strategy has the benefit of being uniform: independent of whether
+the listener list, or some other collection, is the home base for the callbacks,
+you follow the same approach. Unfortunately, this approach requires that you
+maintain and debug code that explicitly deregisters the callback hook from the
+listener queue.
+
+To avoid this source of bugs, you must follow the single strong owner principle.
+You must choose which of the listener list or some other collection is the home
+base for the callbacks. For example, if you already have a place to store the
+callbacks, then the listener list can be created by a call to that home base
+factory: {ListenerList list = factory.newList()}.  
+
+\section{Phase/Request-Scoped Objects}
+
+It is a huge challenge to ensure that an object created within a phase or request
+dies soon after the phase or request completes. If the object is created at the
+top level of the request method, and is never stashed into any static fields or
+fields of objects which are bound to enclosing method scopes, then the normal
+local variable scoping rules (see \autoref{sec:lifetime-of-locals}) would apply,
+and life would be pretty easy:
+\begin{shortlisting}
+void doLogin() {
+   Object obj = new Object();
+   restOfWork(obj); // if obj does not escape ...
+} // ... then lifetime of obj automatically ends here
+\end{shortlisting}
+If, during the execution of the \code{restOfWork} method,  \code{obj} does not
+escape into some other scope, then its lifetime ends when the \code{doLogin}
+method returns; and, possibly, somewhat before that, as discussed in
+\autoref{sec:lifetime-of-locals}. The lifetime of the
+object \code{obj} will be correlated with the \code{doLogin} request, by the
+natural local variable scoping rules. However, it is very easy to write code that
+alters the lifetime of \code{obj}. This is especially true if you have a
+distributed team that are collaborating to implement the functionality of
+\code{restOfWork}. Since the requirement, that the lifetime of \code{obj} be
+correlated with the \code{doLogin} request is not specified in the code itself,
+and likely not even in comments or documentation, the team does not know to
+maintain this lifetime property. For example, a developer may choose to use
+\code{obj} as the key into a longer-lived map. This is a common scenario, such
+as when \code{obj} is a session identifier that is unique to the user's session
+or to the specific request being processed. For example, if you are producing a
+page composed of many parts, each part generated by independently written pieces
+of code, you can glue them together via a \code{requestState} map:
+\begin{shortlisting}
+static Map requestState = new HashMap();
+void restOfWork(Object requestKey) {
+   requestState.put(requestKey, ...);
+}
+\end{shortlisting}
+Now, these instances of \code{obj} will survive for an indefinite period of
+time. There is no way to be sure of how long these keys will last, because it
+ends on whether any of the \code{obj} intances are equal. If two calls to
+\code{restOfWork} are passed equal objects, then the first one will be
+reclaimable shortly after its entry in the map is replaced with the new one. 
+
+It is also pretty easy to introduce a memory leak.\index{Memory Leak} If you
+stash the object, in this case as a key, into a map, you must plan out a way to
+remove it when the \code{doLogin} request is done. One solution is to associate a
+cleanup hook with every data structure that should be correlated with a request,
+and invoke these at the end of a request. You could use the Listener lifetime
+pattern to do this. Each data structure that possibly contains request-scoped
+objects must register as a listener. Then, assuming that the request is processed
+by a single thread, you could combine the Listener lifetime pattern with a use of
+\tls:
+\begin{shortlisting}
+/* the cleanup API */
+interface CleanupHook { ... };
+
+/* every thread keeps a registry of cleanup hooks */
+static ThreadLocal<ListenerRegistry<CleanupHook>> requestLocals = new ThreadLocal<ListenerRegistry<CleanupHook>>() {
+   public ListenerRegistry<CleanupHook> initialValue() {
+      return new ListenerRegistry<CleanupHook>();
+   }
+}
+void doLogin() {
+   Object obj = new Object();
+   restOfWork(obj); // obj might escape!
+   requestLocals.get().notifyAll();
+}
+\end{shortlisting}
+
+In some cases, this strategy can be made to work. Mostly, though, and even in the
+current example, it is not a good approach. The \code{requestState} map is
+global, used across all requests. How can you implement a \code{CleanupHook} that
+knows which map entries to remove? In general, every data structure in which some
+request-scoped objects are stored may have this problem. Each may have a
+different requirement for extracting the correct objects, those for the request
+that just completed, from the tangle that comes from many other concurrent
+requests.
+
+%Also, if your request spans multiple threads, then the above implementation
+%simply won't work, because it relies on \tls. Support for
+%multiple threads per request that is along the same lines would require
+%keepoing track of those threads that participated. It would be pretty
+%complicated to get the details working correctly, and maintain them.
+
+How can you design a foolproof strategy that is minimally invasive? It would be
+nice to piggyback on the automated reclamation that either local variable
+scoping, or weak references offer. A single strong owner factory pattern, where
+either a local variable of the top-most method in the request, or \tls, holds the
+single strong reference to any request-scoped data:
+\begin{shortlisting}
+HomeBaseFactory requestLocals = new ThreadLocal_HomeBaseFactory();
+void doLogin() {
+   HomeBase myLocals = requestLocals.newOwner();
+   Object obj = new Object();
+   restOfWork(obj);
+   // when myLocals goes out of scope, all request scoped objects will automatically become reclaimable
+}
+static Map requestState = requestLocals.newMap();
+void restOfWork(Object requestKey) {
+   requestState.put(requestKey, ...);
+}
+\end{shortlisting}
+
+This implementation avoids the need for you to code any cleanup logic in the maps
+and sets that store request-scoped data. You only need to alter the
+\emph{constructor} of these maps to use the single strong owner pattern; as long
+as you make sure to call \code{requestLocals.set(null)}, then any request-scoped
+objects will be reclaimable immediately after the request completes --- all using
+the normal, built-in scoping rules. It would be even better if you could arrange
+it so that the \class{HomeBaseFactory} is a local variable of the
+top-level request method; then, you only need to change the constructors of the
+maps and sets that store request-scoped data. There are many minor variations of
+this base implementation. You can tailor them to your specific needs.
+
+\section{Cleaning up external resources}
+\paragraph{Finalizers and phantom references}
 
 \section{The Single Strong Owner Pattern}
 
@@ -293,498 +545,4 @@ class ThreadLocal_HomeBaseFactory extends HomeBaseFactory {
 Now, all objects owned by the repository will be automatically reclaimable when
 the return value of \code{newOwner} goes out of scope.
 
-%\subsection{Safety Valves}
 
-%\section{Example Applications of Lifetime Practices}
-\section{The Correlated Lifetime Patterns}
-
-Implementing a correlated lifetime pattern in a way that does not result in
-memory drag or memory leaks is difficult. There are four important cases:
-annotations, annotation pools, listeners, and phase/request-scoped objects.
-
-\subsection{Annotations}
-
-If you don't have the luxury to change a class definition, but need to associate
-some information with it, then your only choice is to use a map. To ensure that
-the lifetime of the annotation is correlated with the lifetime of the annotated
-object, you can use a \class{WeakHashMap}. \autoref{sec:weakhashmap} introduced
-this utility class, that is part of the standard library. For example, to
-associate a class \class{A} with a class \class{T}:
-
-\begin{shortlisting}
-class AnnotationMap<T,A> extends WeakHashMap<T, A> {
-   public void annotate(T t, A a) {
-      super.put(t, a);
-   }
-}
-\end{shortlisting}
-
-This implementation works well, at least for single-threaded programs. Soon after
-an annotated T instance is reclaimed, the \class{WeakHashMap} will automatically
-take care of removing the annotation entry from the map. If your application has
-multiple threads concurrently accessing and creating these annotations, then you
-will suffer from lock contention.
-\autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
-problem.
-
-There is a more immediate potential problem, however. If your annotations are
-more than simple objects like dates, then you have to be very careful to avoid
-the strong-weak diamond problem described in \autoref{sec:strongweakdiamonds}.
-This problematic situation can arise if an annotation, either directly or via
-some chain of fields, strongly references the annotated object. This is a common
-and innocent mistake, when you code in a way that avoids the messiness of
-creating a reverse lookup map, from annotations to annotated objects:
-\begin{shortlisting}
-class TimestampAnnotation<T> {
-   T t;
-   Date date;
-   
-   public TimestampAnnotation(T t) {
-      this.t = t;
-      this.date = new Date();
-   }
-}
-\end{shortlisting}
-But this example will result in the annotation map leaking memory. You must have
-the annotaitons weakly reference the annotated object, i.e. the \code{T t} field
-must be replaced with a \code{WeakReference<T> t}. 
-%Careful application of the
-%single strong owner principle would help to avoid these mistakes. For example,
-%you could offer a factory method 
-
-%\begin{example}{Timestamp Annotation}
-%How can you associate a timestamp with an object in a way that avoids memory
-%leaks and that scales well to a highly concurrent workload?
-%\end{example}
-%
-%We can start with the following code:
-%
-%\begin{shortlisting}
-%class TimestampAnnotation<T> {
-	%T t;
-	%long timestamp;
-%}
-%List annotations;
-%for (String string : inputList) {
-	%...
-	%annotations.add(new WeakReference(new Wrapper<String>(string)));
-	%...
-%}
-%\end{shortlisting}
-%
-%Despite your use of \class{WeakReference}, you would find that neither the main
-%object (the strings), nor the annotations, would ever be collected. This code
-%has two memory leaks. One of the leaks is due to a
-%violation of the first principal of the use of weak references: the annotations
-%strongly reference the objects being annotated. It is not always this easy to
-%debug problems in using weak references. Your application will hold on to
-%objects that you didn't expect. Quite often, it is difficult to even know that
-%there is a problem in the first place! The application may behave normally,
-%except that it will consume more memory than necessary; if this extra memory
-%consumption pushes it over your maximum heap size, then your application will
-%crash --- you will know something is wrong, but diagnosing this type of
-%problem, a memory leak\index{Memory Leak}, is quite difficult. It is better to
-%keep the three principles of weak references in mind, and design in a way that
-%avoids memory leaks in the first place. Your annotations can be modified to use
-%a \class{WeakReference} to the main object:
-%
-%\begin{shortlisting}
-%class TimestampAnnotation<T> {
-	%WeakReference<T> t; // annotation only weakly refs main object
-	%long timestamp;
-%	
-	%TimestampAnnotation(T t) {
-		%this.t = new WeakReference(t);
-	%}
-%}
-%\end{shortlisting}
-%
-%In this case, the annotation has no normal references to the annotated object,
-%and so it obides by the first rule of weak references. If you remember from
-%\autoref{chapter:delegation}, the code can be improved further to avoid the
-%cost of delegation. This version of the annotation class extends
-%\class{WeakReference}:
-%
-%\begin{shortlisting}
-%class TimestampAnnotation<T> extends WeakReference<T> {
-	%long timestamp;
-%	
-%	TimestampAnnotation(T t) {
-		%super(t);
-	%}
-%}
-%\end{shortlisting}
-%
-%Unfortunately, both of these updated versions h?
-%%%%%%%
-% old version??
-%You could store the annotations in a map that is keyed by the
-%original object, say of type \class{T}:
-%
-%\begin{shortlisting}
-%Map<T, Date> timestamps = new HashMap<T, Date>();
-%
-%void addTimestamp(T t) {
-	%timestamps.put(t, new Date());
-%}
-%Date getTimestamp(T t) {
-%	return timestamps.get(t);
-%}
-%\end{shortlisting}
-%
-%This solution will function correctly, but suffers from a \emph{memory
-%leak}\index{Memory Leak}. As the application runs, it will consume greater
-%amounts of Java heap, up until the point when the \jre runs out of heap space
-%to allocate any more objects. This solution leaks memory, because the
-%\code{timestamps} map introduces a reference to the main objects. When the
-%garbage collector scans the heap to see which objects are still alive, the
-%references in this map will be among those that keep the objects alive. The
-%next chapter discusses these issues in more detail. An improved solution would
-%use the \class{WeakHashMap} from the Java standard libraries. By replacing the
-%initialization of the \code{timestamps} map, we have the same functionality as
-%before, but no memory leak.
-%
-%\begin{shortlisting}
-%Map<T, Date> timestamps = new WeakHashMap<T, Date>();
-%\end{shortlisting}
-%
-%Note that this same situation can hold even if you are able to modify the class
-%definition. A common scenario requires annotations on only a subset of all
-%instances of a class. In this case, is it not worth paying the memory cost to
-%have the ability to annotate every single instance. Therefore, this is another
-%case where a solution of side annotations, stored in a \class{WeakHashMap},
-%shines.
-%%%%%%%%%
-
-\subsection{The Annotation Pool Pattern}
-[edith has something for this already]
-
-
-\subsection{Listeners}
-
-Another common instance of the correlated lifetime pattern that is easy to mess
-up is the listener pattern. A common implementation strategy is to have the list
-of listeners be a list of strong references to the callback functions. The Java
-Swing implementation of \class{JComponent} stores an \class{EventListenerList}
-instance, which has an array of strong references to the callback handlers. This
-implementation strategy has the benefit of being uniform: independent of whether
-the listener list, or some other collection, is the home base for the callbacks,
-you follow the same approach. Unfortunately, this approach requires that you
-maintain and debug code that explicitly deregisters the callback hook from the
-listener queue.
-
-To avoid this source of bugs, you must follow the single strong owner principle.
-You must choose which of the listener list or some other collection is the home
-base for the callbacks. For example, if you already have a place to store the
-callbacks, then the listener list can be created by a call to that home base
-factory: {ListenerList list = factory.newList()}.  
-
-\subsection{Phase/Request-Scoped Objects}
-
-It is a huge challenge to ensure that an object created within a phase or request
-dies soon after the phase or request completes. If the object is created at the
-top level of the request method, and is never stashed into any static fields or
-fields of objects which are bound to enclosing method scopes, then the normal
-local variable scoping rules (see \autoref{sec:lifetime-of-locals}) would apply,
-and life would be pretty easy:
-\begin{shortlisting}
-void doLogin() {
-   Object obj = new Object();
-   restOfWork(obj); // if obj does not escape ...
-} // ... then lifetime of obj automatically ends here
-\end{shortlisting}
-If, during the execution of the \code{restOfWork} method,  \code{obj} does not
-escape into some other scope, then its lifetime ends when the \code{doLogin}
-method returns; and, possibly, somewhat before that, as discussed in
-\autoref{sec:lifetime-of-locals}. The lifetime of the
-object \code{obj} will be correlated with the \code{doLogin} request, by the
-natural local variable scoping rules. However, it is very easy to write code that
-alters the lifetime of \code{obj}. This is especially true if you have a
-distributed team that are collaborating to implement the functionality of
-\code{restOfWork}. Since the requirement, that the lifetime of \code{obj} be
-correlated with the \code{doLogin} request is not specified in the code itself,
-and likely not even in comments or documentation, the team does not know to
-maintain this lifetime property. For example, a developer may choose to use
-\code{obj} as the key into a longer-lived map. This is a common scenario, such
-as when \code{obj} is a session identifier that is unique to the user's session
-or to the specific request being processed. For example, if you are producing a
-page composed of many parts, each part generated by independently written pieces
-of code, you can glue them together via a \code{requestState} map:
-\begin{shortlisting}
-static Map requestState = new HashMap();
-void restOfWork(Object requestKey) {
-   requestState.put(requestKey, ...);
-}
-\end{shortlisting}
-Now, these instances of \code{obj} will survive for an indefinite period of
-time. There is no way to be sure of how long these keys will last, because it
-ends on whether any of the \code{obj} intances are equal. If two calls to
-\code{restOfWork} are passed equal objects, then the first one will be
-reclaimable shortly after its entry in the map is replaced with the new one. 
-
-It is also pretty easy to introduce a memory leak.\index{Memory Leak} If you
-stash the object, in this case as a key, into a map, you must plan out a way to
-remove it when the \code{doLogin} request is done. One solution is to associate a
-cleanup hook with every data structure that should be correlated with a request,
-and invoke these at the end of a request. You could use the Listener lifetime
-pattern to do this. Each data structure that possibly contains request-scoped
-objects must register as a listener. Then, assuming that the request is processed
-by a single thread, you could combine the Listener lifetime pattern with a use of
-\tls:
-\begin{shortlisting}
-/* the cleanup API */
-interface CleanupHook { ... };
-
-/* every thread keeps a registry of cleanup hooks */
-static ThreadLocal<ListenerRegistry<CleanupHook>> requestLocals = new ThreadLocal<ListenerRegistry<CleanupHook>>() {
-   public ListenerRegistry<CleanupHook> initialValue() {
-      return new ListenerRegistry<CleanupHook>();
-   }
-}
-void doLogin() {
-   Object obj = new Object();
-   restOfWork(obj); // obj might escape!
-   requestLocals.get().notifyAll();
-}
-\end{shortlisting}
-
-In some cases, this strategy can be made to work. Mostly, though, and even in the
-current example, it is not a good approach. The \code{requestState} map is
-global, used across all requests. How can you implement a \code{CleanupHook} that
-knows which map entries to remove? In general, every data structure in which some
-request-scoped objects are stored may have this problem. Each may have a
-different requirement for extracting the correct objects, those for the request
-that just completed, from the tangle that comes from many other concurrent
-requests.
-
-%Also, if your request spans multiple threads, then the above implementation
-%simply won't work, because it relies on \tls. Support for
-%multiple threads per request that is along the same lines would require
-%keepoing track of those threads that participated. It would be pretty
-%complicated to get the details working correctly, and maintain them.
-
-How can you design a foolproof strategy that is minimally invasive? It would be
-nice to piggyback on the automated reclamation that either local variable
-scoping, or weak references offer. A single strong owner factory pattern, where
-either a local variable of the top-most method in the request, or \tls, holds the
-single strong reference to any request-scoped data:
-\begin{shortlisting}
-HomeBaseFactory requestLocals = new ThreadLocal_HomeBaseFactory();
-void doLogin() {
-   HomeBase myLocals = requestLocals.newOwner();
-   Object obj = new Object();
-   restOfWork(obj);
-   // when myLocals goes out of scope, all request scoped objects will automatically become reclaimable
-}
-static Map requestState = requestLocals.newMap();
-void restOfWork(Object requestKey) {
-   requestState.put(requestKey, ...);
-}
-\end{shortlisting}
-
-This implementation avoids the need for you to code any cleanup logic in the maps
-and sets that store request-scoped data. You only need to alter the
-\emph{constructor} of these maps to use the single strong owner pattern; as long
-as you make sure to call \code{requestLocals.set(null)}, then any request-scoped
-objects will be reclaimable immediately after the request completes --- all using
-the normal, built-in scoping rules. It would be even better if you could arrange
-it so that the \class{HomeBaseFactory} is a local variable of the
-top-level request method; then, you only need to change the constructors of the
-maps and sets that store request-scoped data. There are many minor variations of
-this base implementation. You can tailor them to your specific needs.
-
-\section{The Time-space Tradeoff Patterns}
-There are four important cases of time-space tradeoffs. The first covers
-the situation where recomputing attributes, rather than storing them, is a better
-choice. The next three cover situations where spending memory to extend the
-lifetime of certain objects saves sufficient time to be worthwhile: caches,
-sharing pools, and resource pools.
-
-\paragraph{Caches}
-
-If the data stored in a data structure is frequently and expensively recomputed
-or refetched, and the data values are the same every time, then it is worthwhile
-to cache the computation or data fetch. The expense of re-fetching data from
-external data sources and recomputing the in-memory structure can often be
-amortized, at the expense of stretching the lifetime of these data structures. A
-good cache defers the time that an object will be reclaimed, as long as there is
-sufficient space to handle the flux of temporary objects your application
-creates.
-
-
-\callout{soft-reference-rule}{Soft Reference Rule}{
-Soft references must always be over values, not keys. Otherwise, testing
-equality of keys will trigger a use of the reference. This will extend the
-lifetme of the value, even though the only use of the entry was in checking to
-see if its key matches another.	}
-
-
-
-\paragraph{Resource Pools}
-\label{sec:resource-pools}
-\index{Resource Pool}
-
-\index{Amortizing Costs}
-A cache can amortize the cost, in time, of fetching or otherwise initializing the
-data stored in an object. A sharing pool can amortize the cost, in space, of
-storing the same data in many separate objects. In both cases, the data is the
-important part of what is stored.
-
-\marginpar{A \textbf{Resource Pool} is a set of interchangeable storage or
-external connections that are expensive to construct.} There is a third case,
-where one needs to amortize the cost of the allocations, rather than the cost of
-initializing or fetching the data that is stored in this object. A resource pool
-stores the result of the allocation, not the data. Therefore, the elements of a
-resource pool are interchangeable, because it is the storage, not the values that
-matter. It is important to note that, though the data values are not the
-important part, the elements of the pool are objects, and are thus intended to
-store data! A resource pool handles the interesting case where the data is
-temporary, but you need, for performance reasons, the objects to live across many
-uses. The protocol for using a resource pool then involves reservation, a period
-of private use of the fields of the reserved object, followed by a return of that
-object to the pool.
-
-Resource pooling only makes sense if the allocations themselves are expensive.
-There are several reasons why a Java object can be expensive to allocate.
-Creating and zeroing a large array\index{Large Arrays} in each iteration of a
-loop can bog down performance. Creating a new key object to determine whether an
-value exists in a map can sometimes contribute a great deal to the load of
-temporary objects.
-
-\index{Connection Pools}
-A more important example of the need for amortizing the time cost of allocation
-comes when this Java object is a proxy for resources outside of Java. If your
-application accesses a relational database through the JDBC\index{JDBC}
-interface, you will experience the need for resource pooling. There are two kinds
-of objects that serve as proxies for resources involving database access. First
-are the connections to the database. In most operating systems, establishing a
-network connection is an expensive proposition. It also involves reservation of
-resoures in the database process. Second are the precompiled SQL statements that
-your application uses. As with the connections, these involve setup cost, of the
-compilation itself, as well as the reservation of memory resources, that the
-database uses to cache certain information about the query.
-
-
-
-
-
-\section{Concurrency Issues}
-\label{sec:lifetime-management-concurrency-issues}
-
-If your program operates with many concurrent threads, you have to program
-differently, because straightforward implementations of the above strategies will
-result in concurrency issues. One of the primary problems will be lock
-contention, as threads concurrently poll a reference queue. An important example
-of this problem shows up in the implementation of a cache that can support many
-concurrent users.\index{Caches, Concurrency Issues}
-
-A cache is a map, usually of bounded size, with an eviction strategy for
-maintaining that bound.\index{Caches} The Java standard library provides a
-concurrent map implementation, in the form of the \class{ConcurrentHashMap}
-class, but this is not a cache, because it has no eviction hooks with which one
-can bound its size.
-
-Following the soft reference rule, and using the basic guidelines for managing
-reference queues from \autoref{sec:reference-queue-basics}, leads to a first
-attempt at a \class{ConcurrentCache} implementation. You can extend the basic
-concurrent hashmap, wrapping the map's values with soft references:
-\begin{shortlisting}
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,SoftReference<V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
-   
-   protected void cleanupQueue() {
-      SoftReference<V> v;
-      while( (v = refQueue.poll()) != null) {
-         remove(???); // oops!
-      }
-   }
-}
-\end{shortlisting}
-Oops! This implementation provides no way to remove the key from the map, when
-cleaning up the evicted entries. To fix this, you'll need to stash a pointer to
-the key in the soft reference wrapper. It would be nice if the
-\class{ConcurrentHashMap} implementation let you extend
-its implementation so that its \class{\$Entry} class extended soft reference;
-the \class{\$Entry} would serve this role perfectly. Instead, you have to
-replicate this pointer structure, at a silly but unavoidable cost of memory
-bloat. You can do so in a \class{CacheSoftReference} wrapper:
-\begin{shortlisting}
-class CacheSoftReference<K, V> extends SoftReference<V> {
-   private final K k;
-   
-   public CacheSoftReference(K k, V v, ReferenceQueue<V> refQueue) {
-      super(v, refQueue);
-      this.k = k;
-   }
-}
-
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheSoftReference<K,V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
-   
-   protected void cleanupQueue() {
-      SoftReference<V> v;
-      // poll causes lock contention!
-      while( (v = refQueue.poll()) != null) {
-         remove(v.k);
-      }
-   }
-   
-   public V put(K key, V value) {
-      cleanupQueue();
-      return super.put(key, new CacheSoftReference<K,V>(key,value,refQueue));
-   }
-   
-   public V get(K key) {
-      cleanupQueue();
-      return super.get(key);
-   }
-}
-\end{shortlisting}
-This implementation still suffers from several critical problems. First, every
-call to \code{put} must check the reference queue for pending evictions in order
-to avoid unbounded growth of the eviction queue --- in the steady state,
-\code{put} calls are likely to cause evictions. Even though \code{get} calls
-won't cause evictions, in order to avoid pending evictions piling up as cached
-elements are discovered to be unused, every call to \code{get} must also poll for
-evictions. This can result in foiling the concurrency aspect of the
-\class{ConcurrentHashMap}. Second, if the cache as a whole goes unused for a long
-period of time, the pending evictions will pile up.
-
-The only way to fix the lock contention problem, at least as of Java 6, is to
-spawn a thread that periodically polls the reference queue for evicted entries.
-This will also fix the second problem. This spawned thread's \code{run} method
-will look just like the \code{cleanupQueue} method above, except that it should
-loop indefinitely, and call \code{refQueue.remove()} rather than \code{poll()};
-the former blocks until an eviction occurs (though you must still be careful to
-check the return value for \code{null}, despite what the Javadocs claim).
-
-At first sight, it would seem that you should be able to remove the calls to
-\code{cleanupQueue} from the \code{put} and \code{get} methods. This, after all,
-was the whole point of introducing the cleanup thread. However, this modified
-implementation, while an improvement, suffers from a new problem. Now, if you
-remove the \code{cleanupQueue} calls, when there is a large spike of \code{put}
-calls in a short period of time, you are at risk of running out of Java heap due
-to a large pileup of pending evictions.
-
-You must have a safety valve in place to prevent this situation. One possibility
-is to keep an approximate count of the number of \code{put} calls, and call
-\code{cleanupQueue} only periodically. In order to avoid lock contention in
-maintaining this count, you can do so in an unsynchronized way. There is still a
-pathologic possibility that every racey increment of the put counter won't
-actually increment the counter. If this worries you, you can use an
-\class{AtomicInteger}, at increased expense. Instead of calling
-\code{cleanupQueue} directly, the \code{put} method now calls a new
-\code{helpCleaner} method:
-\begin{shortlisting}
-   static private final int SAFETY_VALVE = 1000;
-   private void helpCleaner() {
-      if (putCount.incrementAndGet() >= SAFETY_VALVE) {
-         putCount.set(0);
-         cleanupQueue();
-      }
-   }
-\end{shortlisting}
-There is no reason for \code{get} calls to call this method. The only point of
-this safety valve is to avoid a sudden large influx of \code{put} calls. Indeed,
-in this final implementation, the \code{ConcurrentCache} class needn't override
-the \code{get} method of \code{ConcurrentHashMap}.

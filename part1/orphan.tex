@@ -1,0 +1,91 @@
+% this is extra text, mostly duplicate writeups
+
+% The following sections are already covered in Edith's writeup on sharing
+% immutable data
+\section{The Sharing Pool Pattern}
+\label{sec:sharing-pools}
+\index{Sharing Pool}
+
+\marginpar{A \textbf{Sharing Pool} stores canonical instances of data values that
+would otherwise be replicated in many objects.} It is very common for
+applications to store many copies of the same data in multiple data structures.
+This is especially a problem with strings. Heaps can often store the same string
+dozens or even hundreds of times. The sharing pool pattern is a way to amortize
+the memory cost of data over many uses of it that overlap in time. If they don't
+overlap in time, then you might still find it beneficial to amortize the
+construction time, but this is a different lifetime pattern. It is a time-space
+tradeoff, rather than a space-reduction optimization; see the resource pool
+pattern below.
+
+The general shape of the solution lies in a \emph{canonicalizing map}, one that
+maps a new data structure to a previously constructed data structure with the
+same shape and data values. Once you have made the decision to extend the
+lifetime of an object, of those canonical instances, you have introduced a
+lifetime management problem.
+
+
+\begin{example}{Duplicate Strings}
+You application loads data from a file. This data contains a large number of
+name-value maps that will be used frequently throughout program execution.
+These maps represent configuration information. The names come from a small set
+of 16 distinct names. The set of string values 
+is unknown at development time, but is known to be small;
+you know there aren't going to be many distinct values, but you are unwilling or
+unable to nail them down at compile time. How can these maps be stored in a memory
+efficient way?
+\end{example}
+
+Without any special effort, each instance of this kind of configuration map
+would store the some subset of same 16 key strings. Furthermore, each map would
+store duplicates of the values. The following code snippet has those two
+aspects of duplication:
+
+\begin{shortlisting}
+Map<String,String> map = new HashMap<String,String>();
+void handleNextEntry() {
+   String key = getNextString();
+   String value = getNextString();
+   map.put(key, value);
+}
+\end{shortlisting} 
+
+Java provides a built-in mechanism for sharing the contents of strings across
+many string instances. By \emph{interning}\index{String interning} a Java
+\class{String}, you ensure that the returned \class{String} will only have
+distinct storage if it is a string value that hasn't been interned yet. You can
+modify the first try as follows:
+
+\begin{shortlisting}
+void handleNextEntry() {
+   String key = getNextString().intern();
+   String value = getNextString().intern();
+   map.put(key, value);
+}
+\end{shortlisting} 
+
+It is possible to do even better, if you have the luxury of modifying both ends
+of the communication channel, i.e. both the serialization and this
+deserialization code. There are only 16 distinct names used in all instances of
+this configuration map. This seems like a perfect case for an enumerated type. An
+enumerated type can be used to represent strings as numbers at runtime. The only
+place the strings are stored is in the string constant pool\index{Java's Constant
+Pools}. Each class, when compiled, keeps a pool of the strings that are used by
+code in that class. In this way, an enumerated type is an even more highly
+optimized sharing pool than that provided by the interning mechanism. 
+
+Enumerated types offer an additional opportunity for decreased memory bloat.
+Since, in this example, the keys can be represented as an enumerated type, you
+can use the \class{EnumMap} to store the mapping. It is over 3 times as space
+efficient as a \class{HashMap}, consuming only 28 bytes per collection and 8
+bytes per entry compared to 120 bytes per collection and 28 bytes per entry for a
+\class{HashMap}.
+
+\begin{shortlisting}
+enum PropertyName = {...};
+Map<PropertyName,String> map = new EnumMap<PropertyName,String>(PropertyName.class);
+void handleNextEntry() {
+   PropertyName key = getNextPropertyName();
+   Object value = getNextString().intern();
+   map.put(key, value);
+}
+\end{shortlisting} 
