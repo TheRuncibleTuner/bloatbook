@@ -319,48 +319,6 @@ temporary \class{ParsePosition} objects).
 
 
 
-\section{Time-space Tradeoffs}
-\label{sec:time-space-tradeoffs-pattern}
-\index{Time-Space Tradeoffs}
-
-\begin{figure}[h]  % NMM added [h] just to make formatting look good on 201007014, not necessary
-	\centering
-	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-cache}
-	\caption{When a cache is in use, this leaves less headroom for temporary
-	object allocation, often resulting in more frequent garbage collections.}
-	\label{fig:timeline-base-session-temps-with-cache}
-\end{figure}
-
-Sometimes it is beneficial to extend, or shorten, the lifetime of an object. For
-example, if every request creates an object of the same type, with the same, or
-very similar, fields, then you should consider caching or pooling a single
-instance of this object. There are four important cases of time-space tradeoffs.
-The first covers the situation where recomputing attributes, rather than storing
-them, is a better choice. The next three cover situations where spending memory
-to extend the lifetime of certain objects saves sufficient time to be worthwhile:
-caches, sharing pools, and resource pools.
-\autoref{chapter:lifetime-implementation-strategies} discusses implementation
-strategies for these situations.
-
-The example server caches data from an expensive third-party data source. Caching
-external data in the Java heap complicates your programming and management tasks.
-The cache must be configured properly so that its contents live long enough to be
-amortize their costs of fetching, while not occupying too much of the heap. If
-caches are sized too large, this would leave little space for the temporaries
-that your application creates.
-\autoref{fig:timeline-base-session-temps-with-cache} shows an example where the
-cache has probably been configured to occupy too much heap space. Observe how,
-compared to the other timeline figures, there is little headroom for temporary
-objects. The result is more frequent garbage collections. If the cache were sized
-to occupy an even greater amount of heap space, it is possible that there would
-no longer be room to fit session data. The result in this case would be failures
-in client requests.
-
-Sizing caches is important, but tricky to get right. If the data to be cached is
-stored on a local disk, then another strategy to caching is to use \emph{memory
-mapping}. \autoref{sec:memory-mapping} describes how to utilize built-in Java
-functionality that lets you take advantage of the underlying operating system's
-demand paging functionality to take care of caching for you.
 
 \section{Correlated Lifetimes}
 \label{sec:correlated-lifetime-pattern}
@@ -497,7 +455,7 @@ errors. \autoref{chapter:tools} describes tooling that can help you
 detect and fix the bugs that make it into your finished application.
 
 
-\section{Correlated with External Event}
+\paragraph{Correlated with External Event}
 \index{Lifetime Requirement, Correlated with External Event}
 \label{sec:correlated-with-need}
 
@@ -517,6 +475,49 @@ These session state objects need to be kept around for operations that span
 several independent operations, and are possibly used across multiple threads.
 They are used beyond the scope of a phase, are not correlated with another
 object, but don't live forever.
+
+\section{Time-space Tradeoffs}
+\label{sec:time-space-tradeoffs-pattern}
+\index{Time-Space Tradeoffs}
+
+\begin{figure}[h]  % NMM added [h] just to make formatting look good on 201007014, not necessary
+	\centering
+	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-cache}
+	\caption{When a cache is in use, this leaves less headroom for temporary
+	object allocation, often resulting in more frequent garbage collections.}
+	\label{fig:timeline-base-session-temps-with-cache}
+\end{figure}
+
+Sometimes it is beneficial to extend, or shorten, the lifetime of an object. For
+example, if every request creates an object of the same type, with the same, or
+very similar, fields, then you should consider caching or pooling a single
+instance of this object. There are four important cases of time-space tradeoffs.
+The first covers the situation where recomputing attributes, rather than storing
+them, is a better choice. The next three cover situations where spending memory
+to extend the lifetime of certain objects saves sufficient time to be worthwhile:
+caches, sharing pools, and resource pools.
+\autoref{chapter:lifetime-implementation-strategies} discusses implementation
+strategies for these situations.
+
+The example server caches data from an expensive third-party data source. Caching
+external data in the Java heap complicates your programming and management tasks.
+The cache must be configured properly so that its contents live long enough to be
+amortize their costs of fetching, while not occupying too much of the heap. If
+caches are sized too large, this would leave little space for the temporaries
+that your application creates.
+\autoref{fig:timeline-base-session-temps-with-cache} shows an example where the
+cache has probably been configured to occupy too much heap space. Observe how,
+compared to the other timeline figures, there is little headroom for temporary
+objects. The result is more frequent garbage collections. If the cache were sized
+to occupy an even greater amount of heap space, it is possible that there would
+no longer be room to fit session data. The result in this case would be failures
+in client requests.
+
+Sizing caches is important, but tricky to get right. If the data to be cached is
+stored on a local disk, then another strategy to caching is to use \emph{memory
+mapping}. \autoref{sec:memory-mapping} describes how to utilize built-in Java
+functionality that lets you take advantage of the underlying operating system's
+demand paging functionality to take care of caching for you.
 
 \section{Permanently Resident}
 \label{sec:forever-lifetime}
@@ -571,6 +572,10 @@ Sometimes, despite your best efforts at tuning these long-lived data structures,
 the structures still don't fit within your given Java heap constraints.
 \autoref{chapter:large-long-lived} discusses strategies for coping with this
 situation.
+
+\section{Summary}
+
+
 
 % introduced by example in this chapter, and
 %Many objects are either temporaries or needed for

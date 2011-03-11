@@ -8,6 +8,53 @@ lifetime of certain objects saves sufficient time to be worthwhile: caches and
 resource pools.
 
 \section{Tools: Soft References}
+\index{Soft References}
+
+The constructor for a \class{SoftReference} also takes an object as a parameter.
+The object lives as it normally would until the point in time when there are no
+other strong references to the object. When an object is only softly or weakly
+referenced, then it enters a special transitionary lifetime state. The \jre will
+keep this object around, for as long as there is enough free Java heap. Once heap
+grows tight, the \jre will begin treating the soft references as if they were
+weak references --- the soft references that the \jre choses to discard will no
+longer inhibit the reclaimability of the softly referenced objects. This
+discarding of soft references is sometimes referred to as ``clearing'' soft
+references.
+
+The Java language specification makes no specific requirements as to how \jre
+implementations should chose which soft references to discard. The only
+requirement imposed by the language specification is that the \jre must have
+cleared \emph{all} soft references before it throws an
+\class{OutOfMemoryException}. That is, it must have reclaimed all objects that
+are uniquely owned by soft (or both soft and weak) references before it gives up,
+and fails due to heap exhaustion. Early \jres tended to make poor decisions, when
+choosing how to clear soft references. One \jre would wait until the heap was
+exhausted, at which point it would clear all soft references. Most 1.5 and 1.6
+\jres use a more sophisticated least recently used (LRU) heuristic. They keep
+track of the last time \code{get} was called, on a per-\class{SoftReference}
+basis, and begin to clear soft references if their last use was long ago.
+Sometimes, they measure this distance relative to the rate of object allocation;
+this modified heuristic will not clear soft references if your application isn't
+allocating objects at a high rate.
+
+For those \jres that use some sort of LRU heuristic, soft references can form the
+basis for implementing caches. You must be careful not to depend on this
+heuristic blindly. You should first run an experiment against the \jre to which
+you intend to deploy: implement a simple cache with soft references (see
+\autoref{chapter:time-space-tradeoffs}); enable verbose garbage collection, and
+observe the messages that indicate soft references being cleared. Making this
+observation is easier on an IBM than a Sun JVM. To do so on an IBM JVM, enable
+verbose garbage collection statistics (by adding \code{-verbose:gc} to the
+command line), and track lines of output of this form:
+\begin{shortlisting}
+<refs soft="27801" weak="3" phantom="0" dynamicSoftReferenceThreshold="19" maxSoftReferenceThreshold="32" />
+\end{shortlisting}
+It is the number of soft references you need to track. With an
+LRU-based soft reference clearing heuristic, you should observe that clearing
+occurs at a constant rate. If you observe lulls and spikes in clearing, then you
+must not depend on soft references for implementing your caches!
+
+
 
 \callout{soft-reference-rule}{Soft Reference Rule}{
 Soft references must always be over values, not keys. Otherwise, testing
@@ -72,11 +119,66 @@ compilation itself, as well as the reservation of memory resources, that the
 database uses to cache certain information about the query.
 
 \section{Avoiding Leaks When Optimizing for Time}
-\subsection{Example: Session State}
-\subsection{Example: A Cache-like Sharing Pool}
+Sometimes a data structure can have multiple lifetime requirements. 
+Care is required to make sure that we satisfy all of the requirements.  In this
+section we look at two cases where we are balancing the need to save both space and recomputation
+time.
+
+\begin{example}{Session State}
+\end{example}
+
+\begin{example}{A Caching Sharing Pool}
+\end{example}
 
 \section{Avoiding Contention: Thread-local Stores}
 
+The last advanced memory management feature offered by Java is the ability to
+associate memory with a thread. \Tls provides a way to avoid
+synchronization costs, often at the expense of some degree of wasted memory. To
+avoid synchronization, you often need to replicate some data structures. This
+feature is, of course, only helpful if your program runs with multiple threads.
+
+Consider an example of using the \class{SecureRandom} class. Instances of this
+class provide a stream of pseudo-random numbers, in a way that is
+cryptographically strong. If you have a singleton instance of this class, you may
+experience scalability problems due to lock contention; the contention is hidden
+within the \class{SecureRandom} implementation. You can use \tls
+to avoid this contention, at the (in this case, small) expense of having one
+instance per worker thread:
+\begin{shortlisting}
+class MyRandomNumberGenerator {
+   static ThreadLocal<SecureRandom> rng = new ThreadLocal<SecureRandom>() {
+      protected SecureRandom initialValue() {
+         SecureRandom random = new SecureRandom();
+         random.setSeed(/*some good seed*/);
+         return random;
+      }
+   }
+   
+   public int next() {
+      return rng.get().next(32); // need 32 bits of data
+   }
+}
+\end{shortlisting} 
+Java 7 adds a \class{ThreadLocalRandom} implementation to the standard library.
+
+Data stored in \tls will live as long as the thread. If you need
+the memory to be reclaimed before the thread terminates, you must explicitly set
+the storage to \code{null} via a call to \code{rng.set(null)}. If you are using
+the \class{java.util.concurrent} thread pool framework, then you can use its
+hooks that are called after a task, or after a thread, terminates. You can do so
+by extending the \class{ThreadPoolExecutor} and overriding the
+\code{afterExecute} and \code{terminated} methods, respectively.
+
+\Tls, like the \class{WeakHashMap}, is an example of the \jre hiding some of the
+complexity of managing weak references. Under the covers, the \tls implementation
+uses weak references so that, if a \class{ThreadLocal} object is reclaimed, then
+the storage associated with it, for all threads, will be reclaimed, too. In some
+implementations, this will not happen immediately, because these implementations
+do not use reference queues. They use an alternative approach that at least
+keeps the amount of memory spent on stale \tls bounded.
+
+\section{Summary}
 
 
 

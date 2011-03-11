@@ -89,8 +89,8 @@ owner of the shaded objects. The graph property that describes unique ownership
 is called \emph{dominance}; \index{Dominance} the clipped reference is said to
 dominate those objects that it uniquely owns.
 
-\section{The Basic Object Lifecycle}
-\section{How to Free an Object in Java}
+\section{The Object Lifecycle}
+\paragraph{How to Free an Object in Java}
 \label{sec:natural-lifetime}
 \index{Natural Lifetime of Objects}
 
@@ -525,7 +525,7 @@ we have learned in previous chapters, every instance of a standard Java hash map
 must pay the expense for potential use of features. These features aren't
 always employed, and certain rarely together, for a single map instance.
 
-\subsection{Weak and Soft References}
+\paragraph{Weak and Soft References}
 The Java language provides mechanisms that allow you more flexibility in
 implementing lifetime management policies. These advanced features are exposed
 via the \class{java.lang.ref.Reference} family of classes and \tls. Programmers
@@ -539,273 +539,14 @@ normal ways of referencing objects are typically referred to as \emph{strong}
 references. This term came about to contrast with the terms used for the more
 advanced features: weak, soft, and phantom references.
 
-\paragraph{Weak References (referencing an object without inhibiting its
-reclaimability)}
-\index{Weak References}
-
-The constructor for a \class{WeakReference} takes an object as a parameter. The
-resulting instance of \class{WeakReference} is said to \emph{weakly reference}
-that other object. A weakly referenced object will be garbage collectable, or
-not, independently of being referenced from the \class{WeakReference} object; the
-weak reference provides a non-owning handle to another object. This is a
-sometimes helpful combination, to be able to refer to the object, without
-inhibiting it being reclaimed as it normally would. To tunnel through the level
-of indirection introduced by the weak reference, you call its \code{get} method.
-If this method returns \code{null}, then you know that the referenced object has
-been reclaimed. \autoref{chapter:correlted-lifetimes} discusses how to leverage
-this functionality for an alternative implementation of the correlated lifetime
-pattern.
-
-There are three issues that you must handle with care. First, even though the
-weak reference itself does not prolong the lifetime of the referenced object,
-once you call \code{get}, you now have a regular reference to that object. If
-this reference is stored in a local variable, or in a field of another object, or
-in a collection, then you have now altered its lifetime. Once normally
-referenced, the underlying object now obeys the lifetime rules discussed earlier.
-Second, you must be careful to avoid race conditions, such as:
-\begin{shortlisting}
-class A {
-   WeakReference<B> b;
-   
-   B getB() {
-      if (b.get() != null) {
-         return b.get();
-      } else {
-         // perform any necessary cleanup
-         // notify caller of b's reclamation
-      }
-   }
-}
-\end{shortlisting}
-In that code, between the first call to \code{b.get()} and the second, the
-underlying object may have been reclaimed. You must modify that code to call
-\code{b.get()} only once, and stash the result in a local variable until
-\code{getB} returns. Third, if you need to be informed that the underlying object
-has been reclaimed, you must use the \emph{reference queue} mechanism, which will
-be discussed shortly.
-
-\paragraph{Soft References}
-\index{Soft References}
-
-The constructor for a \class{SoftReference} also takes an object as a parameter.
-The object lives as it normally would until the point in time when there are no
-other strong references to the object. When an object is only softly or weakly
-referenced, then it enters a special transitionary lifetime state. The \jre will
-keep this object around, for as long as there is enough free Java heap. Once heap
-grows tight, the \jre will begin treating the soft references as if they were
-weak references --- the soft references that the \jre choses to discard will no
-longer inhibit the reclaimability of the softly referenced objects. This
-discarding of soft references is sometimes referred to as ``clearing'' soft
-references.
-
-The Java language specification makes no specific requirements as to how \jre
-implementations should chose which soft references to discard. The only
-requirement imposed by the language specification is that the \jre must have
-cleared \emph{all} soft references before it throws an
-\class{OutOfMemoryException}. That is, it must have reclaimed all objects that
-are uniquely owned by soft (or both soft and weak) references before it gives up,
-and fails due to heap exhaustion. Early \jres tended to make poor decisions, when
-choosing how to clear soft references. One \jre would wait until the heap was
-exhausted, at which point it would clear all soft references. Most 1.5 and 1.6
-\jres use a more sophisticated least recently used (LRU) heuristic. They keep
-track of the last time \code{get} was called, on a per-\class{SoftReference}
-basis, and begin to clear soft references if their last use was long ago.
-Sometimes, they measure this distance relative to the rate of object allocation;
-this modified heuristic will not clear soft references if your application isn't
-allocating objects at a high rate.
-
-For those \jres that use some sort of LRU heuristic, soft references can form the
-basis for implementing caches. You must be careful not to depend on this
-heuristic blindly. You should first run an experiment against the \jre to which
-you intend to deploy: implement a simple cache with soft references (see
-\autoref{chapter:time-space-tradeoffs}); enable verbose garbage collection, and
-observe the messages that indicate soft references being cleared. Making this
-observation is easier on an IBM than a Sun JVM. To do so on an IBM JVM, enable
-verbose garbage collection statistics (by adding \code{-verbose:gc} to the
-command line), and track lines of output of this form:
-\begin{shortlisting}
-<refs soft="27801" weak="3" phantom="0" dynamicSoftReferenceThreshold="19" maxSoftReferenceThreshold="32" />
-\end{shortlisting}
-It is the number of soft references you need to track. With an
-LRU-based soft reference clearing heuristic, you should observe that clearing
-occurs at a constant rate. If you observe lulls and spikes in clearing, then you
-must not depend on soft references for implementing your caches!
-
-
-
-\paragraph{The WeakHashMap}
-\index{WeakHashMap}
-\label{sec:weakhashmap}
-
-The standard library includes an important construct, the \class{WeakHashMap},
-that is not only quite useful, but also hides most of the complexity of managing
-reference queues. A weak hashmap is a map that only weakly references its keys.
-When a key is reclaimed, the map evicts the corresponding entry. Behind the
-scenes, it uses weak references and reference queues, but you needn't worry about
-any of that. Your own code is not polluted by mention of \class{WeakReference}
-and \class{ReferenceQueue}, nor of the polling complexities necessary to keep the
-reference queue from overflowing with reclaimed keys.
-
-\paragraph{The Danger of Diamonds}
-\label{sec:strongweakdiamonds}
-
-Using a construct such as \class{WeakHashMap} is not a guarantee of success. The
-danger lies in there being another reference to the key that is not a weak
-reference. If this strong reference comes from the key data structure itself,
-then there is no problem. It is expected that, for the expected lifetime of an
-entry, there will be a strong reference that comes from another data structure
---- this is the reference that you expect to keep the entry alive. The main
-danger lies in a second strong reference emanating from the value data structure
-of a key's entry in the map. If you insert values that strongly reference the
-key, as illustrated in \autoref{fig:strongweakdiamonds} then the key will very
-likely never be uniquely owned by the weak reference, even after the expected
-strong reference is reclaimed.
-
-\begin{figure}[h]   % NMM added [h] just to make formatting look good on 201007023, not necessary
-\centering
-	\includegraphics[width=0.6\textwidth]{part2/Figures/lifetime/strongweakdiamonds}
-	\caption{Despite your best efforts to use weak references correctly, if you
-	introduce a second strong reference in a way that forms a
-	\emph{diamond} shape (the shaded region), it will likely never be reclaimed.}
-	% [NMM] not sure if we need to give it a name, but, for now
-	\label{fig:strongweakdiamonds}
-\end{figure}
-
-As is shown in the figure, this problematic reference structure has a diamond
-shape. The top of the diamond is the \code{Entry} object of the map, from which
-emanate two paths to the key, the weak reference from the \code{Entry} to the
-key, and the strong reference path that flows through the value. In
-\autoref{fig:strongweakdiamonds}, the darkly shaded object has a good chance of
-never being reclaimed. 
-
-In the following code, if \code{loopback} is true, then the \code{Finalized}
-message will never appear.
-\begin{shortlisting}
-static public Object setupCycle(boolean loopback) {
-   class Cycle {
-       Object loopback;
-   }
-   class Entry {
-       Object key;
-       Cycle value;
-   }
-   Object key = new Object() {
-           protected void finalize() {
-               System.out.println("Finalized");
-           }
-       };
-   Entry e = new Entry();
-   e.key = new WeakReference(key);
-   e.value = new Cycle();
-   if (loopback) e.value.loopback = key;
-   return e;
-}
-\end{shortlisting}
-
 \paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
 \index{Phantom References}
 
-Java provides two other closely related cleanup hooks, in the form of
-finalization and phantom references. These hooks are called just after the
-garbage collector has discovered that the object is collectible, but before its
-memory is reclaimed. If you implement a \code{finalize()} method in a class, then
-every instance of that class will go through a finalization process. After being
-discovered to be garbage, these instances will be enqueued on a special queue,
-usually termed the \emph{finalizer queue}. Most \jres spawn a single thread,
-termed the finalizer thread, that periodically scans the finalizer queue,
-invoking the \code{finalize} method on the enqueued objects.
-
-Phantom references offer a somewhat more refined version of this pre-reclamation
-hook. First, with phantom references, you can associate a cleanup hook on a
-per-object basis, rather than, as is the case with finalization, on a per-class
-basis. Second, phantom references give you the option of having more than one
-cleanup queue and thread, in contrast to finalization where there is a single
-finalizer queue and (usually) a single finalizer thread.
-
-You can use the hooks offered by finalization or phantom references to free up
-resources that are implicitly associated with an object. Any Java objects
-uniquely owned by this object will be reclaimed in the normal course of garbage
-collection. It is those resources that are \emph{implicitly} tied to a Java
-object, such as file descriptors, socket connections, and database resources such
-as compiled queries, that require special attention.
-
-You must be very careful in relying on finalization or phantom references. The
-Java language specification provides no assurances of how often, or even whether,
-finalization will be run on an object. In the normal course of program execution,
-eventually the finalizer will run. This is because the finalizer queue consumes
-Java heap, and hence the finalizer thread will always do whatever finalization is
-possible before the \jre gives up due to heap exhaustion. However, if your Java
-objects serve as proxies for some native, or remote, storage, and the space
-consumed by the Java proxies is small compared to the external state, then you
-may have problems. The \jre knows nothing about this external state, and so will
-not schedule the finalizer thread if an external resource is exhausted.
-
-Furthermore, the specification is very lax about whether finalizers will be run
-before program termination. You can ask the \jre to attempt to finalize objects
-before the program terminates, by calling
-\code{System.runFinalizersOnExit(true)}, a deprecated part of the API. However,
-most \jres these days run only a partial finalization, if you ask. It is hard for
-the \jre to do the right thing in a deadlock free manner. Should it only schedule
-the finalizer thread, which would run any pending finalization? This would be
-safe, and is what the \jre will do if you ask. But this misses all the
-currently-live objects that would have have been finalized, had the program
-reached a point where they were reclaimable. The \jre can't unwind, on exit, all
-the Java references thta keep those objects alive. Also, there is no analogous
-request to have the \jre run a garbage collection on exit. Hence, even for those
-objects which are actually ready to be finalized, the \jre won't do so on exit.
-It is for these reasons that the API has been deprecated.
-
-Given these downsides, it is best for you to implement a more robust lifetime
-management strategy. If you can establish a correlated lifetime pattern, such as
-that the external storage should be reclaimed when an event occurs, or when a
-method returns, then you should do so.
 
 \paragraph{\TLS}
 \tlsindex % \index{\TLS} doesn't seem to work
 
-The last advanced memory management feature offered by Java is the ability to
-associate memory with a thread. \Tls provides a way to avoid
-synchronization costs, often at the expense of some degree of wasted memory. To
-avoid synchronization, you often need to replicate some data structures. This
-feature is, of course, only helpful if your program runs with multiple threads.
+\section{Summary}
 
-Consider an example of using the \class{SecureRandom} class. Instances of this
-class provide a stream of pseudo-random numbers, in a way that is
-cryptographically strong. If you have a singleton instance of this class, you may
-experience scalability problems due to lock contention; the contention is hidden
-within the \class{SecureRandom} implementation. You can use \tls
-to avoid this contention, at the (in this case, small) expense of having one
-instance per worker thread:
-\begin{shortlisting}
-class MyRandomNumberGenerator {
-   static ThreadLocal<SecureRandom> rng = new ThreadLocal<SecureRandom>() {
-      protected SecureRandom initialValue() {
-         SecureRandom random = new SecureRandom();
-         random.setSeed(/*some good seed*/);
-         return random;
-      }
-   }
-   
-   public int next() {
-      return rng.get().next(32); // need 32 bits of data
-   }
-}
-\end{shortlisting} 
-Java 7 adds a \class{ThreadLocalRandom} implementation to the standard library.
 
-Data stored in \tls will live as long as the thread. If you need
-the memory to be reclaimed before the thread terminates, you must explicitly set
-the storage to \code{null} via a call to \code{rng.set(null)}. If you are using
-the \class{java.util.concurrent} thread pool framework, then you can use its
-hooks that are called after a task, or after a thread, terminates. You can do so
-by extending the \class{ThreadPoolExecutor} and overriding the
-\code{afterExecute} and \code{terminated} methods, respectively.
-
-\Tls, like the \class{WeakHashMap}, is an example of the \jre hiding some of the
-complexity of managing weak references. Under the covers, the \tls implementation
-uses weak references so that, if a \class{ThreadLocal} object is reclaimed, then
-the storage associated with it, for all threads, will be reclaimed, too. In some
-implementations, this will not happen immediately, because these implementations
-do not use reference queues. They use an alternative approach that at least
-keeps the amount of memory spent on stale \tls bounded.
