@@ -1,1 +1,48 @@
 \chapter{A Brief Overview of Collections}
+Collections are the glue that connect your data together. In
+many Java heaps, they are the second largest consumer of memory, after Strings. 
+It is common for heaps to have x-y\% of the space consumed by collections.  By the way, when we talk about
+collections we use the term broadly to mean random and sequential
+access structures, such as lists, sets, and arrays, as well as associative
+structures such as maps and property-value pairs.
+
+While collections serve an important functional purpose, it's an
+adminstrative one, and so we may think of them as pure overhead.
+Overhead can be worthwhile, as long as the cost is reasonable
+for the benefit attained. Like much else in Java, collections are easy to take ``off the shelf'' and use, but
+their costs are not obvious. Because the collections themselves are
+implemented in Java, their implementations suffer from the same kinds of bloat
+as other Java structures, such as delegation
+overhead and overgenerality. One goal of the next few chapters is to help you
+become aware of these costs, so that you are not paying for
+functionality that you don't need.
+
+The memory costs of collections vary widely in Java, sometimes by one or
+two orders of magnitude for different options that could work just as well in
+the same design.  %Give a numeric example here instead
+The good news is that a few small programming
+changes or configuration settings can often have a big impact. At the same
+time, there is much that is not under your control. The next few
+chapters will also help you evaluate your overall design for scalability, early
+enough when design changes are still possible.
+
+Collections are used for many purposes in Java applications. In the
+next four chapters we walk you through the common ways collections are used,
+pointing out traps and some space-saving best practices. First, in this
+chapter, we take a quick tour of the issues you are likely to face when
+using collections, and give you some basic guidelines. We also give you a guide to
+some available collection resources.
+
+\section{The Costs of Collections}
+\paragraph{Relationships}  One of the most common uses of collections in Java is
+to let you navigate from an object to its related objects, using references.
+\paragraph{Tables and Indexes}
+\paragraph{Dynamic Records and Property Maps}
+\paragraph{Orthogonal Behaviors}
+
+\section{The Standard Java Collection Classes}
+
+\section{Alternative Collection Resources}
+
+\section{Summary}
+
