@@ -1,71 +1,90 @@
-\chapter{A Brief Overview of Collections}
-Collections are the glue that connect your data together. In
-many Java heaps they are the second largest consumer of memory, after Strings. 
-It is pretty common to see applications where collections use x-y\% of
-the memory. By the way, we use the term collections
-broadly, to cover random and sequential access structures, such as lists and sets, as well as
-associative structures such as maps and property-value pairs.
+\chapter{A Brief Introduction to Collections}
+\section{Designing with Collections}
+Collections\footnote{Throughout the book we use the term collections
+very broadly, to mean random and sequential access structures, such as lists and
+sets, as well as associative structures, such as maps and property-value
+pairs.} are the glue that bind your data together. In most Java heaps they are the second largest consumer of memory,
+after Strings. It is pretty common to see applications where collections take up x-y\% of
+the memory. It's very easy to take collections off the shelf
+and use them. However, they don't come with a price tag. Like much else in Java,
+it is not obvious how much space they use. In fact,
+collections often use much more memory than one would expect. For example,
+the very smallest standard collection is 40 bytes, an \emph{empty}
+\class{ArrayList}, and that's only when it's been carefully initialized. 
+Otherwise, by default it takes up 80 bytes. 
 
-Like much else in Java, collections are very easy to take
-``off the shelf'' and use. Meanwhile, their costs are not obvious. 
-In fact, collections often use much more memory than one would expect. The very
-smallest standard collection is 40 bytes, an
-\emph{empty} \class{ArrayList} when carefully configured. The cost of
-different collections can vary greatly, even among choices that could work just
-as well in the same design. For example,
-%Give a numeric example here instead
-Remember that while
-collections serve an important function, it's an adminstrative one.  
-Administrative overhead can be worthwhile, as long as
-the cost is reasonable for the benefit attained. 
+The cost of
+different collections can vary greatly, even among choices that could work
+equally well in the same design. For example, a 5-element \class{ArrayList} with
+room for growth takes 80 bytes, while an equivalent \class{HashSet} costs 276 bytes, or 3.5 times as much. 
+Like other kinds of infrastructure, collections serve necessary
+functions, and paying for overhead can be worthwhile.  That is, as long as
+the cost is proportional to the benefit. In other words, you do not want to pay
+for functionality you don't need. In the above example, if
+the application doesn't really need the uniqueness checking provided by
+\class{HashSet}, then 70\% of the space is being wasted.  The good news is that,
+with some awareness of costs, a few small programming changes or configuration
+settings can often have a big impact.
 
-The good news is that a few small programming
-changes or configuration settings can often have a big impact. At the same
-time, there is much that is not under your control.  
+At the same time, there is much that is not under your control.
+Because the standard collection libraries are written in Java, they suffer from
+the same kinds of bloat we've encountered elsewhere. They have internal layers
+of delegation, and extra fields for features that your program may not
+use. Unfortunately, the standard collections provide few levers for
+tuning them to your particular situation. They were
+mostly designed for speed, and as a result space is sacrificed. In addition, the
+standard APIs can force you into other expensive decisions, such as boxing
+scalars that you place in collections. Given all of this, it is extra important
+to understand, as early as possible, what collections are costing you in your
+designs. In this and the next four chapters we show
+you how to figure out those costs, and avoid some common traps. 
+Armed with this
+knowledge you can choose carefully, ensuring that you are not
+overpaying for your application's needs.
+%and that your system will scale when it is time for deployment.
 
-One
-goal of the next few chapters is to help you become aware of these costs, 
-so that you are not paying for functionality that you don't need.
-The next few
-chapters will also help you evaluate your overall design for scalability, early
-enough when design changes are still possible.  In chapters x through y we'll go
-through how you use collections in your design.  But first, in the rest of this
-chapter we take a quick look at what's available and things to watch
-out for (reword!).
+%Knowing the cost of collections is just the beginning.  
+It is not enough to know the cost
+of a collection in the abstract, but how it will work in your design. The same collection can
+have very different scaling properties depending upon how it is used. For
+example, a certain choice of map may be perfect for representing a large index over a table with 1 million objects. 
+That same map, however, may be a very poor
+choice in a nested context, such as when storing sets of attribute-value 
+pairs that hang off each of those 1 million objects.
+Collections have two kinds of memory costs, as we saw in Chapter xxx. Fixed
+costs come from the fact of having a collection at all, while variable (or per-entry) costs accumulate 
+with each element stored. These costs play out in different ways depending on
+the context (and scale) in which a collection appears: whether there are a few
+large collections, many small nested ones, or something in between.
+Knowing how to analyze these costs as they appear in
+the context of your design is the way to ensure that your system will scale
+when it is time for deployment.
 
-Collections are used for many purposes in Java applications. In the
-next four chapters we walk you through the common ways collections are used,
-pointing out traps and some space-saving best practices. First, in this
-chapter, we take a quick tour of the issues you are likely to face when
-using collections, and give you some basic guidelines. We also give you a guide to
-some available collection resources.
+%Collections serve many different purposes.
+The next four chapters take you through the ways collections appear in context. 
+The chapters are organized according to the various purposes that collections
+serve in typical applications.  We walk you through common usage
+scenarios, pointing out space-saving best
+practices, along with common traps to avoid. The focus is on understanding how
+these individual design choices will play out on a larger scale.
 
+%Move this to std collections section? Along the way, we take a look inside some
+% specific library classes that are
+% relevant to the discussion.
 
-
-\section{The Costs of Collections}
-
-Why are the Java collections expensive? First of all,
-they are implemented in Java, and so they suffer from the
-same kinds of bloat we've seen in other Java structures. Many have internal layers of delegation, and extra fields
-for functionality that your program doesn't need. Also, the standard collections
-were designed with speed as a priority, and in many cases space was
-sacrificed.
-%So just because experts designed the collections, that doesn't mean
-%they are efficient users of space
-
-
-
-
-Table shows the minimum fixed size.  In fact, it can be even bigger if the
-collection is not configured carefully.
 \paragraph{Relationships}  One of the most common uses of collections in Java is
 to let you navigate from an object to its related objects, using references.
 \paragraph{Tables and Indexes}
 \paragraph{Dynamic Records and Property Maps}
 \paragraph{Orthogonal Behaviors}
 
-\section{The Standard Java Collections}
+In the remaining sections of this chapter we take a quick tour of the standard
+collections, and then of some alternative collection libraries that are
+available.
 
+\section{The Standard Java Collections}
+Table shows the minimum fixed size.  In fact, it can be even bigger if the
+collection is not configured carefully.
 \section{Alternative Collections Frameworks}
 
 \section{Summary}
