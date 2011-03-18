@@ -51,9 +51,9 @@ example, a certain choice of map may be perfect for representing a large index o
 That same map, however, may be a very poor
 choice in a nested context, such as when storing sets of attribute-value 
 pairs that hang off each of those 1 million objects.
-Collections have two kinds of memory costs, as we saw in Chapter xxx. Fixed
-costs come from the fact of having a collection at all, while variable (or per-entry) costs accumulate 
-with each element stored. These costs play out in different ways depending on
+Collections have two kinds of memory costs, as we saw in
+Section~\ref{scalability}. Fixed costs come from the fact of having a
+collection at all, while variable (or per-entry) costs accumulate with each element stored. These costs play out in different ways depending on
 the context (and scale) in which a collection appears: whether there are a few
 large collections, many small nested ones, or something in between.
 Knowing how to analyze these costs as they appear in
