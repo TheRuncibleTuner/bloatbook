@@ -1,73 +1,83 @@
 \chapter{A Brief Introduction to Collections}
+\label{chapter:brief-introduction-collections}
+
 \section{Designing with Collections}
-Collections\footnote{Throughout the book we use the term collections
-very broadly, to mean random and sequential access structures, such as lists and
-sets, as well as associative structures, such as maps and property-value
-pairs.} are the glue that bind your data together. In most Java heaps they are the second largest consumer of memory,
-after Strings. It is pretty common to see applications where collections take up x-y\% of
-the memory. It's very easy to take collections off the shelf
-and use them. However, they don't come with a price tag. Like much else in Java,
-it is not obvious how much space they use. In fact,
-collections often use much more memory than one would expect. For example,
+Collections are the glue that bind your data together\footnote{Throughout the
+book we use the term collections to mean random and sequential access
+structures, such as lists and sets, as well as associative structures, such as maps and property-value
+pairs.}. In most Java heaps they are the second largest consumer of memory,
+after Strings.  It is not unusual for collection overhead to take up between
+x and y\% of the memory. It's very easy to take collections off the shelf
+and use them. Collections don't come with a price tag, and like much else
+in Java, it is not obvious how much space they use. In fact,
+collections often use much more memory than you might expect. For example,
 the very smallest standard collection is 40 bytes, an \emph{empty}
 \class{ArrayList}, and that's only when it's been carefully initialized. 
-Otherwise, by default it takes up 80 bytes. 
+Otherwise, by default it takes up 80 bytes. That may not sound like a lot,
+but if you have a collection deeply nested in your design, you may have hundreds
+of thousands or millions of instances of collections.
 
 The cost of
-different collections can vary greatly, even among choices that could work
-equally well in the same design. For example, a 5-element \class{ArrayList} with
-room for growth takes 80 bytes, while an equivalent \class{HashSet} costs 276 bytes, or 3.5 times as much. 
-Like other kinds of infrastructure, collections serve necessary
-functions, and paying for overhead can be worthwhile.  That is, as long as
+different collections can vary greatly, even among choices that might work
+equally well in the same situation. For example, a 5-element \class{ArrayList}
+with room for growth takes 80 bytes, while an equivalent \class{HashSet} costs 276 bytes, or 3.5 times as much. 
+Like other kinds of infrastructure, collections serve a necessary
+function, and paying for overhead can be worthwhile.  That is, as long as
 the cost is proportional to the benefit. In other words, you do not want to pay
 for functionality you don't need. In the above example, if
-the application doesn't really need the uniqueness checking provided by
-\class{HashSet}, then 70\% of the space is being wasted.  The good news is that,
-with some awareness of costs, a few small programming changes or configuration
-settings can often have a big impact.
+the application can do without the uniqueness checking provided by
+\class{HashSet}, then 70\% of the space can be reclaimed.  The good news is that
+if you are aware of costs, you can often make a few small changes to
+the way you are use collections, and it will have a big impact.
 
 At the same time, there is much that is not under your control.
 Because the standard collection libraries are written in Java, they suffer from
 the same kinds of bloat we've encountered elsewhere. They have internal layers
 of delegation, and extra fields for features that your program may not
 use. Unfortunately, the standard collections provide few levers for
-tuning them to your particular situation. They were
-mostly designed for speed, and as a result space is sacrificed. In addition, the
-standard APIs can force you into other expensive decisions, such as boxing
-scalars that you place in collections. Given all of this, it is extra important
-to understand, as early as possible, what collections are costing you in your
-designs. In this and the next four chapters we show
-you how to figure out those costs, and avoid some common traps. 
-Armed with this
+tuning for each individual situation. They were
+mostly designed for speed, and as a result space is usually sacrificed. In
+addition, the standard APIs can force you into expensive decisions in other
+parts of your design, such as requiring you to box scalars that you place in
+collections. Given all of this, it is extra important to understand, as early as possible,
+what collections are costing you in your implementation. In this and
+the next four chapters we show you how to figure out those costs, and how
+to avoid some common traps. Armed with this
 knowledge you can choose carefully, ensuring that you are not
 overpaying for your application's needs.
-%and that your system will scale when it is time for deployment.
 
 %Knowing the cost of collections is just the beginning.  
 It is not enough to know the cost
-of a collection in the abstract, but how it will work in your design. The same collection can
-have very different scaling properties depending upon how it is used. For
-example, a certain choice of map may be perfect for representing a large index over a table with 1 million objects. 
-That same map, however, may be a very poor
-choice in a nested context, such as when storing sets of attribute-value 
-pairs that hang off each of those 1 million objects.
+of collections in the abstract, but to understand \emph{how they will work in
+your design}. The same collection class can have very different scaling
+properties depending upon how it is used. For example, a certain map class may
+be perfect for representing a large index over a table with a half million
+objects. That same map, however, may be prohibitively expensive
+when deeply nested, such as in the case where a half million side maps
+store attribute-value pairs, one for each object. %make example more concrete?
 Collections have two kinds of memory costs, as we saw in
-Section~\ref{scalability}. Fixed costs come from the fact of having a
-collection at all, while variable (or per-entry) costs accumulate with each element stored. These costs play out in different ways depending on
-the context (and scale) in which a collection appears: whether there are a few
-large collections, many small nested ones, or something in between.
-Knowing how to analyze these costs as they appear in
-the context of your design is the way to ensure that your system will scale
-when it is time for deployment.
+Section~\ref{scalability}. Each instance of a collection has a fixed cost,
+whether or not it contains any elements. Fixed costs accumulate based on
+how many instances of a collection you have. Then there is a variable (or
+per-entry) cost for each entry stored in a collection.
+Per-entry costs accumulate based on the number of entries total across all
+collection instances. These two kinds of costs play out in different ways
+depending on the context in which a collection appears: whether there are a few large collections,
+many small nested ones, or something in between.
+%Something about how these overhead costs are proportional to the data
+Knowing how to analyze these costs as they appear in the context of your design
+is crucial for ensuring that your system will scale when it is time for
+deployment.
 %certain collection classes were designed only to operate at a certain scale
 
 %Collections serve many different purposes.
-The next four chapters take you through the ways collections appear in context. 
-The chapters are organized according to the various purposes that collections
-serve in typical applications.  We walk you through common usage
-scenarios, pointing out space-saving best
-practices, along with common traps to avoid. The focus is on understanding how
-these individual design choices will play out on a larger scale.
+The next four chapters take you through the ways collections will appear in
+context. Collections in Java are used for a number of very different
+purposes.  The following chapters are organized according to the purpose
+collections. We walk you through common usage
+scenarios, pointing out space-saving best practices, along with common traps to avoid. The focus is on
+helping you understand how individual design choices will play out on a
+larger scale.
 
 %Move this to std collections section? Along the way, we take a look inside some
 % specific library classes that are
@@ -75,13 +85,35 @@ these individual design choices will play out on a larger scale.
 
 \paragraph{Relationships}  One of the most common uses of collections in Java is
 to let you navigate from an object to its related objects, using references.
+
 \paragraph{Tables and Indexes}
-\paragraph{Dynamic Records and Property Maps}
+
+\paragraph{Attribute Maps and Dynamic Records}
+Many applications need to store data whose shape is not
+known at compile time.  One common example is when
+records arrive from a database in response to a dynamic query. Another is when
+an application must support property-value annotations on objects, where the
+properties are not known in advance, and are input from a configuration file 
+% or by the user.
+Since Java does not let you define new classes on the fly (at
+least, not without a huge effort), collections are a natural way way to represent 
+these dynamic records. 
+%These solutions are very common, and very expensive. 
+This results in a kind of inflation, making these solutions very expensive
+from a space standpoint. The collection (typically a list, array, or map of some kind)
+becomes the ``object'', and the objects it holds are the ``fields''. 
+%In addition, because so much is left to interpret at runtime, performance
+% suffers as well.  
+In Chapter~\ref{chapter:dynamic-records} we look at the
+common patterns of representing your dynamic data with collections, their
+costs and pitfalls. We show you how, with a careful analysis of your
+requirements, you can uncover some big opportunities for saving space.
+
 \paragraph{Orthogonal Behaviors}
 
-In the remaining sections of this chapter we take a quick tour of the standard
-collections, and then of some alternative collection libraries that are
-available.
+In the remaining sections of this chapter we take a quick tour of collections
+resources that are available to you.  We first look at the standard Java
+collections, and then at some open source alternative collection libraries.
 
 \section{The Standard Java Collections}
 Table shows the minimum fixed size.  In fact, it can be even bigger if the
