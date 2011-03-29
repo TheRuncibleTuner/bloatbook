@@ -14,24 +14,24 @@ collections often use much more memory than you might expect. For example,
 the very smallest standard collection is 40 bytes, an \emph{empty}
 \class{ArrayList}, and that's only when it's been carefully initialized. 
 Otherwise, by default it takes up 80 bytes. That may not sound like a lot,
-but if you have a collection deeply nested in your design, there may be hundreds
-of thousands or millions of instances.
+but if you have a collection deeply nested in your design, it may have hundreds
+of thousands or even millions of instances.
 
 The cost of different collections can vary greatly, even among choices that
 might work equally well in the same situation. For example, a 5-element \class{ArrayList}
 with room for growth takes 80 bytes, while an equivalent \class{HashSet} costs 276 bytes, or 3.5 times as much. 
 Like other kinds of infrastructure, collections serve a necessary
 function, and paying for overhead can be worthwhile.  That is, as long as
-the cost is proportional to the benefit. In other words, you do not want to pay
-for functionality you don't need. In the above example, if
-the application can do without the uniqueness checking provided by
-\class{HashSet}, then 70\% of the space can be saved.  The good news is that
-if you are aware of costs, you can often make a few small changes to
-the way you are use collections, and it will have a big impact.
+the cost is proportional to the benefit, and you are not paying
+for functionality you don't need. In the above example, a 70\% space saving
+can be achieved if the application can do without the uniqueness checking
+provided by \class{HashSet}.  The good news is that there are often a few small
+changes you can make to the way you use collections, which can have a big
+impact on their footprint.
 
 At the same time, there is much that is not under your control.
 Because the standard collection libraries are written in Java, they suffer from
-the same kinds of bloat we've seen elsewhere. They have internal layers
+the same kinds of bloat we've already encountered. They have internal layers
 of delegation, and extra fields for features that your program may not
 use. Unfortunately, the standard collections provide few levers for
 tuning for each individual situation. They were
@@ -90,46 +90,46 @@ will play out on a larger scale.
 % specific library classes that are
 % relevant to the discussion.
 
-\paragraph{Relationships} One reason to use collections is to implement
-multi-value relationships. These let you quickly navigate
-from an object to its related objects, using references. Each relationship
-typically involves a large number of individual collection instances.  In a
+\paragraph{Chapter~\ref{chapter:representing-relationships}. Representing
+Relationships} One of the main reasons to use collections is to implement
+multi-value relationships that let you quickly navigate from an object to its
+related objects using references. Each relationship typically involves a large number of individual collection instances.  In a
 product catalog, for example, each product object might have a collection
 pointing to that product's suppliers. In these designs, both fixed and variable costs of collections matter. Chapter~\ref{chapter:}
 %focus on not overpaying for functionality.  Small collections. Empties. 
 % Growth.
 
-\paragraph{Tables and Indexes} A very different use of collections is as a way
-to find your objects. 
+\paragraph{Chapter~\ref{chapter:tables-indexes}. Tables and Indexes} A very
+different use of collections is as a way to find your objects. 
 
-\paragraph{Attribute Maps and Dynamic Records}
-Many applications need to store data whose shape is not
-known at compile time. For example, your application may need to store  
-records as they arrive from a database in response to a dynamic query. Another
-example is when you need to associate property-value annotations with
-each object, where the full set of properties is specified in a configuration
+\paragraph{Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
+Records} Many applications need to store data whose shape is not
+known at compile time. For example, your application may retrieve
+records from a database in response to a dynamic query. Another example is when
+you need to associate property-value annotations with each object, where the full set of
+properties is specified in a configuration
 file loaded at startup time.
 % or by the user.
 Since Java does not let you define new classes on the fly (at
 least, not without a lot of machinery), collections are a natural way to
 represent these dynamic records. These solutions are very expensive from a
-space standpoint, since there is a kind of ``inflation'' in the representation. 
-Each record, which under normal cirsumstances would be an object, is
-now represented as a collection (typically a list, array, or map), while each
-field is promoted to an entire object.
+space standpoint, since there is an``inflation'' in the way the data is
+physically stored. Each record, which under normal circumstances would be an
+object, is now a collection (typically a list, array, or map), while each
+field takes up an entire object.
 %In addition, because so much is left to interpret at runtime, performance
 % suffers as well.  
-Chapter~\ref{chapter:dynamic-records} takes you through the
-common patterns of representing your dynamic data with collections, and
-the costs and pitfalls of these patterns. Designs with dynamic data typically 
+In this chapter we walk through the
+common patterns of representing dynamic data with collections, and
+the costs and pitfalls of these patterns. Designs with dynamic data 
 have a lot of small collections, and so they share some issues in
-common with relationships. However, dynamic data has some unique requirements of its
-own, and these can differ in each situation. Carefully analyzing these
-requirements can lead to some specialized solutions, solutions that can save a
-lot of space.
+common with relationships. However, dynamic data has some unique requirements, and
+these can differ in each situation. Carefully analyzing these
+requirements can lead to some specialized solutions, solutions that save a lot
+of space.
 
-\paragraph{Orthogonal Behaviors}
-aaa
+\paragraph{Chapter~\ref{chapter:additional-collection-behaviors}. Additional
+Collection Behaviors} aaa
 
 In the remaining sections of this chapter we take a quick tour of collections
 resources that are available to you.  We first look at the standard Java
