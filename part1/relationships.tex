@@ -1,29 +1,20 @@
-\chapter{Representing Relationships}
-\label{chapter:representing-relationships}
- Relationships in an
+\chapter{Using Collections: Relationships}
+
+Relationships in an
 entity-relationship model are typically implemented in Java using the
-standard library collection classes. 
-%While a simple 1:1 relationship can be
-%implemented with a single map, more complex 1:n, n:1, and m:n are usually 
-%implemented with collections inside other
-%collections, sometimes nested three or more levels deep. 
-It is common for a Java application to create hundreds of
-thousands, even millions, of collections, where the vast majority are empty or
-contain only a few entries.
-Our guess is that the
-collection class developers would be surprised by this usage pattern. 
-Why bother implementing expandable
-structures and clever hashing algorithms for only a few entries?
-This mismatch between collection implementation and usage is 
-a leading cause of memory bloat. The basic cost of a collection, even an
-empty collection, is remarkably high. Creating millions of small collections
-multiplies this basic infrastructure cost, which is all overhead, filling the
-heap. This chapter shows
- how to mitigate the many-small-collections problem to reduce memory bloat.
+standard library collection classes:
+each object points to collections of other objects related to it.
+Since relationships are at the core of any data model, it
+ is not uncommon for a Java application to create hundreds of
+thousands, even millions, of collections. Therefore, simple decisions, like
+which collection class to use, when to create it, and how to initialize it,
+can make a surprisingly big difference on memory cost.
+This chapter shows
+ how to lower memory costs when implementing relationships with collections.
  
  \section{Choosing The Right Collection}
 
-The standard Java collections vary widely in terms of memory consumption.
+The standard Java collection classes vary widely in terms of how much memory they use.
 Not surprisingly, the more functionality a collection provides, the more
 memory it consumes. Collections range from simple, highly efficient
 \class{ArrayLists} to very complex
@@ -31,21 +22,54 @@ memory it consumes. Collections range from simple, highly efficient
 control at an extremely high price. 
 Using overly general collections, that provide more functionality than
 really needed, is a common pattern leading to excessive memory bloat.
-Since collection implementations are hidden, it's
-easy to see how this happens.
 
-To illustrate, consider a graph with 100,000 nodes that have four edges each on
-average. A straight-forward implementation is to use a
-\class{HashMap}, where the keys are nodes and the values are \class{HashSets}
-of edges. In this example, a node is an \class{Integer}, and an edge consists
-of two \class{Integers}, a node number and an edge weight.
-Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for the graph.
+This chapter looks at how to choose an appropriate collection class to
+store relationship targets, that is, the objects related to other
+objects, in a memory-efficient way. Using collections for this purpose tends to result in many small or empty collections, a pattern that,
+as we will see, should set off alarm bells in your head. 
+To make this discussion more concrete, let's return to the product and supplier example 
+from section~\ref{sec:rarely-used}, and change it a little
+ bit. Now a product may have multiple alternate suppliers, and each product
+ stores a reference to a collection of alternate suppliers. An obvious choice is
+ to store the alternate suppliers in a \class{HashSet}:
+ \begin{shortlisting} 
+class Product {
+	String sku;
+	String name;
+	.. 
+	HashSet<Supplier> alternateSuppliers;
+}
+
+class Supplier {
+	String supplierName;
+	String supplierAddress;
+	String sku;
+}
+\end{shortlisting}
+ 
+
+
+
+
+
+%Since collection implementations are hidden, it's
+%easy to see how this happens.
+
+%To illustrate, consider a graph with 100,000 nodes that have four edges each on
+%average. A straight-forward implementation is to use a
+%\class{HashMap}, where the keys are nodes and the values are \class{HashSets}
+%of edges. In this example, a node is an \class{Integer}, and an edge consists
+%of two \class{Integers}, a node number and an edge weight.
+Suppose there are 100,000 products that each have 4 alternate suppliers on
+average. Figure~\ref{fig:product-hashset} shows an entity-collection diagram for
+the relationship between products and alternate suppliers.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/graph-hashset.pdf}
-  \caption{A 100,000-node graph, stored as a
-  \class{HashMap} from nodes to \class{HashSets} of edges.}
-  \label{fig:graph-hashset}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-hashset.pdf}
+ \caption{A relationship between 100,000 products and alternate suppliers,
+  stored as a
+  \class{HashSets} of alternate \class{Suppliers} related to \class{Products}.}
+  \label{fig:product-hashset}
 \end{figure}
 %Sun library --  Empty HashSet -- 136 bytes
 % 16 bytes HashSet (header + pointer)
@@ -68,29 +92,40 @@ Figure~\ref{fig:graph-hashset} shows an entity-collection diagram for the graph.
 % ArrayList is 80 (56+24) for 4 entries.
 % 400,000 ArrayLists is: 32,000,000 bytes
 
-This is a hugely bloated structure with a bloat factor of 95.7\%.
-There are multiple problems here, that we will address in this chapter one by
-one. The first problem is a collection choice problem, namely, the edges are
-represented by 100,000 very small \class{HashSets}, each consuming 232 bytes, which is all overhead. It's hard to
- think of a good reason why such a heavy-weight collection should ever be used
+Using a $HashSet$ for storing the alternate suppliers turns out to be a very
+costly decision. The alternate suppliers are represented by 100,000
+very small \class{HashSets}, each consuming 232 bytes, which is all overhead.
+The total cost is 22.119MB. 
+It's hard to think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern arises in almost all
  applications. For small sets, \class{ArrayList} is almost always a better choice. 
  \class{HashSet} maintains uniqueness
   and provides fast access, but enforcing uniqueness
 is not always needed. If uniqueness is
 important, it can be enforced for an \class{ArrayList} 
- with a little extra checking code, and usually without significant performance
- loss when sets are small. Figure~\ref{fig:graph-arraylist} shows improved memory usage with
-\class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead,
+ with  little extra checking code, and usually without significant performance
+ loss when sets are small. Figure~\ref{fig:product-arraylist} shows improved
+ memory usage with \class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead,
 approximately a third the size of a \class{HashSet}.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/graph-arraylist.pdf}
-  \caption{A 100,000-node graph, stored as a
-  \class{HashMap} from nodes to \class{ArrayLists} of edges.}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-arraylist.pdf}
+ \caption{A relationship between 100,000 products and alternate suppliers,
+ where the alternate \class{Suppliers} associated with each \class{Product} are
+ stored in an \class{ArrayLists}.}
   \label{fig:graph-arraylist}
 \end{figure}
-This simple change saves 14.49MB, which is a reduction of 20.4\%. 
+This simple change saves 14.49MB. 
+
+Our guess is that the
+collection class developers would be surprised by this usage pattern that result
+in hundreds of thousands of small $HashSet$. Why bother implementing expandable
+structures and clever hashing algorithms for only a few entries?
+This mismatch between collection implementation and usage is 
+a leading cause of memory bloat. The overhead cost of a $HashSet$ is remarkably
+high. Creating many small collections multiplies this basic infrastructure
+cost, which is all overhead, filling the heap. 
+
 \section{The Cost Of Collections}
 \label{sec:collectioncost}
 Let's look at why a \class{HashSet} is so much bigger than an \class{ArrayList}. 
@@ -348,7 +383,7 @@ exists at every use. For example, the size method and iterators will just work.
 However, you have to be careful not to let any references to static empty
 collections escape its immediate context. 
 If you give out a reference to a static empty collection, 
-then thereÕs no way to update this escaped empty-collection reference
+then thereï¿½s no way to update this escaped empty-collection reference
 once an actual collection is allocated. 
 
 \section{Fixed Size Collections}
