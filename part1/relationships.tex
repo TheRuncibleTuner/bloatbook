@@ -23,10 +23,16 @@ control at an extremely high price.
 Using overly general collections, that provide more functionality than
 really needed, is a common pattern leading to excessive memory bloat.
 
-This chapter looks at how to choose an appropriate collection class to
+This chapter looks at how to choose the best collection class to
 store relationship targets, that is, the objects related to other
-objects, in a memory-efficient way. Using collections for this purpose tends to result in many small or empty collections, a pattern that,
-as we will see, should set off alarm bells in your head. 
+objects, in a memory-efficient way. 
+Using collections for relationships often results in many small or empty
+collections, because there are either lots of objects in the relationship or
+each object has only a few related other objects, or both. When there are lots
+of collections with only a few entries, you need to ask  whether the
+functionality of the collection you choose is worth the memory cost of that
+functionality.
+
 To make this discussion more concrete, let's return to the product and supplier example 
 from section~\ref{sec:rarely-used}, and change it a little
  bit. Now a product may have multiple alternate suppliers, and each product
@@ -47,10 +53,6 @@ class Supplier {
 }
 \end{shortlisting}
  
-
-
-
-
 
 %Since collection implementations are hidden, it's
 %easy to see how this happens.
@@ -94,7 +96,7 @@ the relationship between products and alternate suppliers.
 
 Using a $HashSet$ for storing the alternate suppliers turns out to be a very
 costly decision. The alternate suppliers are represented by 100,000
-very small \class{HashSets}, each consuming 232 bytes, which is all overhead.
+very small \class{HashSets}s, each consuming 232 bytes, which is all overhead.
 The total cost is 22.119MB. 
 It's hard to think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern arises in almost all
@@ -117,34 +119,32 @@ approximately a third the size of a \class{HashSet}.
 \end{figure}
 This simple change saves 14.49MB. 
 
-Our guess is that the
-collection class developers would be surprised by this usage pattern that result
-in hundreds of thousands of small $HashSet$. Why bother implementing expandable
-structures and clever hashing algorithms for only a few entries?
-This mismatch between collection implementation and usage is 
-a leading cause of memory bloat. The overhead cost of a $HashSet$ is remarkably
-high. Creating many small collections multiplies this basic infrastructure
-cost, which is all overhead, filling the heap. 
 
 \section{The Cost Of Collections}
 \label{sec:collectioncost}
-Let's look at why a \class{HashSet} is so much bigger than an \class{ArrayList}. 
-Some of the \class{HashSet} overhead is Java-related and
-unavoidable. Other overhead is the result of hard-coded assumptions, for
-example, the \class{HashSet} implementation assumes \class{HashSets} will be very large, 
-and sacrifices memory space in favor of performance. 
-Here is a breakdown of \class{HashSet} design decisions leading to
-unnecessary bloat, as illustrated in Figure~\ref{fig:hashset}.
+Let's look inside a \class{HashSet} to see why it is so much bigger than an
+\class{ArrayList}. Some of its extra cost is because of additional functionality
+(element uniqueness and constant access time), some extra cost because of
+unavoidable Java overhead, and some extra cost because it is optimized for
+performance. The \class{HashSet} 
+implementation assumes \class{HashSets} will be very large, and sacrifices memory 
+space in favor of performance. Additionally, \class{HashSet} is expensive
+because it is implemented as a degenerate \class{HashMap}, that is, a
+\class{HashMap} with no values, thus reusuing \class{HashMap} code. The internal
+structure of a default size \class{HashSet} is shown in
+Figure~\ref{fig:hashset_new}.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/hashset.pdf}
-  \caption{The internal structure of a \class{HashSet} showing how
-  implementation assumptions waste memory.}
-  \label{fig:hashset}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/hashset_new.pdf}
+  \caption{The internal structure of a \class{HashSet}.}
+  \label{fig:hashset_new}
 \end{figure}
 
-\paragraph{Reusing HashMap.} Internally, a \class{HashSet} is just a wrapper,
-delegating all of its work to a \class{HashMap}.
+The elements of \class{HashSet}s, which include wrappers, arrays and linked
+lists of elements, are typical of collections. 
+
+\paragraph{Wrapper Objects.}
+Internally, a \class{HashSet} is just a wrapper, delegating all of its work to a \class{HashMap}.
 This decision to reuse the \class{HashMap} code instead of specializing
 \class{HashSet} costs an extra 16 bytes, which is reasonable if
 \class{HashSets} are big and the fixed overhead costs are amortized away. 
@@ -155,23 +155,14 @@ Each \class{HashMap\$Entry} stores a key and a
 value, and \class{HashSet} only uses the key, so four bytes are wasted per
 entry. Sometimes specialization is a better option than reuse, especially for
 library classes, where the usage patterns are not known in advance.
-  
-\paragraph{Open Chaining.} \class{HashMap} itself is fairly
- expensive. First, the \class{HashMap} object is just a container pointing
- to the actual array of entries. This delegation is necessary in Java.
- Secondly, \class{HashMap} uses an
- open chaining algorithm, which means that clashing entries are chained in a
- linked list. With open chaining, each entry requires its own
- \class{HashMap\$Entry} object and an extra level of indirection.
  
-\paragraph{Default Array Size.} 
+\paragraph{Entry Array.} 
 A \class{HashMap}, which is used to implement a \class{HashSet}, has a default
 size of 16 entries, which means that its array of entries has an initial
 size of 16. This wastes space when most \class{HashSets} have only a few
 entries. For example, a \class{HashSet} with five entries wastes 44 bytes.
 
-
-\paragraph{Bookkeeping Fields.} \class{HashMap} allows callers to iterate over
+\paragraph{Entries.} \class{HashMap} allows callers to iterate over
 its set of keys, set of values, and set of entries. These sets are cached once
 they are created. Every \class{HashMap} has three pointers
 to store these sets, which is an extra 12 bytes.
@@ -185,6 +176,8 @@ there is never a need for a set of values.
  \class{Strings}, which store their own hashcode, or \class{Integers}, whose
  hashcodes are easy to compute. 
 \paragraph{}
+
+
 In contrast, \class{ArrayList} has a smaller fixed cost and a smaller
 per-entry cost than \class{HashSet}. It is really just an expandable array,
 consisting of a wrapper object and an array of entries, as shown in Figure~\ref{fig:arraylist}. 
@@ -212,6 +205,16 @@ calculated based on the Sun JVM, using the techniques
 described in Chapter~\ref{chapter:delegation}. The various other Java standard
 library implementations in circulation have costs
 similar to these. You can calculate them using the same methodology.
+
+Our guess is that the
+collection class developers would be surprised by this usage pattern that result
+in hundreds of thousands of small $HashSet$. Why bother implementing expandable
+structures and clever hashing algorithms for only a few entries?
+This mismatch between collection implementation and usage is 
+a leading cause of memory bloat. The overhead cost of a $HashSet$ is remarkably
+high. Creating many small collections multiplies this basic infrastructure
+cost, which is all overhead, filling the heap. 
+
 
 \begin{table}
   \centering
