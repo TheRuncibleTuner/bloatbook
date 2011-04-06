@@ -50,22 +50,22 @@ It is not enough to know the cost
 of collections in the abstract, but to understand \emph{how they will work in
 your design}. This is because the same collection class can have very different
 scaling behavior in different situations. For example, a particular map
-may be perfect for implementing an index over a table with a half
-million objects. That same map, however, may be prohibitively expensive
-when deeply nested, for example, when each of those half
-million objects has a side map to store attribute-value pairs that annotate the
-object.
+may be perfect as an index over a large table containing a
+million objects. That same map class, however, may be prohibitively expensive
+when deeply nested, for example, when each of those
+million objects maintains its own side map to store attribute-value pairs that
+annotate the object.
 %make example more concrete? 
 Collections have fixed and variable costs, as we saw
 in Section~\ref{scalability}. These costs play out differently
 depending on the context in which a collection appears, for example, whether
 there are many small nested collections, a few large ones, or some combination
-hybrid.  A given collection choice has its fixed cost as a minimum,
-whether or not it contains any elements. Fixed costs add up depending on how many collection instances there are. The variable cost is the space needed to store each entry. 
-These costs accumulate with the total number of
+hybrid.  A given collection choice has as a minimum its fixed cost,
+whether or not it contains any elements. Fixed costs will add up depending on
+how many collection instances there are. The variable cost is the space needed to store each entry. These
+ costs accumulate with the total number of
 elements in collections, regardless of whether they are spread across a lot of
-small collections or concentrated in a few
-large ones. 
+small collections or concentrated in a few large ones. 
 Some collection costs will be amortized as more data is stored, others will only
 continue to grow. Collection costs also need to be considered together with the data they are
 storing. If you are using very expensive collections to store very small amounts
@@ -73,16 +73,17 @@ of data, than your system will have a high overhead ratio, and ultimately your a
 to scale will be limited. 
 Knowing how to analyze these costs in the context of your design
 is the key to ensuring that your system will scale when it is time for
-deployment.  That is the focus of the next four chapters.
+deployment.  
+%That is the focus of the next four chapters.
 %certain collection classes were designed only to operate at a certain scale
 
 %Collections serve many different purposes.
-Collections are used for many purposes in Java.  The next four chapters are
-organized according to the different ways collections will be used in your
+You can use collections for many different purposes in Java.  The next four
+chapters are organized according to the different ways collections will be used in your
 applications. We walk you through the most common usage scenarios, pointing out
 space-saving best practices along with some common traps to avoid. 
 %Understanding requirements can lead to specialized solutions
-Throughout, the goal is to help you understand how small design choices
+Throughout, the goal is to help you understand how local design choices
 will play out on a larger scale.
 %something about solutions?
 
@@ -92,10 +93,11 @@ will play out on a larger scale.
 
 \paragraph{Chapter~\ref{chapter:representing-relationships}. Representing
 Relationships} One of the main reasons to use collections is to implement
-multi-value relationships that let you quickly navigate from an object to its
-related objects using references. Each relationship typically involves a large number of individual collection instances.  In a
-product catalog, for example, each product object might have a collection
-pointing to that product's suppliers. In these designs, both fixed and variable costs of collections matter. Chapter~\ref{chapter:}
+multi-value relationships, where you can quickly navigate from an object
+to its related objects via references. Each relationship will turn into a
+large number of individual collection instances. In a product catalog, for example, each product object might have a collection
+pointing to that product's suppliers, and another pointing to the product's
+parts. In these designs, both fixed and variable costs of collections matter.
 %focus on not overpaying for functionality.  Small collections. Empties. 
 % Growth.
 
@@ -129,18 +131,37 @@ requirements can lead to some specialized solutions, solutions that save a lot
 of space.
 
 \paragraph{Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors} aaa
+Collection Behaviors} 
 
 In the remaining sections of this chapter we take a quick tour of collections
-resources that are available to you.  We first look at the standard Java
+resources that are available.  We first look at the standard Java
 collections, and then at some open source alternative collection
 libraries.
 
 \section{The Standard Java Collections}
 
 \section{Alternative Collections Frameworks}
+In addition to the standard Java collections classes, there are a number of
+open source collections frameworks available. Many of these frameworks
+are designed to give you additional functionality or make it easier to
+program. With some exceptions, most are not designed to be efficient from a
+space standpoint. While some do make much better use of space, and give you a
+better ability to customize for your situation, others actually have a
+large footprint for the same functionality as the standard libraries. So as in
+anything else, being an informed consumer (by measuring) is the best way to
+avoid problems later. Below is a short summary of the most
+popular alternative collections frameworks.
 
+Important note: there are many kinds of open source licenses, and all have some
+sort of restrictions on usage. Make sure to check with your organization's open
+source software policies to see if you may use a specific framework in 
+your product, service or internal system.
+
+(TODO: Subsections go here for each major framework. Short summary of each.
+Longer section on any framework that has customization of policies or that lets you override
+entries. Also a brief subsection on collection classes within other frameworks.)
 
 \section{Summary}
 
-
+Fixed and variable costs.  Fixed costs may or may not be amortized, depending on
+the design.  Variable costs are never amortized at a larger scale.
