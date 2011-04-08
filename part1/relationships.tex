@@ -1,4 +1,5 @@
 \chapter{Representing Relationships}
+\label{chapter:representing-relationships}
 
 Relationships in an
 entity-relationship model are typically implemented in Java using the
@@ -364,19 +365,20 @@ since there are no more empty \class{ArrayLists}, the average fanout increases t
  \class{ArrayLists} maps all nodes to a singleton immutable static
  \class{ArrayList}, so that no empty \class{ArrayLists} are created:
  \begin{shortlisting}
- public void initGraph() {
+     public void initAlternateSupplierRelationship() {
        ..
-       for (i = 0; i < numNodes; i++) {
-          graph.put(nodes.get(i), Collections.emptyList());
+       for (int i = 0; i < numProducts; i++) {
+          Product product = products.get(i);
+          product.alternateSuppliers = Collections.emptyList();
        }
-   }
+     } 
  \end{shortlisting}
 This initialization avoids the need to check whether an \class{ArrayList}
 exists at every use. For example, the size method and iterators will just work.
 However, you have to be careful not to let any references to static empty
-collections escape its immediate context. 
+collections escape their immediate context. 
 If you give out a reference to a static empty collection, 
-then there�s no way to update this escaped empty-collection reference
+then there is no way to update this escaped empty-collection reference
 once an actual collection is allocated. 
 
 \section{Fixed Size Collections}
