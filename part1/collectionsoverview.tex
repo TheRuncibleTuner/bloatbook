@@ -1,21 +1,98 @@
 \chapter{Collections: An Introduction}
 \label{chapter:brief-introduction-collections}
 
+Collections are the glue that bind your data together.  Whether 
+providing random or sequential access to your data, or letting you
+look up information by value, collections are an essential part of any
+design. In Java, collections are very easy to use, and, just as easily, to misuse when
+it comes to space. Like much else in Java, they don't come with a price tag
+saying how much memory they need. In fact, collections
+often use much more memory than you might expect. In most Java applications they are the second largest consumer of memory, after
+Strings. It's not unusual for collection overhead to take up between x and y\%
+of the Java heap.
+
+Collections can serve many different purposes in an application. They can be
+used to implement relationships, to organize data into tables, to build indexing
+structures, or to associate informal information alongside more structured
+data. The next four chapters cover using collections in depth. The chapters are
+organized according to the different purposes that collections will be used
+for in your application. In each chapter we go through the typical patterns you
+will encounter, pointing out the common traps and best practices that will help you avoid memory problems. An
+important goal throughout is to help you understand how local decisions
+play out at a larger scale.  
+
+Collections also have some common themes, no
+matter what they are used for. For example, each collection class has certain
+costs, and will exhibit certain scaling behavior depending upon where it
+sits in a design. In the next section of this chapter we give a
+brief overview of the important issues to watch for in any use of collections. In the final section
+of this chapter we then take a look at some of the collections resources available to you,
+both in the standard libraries and in some open source alternatives. Before we
+start, here is a roadmap of the next four chapters, an in-depth look at the
+various uses of collections.
+
+%You can use collections for many different purposes in Java. The next
+%four chapters are organized according to the different ways collections will be
+%used in your applications. We walk you through the most common usage scenarios,
+%pointing out space-saving best practices along with some common traps to avoid.
+%Understanding requirements can lead to specialized solutions
+%Throughout, the goal is to help you understand how local design choices
+%will play out on a larger scale.
+%something about solutions?
+
+
+\paragraph{Chapter~\ref{chapter:representing-relationships}. Representing
+Relationships} One of the main reasons to use collections is to implement
+multi-value relationships, that let you quickly navigate from an object
+to its related objects via references. At runtime each relationship turns into a
+large number of individual collection instances. In a product catalog, for example, 
+each product object would have a collection
+pointing to that product's suppliers, and another pointing to the product's
+parts. This chapter covers the issues to watch for in these designs:
+keeping the cost of small and empty collections to a minimum; sizing your collections properly; and paying only for functionality
+you truly need.
+
+\paragraph{Chapter~\ref{chapter:tables-indexes}. Tables and Indexes} A very
+different use of collections is as a way to find your objects.  These
+structures may be tables enabling direct access to all
+the data of one type, or indexes that let you look up objects by key. These
+structures may also be used to guarantee uniqueness. They are often large structures, and
+have scaling issues that are very different from designs with lots of small
+collections, such as relationships. The main issue in these large
+structures is understanding which costs will be amortized as the structure
+grows, and which will not. This analysis is particularly important for more complex structures,
+such as large multikey and multivalue maps. This
+chapter takes you through once such analysis, with multiple design
+choices whose scaling behavior is not immediately obvious.
+
+\paragraph{Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
+Records} Many applications need to store data whose shape is not
+known at compile time. For example, your application may use dynamic
+queries to retrieve records from a database, or it may use
+a runtime configuration file to determine properties associated with
+certain objects. Since Java does not let you define new classes on the fly (or at
+least, not easily), collections are a natural way to
+represent these dynamic records. These designs result in a lot of small collections, and so they share some
+issues in common with relationships. The main issue for dynamic data, however, 
+is that these designs exhibit a kind of ``inflation'' in the
+way the data is stored, making them very big consumers of memory. Each record,
+instead of being an object, is implemented as a collection. Each collection's
+elements are the fields of the record, each field modeled as an object.
+The collections may be arrays, lists, or in the worst case, maps. This chapter shows how, by looking
+carefully at your data's requirements and identifying those aspects of the data
+that are predictable, there are opportunities for specialized,
+space-saving representations.
+
+\paragraph{Chapter~\ref{chapter:additional-collection-behaviors}. Additional
+Collection Behaviors} Collections often need to implement functionality that is
+orthogonal to their main role as storing and retreiving data.  For example, they
+may need to minimize contention when operating in a multithreaded environment,
+or be protected from unauthorized updates.  Java collections provide these
+capabilities in various ways: through specialized collection classes, as well as
+collection wrappers that add (or subtract) functionality on existing collection
+classes.  
+
 \section{Designing with Collections}
-Collections are the glue that bind your data together\footnote{By
-collections we mean random and sequential access structures, such as lists and
-sets, as well as associative structures, such as maps and property-value pairs.}. 
-In most Java heaps collections are the second largest consumer of memory,
-after Strings.  It's not unusual for collection overhead to take up between
-x and y\% of memory. It's very easy to take collections off the shelf
-and use them. Collections don't come with a price tag, and like much else
-in Java, it is not obvious how much space they use. In fact,
-collections often use much more memory than you might expect. For example,
-the very smallest standard collection is 40 bytes, an \emph{empty}
-\class{ArrayList}, and that's only when it's been carefully initialized. 
-Otherwise, by default it takes up 80 bytes. That may not sound like a lot,
-but if you have a collection deeply nested in your design, it may have hundreds
-of thousands or even millions of instances.
 
 The cost of different collections can vary greatly, even among choices that
 might work equally well in the same situation. For example, a 5-element \class{ArrayList}
@@ -29,9 +106,17 @@ provided by \class{HashSet}.  The good news is that there are often a few small
 changes you can make to the way you use collections, which can have a big
 impact on their footprint.
 
-At the same time, there is much that is not under your control.
-Because the standard collection libraries are written in Java, they suffer from
-the same kinds of bloat we've already encountered. They have internal layers
+For example,
+the very smallest standard collection is 40 bytes, an \emph{empty}
+\class{ArrayList}, and that's only when it's been carefully initialized. 
+Otherwise, by default it takes up 80 bytes. That may not sound like a lot,
+but if you have a collection deeply nested in your design, there may be
+hundreds of thousands or millions of instances.
+
+
+At the same time, there is much that is not under your control, and the basic
+costs of collections are high.  Because the standard collection libraries are
+written in Java, they suffer from the same kinds of bloat we've already encountered. They have internal layers
 of delegation, and extra fields for features that your program may not
 use. Unfortunately, the standard collections provide few levers for
 tuning for each individual situation. They were
@@ -77,70 +162,9 @@ deployment.
 %That is the focus of the next four chapters.
 %certain collection classes were designed only to operate at a certain scale
 
-%Collections serve many different purposes.
-You can use collections for many different purposes in Java.  The next four
-chapters are organized according to the different ways collections will be used in your
-applications. We walk you through the most common usage scenarios, pointing out
-space-saving best practices along with some common traps to avoid. 
-%Understanding requirements can lead to specialized solutions
-Throughout, the goal is to help you understand how local design choices
-will play out on a larger scale.
-%something about solutions?
-
-%Move this to std collections section? Along the way, we take a look inside some
-% specific library classes that are
-% relevant to the discussion.
-
-\paragraph{Chapter~\ref{chapter:representing-relationships}. Representing
-Relationships} One of the main reasons to use collections is to implement
-multi-value relationships, where you can quickly navigate from an object
-to its related objects via references. Each relationship will turn into a
-large number of individual collection instances. In a product catalog, for example, each product object might have a collection
-pointing to that product's suppliers, and another pointing to the product's
-parts. In these designs, both fixed and variable costs of collections matter.
-%focus on not overpaying for functionality.  Small collections. Empties. 
-% Growth.
-
-\paragraph{Chapter~\ref{chapter:tables-indexes}. Tables and Indexes} A very
-different use of collections is as a way to find your objects. 
-
-\paragraph{Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
-Records} Many applications need to store data whose shape is not
-known at compile time. For example, your application may retrieve
-records from a database in response to a dynamic query. Another example is when
-you need to associate property-value annotations with each object, where the full set of
-properties is specified in a configuration
-file loaded at startup time.
-% or by the user.
-Since Java does not let you define new classes on the fly (at
-least, not without a lot of machinery), collections are a natural way to
-represent these dynamic records. These solutions are very expensive from a
-space standpoint, since there is an``inflation'' in the way the data is
-physically stored. Each record, which under normal circumstances would be an
-object, is now a collection (typically a list, array, or map), while each
-field takes up an entire object.
-%In addition, because so much is left to interpret at runtime, performance
-% suffers as well.  
-In this chapter we walk through the
-common patterns of representing dynamic data with collections, and
-the costs and pitfalls of these patterns. Designs with dynamic data 
-have a lot of small collections, and so they share some issues in
-common with relationships. However, dynamic data has some unique requirements, and
-these can differ in each situation. Carefully analyzing these
-requirements can lead to some specialized solutions, solutions that save a lot
-of space.
-
-\paragraph{Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors} 
-
-In the remaining sections of this chapter we take a quick tour of collections
-resources that are available.  We first look at the standard Java
-collections, and then at some open source alternative collection
-libraries.
-
-\section{The Standard Java Collections}
-
-\section{Alternative Collections Frameworks}
+\section{Collections Resources}
+\subsection{The Standard Java Collections}
+\subsection{Alternative Collections Frameworks}
 In addition to the standard Java collections classes, there are a number of
 open source collections frameworks available. Many of these frameworks
 are designed to give you additional functionality or make it easier to
