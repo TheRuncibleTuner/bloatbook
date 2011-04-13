@@ -16,78 +16,82 @@ or break a system's ability to scale.
 
 This chapter and the next four chapters are about using
 collections in a space-efficient way.  Collections may serve a number of very
-different purposes in an application. They can be used to implement relationships, to organize data into tables,
-to enable quick lookup via indexes, or to hold informal annotations on more formally modeled data. Each use
-has its own best practices, as well as traps to avoid. Across these
-uses, collections also have some common themes that are important to understand. For example,
-all collection classes have fixed and variable costs.
-These costs, along with where a collection sits structurally in a design, will determine how that
-design will scale. The current chapter gives an overview of issues and
-resources to be aware of when working with collections. Section~\ref{sec:designing-with-collections}
-is an introduction to collection costs. It is followed by a
-brief survey of available collections resources, covering both the standard libraries and
-some open source alternatives.
+different purposes in an application. They can be used to implement
+relationships, to organize data into tables, to enable quick lookup via indexes, or
+to hold informal annotations on more formally modeled data. Each use
+has its own best practices, as well as traps to avoid. The next four chapters are an in-depth
+look at each of the different ways collections can be used. Each chapter
+takes you through typical patterns of usage, and helps you understand what
+collections cost, and gives you techniques for analyzing how
+small decisions play out at a larger scale. Understanding your requirements
+to match a collection to the task, to avoiding paying for functionality you
+don't need.  Here is a roadmap of the next four chapters:
+% common traps and
+% best practice solutions to help you avoid memory problems. 
 
-\section{Collections: Roadmap}
-The next four chapters are an in-depth guide to using collections efficiently. 
-The chapters are organized according to the
-different purposes that collections serve. Each chapter goes through the typical
-patterns of usage and shows common traps and best practice solutions, to help
-you avoid memory problems. One focus throughout is the importance of analyzing
-how local decisions will play out at a larger scale. Below is a roadmap of the next four chapters.
+%Shows you costs
 %Importance of scalability analysis
 %Understanding requirements can lead to specialized solutions
 %Look inside a few important collection classes
 %
 
-\paragraph{Chapter~\ref{chapter:representing-relationships}. Representing
-Relationships} One of the main reasons to use collections is to implement
-multi-value relationships, enabling quick navigation from an object
-to related objects via references. At runtime, each relationship turns into a
-large number of collection instances, many containing just a few elements each.
-In a product catalog, for example, each product object would have one collection
-instance pointing to that product's suppliers, and another pointing to the product's
-parts. The main issues to watch for in these designs
+
+\begin{description}
+\item[Chapter~\ref{chapter:representing-relationships}. Representing
+Relationships] This chapter covers using 
+collections to implement relationships that enable quick
+navigation from an object to related objects via references. At runtime,
+each relationship turns into a large number of collection instances, many containing just a few elements each.
+%In a product catalog, for example, each product object would have one
+%collection instance pointing to that product's suppliers, and another pointing
+%to the product's parts.
+The main issues to watch for in these designs
 are keeping the cost of small and empty collections to a minimum, sizing
 collections properly, and paying only for functionality that is truly needed.
 
-\paragraph{Chapter~\ref{chapter:tables-indexes}. Tables and Indexes} Collections
-are often the jumping off point for finding objects. Some
-examples are a table that provides direct access to all the data of one
-type, or an index that lets you look up objects by unique key.
-These are usually large structures, with very different scaling issues
-from designs that have lots of small collections. To
-predict how they will scale the analysis looks at
-which costs will be amortized as the structure grows and which will not. The chapter also covers more complex,
-composite structures, such as such as multikey and multivalue maps, where the analysis is more difficult. This chapter takes you through one such analysis,
-comparing multiple design choices whose scaling behavior is not immediately obvious.
+\item[Chapter~\ref{chapter:tables-indexes}. Tables and Indexes] This
+chapter covers collections that serve as the jumping off point for accessing
+objects. This could be a table that provides direct access to all the
+objects of one type, or an index for looking up objects by unique key. These are
+usually large structures. In more complex cases such as multikey and multivalue maps,
+there is a choice between a single collection vs. a multilevel structure.
+This chapter covers predicting memory costs as the structure
+grows.
+%understanding which costs are amortized and which are not 
 
-\paragraph{Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
-Records} Many applications need to represent data whose shape is not
-known at compile time. For example, an application may issue dynamic
-queries to retrieve records from a database, or it may have
-a runtime configuration file with property name-value pairs to 
-associate with objects. Since Java does not let you define new classes on the
-fly (or at least, not easily), collections are a natural way to
-represent these dynamic records. These designs result in a lot of small collections, and share some
-issues with relationships. The main issue that makes these designs such large
-consumers of memory is that they ``inflate'' the data. Each record turns
-into a whole collection, and each field becomes an object stored in that
-collection. The collections may be arrays, lists, or in the worst case, maps. This chapter shows how, by looking carefully at your data's requirements and identifying those aspects of the data
-that are predictable, there are opportunities for specialized,
-space-saving representations.
+\item[Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
+Records] Many applications need to represent data whose shape is not
+known at compile time. This data might be property-value pairs
+read from a configuration file at runtime, or database records returned from
+a dynamic query. Since Java does not let you define new classes on the
+fly, collections are a natural, though costly way to represent these
+dynamic records. This chapter looks at the common cases where dynamic records
+are needed, and shows how to identify properties of your data that could lead to
+more space-efficient solutions.
 
-\paragraph{Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors} Collections often need to support additional functionality
-orthogonal to their main purpose of storing and accessing data.  For example,
-there may be a need for a collection to be protected from inadvertent
-updates, or to minimize contention when operating in a
-multithreaded environment.  Java collections provide these capabilities through
-specialized collection classes, or through collection wrapper classes that alter
-the functionality of existing collections.  This chapter covers the 
+\item[Chapter~\ref{chapter:additional-collection-behaviors}. Additional
+Collection Behaviors] Collections sometimes need to supply functionality
+beyond their main purpose of storing and accessing data. For example,
+you may want to protect a table from inadvertent
+updates, or minimize contention on a map when running in a
+multithreaded environment. Java collections provide these capabilities through
+specialized classes or through wrappers that alter
+the function of existing collection classes. This chapter covers the costs of
+this functionality. A key issue is that the depth
+at which these features are used can have a big impact on the memory
+cost.
 
-%\section{The Cost of Collections}
-\section{Designing with Collections}
+\end{description}
+
+Across all of these different cases, collections have some common themes.
+The rest of this chapter is an overview of issues and resources to be aware of
+in any use of collections. The next section is a quick
+introduction to the memory costs of collections. It is followed by a brief
+survey of collections resources available in the
+standard libraries and in some open source alternatives.
+
+\section{The Cost of Collections}
+%\section{Designing with Collections}
 \label{sec:designing-with-collections}
 
 %costs are high
@@ -158,6 +162,8 @@ deployment.
 %certain collection classes were designed only to operate at a certain scale
 
 \section{The Standard Java Collections}
+
+
 \section{Alternative Collections Frameworks}
 In addition to the standard Java collections classes, there are a number of
 open source collections frameworks available. Many of these frameworks
