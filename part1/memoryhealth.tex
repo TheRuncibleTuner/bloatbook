@@ -51,7 +51,7 @@ to be 96 characters long. As bad as this seems, this string
 representation does at least have the benefit that it amortizes away
 its overhead. The overhead cost is always 48 bytes, so overhead of a string approaches 0\% for larger and larger strings.  For some data structures it is not possible to
 amortize away overhead costs, as discussed in
-Section~\ref{scalability}.
+Section~\ref{sec:scalability}.
 
 Strings, in particular short strings, are pervasive. It is important to be aware of the overhead of strings when incorporating them into your data design. Given the overhead of Java strings, the choices you make in Java need to be different than in a language like C, where the string overhead is minimal. Making informed choices is critical for the overall memory health of an application. There will be more on strings in later chapters.
 
@@ -190,7 +190,7 @@ Using a \texttt{TreeMap} is not \textit{a priori} a bad design. It depends on wh
 Of course, another nice aspect of \texttt{TreeMap} is that it can be pulled off the shelf. It would be ideal if there were another collection that provides just the needed functionality. If not, maybe there is a way to easily extend another collection class by adding a thin wrapper around it. Writing your own collection class from scratch should rarely be necessary, and is not recommended.
 
 \section{Two Memory-Efficient Designs}
-\label{better-designs} 
+\label{sec:better-designs} 
 
 This section describes two other data structure designs to store the monitoring system samples. These designs use less memory and do not maintain sorted order while the data is being loaded. This is not a problem, since the data can be sorted after loading. 
 
@@ -275,7 +275,7 @@ Figure~\ref{fig:content-schematic-arrays-doubles}. The overhead is only 4\%.
 For the three designs presented, there is a tradeoff between ease of programming and memory efficiency. More programming is needed as the design becomes more memory efficient. However, in many cases, memory efficient designs are just as easy to implement as inefficient designs. When there are two distinct execution phases, as in this example, the data structure can be trimmed after the first phase, to eliminate empty space reserved for growth. Another option is to use one data structure in the first phase, and copy it into a second data structure for the second phase. This approach can sometimes be a good compromise between ease-of-programming and memory efficiency.
  
 \section{Scalability}
-\label{scalability}
+\label{sec:scalability}
 
 The evaluation of the three monitoring system designs was based on only 100 samples. In a real scenario, a monitoring system might have to handle hundreds of thousands, or millions, of samples. Stress testing is usually performed late in a development cycle, when it is very costly to fix a memory footprint problem. Using a memory health approach, it possible to predict how well a data structure design will scale much earlier.
  
