@@ -392,68 +392,140 @@ the collection is unnecessary, and it is better to choose a cheaper alternative.
 In fact, often you can use a
 simple Java array, and not use a collection at all.  
 
-Let's look more closely at an \class{Edge} in the graph example in
-Figure~\ref{fig:edges}(a). An \class{Edge} object is a wrapper containing an
- \class{ArrayList}, which is just another
-wrapper pointing to an \class{Integer} array. 
-Since an \class{Edge} will never hold more than two \class{Integers}, it isn't 
+In our example, alternate suppliers are stored in an
+ \class{ArrayList}, which inside is a
+wrapper pointing to an array of \class{Suppliers}.  If we assume that
+every product has at most four alternate suppliers, then  it isn't 
 necessary to store these in an \class{Arraylist} --- a simple array will do.
 This change, eliminating the \class{ArrayList} object, removes 24 bytes per
-\class{Edge}, as shown in Figure~\ref{fig:edges}(b), adding up to 9.16MB.
-\begin{figure}
-  \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/Edges.pdf}
-  \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
-  \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
-  eliminates another 24 bytes.}
-  \label{fig:edges}
-\end{figure}
+product, and adds 4 bytes to store the length.  or 2.29MB !!!!FIX  for 100,000
+products:
+\begin{shortlisting} 
+class Product {
+	String sku;
+	String name;
+	.. 
+	int numAlternateSuppliers;
+	Supplier[4] alternateSuppliers;
+}
+\end{shortlisting}
+ 
+
+%\begin{figure}
+ % \centering
+% \includegraphics[width=.80\textwidth]{part1/Figures/collections/Edges.pdf}
+%  \caption{(a) An \class{Edge} has 96 bytes. (b) Replacing the
+%  \class{ArrayList} by an array eliminates 24 bytes. (c) Inlining the array
+%  eliminates another 24 bytes.}
+%  \label{fig:edges}
+%\end{figure}
 This is an example of choosing an overly-general collection. In
 this situation, you don't need a collection at all. Using \class{ArrayList}
 for storing fixed- or bounded-size arrays is a
 common practice that can be easily avoided.
 
-There is one final optimization that can be performed on the \class{Edge}
-class. Namely, making the two \class{Integers} fields of \class{Edge} instead
-of elements of an array, as shown in Figure
-Figure~\ref{fig:edges}(c). This optimization eliminates the
-array object, which saves another 24 bytes per edge, which is another 9.16MB.
+There is one final optimization that can be performed on the \class{Product}
+class. Namely, making the four alternate suppliers into fields of
+\class{Product} instead of elements of an array, as shown in Figure
+Figure~\ref{fig:edges}(c). This optimization eliminates a 32 byte
+array object per product, while adding three additional fields to the
+\class{Product}, saving another 1.9MB in total:
+\begin{shortlisting}
+class Product {
+	String sku;
+	String name;
+	.. 
+	Supplier alternateSupplier1;
+	Supplier alternateSupplier2;
+	Supplier alternateSupplier3;
+	Supplier alternateSupplier4;
+}
+\end{shortlisting}
 
+This representation is very similiar to the original \class{Product} class in
+section~\ref{sec:rarely-used} where there is one alternate suppler field, and
+here there are four. All of the transformations taken
+together have resulted in a savings of ??MB.
 
-In effect, these two steps have
-transformed a dynamic representation of a type, where field values are stored in
-arrays or \class{ArrayLists}, into a static representation, namely, a class.
-Using fixed-size arrays or \class{ArrayLists} to store fields is a typical
-pattern in Java. For example, when reading records from a database, it is a
-common practice to store the data fields of a record in an array or
-\class{ArrayList}. If you do not know that the fields are until execution, then
-this representation makes sense. 
-Even though this representation introduces extra objects, there is often no alternative.
-However, if you do know the structure in advance, it is far better space-wise
-to inline these fields in a class definition,
+\section{Hybrid Representation}
 
-The resultin g entity-collection diagram for the graph example is shown in
-Figure~\ref{fig:arraylist-to-array}. The total size, from the first
-entity-collection diagram in Figure~\ref{fig:graph-hashset}, has been reduced
-by 68\% , which is quite significant. The bloat factor has gone from 95.7\% to
-86.6\%. You might wonder why the bloat factor is still so high? The answer
-is that the overhead of nesting an \class{ArrayList} in a \class{HashMap} is
-still very high compared to the data, which is just two \class{Integers}. There
-is still one more simple optimization that can be performed, namely, replacing
-the \class{Integers} by primitive \code{int} fields in \class{Edge}.
-Calculating the bloat factor after making this transformation is left as an
-exercise for the reader.
-\begin{figure}
-  \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/arraylist-to-array.pdf}
-  \caption{Final entity-collection diagram for the graph example.}
-  \label{fig:arraylist-to-array}
-\end{figure}
+An interesting case is when the sizes of the collections used in a relationship
+is not uniform. That is, some collections are small and some collections are
+very big.  It's reasonable to use an expensive collection like \class{HashSet}
+for the big collections, but then the small collections pay the price. One way
+to handle this problem is to use a hybrid representation. For example, you can
+use arrays for smaller collections, and \class{HashSets} for larger
+collections. 
+
+One catch is that usually you will not know in advance which collections in the
+relationship will end up being small and which will grow to be large. Therefore
+a conversion operation will be necessary at some point if a collection grows
+large enough. Each collection starts as an array, and then once it
+grows past a threshhold, it is converted to a \class{HashSet}.
+
+In our example, suppose that the vast majority of products have four alternate
+suppliers on average, but a few products have over 100 alternate suppliers. We
+can choose a threshhold, say 6 entries, which triggers a conversion to a
+\class{HashSet} when the threshhold is exceeded. Here is the class
+\class{Product}:
+
+\begin{shortlisting} 
+public class Product {
+
+	    static final int threshhold = 6;
+		String sku;
+		String name;
+		..
+		int numAlternateSuppliers;
+		Supplier[] alternateSuppliers;
+		HashSet<Supplier> bigAlternateSuppliers;
+		
+		void addAlternateSupplier(Supplier supplier) {
+		
+		    /* Check for duplication */
+		    if (hasAlternateSupplier(supplier)) {
+		         return;
+		    }
+		
+		    /* Try to add the supplier to the array alternateSuppliers */
+		    if (numAlternateSuppliers == 0) {
+		        alternateSuppliers = new Supplier[threshhold];
+		    }
+			if (numAlternateSuppliers < threshhold) {
+			    alternateSuppliers[numAlternateSuppliers++] = supplier;
+			    return;
+			}
+			
+			/* If threshhold is exceeded, need to use bigAlternateSuppliers */
+			if (numAlternateSuppliers == threshhold) {
+			    bigAlternateSuppliers = new HashSet<Supplier>();
+			    for (int i = 0; i < threshhold; i++) {
+			    	bigAlternateSuppliers.add(alternateSuppliers[i]);
+			    }
+			    alternateSuppliers = null;
+			}
+			bigAlternateSuppliers.add(supplier);
+			numAlternateSuppliers++;
+			return;
+		}
+}
+\end{shortlisting}
+The method \code{addSupplier} adds the supplier to the array if the size is less
+than the thresshold, otherwise, it adds the supplier to the \class{HashSet}.
+It allocates the alternate supplier array and \class{HashSet} in demand, and
+only if needed, to avoid wasting space with empty collections when there are no
+or only a few alternate suppliers.
+
+Implementing hybrid representations is more complicated than just using one
+collection for a relationship. However, it can save significant space in some
+cases.
 
 \section{Summary}
 
-This chapter describes a number of ways to mitigate high memory costs when your
-program has many small collections:
+Collections used to represent relationships often result in many small
+collection instances, whose cost is dominated by a fixed-size
+overhead. This chapter describes a number of ways to mitigate high fixed memory
+costs for relationships implemented with collections:
 \begin{itemize}
   \item Choose the most memory-efficient collection for the job at hand. In
   particular when collections have at most a few elements in them, you don't
@@ -466,20 +538,13 @@ program has many small collections:
  postpone creating them until they are needed, often you will end up with fewer collections, 
  and no empty collections.
  \item Use arrays instead of \class{ArrayLists} when you know the maximum size
- of the \class{ArrayLists} in advance.
- \item Avoid dynamic types, where field values are stored in arrays or
- \class{ArrayLists} instead of object fields, if possible. It's better to use a
- class to represent a type, if the type is really static.
+ of the \class{ArrayLists} in advance. You can also eliminate an
+ \class{ArrayList} altogether when there are always at most a few entries that
+ can be stored in fields.
+ \item When the usage pattern is not uniform, it is sometimes reasonable to use
+ a hybrid representation.
 \end{itemize}
 
-Small collections have a fixed-size overhead, which is there as soon as the
-collection is allocated. Fixed costs are amortized when collections are big,
-but when they have only a few elements, the fixed overhead dominates the memory
-cost. The fixed costs of collections is provided in
-Section~\ref{sec:collectioncost} to help you make an informed choice. 
-Next chapter looks at per-entry costs of larger collections and nested
-collections.
- 
 
 
 
