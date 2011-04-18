@@ -141,8 +141,8 @@ The collection libraries are written in Java, and they suffer
 from the same kinds of bloat we've encountered in other kinds of data. They have internal layers of delegation,
 and extra fields for features that your program may not use. The standard
 collections do have a few options that can help, such as giving you some control over 
-excess capacity for growth. On the whole, however, they do not provide many levers for
-tuning to individual situations. They were mostly designed for speed rather than space, and
+excess capacity for growth. On the whole, though, they do not provide many
+levers for tuning to individual situations. They were mostly designed for speed rather than space, and
 they appear to have been designed for applications with  
 few large and growing collections. Yet many systems also have large numbers
 of small collections that never grow once initialized. Given all of this, it is important
@@ -153,13 +153,13 @@ understand \emph{how they will work in your design}. This is because the same
 collection class will have very different scaling behavior in different
 situations. For example, a particular map class may be perfect as a single index
 over a large table, but may be prohibitively expensive
-when there are many instances of it as a nested map in a multilevel,
+when there are many instances of it nested inside a multilevel,
 multikey index. Collections have \emph{fixed} and \emph{variable} costs, as we saw
 in Section~\ref{sec:scalability}. The fixed cost is the base memory
 the collection needs, with or without any elements.
 The variable cost is the space it needs to store each
 element. The way these costs add up
-depend on the context in which a collection appears
+depends on the context in which the collection appears
 for example, whether
 there are many small collections, a few large ones, or some
 combination. High fixed costs only matter when
@@ -171,7 +171,7 @@ or concentrated in a few large ones.
 %more data is stored, others will only continue to grow. 
 Table~\ref{tab:collections-fixed-and-variable} shows the fixed and variable
 costs for some commonly used collections.  %default constructor
-Collections with high fixed costs are better used only as large collections, so
+Collections with high fixed costs should be used only as large collections, so
 the fixed cost will be amortized. 
 %Certain collections are designed
 %to be used at a certain scale --- when there are a few large collections, not a
@@ -185,7 +185,7 @@ design, or if you need to restructure your data into a more efficient design.
 
 %That is the focus of the next four chapters.
 
-TODO: table of a commonly used collection classes. Their fixed and variable
+TODO: table of commonly used collection classes. Their fixed and variable
 costs, and where appropriate to use. 
 
 \section{The Standard Java Collections}
@@ -220,7 +220,7 @@ anything else, being an informed consumer (by measuring) is the best way to
 avoid problems later. Below is a short summary of the most
 popular alternative collections frameworks.
 
-Important note: there are many kinds of open source licenses. All have some
+Important note: there are many kinds of open source licenses. Each has different
 restrictions on usage. Make sure to check with your organization's open
 source software policies to see if you may use a specific framework in 
 your product, service or internal system.
@@ -239,9 +239,9 @@ make the difference between a design that scales well and one that
 doesn't. Some items to be aware of when working with collections:
 \begin{itemize}
   \item The standard Java collections, along with most alternative
-  collections, were not designed primarily with space efficiency in mind. Nor
-  are they optimized for some very common use cases, such as designs with many small collections.
-  In general the Java collections use a lot of memory.
+  collections, were designed more for speed than for space. They are
+  not optimized for some common cases, such as designs with many small
+  collections. In general the Java collections use a lot of memory.
  %not designed for the ways they are actually used.
   \item Collections vary widely in their memory usage. Awareness of
   costs is an essential first step in choosing well. Sometimes there is a less
@@ -250,8 +250,11 @@ doesn't. Some items to be aware of when working with collections:
   \item The same collection class will scale differently depending on its
   context. Ensuring scalability means
   analyzing how a collection's fixed and variable costs
-  play out in a given situation. A given collection choice may not be appropriate for its level of nesting.
+  play out in a given situation. Watch out for: collections with
+  high fixed costs when you have a lot of small collections, and 
+  collections with high variable costs when you have a
+  lot of elements.
   \item Analyzing your application's requirements, such as 
-  how much of a collection's functionality is really needed, can suggest
-  space-saving solutions.
+  which features of a collection are really needed, can suggest
+  less expensive choices.
 \end{itemize}
