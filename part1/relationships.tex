@@ -23,21 +23,20 @@ memory it consumes. Collections range from simple, highly efficient
 control at an extremely high price. 
 Using overly general collections, that provide more functionality than
 really needed, is a common pattern leading to excessive memory bloat.
+This section looks at what to consider when choosing a collection to
+represent a relationship target. 
 
-This chapter looks at how to choose the best collection class to
-store relationship targets, that is, the objects related to other
-objects, in a memory-efficient way. 
 Using collections for relationships often results in many small or empty
 collections, because there are either lots of objects in the relationship or
-each object has only a few related other objects, or both. When there are lots
-of collections with only a few entries, you need to ask  whether the
+ many objects are related to a only few other objects, or both. When there
+are lots of collections with only a few entries, you need to ask  whether the
 functionality of the collection you choose is worth the memory cost of that
 functionality.
 
 To make this discussion more concrete, let's return to the product and supplier example 
 from section~\ref{sec:rarely-used}, and change it a little
- bit. Now a product may have multiple alternate suppliers, and each product
- stores a reference to a collection of alternate suppliers. An obvious choice is
+ bit. Instead of only one alternate supplier, a product now may have multiple
+ alternate suppliers, and each product stores a reference to a collection of alternate suppliers. An obvious choice is
  to store the alternate suppliers in a \class{HashSet}:
  \begin{shortlisting} 
 class Product {
@@ -63,13 +62,13 @@ class Supplier {
 %\class{HashMap}, where the keys are nodes and the values are \class{HashSets}
 %of edges. In this example, a node is an \class{Integer}, and an edge consists
 %of two \class{Integers}, a node number and an edge weight.
-Suppose there are 100,000 products that each have 4 alternate suppliers on
+Suppose there are 100,000 products that each have four alternate suppliers on
 average. Figure~\ref{fig:product-hashset} shows an entity-collection diagram for
 the relationship between products and alternate suppliers.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-hashset.pdf}
- \caption{A relationship between 100,000 products and alternate suppliers,
+ \caption{A relationship between products and alternate suppliers,
   stored as a
   \class{HashSets} of alternate \class{Suppliers} related to \class{Products}.}
   \label{fig:product-hashset}
@@ -95,14 +94,13 @@ the relationship between products and alternate suppliers.
 % ArrayList is 80 (56+24) for 4 entries.
 % 400,000 ArrayLists is: 32,000,000 bytes
 
-Using a $HashSet$ for storing the alternate suppliers turns out to be a very
-costly decision. The alternate suppliers are represented by 100,000
-very small \class{HashSets}s, each consuming 232 bytes, which is all overhead.
-The total cost is 22.119MB. 
+Using a \class{HashSet} for alternate suppliers turns out to be a
+very costly decision. The alternate suppliers are represented by 100,000
+very small \class{HashSets}s, each consuming 232 bytes, for a total cost of 22.125MB. 
+This cost is all overhead.
 It's hard to think of a good reason why such a heavy-weight collection should ever be used
- for storing just a few entries, and yet, this pattern arises in almost all
- applications. For small sets, \class{ArrayList} is almost always a better choice. 
- \class{HashSet} maintains uniqueness
+ for storing just a few entries, and yet, this pattern is very, very common. For
+ small sets, \class{ArrayList} is almost always a better choice. \class{HashSet} maintains uniqueness
   and provides fast access, but enforcing uniqueness
 is not always needed. If uniqueness is
 important, it can be enforced for an \class{ArrayList} 
@@ -126,12 +124,12 @@ This simple change saves 14.49MB.
 Let's look inside a \class{HashSet} to see why it is so much bigger than an
 \class{ArrayList}. Some of its extra cost is because of additional
 functionality, such as entry uniqueness and constant-time access. Other extra
-cost because of unavoidable Java overhead, and some extra cost is because
+cost because of unavoidable Java overhead, and because
 \class{HashSet} is optimized for performance: the \class{HashSet} implementation
 assumes \class{HashSets} will be very large, and sacrifices memory space in favor of performance. 
 Additionally, \class{HashSet} reuses the \class{HashMap} implementation, which
-is expensive memory-wise. It is implemented as a degenerate \class{HashMap},
-that is, a \class{HashMap} with no values. 
+is expensive memory-wise. \class{HashSet} is implemented as a degenerate
+\class{HashMap}, that is, a \class{HashMap} with no values. 
 
  The internal
 structure of a \class{HashSet}, shown in Figure~\ref{fig:hashset_new}, consists
@@ -163,7 +161,7 @@ entries. The default initial size of the array is 16.
 
 
 In contrast, \class{ArrayList} has a smaller fixed cost and a smaller
-per-entry cost than \class{HashSet}. It is really just an expandable array,
+variable cost than \class{HashSet}. It is really just an expandable array,
 consisting of a wrapper object and an array of entries, as shown in Figure~\ref{fig:arraylist}. 
 Lower fixed cost means that an \class{ArrayList} with just a few
  elements is smaller than a \class{HashSet} with the same elements. Fixed costs
@@ -176,10 +174,10 @@ Lower fixed cost means that an \class{ArrayList} with just a few
   relatively low fixed overhead, and is scalable.}
   \label{fig:arraylist}
 \end{figure}
- Lower per-entry cost means that
- \class{ArrayList} scales much better than \class{HashSet}. The per-entry cost
+ Lower variable cost means that
+ \class{ArrayList} scales much better than \class{HashSet}. The variable cost
  of an \class{ArrayList} entry is an entry array pointer, which is 4 bytes.
- The per-entry cost of a \class{HashSet} is an entry array pointer plus a
+ The variable cost of a \class{HashSet} is an entry array pointer plus a
  \class{HashMap\$Entry}, which is 28 bytes. So \class{ArrayList}  is better
  both for small and large sets.
 
@@ -199,7 +197,7 @@ similar to these. You can calculate them using the same methodology.
  %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
  % \includegraphics{eight-char-string}
  \begin{tabular}{llll} \toprule
- 	 Collection & Fixed Default Cost with No Entries & Per-Entry Cost  \\ \midrule
+ 	 Collection & Fixed Default Cost with No Entries & Variable Cost  \\ \midrule
  	ArrayList & 80 bytes (capacity for 10 entries) & 4 bytes  \\
  	LinkedList & 48 bytes & 24 bytes  \\
  	HashMap & 120 bytes (capacity for 16 entries) & 28 bytes  \\
@@ -208,18 +206,18 @@ similar to these. You can calculate them using the same methodology.
  \end{tabular}
   \caption{The cost breakdown of four basic Java standard library collections
   with default size and no entries. The fixed cost includes an array whose
-   size equals the default capacity. The per-entry cost is used to
-  determine scalability.}
+   size equals the default capacity. The variable cost, the memory needed for
+   an entry, indicates scalability.}
   \label{tab:collection-costs}
 \end{table}
 
 Our guess is that the
 collection class developers would be surprised by the relationship usage pattern
-that results in hundreds of thousands of small $HashSet$s. Why bother
+that results in hundreds of thousands of small \class{HashSets}. Why bother
 implementing expandable structures and clever hashing algorithms for only a few entries?
 This mismatch between collection implementation and usage is 
-a leading cause of memory bloat. The overhead cost of a $HashSet$ is remarkably
-high. Creating many small collections multiplies this basic infrastructure
+a leading cause of memory bloat. The overhead cost of a \class{HashSet} is
+remarkably high. Creating many small collections multiplies this basic infrastructure
 cost, which is all overhead, filling the heap. 
  
 
@@ -241,13 +239,13 @@ These default policies trade space
 for time, on the assumption that collections grow. However,
 collections used to represent relationships may have hundreds of thousands of
 small collections that don't grow. As a result, there is no performance gain, and the extra
-empty array slots can add up to significant bloat problem. Unless you take explicit
-action, element arrays are almost always too big.
+empty array slots can add up to significant bloat problem, unless you take
+explicit action.
 
- 
- Fortunately, for \class{ArrayLists}, it is possible to right-size them. If you
- know that an \class{ArrayList} has a maximum size $x$ less than the default
- size, then it's worth passing $x$ as a parameter to the constructor. This sets the initial capacity of the
+ Fortunately, it is possible to right-size
+ \class{ArrayLists}. If you know that an \class{ArrayList} has a maximum size
+ $x$, which is less than the default size, then it's worth passing $x$ as a
+ parameter to the constructor to set the initial capacity of the
  \class{ArrayList} to $x$. However, if you are wrong and the \class{ArrayList}
  grows bigger than $x$, then it will grow by 50\%, which may
  be worse than just taking the default initial size.
@@ -257,10 +255,9 @@ action, element arrays are almost always too big.
  copies the array, so it is expensive to keep calling \code{trimToSize} while an
  \class{ArrayList} is still growing. Trimming is appropriate after
  it has been fully constructed and will never grow again. In fact, applications
- often have a build phase followed by a used phase. 
- If your application has a build phase, \class{ArrayLists} can be trimmed
-  between these two phases, so that the cost of reallocation and copying is
-  paid only once.
+ often have a build phase followed by a used phase, in which case
+ \class{ArrayLists} can be trimmed between these two phases, so that the cost of reallocation 
+ and copying is paid only once.
  
  Returning to the example of the relationship between products and alternate
  suppliers, the \class{ArrayLists} in Figure~\ref{fig:product-arraylist} have
