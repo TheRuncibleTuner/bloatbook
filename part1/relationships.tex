@@ -14,6 +14,8 @@ This chapter shows
  how to lower memory costs when implementing relationships with collections.
  
  \section{Choosing The Right Collection}
+ \label{section:choosing-collection}
+
 
 The standard Java collection classes vary widely in terms of how much memory they use.
 Not surprisingly, the more functionality a collection provides, the more
@@ -114,7 +116,7 @@ approximately a third the size of a \class{HashSet}.
  \caption{A relationship between 100,000 products and alternate suppliers,
  where the alternate \class{Suppliers} associated with each \class{Product} are
  stored in an \class{ArrayLists}.}
-  \label{fig:graph-arraylist}
+  \label{fig:product-arraylist}
 \end{figure}
 This simple change saves 14.49MB. 
 
@@ -300,10 +302,9 @@ extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
 
-Too many empty collections is another common problem that fills up space in the
-heap. A quick look inside an empty collection shows that it is not all that
-empty. According to Table~\ref{tab:collection-costs}, an empty \class{HashMap} consumes
-120 bytes, and an empty \class{ArrayList} consumes 80
+Too many empty collections is another common problem that leads to memory bloat.
+A quick look inside an empty collection shows that it is not all that empty. 
+
 bytes, assuming a default initial size. 
 Even if the default initial size is overridden and set to zero, empty
 collections are still large. A zero-sized \class{HashMap} consumes 56 bytes, and a zero-sized
@@ -327,7 +328,8 @@ int numProducts;
        ..
        for (int i = 0; i < numProducts; i++) {
           Product product = products.get(i);
-          product.alternateSuppliers = new ArrayList<Supplier>();
+          product.alternateSuppliers = 
+                           new ArrayList<Supplier>();
        }
    }
 \end{shortlisting}
@@ -344,8 +346,8 @@ that there are now only 75,000 alternate supplier \class{ArrayLists} shown, and
 since there are no more empty \class{ArrayLists}, the average fanout increases to 5.33. 
 \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/empty-array.pdf}
-  \caption{The relationship between \class{Product}s and \class{Supplier}s
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/empty-product.pdf}
+ \caption{The relationship between \class{Product}s and \class{Supplier}s
   where there are no empty \class{ArrayLists}.}
   \label{fig:empty-array}
 \end{figure}
@@ -366,7 +368,8 @@ since there are no more empty \class{ArrayLists}, the average fanout increases t
        ..
        for (int i = 0; i < numProducts; i++) {
           Product product = products.get(i);
-          product.alternateSuppliers = Collections.emptyList();
+          product.alternateSuppliers = 
+                               Collections.emptyList();
        }
      } 
  \end{shortlisting}
@@ -393,10 +396,10 @@ In our example, alternate suppliers are stored in an
  \class{ArrayList}, which inside is a
 wrapper pointing to an array of \class{Suppliers}.  If we assume that
 every product has at most four alternate suppliers, then  it isn't 
-necessary to store these in an \class{Arraylist} --- a simple array will do.
-This change, eliminating the \class{ArrayList} object, removes 24 bytes per
-product, and adds 4 bytes to store the length.  or 2.29MB !!!!FIX  for 100,000
-products:
+necessary to store these in an \class{ArrayList} --- a simple array will do.
+Eliminating the \class{ArrayList} object removes 24 bytes per
+product, but we have to add 4 bytes to each \class{Product} to store the number
+of alternate suppliers. The total savings is 1.43MB for 75,000 products:
 \begin{shortlisting} 
 class Product {
 	String sku;
@@ -423,10 +426,10 @@ common practice that can be easily avoided.
 
 There is one final optimization that can be performed on the \class{Product}
 class. Namely, making the four alternate suppliers into fields of
-\class{Product} instead of elements of an array, as shown in Figure
-Figure~\ref{fig:edges}(c). This optimization eliminates a 32 byte
-array object per product, while adding three additional fields to the
-\class{Product}, saving another 1.9MB in total:
+\class{Product} instead of elements of an array. This optimization
+ a 32 byte array object for 75,000 products, while adding three additional
+ fields to the \class{Product} for 100,000 objects, saving another 1.1MB in
+ total:
 \begin{shortlisting}
 class Product {
 	String sku;
@@ -441,8 +444,10 @@ class Product {
 
 This representation is very similiar to the original \class{Product} class in
 section~\ref{sec:rarely-used} where there is one alternate suppler field, and
-here there are four. All of the transformations taken
-together have resulted in a savings of ??MB.
+here there are four. Taking all of the optimizations 
+together, we have gone from the initial \class{HashSet} representation
+of 22.125MB in Section~\ref{section:choosing-collection} to the in-lined field
+representation of 1.86MB. 
 
 \section{Hybrid Representation}
 
@@ -462,7 +467,7 @@ grows past a threshhold, it is converted to a \class{HashSet}.
 
 In our example, suppose that the vast majority of products have four alternate
 suppliers on average, but a few products have over 100 alternate suppliers. We
-can choose a threshhold, say 6 entries, which triggers a conversion to a
+can choose a threshhold, say six entries, which triggers a conversion to a
 \class{HashSet} when the threshhold is exceeded. Here is the class
 \class{Product}:
 
@@ -507,11 +512,11 @@ public class Product {
 		}
 }
 \end{shortlisting}
-The method \code{addSupplier} adds the supplier to the array if the size is less
-than the thresshold, otherwise, it adds the supplier to the \class{HashSet}.
-It allocates the alternate supplier array and \class{HashSet} in demand, and
-only if needed, to avoid wasting space with empty collections when there are no
-or only a few alternate suppliers.
+The method \code{addAlternateSupplier} adds the supplier to the array if the
+size is less than the thresshold, otherwise, it adds the supplier to the \class{HashSet}.
+It allocates the alternate supplier array and \class{HashSet} 
+only if and when it is needed, to avoid wasting space with empty collections
+when there are no or only a few alternate suppliers.
 
 Implementing hybrid representations is more complicated than just using one
 collection for a relationship. However, it can save significant space in some
@@ -535,12 +540,14 @@ costs for relationships implemented with collections:
  postpone creating them until they are needed, often you will end up with fewer collections, 
  and no empty collections.
  \item Use arrays instead of \class{ArrayLists} when you know the maximum size
- of the \class{ArrayLists} in advance. You can also eliminate an
+ of the collections in advance. You can also eliminate an
  \class{ArrayList} altogether when there are always at most a few entries that
  can be stored in fields.
  \item When the usage pattern is not uniform, it is sometimes reasonable to use
  a hybrid representation.
 \end{itemize}
+Knowing which relationships and collections in your application are the most
+important and need to scale is key to applying these optimizations effectively.  
 
 
 
