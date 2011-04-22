@@ -25,7 +25,8 @@ any use of collections. The following four chapters are an in-depth guide to
 the different ways collections are used. Each of these chapters takes
 you through typical patterns of usage, shows what collections cost for those
 patterns, and gives you techniques for analyzing how local implementation
-decisions will play out at a larger scale. Here is a roadmap of the next four chapters:
+decisions will play out at a larger scale. 
+%Here is a roadmap of the next four chapters:
 
 %Clarifying requirements can lead to specialized solutions
 %can suggest space-saving solutions, so that you are not paying for
@@ -39,53 +40,53 @@ Relationships] An important use of collections is to implement
 relationships that let you quickly navigate from an object to related objects
 via references. This chapter covers the typical patterns and pitfalls of
 implementing relationships. At runtime, each relationship becomes a
-large number of collection instances, with many containing just a few elements
-each.
+large number of collection instances, with many containing just a few elements.
 %In a product catalog, for example, each product object would have one
 %collection instance pointing to that product's suppliers, and another pointing
 %to the product's parts.
-The main issues to watch for in these designs
-are keeping the cost of small and empty collections to a minimum, sizing
-collections properly, and paying only for functionality that is truly needed.
+The main issues to watch for
+are: keeping the cost of small and empty collections to a minimum, sizing
+collections properly, and paying only for features you really need.
 
-\item[Chapter~\ref{chapter:tables-indexes}. Tables and Indexes] This
-chapter covers collections that serve as the jumping off point for accessing
-objects. This could be a table that provides direct access to all the
-objects of one type, or an index for looking up objects by unique key. These are
-usually large structures. In more complex cases, such as multikey and multivalue
-maps, there is a choice between a single collection vs. a
-multilevel structure. This chapter covers predicting memory costs as the structure
-grows.
-%understanding which costs are amortized and which are not 
+\item[Chapter~\ref{chapter:tables-indexes}. Tables and Indexes] A collection
+can also serve as the jumping off
+point for accessing a large number of objects. For example, your application
+might maintain a list of all the objects of one type, or have an index for
+looking up objects by unique key. This chapter shows how to analyze the memory
+costs of these structures. The main
+issue is understanding which costs will be amortized as the structure grows. The
+chapter also covers more complex cases, such as a multikey map, where there is a
+choice between a single collection and a multilevel design.
+% large structures
+% compare design alternatives
 
 \item[Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
 Records] Many applications need to represent data whose shape is not
-known at compile time. Two examples are property-value pairs
-read from a configuration file at runtime, and database records returned from
-a dynamic query. Since Java does not let you define new classes on the
-fly, collections are a natural, though very inefficient way to represent
+known at compile time. For example, your application may read property-value
+pairs from a configuration file, or retrieve records from a database
+using a dynamic query. Since Java does not let you define new classes on the
+fly, collections are a natural, though inefficient way to represent
 these dynamic records. This chapter looks at the common cases where dynamic records
 are needed, and shows how to identify properties of your data that could lead to
 more space-efficient solutions.
 
 \item[Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors] Collections sometimes need to supply functionality
-beyond their main purpose of storing and accessing data. For example,
-you may want to protect a table from inadvertent
+Collection Behaviors] Collections sometimes need to support features
+beyond just storing and accessing data. For example,
+you may need to protect a table from inadvertent
 updates, or minimize contention on a map when running in a
 multithreaded environment. Java collections provide these capabilities through
-specialized classes or through wrappers that alter
-the function of existing collection classes. This chapter covers the costs of
-this functionality. A key issue is that the depth
-at which these features are used can have a big impact on the memory
+specialized classes, or through wrappers that alter
+the operation of other collections. This chapter covers the costs of
+these collections.  The granularity
+at which you use them can have a big impact on their memory
 cost.
 
 \end{description}
 
-Across all of these different cases, collections have some common themes.
-The rest of this chapter is an overview of issues and resources to be aware of
-in any use of collections. First is a brief
-introduction to the memory costs of collections. It is followed by a
+Across all of these different uses, collections have some common themes.
+The next section is an overview of issues to
+be aware of in any use of collections. It is followed by a
 survey of collections resources available in the
 standard libraries and some open source alternatives.
 
@@ -120,86 +121,93 @@ by a few hundred thousand instances.
 %structured to use them effectively. (move to scalability section?)
 
 
-Fortunately there are some choices you can make that
+Fortunately, there are some easy choices you can make that
 can save a lot of space. The cost of different
-collection classes can vary greatly, even among ones that might work equally well in the same situation. For example,
-a 5-element \class{ArrayList} with room for growth takes 80 bytes. An equivalent \class{HashSet} costs 276 bytes,
+collection classes varies greatly, even among ones that could work equally well
+in the same situation. For example, a 5-element \class{ArrayList} with room for growth takes 80 bytes. An equivalent \class{HashSet} costs 276 bytes,
 or 3.5 times as much. Like other kinds of infrastructure, collections serve a
 necessary function, and paying for overhead can be worthwhile. That is, as long as you are not
 paying for features you don't need. In the above example, a
 70\% space savings can be achieved if the application can do without the
-uniqueness checking provided by \class{HashSet}.  In Section~\ref{sec:better-designs} we saw another example
-of a large improvement by identifying functionality that wasn't needed, in that
-case the real-time maintenance of sort order. In the next chapters we'll see
-more examples of how looking carefully at the functionality your system needs from collections can help reduce space.
+uniqueness checking provided by \class{HashSet}.  In
+Section~\ref{sec:better-designs} we saw a similar example, achieving a large
+improvement when real-time
+maintenance of sort order wasn't needed. In the next chapters we'll see more
+examples of how a careful look at your system's
+requirements can help reduce space.
 
-There is also much that is not under your control in the cost of
-collections.
+There is also much that is not under your control in the cost
+of collections.
 %making it all the more important to become familiar with what
 %collections cost. 
-The collection libraries are written in Java, and they suffer
-from the same kinds of bloat we've encountered in other kinds of data. They have internal layers of delegation,
-and extra fields for features that your program may not use. The standard
-collections do have a few options that can help, such as giving you some control over 
-excess capacity for growth. On the whole, though, they do not provide many
-levers for tuning to individual situations. They were mostly designed for speed rather than space, and
-they appear to have been designed for applications with  
-few large and growing collections. Yet many systems also have large numbers
+Because the collection libraries are written in Java, they suffer
+from the same kinds of bloat we've seen in other datatypes. They have
+internal layers of delegation, and extra fields for features that your program may not use. The standard
+collections do have a few options that can help, such as
+specifying the excess capacity for growth. On the whole, though, they do not
+provide many levers for tuning to different situations. They were mostly
+designed for speed rather than space. They also seem to have been designed for
+applications with a few large and growing collections. Yet many systems have large numbers
 of small collections that never grow once initialized. Given all of this, it is important
 to be aware of what collections cost, so you can make informed choices as early as possible. 
 
-It is not enough to know the cost of collections in the abstract, but to
-understand \emph{how they will work in your design}. This is because the same
-collection class will have very different scaling behavior in different
-situations. For example, a particular map class may be perfect as a single index
-over a large table, but may be prohibitively expensive
-when there are many instances of it nested inside a multilevel,
-multikey index. Collections have \emph{fixed} and \emph{variable} costs, as we saw
-in Section~\ref{sec:scalability}. The fixed cost is the base memory
-the collection needs, with or without any elements.
-The variable cost is the space it needs to store each
-element. The way these costs add up
-depends on the context in which the collection appears
-for example, whether
-there are many small collections, a few large ones, or some
+It is not enough to know the cost of a collection in the abstract, but to
+understand \emph{how it will work in your design}. This is because the same
+collection class will scale differently in
+different situations. For example, a particular map class may be perfect as
+an index over a large table, but may be prohibitively expensive
+when there are many instances nested inside a multilevel index. 
+As discussed in Section~\ref{sec:scalability}, collections have \emph{fixed} and
+\emph{variable} costs,  The fixed cost is the base memory the collection takes
+up, with or without any elements. The variable cost is the additional space it
+needs to store each element. The way these costs add up
+depends on the context in which the collection appears ---
+whether there are many small collections, a few large ones, or some
 combination. High fixed costs only matter when
 there are a lot of collection \emph{instances}. High variable costs matter when
 there are a lot of \emph{elements}, regardless of whether the elements are
 spread across a lot of small collections
 or concentrated in a few large ones.
+Table~\ref{tab:collections-fixed-and-variable} shows the fixed and variable costs for some commonly used collections.  %default constructor
+Collections with high fixed costs should only be used as large collections, so
+the fixed cost will be amortized. 
+
 %Some collection costs will be amortized as
 %more data is stored, others will only continue to grow. 
-Table~\ref{tab:collections-fixed-and-variable} shows the fixed and variable
-costs for some commonly used collections.  %default constructor
-Collections with high fixed costs should be used only as large collections, so
-the fixed cost will be amortized. 
 %Certain collections are designed
 %to be used at a certain scale --- when there are a few large collections, not a
 %lot of smaller ones.  
 Collection costs also need to be
-considered together with the data they are storing. If a data structure uses expensive collections to store small amounts of data, than it
+considered together with the data they are storing. If a data structure uses expensive collections
+to store small amounts of data, than it
 will have a high overhead ratio, and ultimately the application's ability to
-support a large amount of data will be limited. Knowing how to analyze these costs
-in the context of your design is the key to ensuring that your system will scale when it is time for deployment. That analysis will help you choose the right collection for your
-design, or if you need to restructure your data into a more efficient design.
+support a large amount of data will be limited. Analyzing
+these costs in the context of your design is the key to ensuring that your system will scale when
+it is time for deployment. That analysis will help you to choose the right
+collection for your design, or to restructure your data into a more efficient
+design.
 
-%That is the focus of the next four chapters.
 
 TODO: table of commonly used collection classes. Their fixed and variable
 costs, and where appropriate to use. 
 
-\section{The Standard Java Collections}
+\section{Collections Resources}
 
-.. We take a look inside a few of the collections along they way in the next
-four chapters. 
+In the next four chapters we go into detail about how various
+collection classes are best used in different situations. Along the way we will take a
+take a look inside the implementation of a few collection classes, to give you
+insight into their operation and costs.
 
-The Java Collections framework comes with some lesser-known collections that
-provide useful functionality.  In some cases, this functionality comes at a 
-a lower space cost than the more general-purpose equivalent.  In other cases,
-the cost is higher. Table~\ref{tab:} gives more detail about these collections.
+There are some lesser-known classes in the standard Java
+Collections framework that provide
+useful functionality, and in some cases can help you save memory. Below is
+a guide to the lesser-known classes that we discuss in this book.
 
 \begin{description}
-\item[Static collection classes] Singleton, empty, etc. Arrays.
+\item[Static collections] The abstract class \class{Collections}
+provides some static methods and instances of specialized collections, such as
+for singleton and empty collections.  Discussed in \ref~{}.  The 
+Arrays.
 \item[Specialized maps] Identity HashMap; EnumMap.
 \item[Wrapped collections?]
 \item[ConcurrentHashMap?]
@@ -211,12 +219,11 @@ the cost is higher. Table~\ref{tab:} gives more detail about these collections.
 \section{Alternative Collections Frameworks}
 In addition to the standard Java collections classes, there are a number of
 open source collections frameworks available. Many of these frameworks
-are designed to give you additional functionality or make it easier to
+are designed to provide additional functionality or to make it easier to
 program. With some exceptions, most are not designed to be efficient from a
-space standpoint. While some do make much better use of space, and give you a
-better ability to customize for your situation, others actually have a
-large footprint for the same functionality as the standard libraries. So as in
-anything else, being an informed consumer (by measuring) is the best way to
+space standpoint. Some actually have a
+larger footprint for the same functionality than the standard libraries. So as
+in anything else, being an informed consumer (by measuring) is the best way to
 avoid problems later. Below is a short summary of the most
 popular alternative collections frameworks.
 
@@ -246,7 +253,7 @@ doesn't. Some items to be aware of when working with collections:
   \item Collections vary widely in their memory usage. Awareness of
   costs is an essential first step in choosing well. Sometimes there is a less
   expensive choice of collection class available. Initialization options
-  can also make a big difference.
+  can also make a difference.
   \item The same collection class will scale differently depending on its
   context. Ensuring scalability means
   analyzing how a collection's fixed and variable costs
@@ -254,7 +261,7 @@ doesn't. Some items to be aware of when working with collections:
   high fixed costs when you have a lot of small collections, and 
   collections with high variable costs when you have a
   lot of elements.
-  \item Analyzing your application's requirements, such as 
-  which features of a collection are really needed, can suggest
+  \item Analyzing your application's requirements, specifically
+  which features of a collection you really need, can suggest
   less expensive choices.
 \end{itemize}
