@@ -2,23 +2,62 @@
 
 \chapter{Memory Management Fundamentals}
 
-% Before getting into the details of how to implement your lifetime requirements,
+% Before getting into the details of how to implement your lifetime
+% requirements,
 The Java language has a \emph{managed runtime}. In part, this means that, as a
 Java program runs, the Java runtime takes on the burden of key aspects of memory
-allocation and reclamation. It is important to understand what Java does for you,
-in forming its decision of when an object should be reclaimed, when devising your
-lifetime management strategy. This level of management includes as automatic
-garbage collection of both instances and Java classes. Therefore, Java has
+allocation and reclamation. It is important to understand what Java does for
+you, in forming its decision of when an object should be reclaimed, when
+devising your lifetime management strategy. This level of management includes
+automatic garbage collection of both instances and Java classes. Java has
 feature that govern, on your behalf, important aspects of the lifetime of
 objects. Unfortunately, these features often appear in the form of low-level JVM
-hooks, or implicit behavior that you have to implicitly control, and so require
+hooks, or implicit behavior that you have to carefully govern, and so require
 careful coding to make correct use of them. You need to appreciate what the
 runtime is doing for you, before considering how to reshape object lifetimes to
 better suit your needs.
 
 \section{Managed Memory}
 
+When you write Java code that allocates objects, the \jre a
+
+\paragraph{Heaps and Stacks}
+
+
+\begin{figure}
+\centering
+	\subfigure[When
+	using
+	Java,
+	the stack can
+	contain only primitive data and pointers to heap objects; each of those heap
+	objects has a header that the \jre tacks on, for its own management
+	purposes.]{\label{fig:heaps_and_stacks_java}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_java}}
+	%\qquad
+	\subfigure[When
+	using
+	native code, such as when coding in C,
+	the stack can also contain allocated storage ({\tt
+	structs}), and allocated storage can include
+	other structures that have been inlined ({\tt d} has been inlined into {\tt
+	b}); there are no headers in C, since it is not a managed language.
+	]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_C}}
+	\caption{Your data is stored on the heap and the stack. } \subfigure[The \jre also manages classes and compiled code, but in separate
+	heaps. With some \jres, this data is combined into a single heap, called the
+	\emph{Permspace}
+	heap,
+	which
+	is
+	sized
+	via
+	{\tt
+	-XX:MaxPermSize}.]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}}
+	\caption{Your data is stored on the stack and various heaps. }
+	\label{fig:heaps_and_stacks}
+\end{figure}
+
 \paragraph{The Java vs. Native Heap}
+
 
 \paragraph{Managed Objects}
 
