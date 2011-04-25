@@ -27,7 +27,7 @@ the compiler takes care of reclaiming these memory allocations, and sometimes
 there are background threads that take care of freeing up memory.
 
 \paragraph{The Stack}
-\index{The Stack}
+\index{Stack}
 Most languages come with a minimal form of built-in memory management, in the
 form of the \emph{stack}. Each method invocation, in each thread, has memory
 associated with it. For a thread, these areas of memory are pushed and popped,
@@ -43,19 +43,55 @@ the generated assembly code.
 In Java, as shown in
 \autoref{fig:stack-frames}, each stack frame contains either primitive data or
 pointers to memory that has been allocated as a result of calls to {\tt new}.
+Unlike in a language such as C, you cannot dictate that the stack contain a
+structure, it can only contain pointers to structures that are stored on the
+heap. In C, when you write:
+\begin{shortlisting}
+struct {
+   int x;
+} g;
+
+g.x = 3;
+\end{shortlisting}
+the stack frame for this method will have one extra 32-bit slots, used to store
+the integer field {\tt x} of the local variable {\tt s}. 
 
 \begin{figure}
 \centering
-\includegraphics[width=0.8\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
+\includegraphics[width=0.7\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
 \caption{The compiler takes care managing the stack, by pushing and popping
-the storage (stack frames) that hold your local variables and method
-parameters.}
+the storage (called \emph{stack frames}) that hold your local variables and
+method parameters.}
 \label{fig:stack-frames}
 \end{figure}
 
-\paragraph{The Heap}
+In Java, it is not possible for you to explicitly request that a structure be
+allocated on the stack. Sometimes, the JIT compiler is clever enough to observe
+that a call to {\tt new} can safely be allocated on the stack. This optimization
+is called \emph{stack allocation} of objects\index{Stack Allocation}, and is
+enabled, by default, as of Sun Java6 Update 21 and IBM 1.6 Service Release 2.
+When this optimization is possible, probably for no more than 10-20\% of calls
+to {\tt new}, the memory in the following Java code will be stored and accessed
+exactly as if you were writing C code:
+\begin{shortlisting}
+class G {
+   int x;
+}
+G g = new G();
+g.x = 3;
+\end{shortlisting}
+Unfortunately, there is no easy way to determine specifically which of your
+calls to {\tt new} will be, or were in any particular run, stack allocated by
+the JIT. If you are curious, the best you can do is to analyze performance both
+with and without the underlying anlaysis. On Sun JVMs, you can disable the
+analysis by adding {\tt -XX:-DoEscapeAnalysis} to your application's command
+line.
 
-When you write Java code that allocates objects, the \jre a
+\paragraph{The Heap}
+\index{Heap}
+Otherwise, each call to {\tt new} usually results in an allocation on one of
+several heaps. \autoref{fig:heaps_and_stacks_java} and
+\autoref{fig:heaps_and_stacks_C}
 
 %  a.b = new B();
 %a.c = new C();
@@ -97,8 +133,8 @@ class B {
 }
 void foo() {
   A *a = new A();
-  F f();
-  G g();
+  F f;
+  G g;
   a->b->e->f = &f;
   ...
 }
@@ -132,7 +168,7 @@ void foo() {
 	via
 	{\tt
 	-XX:MaxPermSize}.}
-\label{fig:heaps_and_stacks_C}
+\label{fig:heaps_and_stacks_classes}
 \end{figure}
 
 \paragraph{The Java Heap vs. The Native Heap}
