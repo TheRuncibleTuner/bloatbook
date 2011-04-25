@@ -21,7 +21,7 @@ relationships, to organize data into tables, to enable quick lookup via indexes,
 to store annotations with more formally modeled data. Each use
 has its own best practices as well as traps. The current chapter
 is a short introduction to common issues that are important to understand in
-any use of collections. The following four chapters are an in-depth guide to 
+any use of collections. The next§ four chapters are an in-depth guide to 
 the different ways collections are used. Each of these chapters takes
 you through typical patterns of usage, shows what collections cost for those
 patterns, and gives you techniques for analyzing how local implementation
@@ -154,42 +154,72 @@ to be aware of what collections cost, so you can make informed choices as early 
 It is not enough to know the cost of a collection in the abstract, but to
 understand \emph{how it will work in your design}. This is because the same
 collection class will scale differently in
-different situations. For example, a particular map class may be perfect as
-an index over a large table, but may be prohibitively expensive
-when there are many instances nested inside a multilevel index. 
-As discussed in Section~\ref{sec:scalability}, collections have \emph{fixed} and
-\emph{variable} costs,  The fixed cost is the base memory the collection takes
-up, with or without any elements. The variable cost is the additional space it
-needs to store each element. The way these costs add up
-depends on the context in which the collection appears ---
+different situations. One map class may work fine as an index over
+a large table, but can be too expensive when there are many instances of it
+nested inside a multilevel index. Collections have \emph{fixed} and
+\emph{variable} costs, as discussed in Section~\ref{sec:scalability}. 
+The fixed cost is the minimum space needed with or
+without any elements; the variable cost is the additional space needed to
+store each element. The way these costs add up
+depends on the context ---
 whether there are many small collections, a few large ones, or some
-combination. High fixed costs only matter when
-there are a lot of collection \emph{instances}. High variable costs matter when
-there are a lot of \emph{elements}, regardless of whether the elements are
-spread across a lot of small collections
+combination. High fixed costs only matter when there are many
+collection \emph{instances}. High variable costs add up when
+there are a lot of \emph{elements}, regardless of whether the elements are spread across a lot of small collections
 or concentrated in a few large ones.
-Table~\ref{tab:collections-fixed-and-variable} shows the fixed and variable costs for some commonly used collections.  %default constructor
-Collections with high fixed costs should only be used as large collections, so
-the fixed cost will be amortized. 
+Table~\ref{tab:collections-fixed-and-variable} shows the costs for some commonly
+used collections.  Collections with high fixed costs should only be used as large collections, so
+the fixed cost will be amortized.
+\class{ArrayList} (and other array-based collections) have much lower
+variable costs than other collection classes.
+
+\begin{table}
+\centering
+	\begin{tabular}{lll}
+	\toprule
+	  %&
+	   Collection & Fixed cost & Variable cost
+	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
+	   \cmidrule(l){3-3}
+	Object[] & 16 & 4
+	\\
+	ArrayList & 40 & 4
+	\\
+	LinkedList & 48 & 24
+	\\
+	HashSet &  & 
+	\\
+	HashMap & &
+	\\
+	TreeMap & 40 & 40
+	\\
+	WeakHashMap & 88 & 54
+	\\
+	ConcurrentHashMap &  &
+	\\
+	\bottomrule
+	\end{tabular}
+	\caption{Cost in bytes of commonly used collection classes. Minimum costs, not
+	including extra capacity for growth. Shows arrays for comparison.}
+	\label{tab:collections-fixed-and-variable}
+\end{table}
 
 %Some collection costs will be amortized as
 %more data is stored, others will only continue to grow. 
 %Certain collections are designed
 %to be used at a certain scale --- when there are a few large collections, not a
 %lot of smaller ones.  
-Collection costs also need to be
-considered together with the data they are storing. If a data structure uses expensive collections
+It is also helpful to look at collection costs 
+together with the data they are storing. If a data structure uses expensive collections
 to store small amounts of data, than it
 will have a high overhead ratio, and ultimately the application's ability to
-support a large amount of data will be limited. Analyzing
-these costs in the context of your design is the key to ensuring that your system will scale when
-it is time for deployment. That analysis will help you to choose the right
-collection for your design, or to restructure your data into a more efficient
-design.
+support a large amount of data will be limited. The next chapters show
+how to analyze collection costs in the context of your design.
+% to ensure that your system will scale when it is time for deployment.
+This analysis will help you choose the right collection for your design, or
+restructure your data into a more efficient design if necessary.
 
 
-TODO: table of commonly used collection classes. Their fixed and variable
-costs, and where appropriate to use. 
 
 \section{Collections Resources}
 
