@@ -18,22 +18,94 @@ runtime is doing for you, before considering how to reshape object lifetimes to
 better suit your needs.
 
 \section{Managed Memory}
+\index{Managed Memory}
 
-When you write Java code that allocates objects, the \jre a
+A runtime that manages memory is one that takes care of memory allocation and
+reclamation. Some memory is allocated on the \emph{stack}, and some, often as a
+result of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes
+the compiler takes care of reclaiming these memory allocations, and sometimes
+there are background threads that take care of freeing up memory.
 
-\paragraph{Heaps and Stacks}
+\paragraph{The Stack}
+\index{The Stack}
+Most languages come with a minimal form of built-in memory management, in the
+form of the \emph{stack}. Each method invocation, in each thread, has memory
+associated with it. For a thread, these areas of memory are pushed and popped,
+as the thread invokes and returns from the execution of methods. The stack
+memory that is set aside for a method invocation is commonly called a
+\emph{stack frame}\index{stack frame}; historically, it has also been referred
+to as an \emph{activation frame} or \emph{activation record}\index{activation
+frame}\index{activation record}. In the case of the stack, it is the compiler
+that manages the lifetime of each threads' stack frames. The compiler inserts
+this stack management code, and so it is invisible to you except if you inspect
+the generated assembly code.
 
+In Java, as shown in
+\autoref{fig:stack-frames}, each stack frame contains either primitive data or
+pointers to memory that has been allocated as a result of calls to {\tt new}.
 
 \begin{figure}
 \centering
+\includegraphics[width=0.8\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
+\caption{The compiler takes care managing the stack, by pushing and popping
+the storage (stack frames) that hold your local variables and method
+parameters.}
+\label{fig:stack-frames}
+\end{figure}
+
+\paragraph{The Heap}
+
+When you write Java code that allocates objects, the \jre a
+
+%  a.b = new B();
+%a.c = new C();
+%a.b.d = new D();
+%a.b.e = new E();
+%a.b.e.f=new F();
+  
+\begin{figure}
+\begin{subfloat}
+\begin{minipage}[b]{0.4\textwidth}
+\begin{shortlisting}
+class B {
+  D d;
+  E e;
+}
+void foo() {
+  A a = new A();
+  G g = new G();
+  ...
+}
+\end{shortlisting}
+\end{minipage}
+\caption{When coding in Java.}
+\end{subfloat}
 	\subfigure[When
 	using
 	Java,
 	the stack can
 	contain only primitive data and pointers to heap objects; each of those heap
 	objects has a header that the \jre tacks on, for its own management
-	purposes.]{\label{fig:heaps_and_stacks_java}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_java}}
-	%\qquad
+	purposes.]{\label{fig:heaps_and_stacks_java}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_java}}
+	
+\begin{subfloat}
+\begin{minipage}[b]{0.4\textwidth}
+\begin{shortlisting}
+class B {
+  D d; 
+  E* e;
+}
+void foo() {
+  A *a = new A();
+  F f();
+  G g();
+  a->b->e->f = &f;
+  ...
+}
+\end{shortlisting}
+\end{minipage}
+\caption{When coding in C++.}
+\end{subfloat}
 	\subfigure[When
 	using
 	native code, such as when coding in C,
@@ -41,8 +113,16 @@ When you write Java code that allocates objects, the \jre a
 	structs}), and allocated storage can include
 	other structures that have been inlined ({\tt d} has been inlined into {\tt
 	b}); there are no headers in C, since it is not a managed language.
-	]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_C}}
-	\caption{Your data is stored on the heap and the stack. } \subfigure[The \jre also manages classes and compiled code, but in separate
+	]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_C}}
+	\caption{Heaps and Stacks, in Java versus in the C languge.}
+\end{figure}
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
+\caption{The \jre also manages classes and compiled code, but in separate
 	heaps. With some \jres, this data is combined into a single heap, called the
 	\emph{Permspace}
 	heap,
@@ -51,15 +131,12 @@ When you write Java code that allocates objects, the \jre a
 	sized
 	via
 	{\tt
-	-XX:MaxPermSize}.]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}}
-	\caption{Your data is stored on the stack and various heaps. }
-	\label{fig:heaps_and_stacks}
+	-XX:MaxPermSize}.}
+\label{fig:heaps_and_stacks_C}
 \end{figure}
 
-\paragraph{The Java vs. Native Heap}
+\paragraph{The Java Heap vs. The Native Heap}
 
-
-\paragraph{Managed Objects}
 
 
 %Designing a lifetime management strategy requires that you take the tools that
