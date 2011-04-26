@@ -108,10 +108,17 @@ of {\tt G}, and stores references to them in local variables. Under the covers,
 the {\tt A} constructor allocates and links together instances of {\tt B}, {\tt
 C}, {\tt D}, {\tt E}, and {\tt F}. In the absence of the JIT stack allocating
 objects, all of these instances, as shown in the accompanying figure, will be
-allocated on the heap.
+allocated on the heap. There will be three local variable slots on the stack,
+one for the integer variable {\tt x}, and two pointers, to {\tt A} and {\tt G}.  
 
-and
-\autoref{fig:heaps_and_stacks_C}
+\autoref{fig:heaps_and_stacks_C} shows what is possible in a language such as
+C. In C, you can write code that tells the compiler to \emph{inline} the {\tt
+G} object on the stack. You can also write code that tells the compiler to
+inline the {\tt D} instance into the enclosing instance of {\tt B}. In Java, you
+must hope that the JIT is able to perform these optimizations. As of Java
+version 6, most \jres attempt to inline objects onto the stack, but no
+production JIT compilers will attempt the latter optimization of inlining the
+storage of one object into another.
 
 %  a.b = new B();
 %a.c = new C();
@@ -252,10 +259,7 @@ the table spells out a separate row for various address space configurations.}
 %megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
 
 
-\paragraph{Native Resources: Address Space, Physical Memory, File Descriptors,
-etc.}
-\index{Native Resources}
-\index{File Descriptor Exhaustion}
+\paragraph{Address Space versus Physical Memory}
 Depending on the operating system you are using, there may be other constraints
 on the amount of memory your application can access. There is the obvious limit
 of the amount of physical memory installed on the machine. It is important to
@@ -288,10 +292,23 @@ can access to 1 gigabyte, issue this command:
 % ulimit -m 1048576     // units in kilobytes
 \end{shortlisting}
 You can also limit the size of the native stacks by issuing a similar command,
-except with the {\tt -s} flag.\index{ulimit}
+except with the {\tt -s} flag.\index{ulimit} Very often, there are no memory
+limits by default. Native stack sizes are often limited to be in the megabyte
+range, per thread.
 
-
-
+\paragraph{Native Resources: File Descriptors, etc.}
+\index{Native Resources}
+\index{File Descriptor Exhaustion}
+There are often other resource limits in place, though these vary from one
+operating system to another. For example, processes may be limited in the number
+of open files they may have at any one time. You may see failures in your
+application, despite having lots of memory and stack space free, because an
+application process has exhausted file descriptors. On Windows platforms, there
+are other system-imposed limits, such as the number of open font handles. You
+should be aware of these common resource constraints, because they may impact
+the scalability of your application. For example, you may have designed your
+application to keep many font handles open for each thread, rather than keeping
+a common pool of them, and sharing them across threads.
 
 \paragraph{The Garbage Collector}
 The garbage collector is the mechanism for determining when an object should be
