@@ -38,7 +38,7 @@ decisions will play out at a larger scale.
 \item[Chapter~\ref{chapter:representing-relationships}. Representing
 Relationships] An important use of collections is to implement
 relationships that let you quickly navigate from an object to related objects
-via references. This chapter covers the typical patterns and pitfalls of
+via references. This chapter covers the patterns and pitfalls of
 implementing relationships. At runtime, each relationship becomes a
 large number of collection instances, with many containing just a few elements.
 %In a product catalog, for example, each product object would have one
@@ -49,7 +49,7 @@ are: keeping the cost of small and empty collections to a minimum, sizing
 collections properly, and paying only for features you really need.
 
 \item[Chapter~\ref{chapter:tables-indexes}. Tables and Indexes] A collection
-can also serve as the jumping off
+can serve as the jumping off
 point for accessing a large number of objects. For example, your application
 might maintain a list of all the objects of one type, or have an index for
 looking up objects by unique key. This chapter shows how to analyze the memory
@@ -71,8 +71,8 @@ are needed, and shows how to identify properties of your data that could lead to
 more space-efficient solutions.
 
 \item[Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors] Collections sometimes need to support features
-beyond just storing and accessing data. For example,
+Collection Behaviors] Collections sometimes need to support additional features
+beyond data storage and access. For example,
 you may need to protect a table from inadvertent
 updates, or minimize contention on a map when running in a
 multithreaded environment. Java collections provide these capabilities through
@@ -169,9 +169,9 @@ there are a lot of \emph{elements}, regardless of whether the elements are sprea
 or concentrated in a few large ones.
 Table~\ref{tab:collections-fixed-and-variable} shows the costs for some commonly
 used collections.  Collections with high fixed costs should only be used as large collections, so
-the fixed cost will be amortized.
-\class{ArrayList} (and other array-based collections) have much lower
-variable costs than other collection classes.
+that the fixed cost will be amortized.
+\class{ArrayList} (and other array-based collections) have
+much lower variable costs than other collection classes.
 
 \begin{table}
 \centering
@@ -193,7 +193,7 @@ variable costs than other collection classes.
 	\\
 	TreeMap & 40 & 40
 	\\
-	WeakHashMap & 88 & 54
+	WeakHashMap & 88 & 52
 	\\
 	ConcurrentHashMap &  &
 	\\
@@ -223,30 +223,55 @@ restructure your data into a more efficient design if necessary.
 
 \section{Collections Resources}
 
-In the next four chapters we go into detail about how various
-collection classes are best used in different situations. Along the way we will take a
-take a look inside the implementation of a few collection classes, to give you
-insight into their operation and costs.
+In the next four chapters we will look in detail at how various
+collection classes can best be used in different situations. We focus mostly
+on the standard collections. We also include a few examples from some open
+source collection frameworks. We will also take a look inside
+a few collection classes, to give you insight into how they use memory.
 
 There are some lesser-known classes in the standard Java
 Collections framework that provide
-useful functionality, and in some cases can help you save memory. Below is
-a guide to the lesser-known classes that we discuss in this book.
+useful functionality, and in some cases can help you save memory.
+Table~\ref{tab:lesser-known-collections} is a guide to the ones
+we discuss in this book.
 
-\begin{description}
-\item[Static collections] The abstract class \class{Collections}
-provides some static methods and instances of specialized collections, such as
-for singleton and empty collections.  Discussed in Section~\ref{}.  The 
-Arrays.
-\item[Specialized maps] Identity HashMap; EnumMap.
-\item[Wrapped collections?]
-\item[ConcurrentHashMap?]
-\item[Java 1 Collections] Hashtable, Vector.
-\item[EnumSet?]
-\end{description}
+\begin{table}
+\centering
+	\begin{tabular}{l p{6cm} p{4cm}}
+	\toprule
+
+	   Resource & Description & Discussed in
+	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
+	\class{Collections} statics & Provides static methods and instances of
+	specialized collections, such as singleton and empty collections & Section~\ref{}
+	\\
+	\class{Arrays} statics & Provides static methods that can help when creating
+your own collection functionality from arrays & Section~\ref{} shows one
+example
+	\\
+	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
+	& Section~\ref{}
+	\\
+	\class{EnumMap} & Lower-cost map when keys are \class{Enum}s & Section~\ref{}
+	\\
+	\class{EnumSet} & Concise representation of a set of flags & Section~\ref{}
+	\\
+	\class{WeakHashMap} & Supports one common scenario for managing lifetime with
+	weak references. Support for other cases is available from some alternative
+	collections frameworks, such as Apache Commons. &
+	Section~\ref{}
+	\\
+	Java 1 collections & Some of the classes in the earlier, Java
+1 libraries, like Vector and Hashtable, are a lower-cost choice 
+for certain cases where synchronized collections are needed & Section~\ref{}
+	\\
+	\bottomrule
+	\end{tabular}
+	\caption{Some useful resources in the Java standard library}
+	\label{tab:lesser-known-collections}
+\end{table}
 
 
-\section{Alternative Collections Frameworks}
 In addition to the standard Java collections classes, there are a number of
 open source collections frameworks available. Many of these frameworks
 are designed to provide additional functionality or to make it easier to
