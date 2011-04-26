@@ -185,14 +185,6 @@ void foo() {
 
 
 
-\begin{figure}
-\centering
-\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
-\caption{The \jre also manages classes and compiled code, but in separate
-	heaps. With some \jres, this data is combined into a single heap, called the
-	\emph{Permspace} heap, which is sized via {\tt -XX:MaxPermSize}.}
-\label{fig:heaps_and_stacks_classes}
-\end{figure}
 
 \paragraph{Java Memory vs. Native Memory}
 Every thread in a Java program has two stacks, one for the Java stack frames,

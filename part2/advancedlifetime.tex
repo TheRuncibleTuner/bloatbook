@@ -86,13 +86,31 @@ specify only the maximum nursery size and the total maximum heap consumption (vi
 \paragraph{The Permspace Heap}
 \index{Constant Pools}
 \index{Permspace}
-In addition to separating new and old objects, some \jres create
-a third heap in which to store data that is very unlikely to ever become
+In addition to separating new and old objects, the \jre stores information about
+classes in memory areas that are separate from those for instances of classes.
+Some \jres create
+a distinct heap for this data, one that can be sized like the other heaps.
+Other \jres store this data in an undifferentiated part of the general native
+heap. The Sun \jre is in the former camp, while the IBM and JRockit \jres are in
+the latter camp.
+
+In either case, the \jre needs to allocate memory
+ in which to store data that is very unlikely to ever become
 garbage. This includes the \jres metadata for your Java classes, along with the
 executable code for your methods. In addition, any strings that you have
 interned will be stored in this heap, along with any objects that the source
 code compiler has decided to store in the \emph{constant pool} for a class;
 these objects include any static strings, such as the one in this code snippet:
+
+\begin{figure}
+\centering
+\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
+\caption{The \jre also manages classes and compiled code, but in separate
+	heaps. With some \jres, this data is combined into a single heap, called the
+	\emph{Permspace} heap, which is sized via {\tt -XX:MaxPermSize}.}
+\label{fig:heaps_and_stacks_classes}
+\end{figure}
+
 
 \begin{shortlisting}
 System.out.println("aStaticString");
