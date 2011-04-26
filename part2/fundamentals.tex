@@ -21,10 +21,10 @@ better suit your needs.
 \index{Managed Memory}
 
 A runtime that manages memory is one that takes care of memory allocation and
-reclamation. Some memory is allocated on the \emph{stack}, and some, often as a
-result of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes
-the compiler takes care of reclaiming these memory allocations, and sometimes
-there are background threads that take care of freeing up memory.
+reclamation. Some memory is allocated on the \emph{stack}, and some, as a result
+of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes the
+compiler takes care of reclaiming these memory allocations, and sometimes there
+are background threads that take care of freeing up memory.
 
 \paragraph{The Stack}
 \index{Stack}
@@ -32,7 +32,7 @@ Most languages come with a minimal form of built-in memory management, in the
 form of the \emph{stack}. Each method invocation, in each thread, has memory
 associated with it. For a thread, these areas of memory are pushed and popped,
 as the thread invokes and returns from the execution of methods. The stack
-memory that is set aside for a method invocation is commonly called a
+memory that is set aside for one method invocation is commonly called a
 \emph{stack frame}\index{stack frame}; historically, it has also been referred
 to as an \emph{activation frame} or \emph{activation record}\index{activation
 frame}\index{activation record}. In the case of the stack, it is the compiler
@@ -40,12 +40,11 @@ that manages the lifetime of each threads' stack frames. The compiler inserts
 this stack management code, and so it is invisible to you except if you inspect
 the generated assembly code.
 
-In Java, as shown in
-\autoref{fig:stack-frames}, each stack frame contains either primitive data or
-pointers to memory that has been allocated as a result of calls to {\tt new}.
-Unlike in a language such as C, you cannot dictate that the stack contain a
-structure, it can only contain pointers to structures that are stored on the
-heap. In C, when you write:
+In Java, as shown in \autoref{fig:stack-frames}, each stack frame contains
+either primitive data or pointers to memory that has been allocated as a result
+of calls to {\tt new}. Unlike in a language such as C, you cannot dictate that
+the stack contain a structure, it can only contain pointers to structures that
+are stored on the heap. In C, when you write:
 \begin{shortlisting}
 struct {
    int x;
@@ -53,8 +52,8 @@ struct {
 
 g.x = 3;
 \end{shortlisting}
-the stack frame for this method will have one extra 32-bit slots, used to store
-the integer field {\tt x} of the local variable {\tt s}. 
+the stack frame for this method will have one extra 32-bit slot, used to store
+the integer field {\tt x} of the local variable {\tt g}. 
 
 \begin{figure}
 \centering
@@ -80,17 +79,38 @@ class G {
 G g = new G();
 g.x = 3;
 \end{shortlisting}
-Unfortunately, there is no easy way to determine specifically which of your
-calls to {\tt new} will be, or were in any particular run, stack allocated by
-the JIT. If you are curious, the best you can do is to analyze performance both
-with and without the underlying anlaysis. On Sun JVMs, you can disable the
-analysis by adding {\tt -XX:-DoEscapeAnalysis} to your application's command
-line.
+The JIT compiler attempts to determine whether that instance of {\tt G} will
+only be used in the method in which it was allocated, or whether it will
+``escape'' and be accessible beyond the duration of the allocating
+invocation\index{Escape Analysis}. In many common cases, this is quite a
+difficult analysis task for the JIT. As soon as that {\tt g} is assigned to a
+field of some other object:
+\begin{shortlisting}
+H h = new H();
+h.f = g;
+\end{shortlisting}
+then the compiler must now determine whether or not {\tt h} escapes. In most
+codes, objects are linked together in complex webs, which makes stack allocation
+applicable in only a limited set of cases. Unfortunately, there is no easy way
+to determine specifically which of your calls to {\tt new} will be, or were in
+any particular run, stack allocated by the JIT. In general, you should not
+depend upon even fairly obvious cases being caught by the JIT compiler. If you
+are curious, the best you can do is to analyze performance both with and without
+the underlying anlaysis. On Sun JVMs, you can disable the analysis by adding
+{\tt -XX:-DoEscapeAnalysis} to your application's command line.
 
 \paragraph{The Heap}
 \index{Heap}
-Otherwise, each call to {\tt new} usually results in an allocation on one of
-several heaps. \autoref{fig:heaps_and_stacks_java} and
+Usually, a call to {\tt new} results in a memory allocation on the heap.
+\autoref{fig:heaps_and_stacks_java} fleshes out the previous example a bit. The
+{\tt foo} method allocates two objects, an instance of {\tt A}, and and instance
+of {\tt G}, and stores references to them in local variables. Under the covers,
+the {\tt A} constructor allocates and links together instances of {\tt B}, {\tt
+C}, {\tt D}, {\tt E}, and {\tt F}. In the absence of the JIT stack allocating
+objects, all of these instances, as shown in the accompanying figure, will be
+allocated on the heap.
+
+and
 \autoref{fig:heaps_and_stacks_C}
 
 %  a.b = new B();
@@ -110,20 +130,22 @@ class B {
 void foo() {
   A a = new A();
   G g = new G();
+  int x = 42;
   ...
 }
 \end{shortlisting}
 \end{minipage}
-\caption{When coding in Java.}
+\caption{A snippet of Java.}
 \end{subfloat}
-	\subfigure[When
-	using
-	Java,
+	\subfigure[Snapshot	of the heap and thread stacks.]
+	{\label{fig:heaps_and_stacks_java}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_java}} \caption{When using Java,
 	the stack can
 	contain only primitive data and pointers to heap objects; each of those heap
 	objects has a header that the \jre tacks on, for its own management
-	purposes.]{\label{fig:heaps_and_stacks_java}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_java}}
-	
+	purposes.}
+\end{figure}
+
+\begin{figure}
 \begin{subfloat}
 \begin{minipage}[b]{0.4\textwidth}
 \begin{shortlisting}
@@ -133,6 +155,7 @@ class B {
 }
 void foo() {
   A *a = new A();
+  int x = 42;
   F f;
   G g;
   a->b->e->f = &f;
@@ -150,7 +173,7 @@ void foo() {
 	other structures that have been inlined ({\tt d} has been inlined into {\tt
 	b}); there are no headers in C, since it is not a managed language.
 	]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_C}}
-	\caption{Heaps and Stacks, in Java versus in the C languge.}
+\caption{Heaps and Stacks, in the C languge.}
 \end{figure}
 
 
@@ -160,31 +183,115 @@ void foo() {
 \includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
 \caption{The \jre also manages classes and compiled code, but in separate
 	heaps. With some \jres, this data is combined into a single heap, called the
-	\emph{Permspace}
-	heap,
-	which
-	is
-	sized
-	via
-	{\tt
-	-XX:MaxPermSize}.}
+	\emph{Permspace} heap, which is sized via {\tt -XX:MaxPermSize}.}
 \label{fig:heaps_and_stacks_classes}
 \end{figure}
 
-\paragraph{The Java Heap vs. The Native Heap}
+\paragraph{Java Memory vs. Native Memory}
+Every thread in a Java program has two stacks, one for the Java stack frames,
+and one to hold the stack frames of any native methods that either the Java code
+invokes or invokes Java code. Every Java program also has multiple heaps. One
+heap stores all of the {\tt malloc} calls invoked native code, and one that
+stores heap-allocated objects. It is important to realize that both native and
+Java memory regions exist, so that you can be conscious of the size limits
+imposed on each. There exist default bounds to how deep a Java stack can grow,
+and separate limits imposed on the depth of the native stacks. If, during
+the execution of a thread, these stack limits are exceeded, you may see a {\tt
+java.lang.StackOverflowError} exception
+thrown\index{java.lang.StackOverflowError}. If this error occurs, you can follow
+\autoref{tab:stack-heap-limits} to tweak the maximum size of the native or Java
+stacks.
+
+There are also limits to how large the heap can grow. The Java heap constraints,
+the initial and maximum sizes, are similarly determined by command-line
+parameters. If you application exceeds consumption of Java heap, you will
+observe a {\tt java.lang.OutOfMemoryError} exception
+thrown\index{java.lang.OutOfMemoryError}. Confusingly, in many cases, you will
+see this \emph{same} exception when your application exceeds available native
+memory resources. Therefore, you should be aware of the Java and native heap
+limits, in order to confirm the true source of the resource exhaustion: was it
+due to running out of Java heap, or running out of native resources?
+
+The limits of the Java heap are determined by command-line parameters, as shown
+in \autoref{tab:stack-heap-limits}. The upper limit of native heap consumption
+is, for the most part, not directly controlled by parameters, but rather how
+much memory you have installed on your machine. The operating system will
+happily allocate to your application more and more memory, as it needs it.
+However, there are some important considerations that will sometimes constrain
+the consumption of native resources and, indirectly, the maximum size of the
+Java heap you can specify.
+
+\begin{table}
+\centering
+\begin{tabular}{rll}
+\toprule
+%& \multicolumn{2}{c}{command-line parameter}\\
+memory area & min & max \\
+\cmidrule(r){1-1} \cmidrule(l){2-3}
+Java stack &  & -oss \\
+Java heap & -Xms & -Xmx \\
+native stack & & -ss \\
+mainframe 31-bit native heap & 0 & 1.3GB \\
+Windows 32-bit native heap & 0 & 1.8GB \\
+other 32-bit native heap & 0 & 2GB \\
+64-bit native heap & 0 & 256TB \\
+\bottomrule
+\end{tabular}
+\caption{The command-line parameters you may use to configure the limits of the
+native and Java stacks and heaps. With enough physical memory installed, the
+native heap is constrained only by the limits of the address space; this is why
+the table spells out a separate row for various address space configurations.}
+\label{tab:stack-heap-limits}
+\end{table}
+
+% is the table sufficient for this? or do we need exposition, too?
+%To configure the
+%maximum depth of the Java stacks to be 1 megabyte, you can add {\tt -oss1M} on
+%your application's command line\index{Command-line arguments: -oss}\index{Java
+%Stack, size limit}. To configure the maximum depth of the native stacks to be 1
+%megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
+
+
+\paragraph{Native Resources: Address Space, Physical Memory, File Descriptors,
+etc.}
+\index{Native Resources}
+\index{File Descriptor Exhaustion}
+Depending on the operating system you are using, there may be other constraints
+on the amount of memory your application can access. There is the obvious limit
+of the amount of physical memory installed on the machine. It is important to
+limit the {\tt -Xmx} maximum Java heap setting to fit within this phyiscal
+memory limit --- these days, swapping memory to and from disk is too slow to
+make using it worth your while. The native heap does not, by default, impose
+such a limit, and so you should be careful, and observe whether your application
+is indeed swapping any native allocations to and from disk.
+
+\index{Address Space Consumption}
+Another constraint is based on the number of unique addresses that pointers can
+address. For example, if your application runs on a 32-bit Windows operating
+system, the total amount of memory that each process can access is 1.8
+gigabytes\footnote{Some versions of 32-bit Windows let you specify a {\tt /3GB}
+boot option, which increases this limit from 1.8GB to 3GB.} This constraint is
+imposed by the number of unique addresses that 32-bit pointers can address: a
+pointer that is 32 bits wide can address 4 gigabytes, of which the operating
+system reserves roughly half for its own use. If a process of your application
+attempts to allocate memory beyond this address space limit, a failure will
+occur. Oftentimes, this failure will manifest itself misleadingly as a {\tt
+java.lang.OutOfMemoryError}.
+
+Some operating systems let you specify limits on the amount of address space
+that a process can use. This is similar to the way that you can specify {\tt
+-Xmx} to limit the maximum amount of Java heap that a process should consume. On
+UNIX platforms, you can use the {\tt ulimit} command. For example, on Linux, to
+limit the amount of address space any process launched from the current shell
+can access to 1 gigabyte, issue this command:
+\begin{shortlisting}
+% ulimit -m 1048576     // units in kilobytes
+\end{shortlisting}
+You can also limit the size of the native stacks by issuing a similar command,
+except with the {\tt -s} flag.\index{ulimit}
 
 
 
-%Designing a lifetime management strategy requires that you take the tools that
-%Java provides, and combine them with other strategies implemented on top of
-%Java. The built-in mechanisms handle some aspects of the common patterns of
-%object lifetime. 
-
-%This chapter introduces the basics of the garbage collector, and how the Java
-%managed runtime governs object lifetimes. Then, it walks you through the
-%lifecycle of typical objects from allocation to eventual garbage collection. If
-%you are comfortable with the basics of memory management, you may discover that
-%you can skip to the next chapter.
 
 \paragraph{The Garbage Collector}
 The garbage collector is the mechanism for determining when an object should be
