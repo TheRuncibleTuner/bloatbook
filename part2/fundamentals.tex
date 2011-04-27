@@ -190,13 +190,13 @@ void foo() {
 Every thread in a Java program has two stacks, one for the Java stack frames,
 and one to hold the stack frames of any native methods that either the Java code
 invokes or invokes Java code. Every Java program also has multiple heaps. One
-heap stores all of the {\tt malloc} calls invoked native code, and one that
+heap stores all of the \code{malloc} calls invoked native code, and one that
 stores heap-allocated objects. It is important to realize that both native and
 Java memory regions exist, so that you can be conscious of the size limits
 imposed on each. There exist default bounds to how deep a Java stack can grow,
 and separate limits imposed on the depth of the native stacks. If, during
-the execution of a thread, these stack limits are exceeded, you may see a {\tt
-java.lang.StackOverflowError} exception
+the execution of a thread, these stack limits are exceeded, you may see a
+\class{java.lang.StackOverflowError} exception
 thrown\index{java.lang.StackOverflowError}. If this error occurs, you can follow
 \autoref{tab:stack-heap-limits} to tweak the maximum size of the native or Java
 stacks.
@@ -204,12 +204,14 @@ stacks.
 There are also limits to how large the heap can grow. The Java heap constraints,
 the initial and maximum sizes, are similarly determined by command-line
 parameters. If you application exceeds consumption of Java heap, you will
-observe a {\tt java.lang.OutOfMemoryError} exception
-thrown\index{java.lang.OutOfMemoryError}. Confusingly, in many cases, you will
-see this \emph{same} exception when your application exceeds available native
-memory resources. Therefore, you should be aware of the Java and native heap
-limits, in order to confirm the true source of the resource exhaustion: was it
-due to running out of Java heap, or running out of native resources?
+observe a \class{java.lang.OutOfMemoryError} exception
+thrown\index{java.lang.OutOfMemoryError}; sometimes, you will see a variant of
+this: \code{GC overhead limit exceeded}\index{GC overhead limit exceeded}.
+Confusingly, in many cases, you will see this \emph{same} exception when your
+application exceeds available native memory resources. Therefore, you should be
+aware of the Java and native heap limits, in order to confirm the true source of
+the resource exhaustion: was it due to running out of Java heap, or running out
+of native resources?
 
 The limits of the Java heap are determined by command-line parameters, as shown
 in \autoref{tab:stack-heap-limits}. The upper limit of native heap consumption
@@ -441,6 +443,24 @@ referenced but never be used again. This limbo time also includes the entirety o
 the call to \code{System.out.println}, an operation entirely unrelated to the
 creation or use of the parse position object. Once the current loop iteration
 finishes, these two objects will become candidates for garbage collection.
+The object now enters a second stage of this limbo. There are no pointers to
+{\tt pos} that should keep its memory around, but the memory will stay around
+until the next garbage collection.
+Only when the garbage collector performs a sweep over memory, looking
+for reclaimable objects, will the memory for {\tt pos} be ready for new objects.
+Most of the time, this second stage of limbo is short, because garbage
+collections typically run ever few seconds.
+
+However, if there is a long interval
+of time during which your application allocates very few objects in the Java
+heap, it could be quite a while before these dragging objects are reclaimed. You
+should be cautious here if, during these lulls in Java object creation, your
+application is heavily exercising the native heap. If your application has a few
+Java objects that implicitly reference native resources that are constrained,
+you could run into trouble. For example:
+\begin{shortlisting}
+Font f = 
+\end{shortlisting}
 
 \begin{figure}
 	\centering
@@ -666,13 +686,14 @@ permanently resident lifetime policy.
 
 \paragraph{The Lifetime of Instance Field References}
 
-As long as an object \code{B} is dominated by an instance field of another object
-\code{A}, then these two objects will live and die together. The only device at
-your disposal to make \code{B} garbage collectable before \code{A} is to break
-all paths of references from \code{A} to \code{B}. In simple cases, where
-\code{B} is directly referenced by a field of \code{A}, then reassigning that
-reference to \code{null} will do the trick. After doing so, the \code{B} object
-will now be a candiate for garbage collection. 
+As long as an object \code{B} is dominated by an instance field of another
+object \code{A}, then \code{B} will live as long as \code{A} does, and become
+collectible whenever \code{A} does. The only device at your disposal to make
+\code{B} garbage collectable before \code{A} is to break all paths of references
+from \code{A} to \code{B}. In simple cases, where \code{B} is directly
+referenced by a field of \code{A}, then reassigning that reference to
+\code{null} will do the trick. After doing so, the \code{B} object will now be a
+candiate for garbage collection.
 
 
 
@@ -807,10 +828,42 @@ normal ways of referencing objects are typically referred to as \emph{strong}
 references. This term came about to contrast with the terms used for the more
 advanced features: weak, soft, and phantom references.
 
-\paragraph{Finalization and Phantom References}
+\paragraph{Finalization}
 \index{Finalization of objects}
-\index{Phantom References}
 
+\index{Overwhelming the Finalizer Thread}
+It is possible to overwhelm the finalization thread, if your program creates
+instances of objects with \code{finalize} methods at a high rate. Such is the
+case in the following loop:
+\begin{shortlisting}
+import java.awt.Font;
+for (int i = 0; i < N; i++) {
+   Font font = new Font("SansSerif", Font.BOLD, 12);
+   ... // some small amount of work
+   // font does not escape the loop
+}
+\end{shortlisting}
+Since each loop iteration's instance of \code{font} is not used beyond the
+execution of that iteration, it seems like one could run this program on a
+pretty small heap, , for any value of \code{N}. The heap need only fit what it
+takes to allocate the handful of objects that represent an instance of
+\code{java.awt.Font}. Try it out, for various values of \code{N} and of
+\code{-Xmx}! On Sun and IBM Java 6 \jres, you will find that, as \code{N}
+increases, you will need to increase the maximum heap size allotted to the \jre.
+If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
+
+The problem, in this case, is that \class{Font} class has a \code{finalize}
+method. Therefore, as the loop iterates, instances of \class{Font} begin to pile
+up the finalization queue. Periodically, the background finalizer thread wakes
+up and cleans up the backlog. But, if this loop nest creates many \class{Font}s
+quickly, or there are a large number of threads doing so concurrently, 
+the finalizer background thread becomes overwhelmed. Try sticking in this code:
+\code{if (i \% 100000 == 0) System.runFinalization()}. Here, you are explicitly
+putting your application's thread to sleep in order to let the finalizer thread
+catch up. In this case, this change fixes the problem.
+
+\paragraph{Phantom References}
+\index{Phantom References}
 
 \paragraph{\TLS}
 \tlsindex % \index{\TLS} doesn't seem to work
@@ -818,3 +871,11 @@ advanced features: weak, soft, and phantom references.
 \section{Summary}
 
 
+\begin{itemize}
+  \item Every Java process has multiple memory regions, each with separate size
+  limits and separate configuration options for adjusting these limits.
+  \item Local variables in Java programs can only store primitive data and
+  pointers to heap-allocated objects.
+  \item Memory leaks can easily occur in a Java appliction, despite it having a
+  garbage collector.
+\end{itemize}
