@@ -65,22 +65,22 @@ from Sun to IBM to JRockit, has a different policy for choosing the default
 initial and maximum size. Older \jres, typically those prior to Java 1.5, tended
 to have hard-coded default values, indepdendent of how much physical memory your
 machine actually had. Most \jres now attempt to adjust the default
-maximum size based on the physical memory capacity of your machine.
+maximum size based on the physical memory capacity of your machine. 
 
 It often makes sense to keep a small initial Java heap size and a large maximum
-size.  If your application requires a highly variable amount of memory, perhaps
-because its memory requirements depend on the size of the input data, then this
-strategy can pay off. If you run multiple copies of the application on one
-machine, and most of the time, the inputs are on the small side, then this
-strategy will allow you to run more copies simultaneously. You needn't worry too
-much about this affecting performance for the cases of larger inputs. \jres are
-pretty smart these days, and make a good effort to increase the size of the heap
-from the initial size to the maximum size, as it finds that your application
-needs more memory. The \jre will even decrease the size of heap, when it finds
-that your application hasn't fully utilized the current heap's resources in a
-while. Still, you should always experiment!
+size.  If your application requires a varying amount of memory, an amount that
+depends on the size of the input data, then this strategy can pay off. For
+example, say you run multiple copies of the application on one machine, and,
+most of the time, the inputs are on the small side. Then this strategy will
+allow you to run more copies simultaneously, while still allowing for the rare
+cases when an input requires more memory. You needn't worry too much about this
+affecting performance for the cases of larger inputs. \jres are pretty smart
+these days, and make a good effort to adjust the size of the heap from the
+initial size to the maximum size, and back down, as it finds that your
+application memory needs change. Still, you should always experiment! \jres
+don't always get this right.
 
-Experimentation is also important because the default choice of initial and
+Experimentation is also important, because the default choice of initial and
 maximum Java heap size may result in your application running more slowly than
 it should. Sometimes, this sub-par performance is due to having an
 \emph{initial} size that is too low. It takes a while for the \jre to learn that
@@ -88,6 +88,13 @@ it should increase the heap size beyond the initial size. If your application
 only runs for a short time, and your application commonly needs more than the
 default initial size, why should you burden the \jre with learning something
 that you have already learned by your own experimentation?
+
+In terms of finding a good maximum heap size, you should be very careful never
+to set it to be more than the amount of physical memory on your machine. If your
+application runs as multiple processes, you have to make sure to divide physical
+memory between them! This practice is important, given the disparity between the
+speed of accessing RAM versus the speed of accessing disk; these days, swapping
+memory to and from disk is too slow to be worth even considering.
 
 To specify the initial size of the Java heap to be, pass the {\tt -Xms} flag on
 the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
@@ -119,31 +126,27 @@ The Java heap is the main storage for your objects, including all of their
 fields and primitive data. When your code has a local variable that references
 an object, this pointer is stored on the \emph{stack}:
 \begin{shortlisting}
-public class X {}
-   static void f() {
-      X x = new X();
-      X y = new X();
-      int z = g();
-      ...
-   }
-   static int g() {
-      return ...;
-   }
+void f() {
+   X x = new X();
+   X y = new X();
+   int z = ...;
+   ...
 }
 \end{shortlisting}
 For the duration of an invocation of the method \code{f}, your code needs to
 store references to those two instances of \class{X} and
 the primitive data value \code{z}. The JIT compiler
-sets aside space for these three local variables, and it places them on
-the stack as illustrated in \autoref{fig:stack-frames}.   Each method invocation, in each thread, has memory
-associated with it. For a thread, these areas of memory are pushed and popped,
+sets aside space for these three local variables on
+the stack, as illustrated in \autoref{fig:stack-frames}.   Each method
+invocation, in each thread, has memory associated with it to store these local
+variables. This space is pushed and popped,
 as the thread invokes and returns from the execution of methods. The stack
-memory that is set aside for one method invocation is commonly called a
-\emph{stack frame}\index{stack frame}; historically, it has also been referred
-to as an \emph{activation frame} or \emph{activation record}\index{activation
-frame}\index{activation record}. As with the heap, in Java the stack can only contain primitive data or
-references to objects. It cannot contain, unlike in the case of C or C\#, an
-object itself.  
+memory that is set aside for a method invocation is commonly called a
+\emph{stack frame}\index{stack frame}.\footnote{Historically, it has also been
+referred to as an \emph{activation frame} or \emph{activation record}\index{activation
+frame}\index{activation record}.} As with the heap, in Java the stack can only
+contain primitive data or references to objects.
+%It cannot contain, unlike in the case of C or C\#, an object itself.  
 %The compiler inserts
 %this stack management code, and so it is invisible to you except if you inspect
 %the generated assembly code
@@ -184,35 +187,29 @@ Sometimes, the JIT compiler is clever enough to observe that a call to {\tt new}
 can safely be allocated on the stack. This optimization is called \emph{stack
 allocation} of objects\index{Stack Allocation}. It is enabled, by default, as of
 Sun Java6 Update 21 and IBM 1.6 Service Release 2. When this optimization is
-possible, the memory in the following Java code will be stored and accessed
-exactly as if you were using C {\tt struct}s:
-\begin{shortlisting}
-class G {
-   int x;
-}
-G g = new G();
-g.x = 3;
-\end{shortlisting}
-%The JIT compiler attempts to determine whether that instance of {\tt G} will
-%only be used in the method in which it was allocated, or whether it will
-%``escape'' and be accessible beyond the duration of the allocating
-%invocation\index{Escape Analysis}. In many common cases, this is quite a
-%difficult analysis task for the JIT. As soon as that {\tt g} is assigned to a
-%field of some other object:
-%\begin{shortlisting}
-%H h = new H();
-%h.f = g;
-%\end{shortlisting}
-%then the compiler must now determine whether or not {\tt h} escapes. In most
-%codes, objects are linked together in complex webs, which makes stack
-%allocation applicable in only a limited set of cases. Unfortunately, there is
-%no easy way to determine specifically which of your calls to {\tt new} will be,
-%or were in any particular run, stack allocated by the JIT.
-In general, you
-should not depend upon even fairly obvious cases being caught by the JIT
-compiler.\footnote{If you are curious, the best you can do is to analyze
-performance both with and without the underlying anlaysis. On Sun JVMs, you can disable the analysis by adding
-{\tt -XX:-DoEscapeAnalysis} to your application's command line.}
+possible, objects created and used \emph{only} as local variables will be stored
+on a stack frame; it is as if you were using C {\tt struct}s.
+% \begin{shortlisting} class G {
+   % int x;
+% } G g = new G(); g.x = 3; \end{shortlisting} The JIT compiler attempts to
+% determine whether that instance of {\tt G} will only be used in the method in
+% which it was allocated, or whether it will ``escape'' and be accessible beyond
+% the duration of the allocating invocation\index{Escape Analysis}. In many
+% common cases, this is quite a difficult analysis task for the JIT. As soon as
+% that {\tt g} is assigned to a field of some other object: \begin{shortlisting}
+% H h = new H(); h.f = g; \end{shortlisting} then the compiler must now
+% determine whether or not {\tt h} escapes. In most codes, objects are linked
+% together in complex webs, which makes stack allocation applicable in only a
+% limited set of cases. Unfortunately, there is no easy way to determine
+% specifically which of your calls to {\tt new} will be, or were in any
+% particular run, stack allocated by the JIT.
+Though the JIT compiler can optimize away a fair number of short-lived objects
+via stack allocation, you should not depend upon this optimization for your
+long-lived data. It is a tricky thing for the JIT compiler to do correctly, and
+so the compiler is very conservative in its application.\footnote{If you are
+curious, the best you can do is to analyze performance both with and without the
+underlying anlaysis. On Sun JVMs, you can disable the analysis by adding {\tt
+-XX:-DoEscapeAnalysis} to your application's command line.}
 
 
 
@@ -321,24 +318,26 @@ Java heap you can specify.
 
 \begin{table}
 \centering
-\begin{tabular}{rll}
+\begin{tabular}{rrc}
 \toprule
 %& \multicolumn{2}{c}{command-line parameter}\\
-memory area & min & max \\
-\cmidrule(r){1-1} \cmidrule(l){2-3}
-Java stack &  & -oss \\
-Java heap & -Xms & -Xmx \\
-native stack & & -ss \\
-mainframe 31-bit native heap & 0 & 1.3GB \\
-Windows 32-bit native heap & 0 & 1.8GB \\
-other 32-bit native heap & 0 & 2GB \\
-64-bit native heap & 0 & 256TB \\
+%memory area & min & max \\
+Platform & Pointer Size & \shortstack{maximum memory\\consumption per process}
+\\ \cmidrule(r){1-2} \cmidrule(l){3-3}
+%Java stack &  & -oss \\
+%Java heap & -Xms & -Xmx \\
+%native stack & & -ss \\
+z/OS & 31-bit & 1.3GB \\
+Microsoft Windows & 32-bit & 1.8GB \\
+UNIX-based & 32-bit & 2GB \\
+Microsoft Windows & 32-bit {\tt /3GB} & 3GB \\
+all & 64-bit & $\ge$ 256TB \\
 \bottomrule
 \end{tabular}
-\caption{The command-line parameters you may use to configure the limits of the
-native and Java stacks and heaps. With enough physical memory installed, the
-native heap is constrained only by the limits of the address space; this is why
-the table spells out a separate row for various address space configurations.}
+\caption{Even with plenty of physical memory installed, every process of your
+application is still constrained 
+  by the limits of the address space. On some versions of Microsoft Windows, you
+  may specify a boot parameter {\tt /3GB} to increase this limit.}
 \label{tab:stack-heap-limits}
 \end{table}
 
@@ -350,7 +349,9 @@ the table spells out a separate row for various address space configurations.}
 %megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
 
 
-\paragraph{Address Space versus Physical Memory}
+\paragraph{Physical Memory versus Address Space}
+Even if your machine has
+
 Depending on the operating system you are using, there may be other constraints
 on the amount of memory your application can access. There is the obvious limit
 of the amount of physical memory installed on the machine. It is important to
@@ -929,7 +930,8 @@ advanced features: weak, soft, and phantom references.
 \index{Finalization of objects}
 
 \index{Overwhelming the Finalizer Thread}
-It is possible to overwhelm the finalization thread, if your program creates
+One of the problems with the use of finalization is that it is possible to
+overwhelm the finalization thread. This can happen if your program creates
 instances of objects with \code{finalize} methods at a high rate. Such is the
 case in the following loop:
 \begin{shortlisting}
