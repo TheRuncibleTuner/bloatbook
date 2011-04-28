@@ -1,59 +1,152 @@
 % TODO maybe introduce weaks and softs??
 
-\chapter{Memory Management Fundamentals}
+\chapter{Memory Management Basics}
 
 % Before getting into the details of how to implement your lifetime
 % requirements,
-The Java language has a \emph{managed runtime}. In part, this means that, as a
-Java program runs, the Java runtime takes on the burden of key aspects of memory
-allocation and reclamation. It is important to understand what Java does for
-you, in forming its decision of when an object should be reclaimed, when
-devising your lifetime management strategy. This level of management includes
-automatic garbage collection of both instances and Java classes. Java has
-feature that govern, on your behalf, important aspects of the lifetime of
-objects. Unfortunately, these features often appear in the form of low-level JVM
-hooks, or implicit behavior that you have to carefully govern, and so require
-careful coding to make correct use of them. You need to appreciate what the
-runtime is doing for you, before considering how to reshape object lifetimes to
-better suit your needs.
+The Java language has a \emph{managed runtime}\index{Managed Runtime}. As part
+of being a managed runtime, as a Java program runs, a supporting JIT compilation
+and other support threads are spawned. These thread work on your program's
+behalf and, together, compose a runtime system that manage important aspects of
+execution. One of these tasks is memory allocation and reclamation. The runtime
+automatically takes care of many important cases of memory management. You
+needn't, for example, be concerned with explicitly deallocated \emph{most} of
+the objects you allocate, because the runtime includes automatic garbage
+collection of instances. The Java runtime also provides built-in support that
+let you manually take care of some of the more complex cases, such as
+implementing appropriate caching policies.
+% It is important to understand what Java does for you, in forming its decision
+% of when an object should be reclaimed, when devising your lifetime management
+% strategy. Java has features that govern, on your behalf, important aspects of
+% the lifetime of objects.
 
-\section{Managed Memory}
-\index{Managed Memory}
+Taking advantage of these facilities requires some care, from issues as
+straightforward sounding as choosing a reasonable bound for memory consumption,
+to deciphering the cause of failures due to memory exhaustion. Furthermore, some
+of the runtime facilities appear in the form of low-level JVM hooks, or implicit
+behavior that you have to carefully govern, and so require careful coding to
+make correct use of them.
+% You need to appreciate what the runtime is doing for you, before considering
+% how to reshape object lifetimes to better suit your needs.
 
-A runtime that manages memory is one that takes care of memory allocation and
-reclamation. Some memory is allocated on the \emph{stack}, and some, as a result
-of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes the
-compiler takes care of reclaiming these memory allocations, and sometimes there
-are background threads that take care of freeing up memory.
+\section{Heaps, Stacks, Address Space, and Other Native Resources}
+
+% A runtime that manages memory is one that takes care of memory allocation and
+% reclamation.
+As your program runs, there is a good chance that quite a bit of memory will be
+allocated and reclaimed. Some of the memory allocations will come directly from
+your code, as it calls \code{new} to instantiate classes. Other times, memory
+will be allocated behind the scenes, such as by the class loading or JIT
+compilation mechanisms, or by native code that your code eventually uses. Under
+the covers, the managed runtime will service allocation requests from a number
+of memory pools. Most of these will be allocated on the \emph{Java heap}, but
+there are other memory areas that you need to be aware of. Each area has its own
+sizing and growth policies, and its own constraints on maximum capacity.
+
+%Some memory is allocated on the \emph{stack}, and some, as a
+%result of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes
+%the compiler takes care of reclaiming these memory allocations, and sometimes
+%there are background threads that take care of freeing up memory.
+
+\paragraph{The Heap}
+\index{Heap}
+Usually, a call to {\tt new} results in a memory allocation on the Java heap.
+The heap is a region of memory that the JVM allocates on startup, sized to your
+specification. It contains objects, linked together in the way that they
+reference eachother. In Java, each object can contain primitive data, or
+references to other objects. Unlike in a language such as C or C\#, one Java
+object cannot contain another Java object.  In those other languages, this is
+possible through the use of {\tt struct}s\index{C language}\index{C
+structs}\index{C\# language}.
+
+If you don't choose an initial and maximum size for this
+heap, the \jre will choose these criteria for you. Each \jre implementation,
+from Sun to IBM to JRockit, has a different policy for choosing the default
+initial and maximum size. Older \jres, typically those prior to Java 1.5, tended
+to have hard-coded default values, indepdendent of how much physical memory your
+machine actually had. Most \jres now attempt to adjust the default
+maximum size based on the physical memory capacity of your machine.
+
+It often makes sense to keep a small initial Java heap size and a large maximum
+size.  If your application requires a highly variable amount of memory, perhaps
+because its memory requirements depend on the size of the input data, then this
+strategy can pay off. If you run multiple copies of the application on one
+machine, and most of the time, the inputs are on the small side, then this
+strategy will allow you to run more copies simultaneously. You needn't worry too
+much about this affecting performance for the cases of larger inputs. \jres are
+pretty smart these days, and make a good effort to increase the size of the heap
+from the initial size to the maximum size, as it finds that your application
+needs more memory. The \jre will even decrease the size of heap, when it finds
+that your application hasn't fully utilized the current heap's resources in a
+while. Still, you should always experiment!
+
+Experimentation is also important because the default choice of initial and
+maximum Java heap size may result in your application running more slowly than
+it should. Sometimes, this sub-par performance is due to having an
+\emph{initial} size that is too low. It takes a while for the \jre to learn that
+it should increase the heap size beyond the initial size. If your application
+only runs for a short time, and your application commonly needs more than the
+default initial size, why should you burden the \jre with learning something
+that you have already learned by your own experimentation?
+
+To specify the initial size of the Java heap to be, pass the {\tt -Xms} flag on
+the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
+For example, by passing {\tt -Xms100M -XmX1G}, you are telling the \jre to use
+an initial size of 100 megabytes, and a maximum size of 1 gigabyte.
+
+
+
+
+
+
+
+%\autoref{fig:heaps_and_stacks_java} fleshes out the previous example a bit. The
+%{\tt foo} method allocates two objects, an instance of {\tt A}, and instance
+%of {\tt G}, and stores references to them in local variables. Under the covers,
+%the {\tt A} constructor allocates and links together instances of {\tt B}, {\tt
+%C}, {\tt D}, {\tt E}, and {\tt F}. In the absence of the JIT stack allocating
+%objects, all of these instances, as shown in the accompanying figure, will be
+%allocated on the heap. There will be three local variable slots on the stack,
+%one for the integer variable {\tt x}, and two pointers, to {\tt A} and {\tt G}.  
+
+%\autoref{fig:heaps_and_stacks_C} shows what is possible in a language such as
+%C.
+
 
 \paragraph{The Stack}
 \index{Stack}
-Most languages come with a minimal form of built-in memory management, in the
-form of the \emph{stack}. Each method invocation, in each thread, has memory
+The Java heap is the main storage for your objects, including all of their
+fields and primitive data. When your code has a local variable that references
+an object, this pointer is stored on the \emph{stack}:
+\begin{shortlisting}
+public class X {}
+   static void f() {
+      X x = new X();
+      X y = new X();
+      int z = g();
+      ...
+   }
+   static int g() {
+      return ...;
+   }
+}
+\end{shortlisting}
+For the duration of an invocation of the method \code{f}, your code needs to
+store references to those two instances of \class{X} and
+the primitive data value \code{z}. The JIT compiler
+sets aside space for these three local variables, and it places them on
+the stack as illustrated in \autoref{fig:stack-frames}.   Each method invocation, in each thread, has memory
 associated with it. For a thread, these areas of memory are pushed and popped,
 as the thread invokes and returns from the execution of methods. The stack
 memory that is set aside for one method invocation is commonly called a
 \emph{stack frame}\index{stack frame}; historically, it has also been referred
 to as an \emph{activation frame} or \emph{activation record}\index{activation
-frame}\index{activation record}. In the case of the stack, it is the compiler
-that manages the lifetime of each threads' stack frames. The compiler inserts
-this stack management code, and so it is invisible to you except if you inspect
-the generated assembly code.
-
-In Java, as shown in \autoref{fig:stack-frames}, each stack frame contains
-either primitive data or pointers to memory that has been allocated as a result
-of calls to {\tt new}. Unlike in a language such as C, you cannot dictate that
-the stack contain a structure, it can only contain pointers to structures that
-are stored on the heap. In C, when you write:
-\begin{shortlisting}
-struct {
-   int x;
-} g;
-
-g.x = 3;
-\end{shortlisting}
-the stack frame for this method will have one extra 32-bit slot, used to store
-the integer field {\tt x} of the local variable {\tt g}. 
+frame}\index{activation record}. As with the heap, in Java the stack can only contain primitive data or
+references to objects. It cannot contain, unlike in the case of C or C\#, an
+object itself.  
+%The compiler inserts
+%this stack management code, and so it is invisible to you except if you inspect
+%the generated assembly code
 
 \begin{figure}
 \centering
@@ -64,14 +157,35 @@ method parameters.}
 \label{fig:stack-frames}
 \end{figure}
 
-In Java, it is not possible for you to explicitly request that a structure be
-allocated on the stack. Sometimes, the JIT compiler is clever enough to observe
-that a call to {\tt new} can safely be allocated on the stack. This optimization
-is called \emph{stack allocation} of objects\index{Stack Allocation}, and is
-enabled, by default, as of Sun Java6 Update 21 and IBM 1.6 Service Release 2.
-When this optimization is possible, probably for no more than 10-20\% of calls
-to {\tt new}, the memory in the following Java code will be stored and accessed
-exactly as if you were writing C code:
+%Most languages come with a minimal form of built-in memory management, in the
+%form of the \emph{stack}.
+
+%In Java, as shown in \autoref{fig:stack-frames}, each stack frame contains
+%either primitive data or pointers to memory that has been allocated as a result
+%of calls to {\tt new}. Unlike in a language such as C, you cannot dictate that
+%the stack contain a structure, it can only contain pointers to structures that
+%are stored on the heap. In C, when you write:
+%\begin{shortlisting}
+%struct {
+   %int x;
+%} g;
+%
+%g.x = 3;
+%\end{shortlisting}
+%the stack frame for this method will have one extra 32-bit slot, used to store
+%the integer field {\tt x} of the local variable {\tt g}. 
+
+
+
+
+% In Java, it is not possible for you to explicitly request that a structure be
+\paragraph{A JIT Optimization: Stack Allocation}
+Sometimes, the JIT compiler is clever enough to observe that a call to {\tt new}
+can safely be allocated on the stack. This optimization is called \emph{stack
+allocation} of objects\index{Stack Allocation}. It is enabled, by default, as of
+Sun Java6 Update 21 and IBM 1.6 Service Release 2. When this optimization is
+possible, the memory in the following Java code will be stored and accessed
+exactly as if you were using C {\tt struct}s:
 \begin{shortlisting}
 class G {
    int x;
@@ -79,53 +193,36 @@ class G {
 G g = new G();
 g.x = 3;
 \end{shortlisting}
-The JIT compiler attempts to determine whether that instance of {\tt G} will
-only be used in the method in which it was allocated, or whether it will
-``escape'' and be accessible beyond the duration of the allocating
-invocation\index{Escape Analysis}. In many common cases, this is quite a
-difficult analysis task for the JIT. As soon as that {\tt g} is assigned to a
-field of some other object:
-\begin{shortlisting}
-H h = new H();
-h.f = g;
-\end{shortlisting}
-then the compiler must now determine whether or not {\tt h} escapes. In most
-codes, objects are linked together in complex webs, which makes stack allocation
-applicable in only a limited set of cases. Unfortunately, there is no easy way
-to determine specifically which of your calls to {\tt new} will be, or were in
-any particular run, stack allocated by the JIT. In general, you should not
-depend upon even fairly obvious cases being caught by the JIT compiler. If you
-are curious, the best you can do is to analyze performance both with and without
-the underlying anlaysis. On Sun JVMs, you can disable the analysis by adding
-{\tt -XX:-DoEscapeAnalysis} to your application's command line.
+%The JIT compiler attempts to determine whether that instance of {\tt G} will
+%only be used in the method in which it was allocated, or whether it will
+%``escape'' and be accessible beyond the duration of the allocating
+%invocation\index{Escape Analysis}. In many common cases, this is quite a
+%difficult analysis task for the JIT. As soon as that {\tt g} is assigned to a
+%field of some other object:
+%\begin{shortlisting}
+%H h = new H();
+%h.f = g;
+%\end{shortlisting}
+%then the compiler must now determine whether or not {\tt h} escapes. In most
+%codes, objects are linked together in complex webs, which makes stack
+%allocation applicable in only a limited set of cases. Unfortunately, there is
+%no easy way to determine specifically which of your calls to {\tt new} will be,
+%or were in any particular run, stack allocated by the JIT.
+In general, you
+should not depend upon even fairly obvious cases being caught by the JIT
+compiler.\footnote{If you are curious, the best you can do is to analyze
+performance both with and without the underlying anlaysis. On Sun JVMs, you can disable the analysis by adding
+{\tt -XX:-DoEscapeAnalysis} to your application's command line.}
 
-\paragraph{The Heap}
-\index{Heap}
-Usually, a call to {\tt new} results in a memory allocation on the heap.
-\autoref{fig:heaps_and_stacks_java} fleshes out the previous example a bit. The
-{\tt foo} method allocates two objects, an instance of {\tt A}, and and instance
-of {\tt G}, and stores references to them in local variables. Under the covers,
-the {\tt A} constructor allocates and links together instances of {\tt B}, {\tt
-C}, {\tt D}, {\tt E}, and {\tt F}. In the absence of the JIT stack allocating
-objects, all of these instances, as shown in the accompanying figure, will be
-allocated on the heap. There will be three local variable slots on the stack,
-one for the integer variable {\tt x}, and two pointers, to {\tt A} and {\tt G}.  
 
-\autoref{fig:heaps_and_stacks_C} shows what is possible in a language such as
-C. In C, you can write code that tells the compiler to \emph{inline} the {\tt
-G} object on the stack. You can also write code that tells the compiler to
-inline the {\tt D} instance into the enclosing instance of {\tt B}. In Java, you
-must hope that the JIT is able to perform these optimizations. As of Java
-version 6, most \jres attempt to inline objects onto the stack, but no
-production JIT compilers will attempt the latter optimization of inlining the
-storage of one object into another.
 
 %  a.b = new B();
 %a.c = new C();
 %a.b.d = new D();
 %a.b.e = new E();
 %a.b.e.f=new F();
-  
+
+\begin{comment}  
 \begin{figure}
 \begin{subfloat}
 \begin{minipage}[b]{0.4\textwidth}
@@ -182,7 +279,7 @@ void foo() {
 	]{\label{fig:heaps_and_stacks_C}\includegraphics[width=0.575\textwidth]{part2/Figures/lifetime/heaps_and_stacks_C}}
 \caption{Heaps and Stacks, in the C languge.}
 \end{figure}
-
+\end{comment}
 
 
 
