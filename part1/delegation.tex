@@ -36,10 +36,11 @@ specific \jre implementation. The \jre allocates a header with each object that
 stores information such as the object's class, an identity hashcode, a monitor
 used for locking, and various flags. For array objects, the header has an
 additional integer to store the number of array elements. Additionally,  the
-\jre requires objects to be aligned on specific address boundaries, for
-example, addresses that are multiples of 8. To show how implementations differ, Table~\ref{tab:object-overhead} gives object header and alignment
-costs imposed by two \jres, SUN Java 6 (update 14) and IBM Java 6 (SR4), both for
-32-bit architectures.
+\jre requires objects to be aligned on specific address boundaries, for example,
+addresses that are multiples of 8. To show how implementations differ,
+Table~\ref{tab:object-overhead} gives object header and alignment costs imposed
+by two \jres, Sun \javasix (Update 14) and IBM \javasix (Service Release 4),
+both for 32-bit architectures.
 \begin{table}
   \centering
  %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
@@ -66,7 +67,7 @@ scalars.
   \centering
 %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/boxed-scalar-sizes.pdf}
 	\begin{tabular}{lccccccc} \toprule
-    	& & \multicolumn{3}{c}{Sun Java 6 (u14)} & \multicolumn{3}{c}{IBM Java 6
+    	& & \multicolumn{3}{c}{Sun Java 6 (u14)} & \multicolumn{3}{c}{IBM \javasix
     	(SR4)} \\ \cmidrule(r){3-5} \cmidrule(l){6-8}
     	%
     	Class & \shortstack[c]{Data\\size} & Header & \shortstack{Align-\\ment
@@ -421,7 +422,9 @@ Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the
 In reality, things are not so bad. Both the Sun and the IBM \jres have
 implemented a scheme for compressing addresses that avoids this code size blowup, provided that the heap is less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers. During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa.
 
-Address compression is available in the Sun Java 6 (update 14) release, enabled with the option -XX:+UseCompressedOops. It is available in IBM Java 6 J9 SR 4 with the option -Xcompressedrefs.
+Address compression is available in the Sun \javasix (Update 14) release,
+enabled with the option -XX:+UseCompressedOops. It is available in IBM \javasix
+(Service Release 4) with the option -Xcompressedrefs.
 
 \section{Summary}
 

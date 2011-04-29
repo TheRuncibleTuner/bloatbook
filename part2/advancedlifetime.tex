@@ -336,7 +336,7 @@ evictions. This can result in foiling the concurrency aspect of the
 \class{ConcurrentHashMap}. Second, if the cache as a whole goes unused for a long
 period of time, the pending evictions will pile up.
 
-The only way to fix the lock contention problem, at least as of Java 6, is to
+The only way to fix the lock contention problem, at least as of \javasix, is to
 spawn a thread that periodically polls the reference queue for evicted entries.
 This will also fix the second problem. This spawned thread's \code{run} method
 will look just like the \code{cleanupQueue} method above, except that it should
