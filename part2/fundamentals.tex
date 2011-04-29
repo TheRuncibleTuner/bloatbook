@@ -96,10 +96,16 @@ memory between them! This practice is important, given the disparity between the
 speed of accessing RAM versus the speed of accessing disk; these days, swapping
 memory to and from disk is too slow to be worth even considering.
 
+
 To specify the initial size of the Java heap to be, pass the {\tt -Xms} flag on
 the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
 For example, by passing {\tt -Xms100M -XmX1G}, you are telling the \jre to use
 an initial size of 100 megabytes, and a maximum size of 1 gigabyte.
+
+If you application exceeds consumption of Java heap, you will observe a
+\class{java.lang.OutOfMemoryError} exception
+thrown\index{java.lang.OutOfMemoryError}; sometimes, you will see a variant of
+this: \code{GC overhead limit exceeded}\index{GC overhead limit exceeded}.
 
 
 
@@ -159,6 +165,13 @@ the storage (called \emph{stack frames}) that hold your local variables and
 method parameters.}
 \label{fig:stack-frames}
 \end{figure}
+
+Like the heap, the stack also has limits to its size. Each thread in your
+program can have a stack no deeper than a fixed limit, in bytes. If, during the
+execution of a thread, these stack limits are exceeded, you may see a
+\class{java.lang.StackOverflowError} exception
+thrown\index{java.lang.StackOverflowError}. You can configure this property via
+the {\tt -oss} command-line parameter.
 
 %Most languages come with a minimal form of built-in memory management, in the
 %form of the \emph{stack}.
@@ -281,40 +294,63 @@ void foo() {
 
 
 \paragraph{Java Memory vs. Native Memory}
-Every thread in a Java program has two stacks, one for the Java stack frames,
-and one to hold the stack frames of any native methods that either the Java code
-invokes or invokes Java code. Every Java program also has multiple heaps. One
-heap stores all of the \code{malloc} calls invoked native code, and one that
-stores heap-allocated objects. It is important to realize that both native and
-Java memory regions exist, so that you can be conscious of the size limits
-imposed on each. There exist default bounds to how deep a Java stack can grow,
-and separate limits imposed on the depth of the native stacks. If, during
-the execution of a thread, these stack limits are exceeded, you may see a
-\class{java.lang.StackOverflowError} exception
-thrown\index{java.lang.StackOverflowError}. If this error occurs, you can follow
-\autoref{tab:stack-heap-limits} to tweak the maximum size of the native or Java
-stacks.
+In addition to the heap and stack space that are devoted to Java data, every
+Java program also has separate memory areas devoted to native data. The native
+heap stores a variety of things, including memory allocations made by native
+code that your application uses and the JIT compiled code of your application.
+The \jre imposes an upper limit on the Java heap. In contrast, the operating
+system sometimes imposes no limit on the size of the native heap. Therefore you
+should be careful, and observe whether your application is indeed swapping any
+native allocations to and from disk.
 
-There are also limits to how large the heap can grow. The Java heap constraints,
-the initial and maximum sizes, are similarly determined by command-line
-parameters. If you application exceeds consumption of Java heap, you will
-observe a \class{java.lang.OutOfMemoryError} exception
-thrown\index{java.lang.OutOfMemoryError}; sometimes, you will see a variant of
-this: \code{GC overhead limit exceeded}\index{GC overhead limit exceeded}.
-Confusingly, in many cases, you will see this \emph{same} exception when your
-application exceeds available native memory resources. Therefore, you should be
-aware of the Java and native heap limits, in order to confirm the true source of
-the resource exhaustion: was it due to running out of Java heap, or running out
-of native resources?
+In addition, every thread in a Java program actually has two stacks, one for the
+Java stack frames and one to hold the stack frames of any native methods that
+either your Java code invokes or invokes your Java code. There is a command-line
+parameter that you can use to configure the size of every native stack: {\tt
+-ss}.
 
-The limits of the Java heap are determined by command-line parameters, as shown
-in \autoref{tab:stack-heap-limits}. The upper limit of native heap consumption
-is, for the most part, not directly controlled by parameters, but rather how
-much memory you have installed on your machine. The operating system will
-happily allocate to your application more and more memory, as it needs it.
-However, there are some important considerations that will sometimes constrain
-the consumption of native resources and, indirectly, the maximum size of the
-Java heap you can specify.
+When your application exceeds any native limits you may confusingly see the same
+error that you would see for exhaustion of Java memory resources: the {\tt
+OutOf\-Memory\-Error}. Therefore, you should be aware of the Java and native
+heap limits, in order to confirm the true source of the resource exhaustion: was it
+due to running out of Java heap, or running out of native resources?
+
+
+%The limits of the Java heap are determined by command-line parameters, as shown
+%in \autoref{tab:stack-heap-limits}. The upper limit of native heap consumption
+%is, for the most part, not directly controlled by parameters, but rather how
+%much memory you have installed on your machine. The operating system will
+%happily allocate to your application more and more memory, as it needs it.
+%However, there are some important considerations that will sometimes constrain
+%the consumption of native resources and, indirectly, the maximum size of the
+%Java heap you can specify.
+
+% is the table sufficient for this? or do we need exposition, too?
+%To configure the
+%maximum depth of the Java stacks to be 1 megabyte, you can add {\tt -oss1M} on
+%your application's command line\index{Command-line arguments: -oss}\index{Java
+%Stack, size limit}. To configure the maximum depth of the native stacks to be 1
+%megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
+
+
+\paragraph{Physical Memory versus Address Space}
+\index{Address Space}
+Physical memory is one of the primary underlying constraints on how big you can
+size your heaps. There is another limit that is independent of how much physical
+memory you install on your machine. The limit depends on the number of memory
+locations that can be addressesed, given the size of pointers on your machine.
+The \emph{address space} of a process is the set of addresses that the process
+can read or write via pointers. Therefore, this limit depends upon the size of
+pointers on your platform, and, to a lesser extent, upon how the underlying
+operating system. \autoref{tab:address-space-limits} gives some examples. If
+your application runs on a 32-bit Windows operating system, the total amount of
+memory that each process can access is 1.8 gigabytes\footnote{Some versions of
+32-bit Windows let you specify a {\tt /3GB} boot option, which increases this
+limit from 1.8GB to 3GB.} A pointer that is 32 bits wide can address 4
+gigabytes, of which the operating system reserves roughly half for its own use.
+If a process of your application attempts to allocate memory beyond this address
+space limit, a failure will occur. It is quite often the case that this failure
+will manifest itself misleadingly as a {\tt java.lang.OutOfMemoryError}.
 
 \begin{table}
 \centering
@@ -338,71 +374,39 @@ all & 64-bit & $\ge$ 256TB \\
 application is still constrained 
   by the limits of the address space. On some versions of Microsoft Windows, you
   may specify a boot parameter {\tt /3GB} to increase this limit.}
-\label{tab:stack-heap-limits}
+\label{tab:address-space-limits}
 \end{table}
-
-% is the table sufficient for this? or do we need exposition, too?
-%To configure the
-%maximum depth of the Java stacks to be 1 megabyte, you can add {\tt -oss1M} on
-%your application's command line\index{Command-line arguments: -oss}\index{Java
-%Stack, size limit}. To configure the maximum depth of the native stacks to be 1
-%megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
-
-
-\paragraph{Physical Memory versus Address Space}
-Even if your machine has
-
-Depending on the operating system you are using, there may be other constraints
-on the amount of memory your application can access. There is the obvious limit
-of the amount of physical memory installed on the machine. It is important to
-limit the {\tt -Xmx} maximum Java heap setting to fit within this phyiscal
-memory limit --- these days, swapping memory to and from disk is too slow to
-make using it worth your while. The native heap does not, by default, impose
-such a limit, and so you should be careful, and observe whether your application
-is indeed swapping any native allocations to and from disk.
-
-\index{Address Space Consumption}
-Another constraint is based on the number of unique addresses that pointers can
-address. For example, if your application runs on a 32-bit Windows operating
-system, the total amount of memory that each process can access is 1.8
-gigabytes\footnote{Some versions of 32-bit Windows let you specify a {\tt /3GB}
-boot option, which increases this limit from 1.8GB to 3GB.} This constraint is
-imposed by the number of unique addresses that 32-bit pointers can address: a
-pointer that is 32 bits wide can address 4 gigabytes, of which the operating
-system reserves roughly half for its own use. If a process of your application
-attempts to allocate memory beyond this address space limit, a failure will
-occur. Oftentimes, this failure will manifest itself misleadingly as a {\tt
-java.lang.OutOfMemoryError}.
 
 Some operating systems let you specify limits on the amount of address space
 that a process can use. This is similar to the way that you can specify {\tt
 -Xmx} to limit the maximum amount of Java heap that a process should consume. On
 UNIX platforms, you can use the {\tt ulimit} command. For example, on Linux, to
 limit the amount of address space any process launched from the current shell
-can access to 1 gigabyte, issue this command:
+can access, say to 1 gigabyte, issue this command:
 \begin{shortlisting}
 % ulimit -m 1048576     // units in kilobytes
 \end{shortlisting}
-You can also limit the size of the native stacks by issuing a similar command,
-except with the {\tt -s} flag.\index{ulimit} Very often, there are no memory
-limits by default. Native stack sizes are often limited to be in the megabyte
-range, per thread.
+%You can also limit the size of the native stacks by issuing a similar command,
+%except with the {\tt -s} flag.\index{ulimit} Very often, there are no memory
+%limits by default. Native stack sizes are often limited to be in the megabyte
+%range, per thread.
 
 \paragraph{Native Resources: File Descriptors, etc.}
 \index{Native Resources}
 \index{File Descriptor Exhaustion}
-There are often other resource limits in place, though these vary from one
-operating system to another. For example, processes may be limited in the number
-of open files they may have at any one time. You may see failures in your
-application, despite having lots of memory and stack space free, because an
-application process has exhausted file descriptors. On Windows platforms, there
-are other system-imposed limits, such as the number of open font handles. You
-should be aware of these common resource constraints, because they may impact
-the scalability of your application. For example, you may have designed your
-application to keep many font handles open for each thread, rather than keeping
-a common pool of them, and sharing them across threads.
+Address space constraints exist on every operating system. Depending on your
+operating system, there are often other resource limits that can lead to program
+failures. For example, processes may be limited in the number of open files they
+may have at any one time. You may see failures in your application, despite
+having lots of memory and stack space free, because an application process has
+exhausted file descriptors. On Windows platforms, there are other system-imposed
+limits, such as the number of open font handles. You should be aware of these
+common resource constraints, because they may impact the scalability of your
+application. For example, you may have designed your application to keep many
+font handles open for each thread, rather than keeping a common pool of them,
+and sharing them across threads.
 
-\paragraph{The Garbage Collector}
+\section{The Garbage Collector}
 The garbage collector is the mechanism for determining when an object should be
 reclaimed. It is governed by a number of configuration choices that you can make.
 These configuration choices guide the schedule that the collector follows. This
@@ -596,8 +600,8 @@ its lifetime. For example, if the only reference to an object is from a field of
 some other object, and your code reassigns that reference to \code{null}, this
 becomes a point of transition, from application control to \jre control. Each of
 the eight ways of referencing an object comes with its own guidelines as to when
-this transition occurs. \autoref{fig:limbo-exit} and \autoref{tab:limbo-exit}
-summarize how an object transitions to \jre control. The following code gives
+this transition occurs. \autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
+summarizes how an object transitions to \jre control. The following code gives
 examples of these eight patterns of ownership:
 \lstset{numbers=left,numbersep=12pt,numberstyle=\tiny\textsf}
 \begin{shortlisting}
@@ -626,6 +630,7 @@ class Foo {
 % Still, one can't always rely on automatic mechanisms to guide an object out of
 % limbo in a timely fashion.
 
+\begin{comment}
 \begin{table}
 \centering
 	\begin{tabular}{ll} \toprule uniquely owned by  & 
@@ -680,6 +685,7 @@ class Foo {
 	}
 	\label{tab:limbo-exit}
 \end{table}
+\end{comment}
 
 \paragraph{The Lifetime of Local Variables}
 \label{sec:lifetime-of-locals}
@@ -877,25 +883,24 @@ within the data structure you no longer need.
 	\label{fig:reachability-sharing}
 \end{figure}
 
-\section{Advanced Lifetime Management Features}
- 
-There are several important lifetime management policies that cannot be expressed
-using normal mechanisms of local variables and static and instance field
-references. For example, to implement the correlated lifetime policy described in
+\section{Lifetime Management: Beyond Reachability}
+Sometimes, you need an object to stay alive, or not, in a way that has nothing
+to do with whether it is reachable from local variables or static fields. For
+example, to implement the correlated lifetime policy described in
 \autoref{sec:correlated-lifetime} using only the mechanisms presented so far is
-difficult. In \autoref{fig:reachability-b}, there are three objects contained
-within the shaded region; these three objects will all be garbage collectible if
+difficult. 
+
+Using reachability, the only way to guarnatee that one object
+$B$ will become a candidate for garbage collection when another object $A$ does,
+would be to have $A$ dominate $B$. Sometimes this can work, but more often,
+this is not possible. Doing so requires modifying $A$, or something that $A$
+domiantes, so that it points to $B$. But what if you don't own any of that code?
+\autoref{fig:reachability-b} illustrates an example of this. There are three
+objects contained within the shaded region; these three objects will all be garbage collectible if
 the indicated dominating reference is set to \code{null}. In this way, the
 lifetime of the lower two can be correlated with the lifetime of the object
-directly pointed to by the dominating reference. This can work, in certain
-limited circumstances, but it requires that you encode the correlation in the
-class definition itself. To correlate an instance of the \class{B} class with an
-instance of the \class{A} class, you must add a field to \class{A}:
-\begin{shortlisting}
-class A {
-   B b;
-}
-\end{shortlisting}
+directly pointed to by the dominating reference.
+
 In addition to requiring the pollution of class definitions, it also can result
 in wasted memory. If only some \class{A} instances have a correlated \class{B},
 then you will be wasting a pointer slot for every instance of \class{A}. It turns
@@ -912,27 +917,141 @@ we have learned in previous chapters, every instance of a standard Java hash map
 must pay the expense for potential use of features. These features aren't
 always employed, and certain rarely together, for a single map instance.
 
-\paragraph{Weak and Soft References}
 The Java language provides mechanisms that allow you more flexibility in
 implementing lifetime management policies. These advanced features are exposed
-via the \class{java.lang.ref.Reference} family of classes and \tls. Programmers
-very often confuse these mechanisms, and there is quite a bit of disinformation
-on the Internet; there is especially confusion over the use of soft and weak
-references. Therefore, it is important for you to take some care in understanding
-the low-level features.
+via soft, weak, and phantom references, finalization, and \tls.
+In contrast, the term used for 
+the
+normal way of referencing objects, that is what you get when you use fields of
+objects or local variables, is a \emph{strong}
+reference\index{Reference, Strong}.
 
-To contrast the normal referencing mechanisms with these advanced features, the
-normal ways of referencing objects are typically referred to as \emph{strong}
-references. This term came about to contrast with the terms used for the more
-advanced features: weak, soft, and phantom references.
+\paragraph{Soft and Weak References}
+\index{Reference, Weak}
+\index{Reference, Soft}
+% Programmers
+%very often confuse these mechanisms, and there is quite a bit of disinformation
+%on the Internet; there is especially confusion over the use of soft and weak
+%references.
 
-\paragraph{Finalization}
+Soft and weak references are two alternate ways for one object to reference
+another. If one object strongly references another, then the normal garbage
+collection rules apply. If one object \emph{softly references} another, then
+the garbage collector is free to clip that reference whenever it wants. Once the
+garbage collector decides to make that reference go away, then the normal rules
+of reachability apply; if it is not reachable from static fields or local
+variables, then it is collectible.
+A \emph{weak} reference acts like a reverse strong reference. In the case of a
+normal strong reference from object $A$ to object $B$ (assuming no other
+references to $B$), once $A$ is collected, $B$ becomes collectible. If $A$
+weakly references $B$, then once $B$ becomes collectible, $A$ becomes
+collectible --- just the reverse of a normal strong reference! In this way, weak
+references can form the basis of the implementation of correlated lifetime
+patterns.
+
+``Soft'' and ``weak'' are strange terms, but the rules are pretty much as simple
+as that. Programmers are often confused by these two, and the web searches will
+reveal some degree of misinformation. It is common for web sites misdefine
+these two mechanisms, e.g. by swapping their roles. In short:
+
+\callout{softweak}{Soft and Weak References}{ If one object \emph{softly
+references} another, then the garbage collector is free to clip that reference
+whenever it wants. A \emph{weak} reference acts like a reverse strong reference.
+ }
+
+The Java language specification places no firm criteria upon \jre
+implementations as to when they should clip soft references. In practice, soft
+references won't be clipped at the random whim of the \jre. All \jres these days
+will attempt to clip soft references in a roughly LRU (least-recently used)
+fashion: soft references that haven't been traversed in a while will be clipped
+before those that are frequently used. In this way, soft references can form the
+basis for cache implementations.
+
+You should not use these references lightly. \autoref{tab:reference-costs}
+summarizes the costs of the ways of one object referencing another. A strong
+reference costs one pointer, which is 4 bytes (32 bits) on a 32-bit \jre. In
+comparison, a weak reference is \emph{eight times} more costly, at 32 bytes per
+reference, and a soft reference is nine times more costly. The expense can be
+even higher, if you choose to use \emph{reference queues}.
+
+\begin{table}
+\centering
+	\begin{tabular}{ll}
+		\toprule
+		reference type & memory cost \\
+        \cmidrule(r){1-1} \cmidrule(l){2-2}		
+		strong         & 4 bytes (one pointer) \\
+		finalization   & 28 bytes \\
+        phantom        & 32 bytes \\ 
+		weak           & 32 bytes \\
+		soft           & 36 bytes \\
+		\bottomrule
+	\end{tabular}
+	\caption{The cost, per reference, of the various ways of one object
+	referencing another.}
+	\label{tab:reference-costs}
+\end{table}
+
+% 32 is: the 4 pointer fields of java.lang.ref.Reference = 16
+%   plus an object header = 12
+%   plus the pointer to the Reference object itself = 4
+
+\paragraph{Reference Queues}
+
+\paragraph{Handling External Resources: Finalization and Phantom References}
 \index{Finalization of objects}
 
+Weak references can help you to correlate the life of one object with that of
+another. Sometimes, it is necessary instead to correlate an \emph{action} with
+the reclamation of an object. This is helpful if there are non-Java resources
+associated with a Java object that need to be cleaned up along with that object.
+The JVM knows nothing about those resources, since they aren't Java objects;
+they may not even be memory, per se, or may be memory on an entirely different
+machine. For example, a Java \class{DatabaseConnection} object has implicit
+linkage to a whole slew of resources, scattered across several machines. There
+are operating resources on the local machine that are involved. The remote
+database machine has these, too, and the database process also has some
+internal state about that connection. All of this state needs to be cleaned up
+when the Java facade for it is reclaimed.
+
+Java assumes a closed world about resources. As long as the resources fall
+within its boundaries, then the automated mechanisms, such as garbage
+collection, work well, without much intervention on your part. For these
+more complex cases, such as a database connection, the nice fully automated
+world start to fall apart a bit.
+One recourse is to fall back to the C style of resource management, for these
+cases of external resources. You can design the API specifications so as to
+require users of the API to adopt a convention that requires explicit closing,
+or freeing of resources. 
+
+Java provides \emph{finalization} as a way around this problem, though it comes
+with many gotchas. Finalization is very much like the system of weak references,
+in that it is a way to correlate an action with the death of an object. If you
+write a class with a \code{finalize} method, then, when that object is
+reclaimed, the finalize method will be called. Behind the scenes, the \jre
+allocates an extra object (of type \class{java.lang.ref.FinalReference}) and
+stores these in a reference queue (called the finalization queue). Phantom
+references are a minor variation of finalization that lets you manage the queues
+more flexibly: you can use separate queues for different groups of objects, and
+manage how often to poll the queues, rather than having a single queue and
+relying on the \jre to poll the queue when it feels like it.\index{References,
+Phantom}
+
+Now for the gotchas. First, you can't assume that the finalize method will be
+called immediately after the correlated objects death. The Java language
+specification does not dictate a timeliness criterion for invoking your
+\code{finalize} method. This can lead to dragging of the resources, exactly like
+the problem of memory drag described earlier. Second, using finalization
+increases memory bloat. For every instance of a class with a \class{finalize}
+method, the \jre, behind the scenes, allocates an extra object (of type
+\class{java.lang.ref.FinalReference}). This object consumes 28 bytes; the
+pointer from the finalization queue adds an extra pointer cost.
 \index{Overwhelming the Finalizer Thread}
-One of the problems with the use of finalization is that it is possible to
-overwhelm the finalization thread. This can happen if your program creates
-instances of objects with \code{finalize} methods at a high rate. Such is the
+Third, it is possible to overwhelm the finalization thread. This can happen if
+your program creates instances of objects with \code{finalize} methods at a high
+rate.
+\begin{comment}
+ Such is the
 case in the following loop:
 \begin{shortlisting}
 import java.awt.Font;
@@ -944,7 +1063,7 @@ for (int i = 0; i < N; i++) {
 \end{shortlisting}
 Since each loop iteration's instance of \code{font} is not used beyond the
 execution of that iteration, it seems like one could run this program on a
-pretty small heap, , for any value of \code{N}. The heap need only fit what it
+small heap, for any value of \code{N}. The heap need only fit what it
 takes to allocate the handful of objects that represent an instance of
 \code{java.awt.Font}. Try it out, for various values of \code{N} and of
 \code{-Xmx}! On Sun and IBM Java 6 \jres, you will find that, as \code{N}
@@ -960,12 +1079,62 @@ the finalizer background thread becomes overwhelmed. Try sticking in this code:
 \code{if (i \% 100000 == 0) System.runFinalization()}. Here, you are explicitly
 putting your application's thread to sleep in order to let the finalizer thread
 catch up. In this case, this change fixes the problem.
-
-\paragraph{Phantom References}
-\index{Phantom References}
+\end{comment}
 
 \paragraph{\TLS}
 \tlsindex % \index{\TLS} doesn't seem to work
+When you reference an object from a static field of a class, the object will
+stay around pretty much for the life of the program. While this lets you
+implement a permanently resident lifetime pattern, it is not thread safe. In
+order to protect write access to static fields, you will need to guard these
+operations with locks. This is possible, but tedious and often results in poor
+performance due to contention of threads trying to acquire those locks: they
+need to sleep before they can enter the contended critical section.
+
+Java provides an alternative way to implement a permanently resident pattern
+called \emph{\tls\/}. \tls provides a way to clone data so that each thread has
+its own copy. It is impossible for one thread to access another thread's local
+storage. When you store objects in a thread's local storage, the objects will
+live for as long as the thread does, unless you \code{null} them out or
+otherwise otherwrite the entries first.
+
+To use \tls, you need to create a \emph{thread-local variable}. A thread-local
+variable represents a piece of data that you want to clone across threads. For
+example, if you'd like each thread to have it's own date formatter, because your
+date formatter isn't thread safe, then you would create a thread-local variable
+for it:
+\begin{shortlisting}
+class C {
+   static ThreadLocal<DateFormat> dateFormatter = new ThreadLocal<DateFormat> {
+      protected DateFormat initialValue() {
+         // called the first time a thread tries
+         // to access this thread-local variable
+         return new ...;
+      }
+   };
+   
+   String format(Date d) {
+      return dateFormatter.get().format(d);
+   }
+}
+\end{shortlisting}
+The main thing you have to be cautious of is memory drag. If you store a large
+structure in the local storage of a thread that lasts for the duration of the
+program, but only use the structure early in your program's execution, then that
+structure will be needlessly consuming space. Your options are either to design
+things so that the thread terminates, rather than staying alive forever; or you
+can explicitly overwrite the entry, by calling {\tt dateFormatter.put(null)},
+but this must be done by the thread itself, since there is no way for one thread
+to access another thread's local storage; or, finally, you can have the
+thread-local variable store a soft reference to the data:
+\begin{shortlisting}
+ThreadLocal<SoftReference<DateFormat>> dateFormatter;
+\end{shortlisting}
+Now, each thread's copy of the date formatter will be cleaned up by the garbage
+collector if it ever needs the space, and the formatter hasn't been used in a
+while. You need to take care to handle the case when the \jre does get around to
+clipping the soft reference, and you come back to format new dates. Still, this
+hybrid approach, of combining soft references and \tls, can be quite powerful.
 
 \section{Summary}
 
@@ -975,6 +1144,6 @@ catch up. In this case, this change fixes the problem.
   limits and separate configuration options for adjusting these limits.
   \item Local variables in Java programs can only store primitive data and
   pointers to heap-allocated objects.
-  \item Memory leaks can easily occur in a Java appliction, despite it having a
+  \item Memory leaks can easily occur in a Java application, despite it having a
   garbage collector.
 \end{itemize}
