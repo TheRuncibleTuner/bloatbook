@@ -958,7 +958,7 @@ these two mechanisms, e.g. by swapping their roles. In short:
 references} another, then the garbage collector is free to clip that reference
 whenever it wants. A \emph{weak} reference acts like a reverse strong reference.
  }
-
+ 
 The Java language specification places no firm criteria upon \jre
 implementations as to when they should clip soft references. In practice, soft
 references won't be clipped at the random whim of the \jre. All \jres these days
@@ -971,8 +971,16 @@ You should not use these references lightly. \autoref{tab:reference-costs}
 summarizes the costs of the ways of one object referencing another. A strong
 reference costs one pointer, which is 4 bytes (32 bits) on a 32-bit \jre. In
 comparison, a weak reference is \emph{eight times} more costly, at 32 bytes per
-reference, and a soft reference is nine times more costly. The expense can be
-even higher, if you choose to use \emph{reference queues}.
+reference, and a soft reference is nine times more costly. The reason for these
+expenses is that you must create an extra \class{Reference} object for
+every soft or weak reference you use. To softly reference a date formatter,
+you would write:
+\begin{shortlisting}
+void foo(DateFormat dateFormatter) {
+   SoftReference<DateFormat> ref = new SoftReference<DateFormat>(dateFormatter);
+   ...
+}
+\end{shortlisting}
 
 \begin{table}
 \centering
@@ -997,6 +1005,27 @@ even higher, if you choose to use \emph{reference queues}.
 %   plus the pointer to the Reference object itself = 4
 
 \paragraph{Reference Queues}
+Normally, when you create a soft reference, and the \jre decides to clip it,
+then the associated \class{Reference} object becomes immediately garbage
+collectible. You get no warning that the \jre has clipped this reference.
+Sometimes, this is good, because it lets you very easily take advantage of the
+soft and weak referencing mechanisms. More often, however, your code will need
+some warning that a reference has been clipped. For example, if you are using
+soft references to implement a cache (this is discussed in more detail in
+subsequent chapters), then you will probably need to perform some cleanup work
+when the reference is clipped.
+
+Java provides reference queues for exactly this purpose. When you construct a
+soft or weak reference, and associate it with a reference queue, then something
+different happens when the reference is clipped. Instead of becoming
+collectible, when clipped, it is placed on the associated reference queue. It is
+your job to periodically \emph{poll} the reference queue in order to enquire as
+to whether any references have been clipped. If this somes tedious and error
+prone, it is! Subsequent chapters show how to get it right.
+
+Another point of caution: reference queues add an extra pointer to the already
+high memory expense of using soft or weak references. For example, a weak
+reference with an associated reference queue would cost 36 bytes per reference.
 
 \paragraph{Handling External Resources: Finalization and Phantom References}
 \index{Finalization of objects}
