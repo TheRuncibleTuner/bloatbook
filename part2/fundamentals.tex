@@ -576,26 +576,25 @@ exhust native resources.
 		\label{fig:limbo-exit}
 \end{figure}
 
-\section{The Basic Ways of Referencing an Object}
+\section{The Basic Ways of Keeping an Object Alive}
 Depending on how the object is referenced by your application, it will
-transition from in-use to garbage-collectable in a different manner. 
-
-There are eight ways an object may be referenced. It can be referenced by a:
+transition from in-use to garbage-collectable in a different manner. The main
+ways of referencing an object are
 
 \begin{enumerate}
   \item local variable of a method
   \item static field of a class
-  \item instance field of a \class{java.util.ref.WeakReference} object
-  \item instance field of a \class{java.util.ref.SoftReference} object
-  \item instance field of a \class{java.util.ref.PhantomReference} object
-  \item \tls
+%  \item instance field of a \class{java.util.ref.WeakReference} object
+  %\item instance field of a \class{java.util.ref.SoftReference} object
+  %\item instance field of a \class{java.util.ref.PhantomReference} object
+  %\item \tls
   \item instance field of any other object
   \item some combination of the above
 \end{enumerate}
 
-The first seven are cases of unique ownership of an object. There exists
-only one path, via that particular reference, to reach the object. The eight case
-is one of \emph{shared} ownership. After your program creates an object, it
+The first three are cases of unique ownership of an object. There exists
+only one path, via that particular reference, to reach the object. The fourth
+case is one of \emph{shared} ownership. After your program creates an object, it
 references the object in one or more of these eight ways. The ownership of an
 object may vary over time --- as your program runs, these references will come
 and go. After some time, program execution may reach a point where the object is
@@ -605,7 +604,9 @@ some other object, and your code reassigns that reference to \code{null}, this
 becomes a point of transition, from application control to \jre control. Each of
 the eight ways of referencing an object comes with its own guidelines as to when
 this transition occurs. \autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
-summarizes how an object transitions to \jre control. The following code gives
+summarizes how an object transitions to \jre control.
+\begin{comment}
+ The following code gives
 examples of these eight patterns of ownership:
 \lstset{numbers=left,numbersep=12pt,numberstyle=\tiny\textsf}
 \begin{shortlisting}
@@ -633,6 +634,7 @@ class Foo {
 \lstset{numbers=none}
 % Still, one can't always rely on automatic mechanisms to guide an object out of
 % limbo in a timely fashion.
+\end{comment}
 
 \begin{comment}
 \begin{table}
@@ -887,7 +889,7 @@ within the data structure you no longer need.
 	\label{fig:reachability-sharing}
 \end{figure}
 
-\section{Lifetime Management: Beyond Reachability}
+\section{The Advanced Ways of Keeping an Object Alive}
 Sometimes, you need an object to stay alive, or not, in a way that has nothing
 to do with whether it is reachable from local variables or static fields. For
 example, to implement the correlated lifetime policy described in
@@ -1031,7 +1033,7 @@ prone, it is! Subsequent chapters show how to get it right.
 
 Another point of caution: reference queues add an extra pointer to the already
 high memory expense of using soft or weak references. For example, a weak
-reference with an associated reference queue would cost 36 bytes per reference.
+reference with an associated reference queue would cost 32 bytes per reference.
 
 \paragraph{Handling External Resources: Finalization and Phantom References}
 \index{Finalization of objects}
