@@ -35,12 +35,20 @@ fields store real application data. Some are bookkeeping fields needed by the re
   \centering
   \includegraphics[width=.70\textwidth]{part1/Figures/memoryhealth/eight-char-string.pdf}
   %\includegraphics{eight-char-string}
-  \caption{An eight character string in Java 6.}
+  \caption{An eight character string in \javasix.}
   \label{fig:eight-char-string}
 \end{figure}
 
 \begin{example}{An 8-Character String}
- You learned in the quiz in Chapter 2 that an 8-character string occupies 64 bytes, which seems surprisingly high. The actual character data takes up 16 bytes, since Java supports the international character set, which uses 2-bytes per character. So it costs 16 bytes to represent the eight characters themselves. The other 48 bytes are pure overhead. This structure has a \emph{bloat factor} of 75\%. The actual data occupies only 25\%. These numbers vary from one JVM to another, but the overhead is always very high. (Unless otherwise noted, all measurements in this book are from the 32-bit IBM Java 6 JVM.)
+ You learned in the quiz in Chapter 2 that an 8-character string occupies 64
+ bytes, which seems surprisingly high. The actual character data takes up 16
+ bytes, since Java supports the international character set, which uses 2-bytes
+ per character. So it costs 16 bytes to represent the eight characters
+ themselves. The other 48 bytes are pure overhead. This structure has a
+ \emph{bloat factor} of 75\%. The actual data occupies only 25\%. These numbers
+ vary from one JVM to another, but the overhead is always very high. (Unless
+ otherwise noted, all measurements in this book are from the 32-bit IBM
+ \javasix JVM.)
 
 Figure~\ref{fig:eight-char-string} shows why the bloat factor is so high. Strings have all three kinds of overhead -- JVM overhead, pointers, and bookkeeping fields. Every Java string is really two objects: a {\tt String} that serves as a wrapper, and a {\tt char} array with the actual characters. Two objects means two object headers, plus the pointer glueing the two objects together. The {\tt String} object is entirely overhead, containing no real data. Part of its cost is three bookkeeping fields: a length and an offset, which have meaning only when this string is the result of a substring operation, and a saved hashcode. Adding all of this together, the overhead is 48 bytes.  
 \end{example}
@@ -182,7 +190,12 @@ Looking at the individual parts of the EC diagram can provide some insight into 
 
 %Move this later? At best, the overhead will be 67\% if the doubles are boxed.
 
-The \texttt{TreeMap} infrastructure occupies an additional 1,248 bytes of memory. All of this is overhead. What is taking up so much space?  \texttt{TreeMap}, like every other collection in Java, has a wrapper object, the \texttt{TreeMap} object itself, along with other internal objects that implement the collection functionality. Each type of collection in the standard library has a different kind of infrastructure, some are built from arrays, some from separate entry objects linked together, and some use a combination of both. Internally, \texttt{TreeMap} is a self-balancing search tree. The tree nodes maintain pointers to parents and siblings.  In newer releases of Java 6, each node in the tree can store up to 64 key-value pairs in two arrays. This example uses this newer implementation, which is more memory-efficient for this case, but still expensive. 
+The \texttt{TreeMap} infrastructure occupies an additional 1,248 bytes of
+memory. All of this is overhead. What is taking up so much space? 
+\texttt{TreeMap}, like every other collection in Java, has a wrapper object, the
+\texttt{TreeMap} object itself, along with other internal objects that implement
+the collection functionality. Each type of collection in the standard library
+has a different kind of infrastructure, some are built from arrays, some from separate entry objects linked together, and some use a combination of both. Internally, \texttt{TreeMap} is a self-balancing search tree. The tree nodes maintain pointers to parents and siblings.  In newer releases of \javasix, each node in the tree can store up to 64 key-value pairs in two arrays. This example uses this newer implementation, which is more memory-efficient for this case, but still expensive.
 %    there is a separate \texttt{Treemap\$Entry} object. This is typical of collections. A typical collection has a fixed overhead, in this case it is 48 bytes, and a per-entry overhead cost, in this case it is 40 bytes per entry. These 40 bytes include five pointer fields, in addition to other sources of overhead. 
 
 Using a \texttt{TreeMap} is not \textit{a priori} a bad design. It depends on whether the overhead is buying something useful. \texttt{TreeMap} has a high memory cost because it maintains its entries in sorted order while they are being randomly inserted and deleted. It constantly maintains a sorted order. If you need this capability, for instance, if you have a real time monitor that is constantly being updated, and you need to look at the data in order, then \texttt{TreeMap} is a great data structure.  But if you do not need this capability, there are other data structures that could provide sorted-map functionality with less memory consumption. In this example, the data needs to be sorted only after data collection is complete. There is an initial load phase followed by a use phase. The sorted order is only needed during the second phase, after all the data is loaded. This load-and-use behavior is a common pattern, and it can be exploited to choose a more memory-efficient representation.
