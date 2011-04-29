@@ -10,7 +10,7 @@ and other support threads are spawned. These thread work on your program's
 behalf and, together, compose a runtime system that manage important aspects of
 execution. One of these tasks is memory allocation and reclamation. The runtime
 automatically takes care of many important cases of memory management. You
-needn't, for example, be concerned with explicitly deallocated \emph{most} of
+needn't, for example, be concerned with explicitly deallocating \emph{most} of
 the objects you allocate, because the runtime includes automatic garbage
 collection of instances. The Java runtime also provides built-in support that
 let you manually take care of some of the more complex cases, such as
@@ -53,7 +53,7 @@ sizing and growth policies, and its own constraints on maximum capacity.
 Usually, a call to {\tt new} results in a memory allocation on the Java heap.
 The heap is a region of memory that the JVM allocates on startup, sized to your
 specification. It contains objects, linked together in the way that they
-reference eachother. In Java, each object can contain primitive data, or
+reference eachother. In Java, each object can contain either primitive data or
 references to other objects. Unlike in a language such as C or C\#, one Java
 object cannot contain another Java object.  In those other languages, this is
 possible through the use of {\tt struct}s\index{C language}\index{C
@@ -62,8 +62,8 @@ structs}\index{C\# language}.
 If you don't choose an initial and maximum size for this
 heap, the \jre will choose these criteria for you. Each \jre implementation,
 from Sun to IBM to JRockit, has a different policy for choosing the default
-initial and maximum size. Older \jres, typically those prior to Java 1.5, tended
-to have hard-coded default values, indepdendent of how much physical memory your
+initial and maximum size. Older \jres, typically those prior to \javafive,
+tended to have hard-coded default values, indepdendent of how much physical memory your
 machine actually had. Most \jres now attempt to adjust the default
 maximum size based on the physical memory capacity of your machine. 
 
@@ -199,8 +199,8 @@ the {\tt -oss} command-line parameter.
 Sometimes, the JIT compiler is clever enough to observe that a call to {\tt new}
 can safely be allocated on the stack. This optimization is called \emph{stack
 allocation} of objects\index{Stack Allocation}. It is enabled, by default, as of
-Sun Java6 Update 21 and IBM 1.6 Service Release 2. When this optimization is
-possible, objects created and used \emph{only} as local variables will be stored
+Sun \javasix Update 21 and IBM \javasix Service Release 2. When this
+optimization is possible, objects created and used \emph{only} as local variables will be stored
 on a stack frame; it is as if you were using C {\tt struct}s.
 % \begin{shortlisting} class G {
    % int x;
@@ -341,16 +341,17 @@ memory you install on your machine. The limit depends on the number of memory
 locations that can be addressesed, given the size of pointers on your machine.
 The \emph{address space} of a process is the set of addresses that the process
 can read or write via pointers. Therefore, this limit depends upon the size of
-pointers on your platform, and, to a lesser extent, upon how the underlying
-operating system. \autoref{tab:address-space-limits} gives some examples. If
-your application runs on a 32-bit Windows operating system, the total amount of
-memory that each process can access is 1.8 gigabytes\footnote{Some versions of
-32-bit Windows let you specify a {\tt /3GB} boot option, which increases this
-limit from 1.8GB to 3GB.} A pointer that is 32 bits wide can address 4
-gigabytes, of which the operating system reserves roughly half for its own use.
-If a process of your application attempts to allocate memory beyond this address
-space limit, a failure will occur. It is quite often the case that this failure
-will manifest itself misleadingly as a {\tt java.lang.OutOfMemoryError}.
+pointers on your platform, and, to a lesser extent, upon the underlying
+operating system. \autoref{tab:address-space-limits} gives numbers for
+some common platforms. For example, if your application runs on a 32-bit Windows
+operating system, the total amount of memory that each process can access is 1.8
+gigabytes.\footnote{Some versions of 32-bit Windows let you specify a {\tt /3GB}
+boot option, which increases this limit from 1.8GB to 3GB.} A pointer that is 32
+bits wide can address 4 gigabytes, of which the operating system reserves
+roughly half for its own use. If a process of your application attempts to
+allocate memory beyond this address space limit, a failure will occur. It is
+quite often the case that this failure will manifest itself misleadingly as a
+{\tt java.lang.OutOfMemoryError}.
 
 \begin{table}
 \centering
@@ -461,43 +462,42 @@ owner of the shaded objects. The graph property that describes unique ownership
 is called \emph{dominance}; \index{Dominance} the clipped reference is said to
 dominate those objects that it uniquely owns.
 
+Almost all the time, the garbage collector does what you'd expect, and you
+needn't worry about freeing up memory. However, for more complex cases, such as
+those involving caching, or the use of native resources, things get tricky. For
+these cases, you need to be aware of the how the managed runtime treats an
+object in various stages of its life.
+
 \section{The Object Lifecycle}
-\paragraph{How to Free an Object in Java}
-\label{sec:natural-lifetime}
-\index{Natural Lifetime of Objects}
+\index{Object Lifecycle}
 
-If you wish an object's storage to be reclaimed, you must take some care. To do
-so in a language like C is simple, if bug prone. When you call \code{free} on any
-pointer to a dynamically allocated memory region, memory is immediately available
-for subsequent use.\footnote{It is possible to run a C program with a
-special \code{malloc} library that introduces a simplified form of garbage
-collection.} A C style of memory management comes with well known risks, and
-commonly leads to memory errors. For example, memory might be deallocated more
-than once, or variables that do not point to the start of an allocated region
-might be passed to \code{free}. Still, using \code{free} is straightforward to
-use, and immediate in effect.
+Memory in a managed runtime goes through a complex lifecycle, from allocation to
+eventual reclamation. In contrast, memory in the C language has a very simple
+lifecycle. In C, memory is allocated by calls to {\tt malloc} and reclaimed by
+explicit calls to {\tt free}. For C, that's all there is to it: from your
+program's perspective, a piece of memory is either in use or it isn't. In Java,
+objects go through many more stages. 
 
-In Java, you are immune from these problems, but there is no way to return memory
-for immediately use in future allocations. Instead, you indicate, either
-implicitly or explicitly, that objects are no longer needed. The explicit
-mechanism is to set references to null. To do so implicitly, there are several
-devices at your disposal. This section describes the details of both.
+%Instead, you indicate, either
+%implicitly or explicitly, that objects are no longer needed. The explicit
+%mechanism is to set references to null. To do so implicitly, there are several
+%devices at your disposal. This section describes the details of both.
 
-It is important to remember that in contrast to C, all means of indicating an
-object is no longer needed have a certain degree of delay. There are delays of
-two sorts. First, if you rely on the implicit mechanisms for indicating an object is no
-longer needing, there is often a delay from its last use to this point. Second,
-there is a delay from the point at which you indicate an object is no longer
-needed until its storage is reclaimed.
+%It is important to remember that in contrast to C, all means of indicating an
+%object is no longer needed have a certain degree of delay. There are delays of
+%two sorts. First, if you rely on the implicit mechanisms for indicating an
+%object is no longer needing, there is often a delay from its last use to this
+%point. Second, there is a delay from the point at which you indicate an object
+%is no longer needed until its storage is reclaimed.
 
-\paragraph{The Lifecycle of an Object}
-These two delays are but a part of the larger lifecycle that every Java object
-goes through, from creation to reclamation. In a well-behaved application, an
-object's lifetime spans its allocation, use, and the short period during which
-the \jre takes control and reclaims the space. For some subset of an object's
-actual lifetime, that is the time from creation to reclamation, your application
-will make use of the data stored in its fields. \autoref{fig:typical-lifecycle}
-illustrates the lifecycle of a typical object in a well behaved application.
+% \paragraph{The Lifecycle of an Object} These two delays are but a part of the
+% larger lifecycle that every Java object goes through, from creation to
+% reclamation.
+In a well-behaved application, an object's lifetime starts with its allocation,
+continues with the application making use of it, and concludes with the
+(hopefully) short period during which the \jre takes control and reclaims the
+space. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
+object in a well behaved application.
 
 \begin{figure}
 	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
@@ -557,12 +557,14 @@ However, if there is a long interval
 of time during which your application allocates very few objects in the Java
 heap, it could be quite a while before these dragging objects are reclaimed. You
 should be cautious here if, during these lulls in Java object creation, your
-application is heavily exercising the native heap. If your application has a few
-Java objects that implicitly reference native resources that are constrained,
-you could run into trouble. For example:
-\begin{shortlisting}
-Font f = 
-\end{shortlisting}
+application is heavily exercising the native heap. For example, say your
+application has small Java objects that implicitly reference large native
+resources. Even if, once the Java objects are collected you can up the
+associated nativ resources, you may still exhaust native resources. This is
+because dragging Java objects will only be collected when you run out of Java
+heap space. The \jre doesn't know to schedule a garbage collection when you
+exhust native resources.
+
 
 \begin{figure}
 	\centering
@@ -574,9 +576,11 @@ Font f =
 		\label{fig:limbo-exit}
 \end{figure}
 
+\section{The Basic Ways of Referencing an Object}
 Depending on how the object is referenced by your application, it will
-transition from in-use to garbage-collectable in a different manner. There are
-eight ways an object may be referenced. It can be referenced by a:
+transition from in-use to garbage-collectable in a different manner. 
+
+There are eight ways an object may be referenced. It can be referenced by a:
 
 \begin{enumerate}
   \item local variable of a method
@@ -970,7 +974,7 @@ basis for cache implementations.
 You should not use these references lightly. \autoref{tab:reference-costs}
 summarizes the costs of the ways of one object referencing another. A strong
 reference costs one pointer, which is 4 bytes (32 bits) on a 32-bit \jre. In
-comparison, a weak reference is \emph{eight times} more costly, at 32 bytes per
+comparison, a weak reference is \emph{seven times} more costly, at 32 bytes per
 reference, and a soft reference is nine times more costly. The reason for these
 expenses is that you must create an extra \class{Reference} object for
 every soft or weak reference you use. To softly reference a date formatter,
@@ -990,8 +994,8 @@ void foo(DateFormat dateFormatter) {
         \cmidrule(r){1-1} \cmidrule(l){2-2}		
 		strong         & 4 bytes (one pointer) \\
 		finalization   & 28 bytes \\
-        phantom        & 32 bytes \\ 
-		weak           & 32 bytes \\
+        phantom        & 28 bytes \\ 
+		weak           & 28 bytes \\
 		soft           & 36 bytes \\
 		\bottomrule
 	\end{tabular}
@@ -1000,8 +1004,10 @@ void foo(DateFormat dateFormatter) {
 	\label{tab:reference-costs}
 \end{table}
 
-% 32 is: the 4 pointer fields of java.lang.ref.Reference = 16
-%   plus an object header = 12
+%   the 4 pointer fields of java.lang.ref.Reference = 16
+%   plus an object header = 8
+%       [   plus maybe soft reference field = 4]
+%       [   plus maybe alignment to 8-byte boundary = 4]
 %   plus the pointer to the Reference object itself = 4
 
 \paragraph{Reference Queues}
@@ -1095,7 +1101,7 @@ execution of that iteration, it seems like one could run this program on a
 small heap, for any value of \code{N}. The heap need only fit what it
 takes to allocate the handful of objects that represent an instance of
 \code{java.awt.Font}. Try it out, for various values of \code{N} and of
-\code{-Xmx}! On Sun and IBM Java 6 \jres, you will find that, as \code{N}
+\code{-Xmx}! On Sun and IBM \javasix \jres, you will find that, as \code{N}
 increases, you will need to increase the maximum heap size allotted to the \jre.
 If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
 
