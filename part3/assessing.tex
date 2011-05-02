@@ -1,5 +1,29 @@
 \chapter{Assessing Scalability}
 
+Despite heroic efforts at tuning classes and optimizing the use of collections,
+you may still be unable to fit your application into available physical memory
+or address space. Sometimes, heroic efforts are not even possible, because this
+problem was discovered very late in the development cycle. If you don't discover
+till the final stages of testing that your application won't fit, it'll be
+difficult to find the resources to perform extensive tuning. Optimizing earlier
+in the development process would help, but these things need to be budgeted.
+Resources spent on earlier tuning are resources taken away from other aspects of
+development, such as architectural design and coding. To avoid wasting time
+blindly tuning everything, it is helpful to have a quick way of knowing whether
+an inefficient data structure will really matter in the grand scheme of things.
+A particular structure might have a bloat factor of 95\%, being composed of only
+5\% actual data, but if that structure only contributes to a few percent of
+overall memory consumption, who cares?
+
+You can focus your tuning efforts by adopting a design strategy that assesses
+the \emph{scalability} of a data structure. You should only focus on tuning
+those structures that scale poorly. The scalability of a data structure depends
+upon how its bloat factor changes as its size increases. Up till now, bloat
+factor has been a scalar quantity: e.g., 95\% of space is implementation
+overhead. More accurately, the bloat factor of a data structure is a function of
+its size. Its bloat factor will decrease, as fixed costs are amortized over a
+larger amount of actual data.
+
 \section{Scalability: Quantitative Methodology}
 
 \begin{figure}
