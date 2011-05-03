@@ -16,15 +16,31 @@ A particular structure might have a bloat factor of 95\%, being composed of only
 overall memory consumption, who cares?
 
 You can focus your tuning efforts by adopting a design strategy that assesses
-the \emph{scalability} of a data structure. You should only focus on tuning
-those structures that scale poorly. The scalability of a data structure depends
-upon how its bloat factor changes as its size increases. Up till now, bloat
-factor has been a scalar quantity: e.g., 95\% of space is implementation
-overhead. More accurately, the bloat factor of a data structure is a function of
-its size. Its bloat factor will decrease, as fixed costs are amortized over a
-larger amount of actual data.
+the \emph{scalability} of a data structure. By focusing on scalability, you can
+answer two kinds of questions:
+\begin{itemize}
+  \item \textbf{Will It Fit?} As you scale up your application, adding more
+  users for example, it'd be nice to have some feeling as to whether it'll fit
+  within a given memory budget.
+  \item \textbf{Should I Tune?} Your tuning efforts should focus 
+on those structures that can benefit from the tuning tasks described in
+the first part of this book.
+\end{itemize}
 
-\section{Scalability: Quantitative Methodology}
+\callout{amortizingcosts}{Data Structure Scaling}{
+A data structure \emph{scales well}, or not, depending upon how its bloat factor
+changes as its size increases. Up till now, bloat factor has been a scalar
+quantity: e.g., 95\% of space is implementation overhead. More accurately, the
+bloat factor of a data structure is a function of its size. Its bloat factor
+will decrease, as fixed costs are amortized over a larger amount of actual data.
+}
+
+\section{Methodology: Extrapolate Unit Costs}
+
+\section{The Asymptotic Nature of Bloat}
+
+\section{The Simplified Bloat Factor: Analyzing Large Data Structures}
+
 
 \begin{figure}
 \centering
@@ -370,7 +386,7 @@ pollution of data types not directly connected to the planned extension.
 
 One common case, when using collections, is that many of them contain zero or
 only a single element. It seems silly to pay the expense of a full-fledged
-collection for these special cases. The Java standard library offers has a
+collection for these special cases. The Java standard library offers a
 partial solution to the case of many empty collections, in the form of the family
 of factor methods that include \code{Collections.emptySet()} and
 \code{Collections.emptyList()}.
