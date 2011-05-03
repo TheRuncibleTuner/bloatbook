@@ -97,15 +97,20 @@ speed of accessing RAM versus the speed of accessing disk; these days, swapping
 memory to and from disk is too slow to be worth even considering.
 
 
-To specify the initial size of the Java heap to be, pass the {\tt -Xms} flag on
+To specify the initial size of the Java heap, pass the {\tt -Xms} flag on
 the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
 For example, by passing {\tt -Xms100M -XmX1G}, you are telling the \jre to use
 an initial size of 100 megabytes, and a maximum size of 1 gigabyte.
 
-If you application exceeds consumption of Java heap, you will observe a
-\class{java.lang.OutOfMemoryError} exception
-thrown\index{java.lang.OutOfMemoryError}; sometimes, you will see a variant of
-this: \code{GC overhead limit exceeded}\index{GC overhead limit exceeded}.
+\index{Memory Exhaustion}
+If you application exhausts the Java heap, you will observe an
+\class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
+Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
+exceeded}\index{GC overhead limit exceeded}. On all JVMs, it is possible that
+the runtime will enter a nasty state where it is spending all of its time
+reclaiming memory. You will observe that your application seemingly hangs; the
+\jre may not even respond to a console interrupt or other normal shutdown
+events.
 
 
 
@@ -595,14 +600,14 @@ ways of referencing an object are
 The first three are cases of unique ownership of an object. There exists
 only one path, via that particular reference, to reach the object. The fourth
 case is one of \emph{shared} ownership. After your program creates an object, it
-references the object in one or more of these eight ways. The ownership of an
-object may vary over time --- as your program runs, these references will come
+references the object in one or more of these three basic ways. The ownership of
+an object may vary over time --- as your program runs, these references will come
 and go. After some time, program execution may reach a point where the object is
 no longer under application control. At this point, the \jre is now in charge of
 its lifetime. For example, if the only reference to an object is from a field of
 some other object, and your code reassigns that reference to \code{null}, this
 becomes a point of transition, from application control to \jre control. Each of
-the eight ways of referencing an object comes with its own guidelines as to when
+the four ways of referencing an object comes with its own guidelines as to when
 this transition occurs. \autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
 summarizes how an object transitions to \jre control.
 \begin{comment}
@@ -893,14 +898,14 @@ within the data structure you no longer need.
 Sometimes, you need an object to stay alive, or not, in a way that has nothing
 to do with whether it is reachable from local variables or static fields. For
 example, to implement the correlated lifetime policy described in
-\autoref{sec:correlated-lifetime} using only the mechanisms presented so far is
-difficult. 
+\autoref{sec:correlated-lifetime}, using only the mechanisms presented so far,
+is difficult. 
 
 Using reachability, the only way to guarnatee that one object
 $B$ will become a candidate for garbage collection when another object $A$ does,
 would be to have $A$ dominate $B$. Sometimes this can work, but more often,
 this is not possible. Doing so requires modifying $A$, or something that $A$
-domiantes, so that it points to $B$. But what if you don't own any of that code?
+dominates, so that it points to $B$. But what if you don't own any of that code?
 \autoref{fig:reachability-b} illustrates an example of this. There are three
 objects contained within the shaded region; these three objects will all be garbage collectible if
 the indicated dominating reference is set to \code{null}. In this way, the
@@ -925,12 +930,11 @@ always employed, and certain rarely together, for a single map instance.
 
 The Java language provides mechanisms that allow you more flexibility in
 implementing lifetime management policies. These advanced features are exposed
-via soft, weak, and phantom references, finalization, and \tls.
-In contrast, the term used for 
-the
-normal way of referencing objects, that is what you get when you use fields of
-objects or local variables, is a \emph{strong}
-reference\index{Reference, Strong}.
+via soft, weak, and phantom references, finalization, and \tls. In contrast, the
+term used for the normal way of referencing objects is a \emph{strong}
+reference\index{Reference, Strong}; i.e. this is what you get when you use
+fields of objects or local variables,
+
 
 \paragraph{Soft and Weak References}
 \index{Reference, Weak}
@@ -940,7 +944,7 @@ reference\index{Reference, Strong}.
 %on the Internet; there is especially confusion over the use of soft and weak
 %references.
 
-Soft and weak references are two alternate ways for one object to reference
+Soft and weak references are two advanced ways for one object to reference
 another. If one object strongly references another, then the normal garbage
 collection rules apply. If one object \emph{softly references} another, then
 the garbage collector is free to clip that reference whenever it wants. Once the
@@ -956,7 +960,7 @@ references can form the basis of the implementation of correlated lifetime
 patterns.
 
 ``Soft'' and ``weak'' are strange terms, but the rules are pretty much as simple
-as that. Programmers are often confused by these two, and the web searches will
+as that. Programmers are often confused by these two, and web searches will
 reveal some degree of misinformation. It is common for web sites misdefine
 these two mechanisms, e.g. by swapping their roles. In short:
 
@@ -976,7 +980,7 @@ basis for cache implementations.
 You should not use these references lightly. \autoref{tab:reference-costs}
 summarizes the costs of the ways of one object referencing another. A strong
 reference costs one pointer, which is 4 bytes (32 bits) on a 32-bit \jre. In
-comparison, a weak reference is \emph{seven times} more costly, at 32 bytes per
+comparison, a weak reference is \emph{seven times} more costly, at 28 bytes per
 reference, and a soft reference is nine times more costly. The reason for these
 expenses is that you must create an extra \class{Reference} object for
 every soft or weak reference you use. To softly reference a date formatter,
