@@ -166,7 +166,7 @@ But as the amount of primitive data increases, the bloat factor decreases.
 The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun \jre, the bloat factors for the boxed
 scalars range from 94\% for a \class{Boolean} down to 50\% for a
 \class{Double}.  The bloat factor for a \class{SimpleEmployee} is 46\%.  The
-bloat factor for an array of 100 \code{chars}s is insignificant. This is not the
+bloat factor for an array of 100 \code{char}s is insignificant. This is not the
 case for objects with other kinds of overhead, like references.
 
 \section{The Cost of Delegation}

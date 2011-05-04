@@ -98,7 +98,7 @@ the relationship between products and alternate suppliers.
 
 Using a \class{HashSet} for alternate suppliers turns out to be a
 very costly decision. The alternate suppliers are represented by 100,000
-very small \class{HashSets}s, each consuming 232 bytes, for a total cost of 22.125MB. 
+very small \class{HashSet}s, each consuming 232 bytes, for a total cost of 22.125MB. 
 This cost is all overhead.
 It's hard to think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern is very, very common. For
