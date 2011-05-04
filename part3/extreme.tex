@@ -391,12 +391,12 @@ string is kept in memory. For non-string data, you will have to roll your own
 solution. In any case, however, interning only tackles a part of the problem at
 hand. By keeping only a single canonical copy of the primitive data, you
 eliminate the primitive array headers for the duplicates.
-\autoref{fig:bulk-sharing-pool}a and \autoref{fig:bulk-sharing-pool}b illustrate
-a simple case of interning. Of three strings, there are two duplicate ``grape''
-sequences. The residual high overhead is due to the remaining primitive array
-object headers, and all of the \class{String} objects; none of the \class{String}
-objects are eliminated by interning. Interning removes only the duplicate
-primitive array overheads.
+\autoref{fig:bulk-sharing-pool}(a) and \autoref{fig:bulk-sharing-pool}(b)
+illustrate a simple case of interning. Of three strings, there are two duplicate
+``grape'' sequences. The residual high overhead is due to the remaining
+primitive array object headers; all of the \class{String} objects are eliminated
+by interning. Interning removes only the primitive array overheads of
+\emph{duplicate} strings.
 
 
 \begin{figure}
@@ -438,24 +438,36 @@ that is accessed in a uniform, and stylized, fashion. Why pay the expense of man
 small primitive arrays, if your code does not need each sequence to be a Java
 object? If you will never synchronize or reflect on sequences, as objects, then
 the primitive array header is a needless expense.
-\autoref{fig:bulk-sharing-pool}c illustrates this bulk storage of the sequences
-in a single large array. You pay the primitive array overhead just once, across
+\autoref{fig:bulk-sharing-pool}(c) illustrates this bulk storage of the
+sequences in a single large array. You pay the primitive array overhead just once, across
 all pooled sequences, rather than for every sequence. 
 %In this case, your heap
 %will have a memory bloat factor of
 % 3*(16+32)/(10*2+3*(16+32))
 
 To achieve the ultimate in memory efficiency, you must also eliminate the
-\class{String} wrapper objects. This last step requires the most work on your
-part. If you have the luxury of modifying the class definitions for the objects
-that contain the string wrappers, then you can replace every pointer to a string
-with two numbers. These numbers store indices into the single large
-array of bulk data, and demark the sequence that the string wrapper would have
-contained. You are essentially inlining the offset and length fields that every
-Java \class{String} object has, and doing away with the hashcode field and the
-extra header and pointers. This eliminates almost all sources of overhead.
+\class{String} wrapper objects, as shown in \autoref{fig:bulk-sharing-pool}(d).
+This last step requires the most work on your part. If you have the luxury of
+modifying the class definitions for the objects that contain the string
+wrappers, then you can replace every pointer to a string with two numbers. These
+numbers store indices into the single large array of bulk data, and demark the
+sequence that the string wrapper would have contained. You are essentially
+inlining the offset and length fields that every Java \class{String} object has,
+and doing away with the hashcode field and the extra header and pointers. This
+eliminates almost all sources of overhead.
 
-\autoref{fig:bulk-sharing-pool}d charts the memory consumption of the four
+This last, most extreme, optimization can reap large benefits in scalability,
+but not always! You are paying an offset and length field in every object, even
+when the strings are the same. For example, in
+\autoref{fig:bulk-sharing-pool}(d), the offset and length fields for the two
+uses of ``grape'' contain the same data. In the previous two optimizations,
+these two fields are factored out into a separate \class{String} object, and so
+only stored once. If the fraction of distinct strings
+is small, then the cost of these duplicated fields outweighs the benefit of
+removing the wrappers; it even outweighs the cost of removing the character
+array headers. Where is the cross-over point?
+
+\autoref{fig:bulk-sharing-pool}(e) shows the memory consumption of the four
 implementations: using normal Java \class{Strings} without any attempt to remove
 duplicates; using Java's built-in string interning mechiansm; using a bulk
 sharing pool; and using a bulk sharing pool without any \class{String} wrappers.
@@ -465,10 +477,12 @@ varying degrees of distinctness of the strings, for an case with one million
 strings of length 10 characters each.
 For example, if 500 thousand of the million strings are distinct (which
 corresponds to the 50\% point in the chart), the normal implementation consumes
-65 megabytes, the interning implementation consumes 50 megabytes, the bulk
-sharing pool implementation consumes 44 megabytes, and the bulk implementation
+65 megabytes, the interning implementation consumes 34 megabytes, the bulk
+sharing pool implementation consumes 27 megabytes, and the bulk implementation
 without string wrappers consumes 17 megabytes. There are 500 thousand
-distinct characters, so the actual data consumes about 10 megabytes.
+distinct characters, so the actual data consumes about 10 megabytes. You can see
+that the cross-over point, where the most extreme optimization begins to pay
+off, occurs when about 10\% of the strings are distinct.
 
 The chart makes it pretty clear how much a few headers and pointers can affect
 the scalability of your application. With only a bit of work, you can have an
