@@ -4,8 +4,8 @@ Despite heroic efforts at tuning classes and optimizing the use of collections,
 you may still be unable to fit your application into available physical memory
 or address space. Sometimes, heroic efforts are not even possible, because this
 problem was discovered very late in the development cycle. If you don't discover
-till the final stages of testing that your application won't fit, it'll be
-difficult to find the resources to perform extensive tuning. Optimizing earlier
+till the final stages of testing that your application won't fit, you will have
+difficulty finding the resources to perform extensive tuning. Optimizing earlier
 in the development process would help, but these things need to be budgeted.
 Resources spent on earlier tuning are resources taken away from other aspects of
 development, such as architectural design and coding. To avoid wasting time
@@ -16,18 +16,29 @@ A particular structure might have a bloat factor of 95\%, being composed of only
 overall memory consumption, who cares?
 
 You can focus your tuning efforts by adopting a design strategy that assesses
-the \emph{scalability} of a data structure. By focusing on scalability, you can
-answer two kinds of questions:
+the \emph{scalability} of your data structures. By focusing on scalability, you
+can answer two kinds of questions:
+
 \begin{itemize}
   \item \textbf{Will It Fit?} As you scale up your application, adding more
-  users for example, it'd be nice to have some feeling as to whether it'll fit
-  within a given memory budget.
-  \item \textbf{Should I Tune?} Your tuning efforts should focus 
+  users for example, it'd be nice to know whether it will fit
+  within a given memory budget. This requires knowing the \emph{variable cost}
+  of each user.
+  \item \textbf{Should I Bother Tuning?} Your tuning efforts should focus 
 on those structures that can benefit from the tuning tasks described in
-the first part of this book.
+the \autoref{part:1}. This requires knowing how how bloat factor changes as a
+data structure grows.
 \end{itemize}
 
-\callout{amortizingcosts}{Data Structure Scaling}{
+\section{Estimating The Scalabilty of An Application}
+
+So far, you have laerned how to estimate the bloat factor
+
+\callout{datastructurescaling}{Unit Costs and Data Structure Scaling}{ Every
+data structure has a \emph{unit cost}, the cost for every additional element. This
+unit cost governs how big it will get, and consequently how many elements fit
+into a given budget.
+
 A data structure \emph{scales well}, or not, depending upon how its bloat factor
 changes as its size increases. Up till now, bloat factor has been a scalar
 quantity: e.g., 95\% of space is implementation overhead. More accurately, the
@@ -35,9 +46,9 @@ bloat factor of a data structure is a function of its size. Its bloat factor
 will decrease, as fixed costs are amortized over a larger amount of actual data.
 }
 
-\section{Methodology: Extrapolate Unit Costs}
-
 \section{The Asymptotic Nature of Bloat}
+
+
 
 \section{The Simplified Bloat Factor: Analyzing Large Data Structures}
 
