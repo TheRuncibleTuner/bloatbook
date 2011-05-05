@@ -22,31 +22,78 @@ can answer two kinds of questions:
 \begin{itemize}
   \item \textbf{Will It Fit?} As you scale up your application, adding more
   users for example, it'd be nice to know whether it will fit
-  within a given memory budget. This requires knowing the \emph{variable cost}
-  of each user.
+  within a given memory budget. 
+  %This requires knowing the \emph{variable cost} of each user.
   \item \textbf{Should I Bother Tuning?} Your tuning efforts should focus 
 on those structures that can benefit from the tuning tasks described in
-the \autoref{part:1}. This requires knowing how how bloat factor changes as a
-data structure grows.
+the \autoref{part:1}. 
+%This requires knowing how how bloat factor changes as a data structure grows.
 \end{itemize}
+
+\section{The Asymptotic Nature of Bloat}
+Up till now, bloat factor has been treated as a scalar quantity: e.g., 95\% of
+space is devoted to implementation overhead rather than actual data. More
+accurately, the bloat factor of a data structure is a function of its size. Data
+structures that can change in size, as opposed to having a fixed size,  do so
+because they make use of collections, or possibly use arrays directly. In either
+case, as you learned in \autoref{part:1}, collections of objects have a
+\emph{fixed cost} that is independent of the number of entries in contains. For
+a simple array, this is the \jre object header. For more complex collections of
+objects, such as \class{java.util.HashSet}, the fixed cost includes a extra
+wrapper object. The bloat factor of a collection of objects decreases until it
+reaches an \emph{asymptote}, the lowest bloat factor a data structure car
+achieve, no matter how big it grows.
+
+\callout{asymptoticbloatfactor}{Data Structure Scaling: Asymptotic Bloat
+Factor}{ A data structure scales well, or not, depending upon how its bloat
+factor changes as it grows. It starts by decreasing, as the collection's fixed
+costs are amortized over a larger amount of actual data, and soon levels off.
+This \emph{asymptotic bloat factor} is governed by the collection's
+variable cost and the bloat factor and \emph{unit cost} of the contents.}
+
+Every class has a \emph{unit cost}, the cost for every additional instance. You
+can determine the unit cost of a class by counting up the size of its fields,
+taking into account \jre-imposed costs. Similarly, every interconnected group of
+instances has a unit cost, the sum of the sizes of the classes involved in that
+group. For example, the size of a string in Java is the size of a \class{String}
+instance plus the size of the primitive array hanging off of that wrapper
+object. \autoref{sec:CostOfObjects} describes how to do this style of
+accounting.
+
+A similar accounting is possible to help you estimate how a collection of
+objects will grow in size as elements are added. Every additional element added
+to a collection costs the collection's variable cost plus the unit cost of the
+added element. Quite often, the elements you are adding themselves consist of
+nested collections. If you don't expect those nested collections to grow, then
+they contribute to the unit cost of additional elements in the natural way. A
+fixed-size collection has a unit cost which is that collection's fixed cost,
+plus the total size of all of the variable costs and unit costs, counted once
+for each entry. So, if you have a fixed-size collection with four entries, then
+the total cost is the fixed cost plus four times the sum of the variable costs
+of the collection plus the unit cost of what's inside.
+
+In this way, you can estimate an answer to ``Will It Fit''? 
+
+This unit cost governs how big it will get, and consequently how many
+elements fit into a given budget. I
+
+
 
 \section{Estimating The Scalabilty of An Application}
 
+\begin{figure}
+\centering
+% source is in heaps_and_stacks.odg
+\includegraphics[width=0.28\textwidth]{part3/Figures/assessing/EC-example}
+\caption{An EC diagram for a \class{HashSet} that contains data structures that
+are composed of four interconnected objects. This diagram has been annotated
+with the four numbers that govern the scalability of this structure.}
+\end{figure}
+
 So far, you have laerned how to estimate the bloat factor
 
-\callout{datastructurescaling}{Unit Costs and Data Structure Scaling}{ Every
-data structure has a \emph{unit cost}, the cost for every additional element. This
-unit cost governs how big it will get, and consequently how many elements fit
-into a given budget.
 
-A data structure \emph{scales well}, or not, depending upon how its bloat factor
-changes as its size increases. Up till now, bloat factor has been a scalar
-quantity: e.g., 95\% of space is implementation overhead. More accurately, the
-bloat factor of a data structure is a function of its size. Its bloat factor
-will decrease, as fixed costs are amortized over a larger amount of actual data.
-}
 
-\section{The Asymptotic Nature of Bloat}
 
 
 
