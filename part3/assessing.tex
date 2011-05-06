@@ -78,17 +78,17 @@ more than a dozen or two elements.
 The number of elements that it takes to amortize a collections fixed cost
 depends on that cost in comparison to the memory cost of storing elements. If
 the collection's fixed cost is 48 bytes, and it costs 128 bytes per stored
-element, then the collection must have at least 8 elements before the fixed
+element, then the collection must have at least 6 elements before the fixed
 overhead contributes less than 5\% to the overall size of the collection:
 
-$$\frac{\textrm{fixed}}{\textrm{total variable}} = \frac{48}{128 N} \le 0.05
-\Longrightarrow N \ge 7.5$$
+$$\frac{\textrm{fixed cost}}{\textrm{total costs}} = \frac{48}{48 + 128 N}
+\le 0.05 \Longrightarrow N \ge 5.45$$
 
 Once fixed costs have largely amortized, the asymptotic bloat factor is reached.
 For this reason, at least for collections that you expect to be even only
 moderately sized, it is the asymptotic bloat factor that should be your primary
 concern. However, the fixed costs of collections still play an important role in
-the ultimate scalability of most data structures.
+the ultimate scalability of most data structure:
 
 \paragraph{Determining the Asymptote}
 
@@ -96,10 +96,24 @@ Every class has a \emph{unit cost}, the cost for every additional instance. You
 can determine the unit cost of a class by counting up the size of its fields,
 taking into account \jre-imposed costs. Similarly, every interconnected group of
 instances has a unit cost, the sum of the sizes of the classes involved in that
-group. For example, the size of a string in Java is the size of a \class{String}
-instance plus the size of the primitive array hanging off of that wrapper
-object. \autoref{sec:CostOfObjects} describes how to do this style of
-accounting.
+group. \autoref{sec:CostOfObjects} introduced this style of accounting.
+\autoref{fig:ec-scalability-example} gives an example EC diagram of a HashMap
+that contains an interconnected group of four objects. The unit cost of each
+entry in this structure is given by the sum of the sizes of those classes: 88
+bytes, in this case.
+
+\begin{figure}
+\centering
+% source is in heaps_and_stacks.odg
+\includegraphics[width=0.4\textwidth]{part3/Figures/assessing/EC-example}
+\caption{An EC diagram for a \class{HashSet} that contains data structures that
+are composed of four interconnected objects. This diagram has been annotated
+with the four numbers that govern the scalability of this structure: the fixed
+and variable costs of the collection you use, and the unit cost and bloat
+factor of the data you're storing inside of it.}
+\label{fig:ec-scalability-example}
+\end{figure}
+
 
 A similar accounting is possible to help you estimate how a collection of
 objects will grow in size as elements are added. Every additional element added
@@ -122,14 +136,7 @@ elements fit into a given budget. I
 
 \section{Estimating The Scalabilty of An Application}
 
-\begin{figure}
-\centering
-% source is in heaps_and_stacks.odg
-\includegraphics[width=0.28\textwidth]{part3/Figures/assessing/EC-example}
-\caption{An EC diagram for a \class{HashSet} that contains data structures that
-are composed of four interconnected objects. This diagram has been annotated
-with the four numbers that govern the scalability of this structure.}
-\end{figure}
+
 
 So far, you have laerned how to estimate the bloat factor
 
