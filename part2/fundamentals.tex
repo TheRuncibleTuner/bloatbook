@@ -339,6 +339,7 @@ due to running out of Java heap, or running out of native resources?
 
 
 \paragraph{Physical Memory versus Address Space}
+\label{sec:address-space}
 \index{Address Space}
 Physical memory is one of the primary underlying constraints on how big you can
 size your heaps. There is another limit that is independent of how much physical
@@ -464,8 +465,8 @@ dead as the result of a pointer being clipped. The objects within the shaded
 region of \autoref{fig:reachability-b} have the property that each is reachable
 \emph{only} from the clipped reference. That clipped reference is the unique
 owner of the shaded objects. The graph property that describes unique ownership
-is called \emph{dominance}; \index{Dominance} the clipped reference is said to
-dominate those objects that it uniquely owns.
+is called \emph{dominance}\index{Dominance}\label{sec:dominance}; the clipped
+reference is said to dominate those objects that it uniquely owns.
 
 Almost all the time, the garbage collector does what you'd expect, and you
 needn't worry about freeing up memory. However, for more complex cases, such as
