@@ -184,8 +184,8 @@ If not, then you have two options: buy more hardware, or tune. If possible, you
 could buy more memory, or more machines if your current machines cannot accept
 any more physical memory. You must also pay attention to address space limits,
 as discussed in \autoref{sec:address-space}: if your 32-bit processes cannot fit
-anything more into the constrained address space, then the answer to Will It
-Fit? is no! In this case, buying more physical memory won't help, and your only
+anything more into the constrained address space, then the answer to ``Will It
+Fit?'' is no! In this case, buying more physical memory won't help, and your only
 option is to tune your data models.
 
 The asymptotic bloat factor of your dominant data structures can help you to
@@ -210,18 +210,64 @@ then you should consider tuning these models.
 
 
 \section{Quickly Estimating The Scalabilty of An Application}
-\autoref{fig:maxActualData}
+
+It can be tedious to construct formulas in order to estimate the scalability of
+your data models. Estimating scalability can require navigating a space with
+many dimensions of freedom. Sometimes, you have a fixed amount of memory, and a
+fixed amount of actual data to store, and want to know how much you need to
+tune, in order to make it fit. Sometimes, you have some flexibility in how much
+data you're keeping around. Luckily, there are some simplyfing studies that you
+can do, where you fix certain parameers, and let others vary.
+\autoref{fig:maxActualData} and \autoref{fig:maxBloatFactor} show two of these.
+In both cases, the amount of memory available is fixed at one gigabyte. The
+first chart plots how much actual data you can afford to keep around, for
+various degrees of bloat (the four level curves). The second chart plots how
+high an asymptotic bloat factor you can afford, for various amounts of actual
+data (the four level curves). For many cases, you can simply consult these
+charts. However, it isn't difficult to construct your own:
+
+\callout{ezscalability}{Quickly Deriving Scalability Formulas}{
+It is easy to construct these kinds of charts, using your favorite spreadsheet
+software. For example, the formula for the chart in \autoref{fig:maxBloatFactor}
+was dervied as follows. Let $C$ is the bytes of memory available, $A$ is the number of entities, and $D$
+is the unit cost of your actual data; then the number of entities you can afford
+is $C/A$, and total unit cost of your data, including overhead is
+$\frac{1}{1-x} D$. You can afford as a bloat factor, $x$, that is just small
+enough to let you fit at least one element of data in memory:
+\begin{align*}
+\frac{C}{A} \frac{1}{\frac{1}{1-x} D}  &\ge 1
+ \\
+\frac{C (1-x)}{A D}  &\ge 1
+ \\
+1-x  &\ge \frac{A D}{C}
+ \\
+x  &\le 1-\frac{A D}{C} & \qed
+\end{align*}
+}
 
 \begin{figure}
 \centering
-	\includegraphics[width=\textwidth]{part3/Figures/assessing/maxActualData}
-	\caption{The amount of actual data you can store in your entities depends on
+    \subfigure[The amount of actual data you can store in your entities depends on
 	the degree of delegation in your entities, and the per-entry overhead of the collection in which these entities
-	reside. This chart assumes a limit of 1 gigabyte of Java heap.}
-	\label{fig:maxActualData}
-\end{figure}
+	reside.]{
+       \label{fig:maxActualData}
+	   \includegraphics[width=\textwidth]{part3/Figures/assessing/maxActualData}
+	}
 
-TODO: write this section, explaining \autoref{fig:maxActualData}, or delete it.
+% C is megabytes of memory available
+% A is number of entitles
+% D is unit cost of actual data
+% x is the unknown bloat factor
+% C*1024*1024/A / (1/(1-x) * D)) >= 1
+% x <= 1-A*D/(C*1024*1024)
+    \subfigure[The maximum bloat factor you can afford. This chart is based upon having 1 gigabyte of Java heap. Note the
+	   non-linear scale of the horizontal axis.]{
+	   \label{fig:maxBloatFactor}
+	   \includegraphics[width=\textwidth]{part3/Figures/assessing/maxBloatFactor}
+	}
+   \caption{These charts are based upon having 1 gigabyte of Java heap. Note
+   the non-linear scale of the horizontal axis.}
+\end{figure}
 
 \section{Example: Representing a Graph}
 
