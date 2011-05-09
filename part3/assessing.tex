@@ -269,16 +269,32 @@ x  &\le 1-\frac{A D}{C} & \qed
    the non-linear scale of the horizontal axis.}
 \end{figure}
 
-\section{Example: Representing a Graph}
+\section{Example: Designing for a Graphf or Scalability}
 
-When representing relationships between entities, using standard object oriented
-practices, you are severely limited in the number of entities and relationships
-that you can store. Doing so in a straightforward manner, one that obeys object
-oriented practices, is very similar to the task of representing a graph of nodes
-and edges. For example, when caching data from a relational database in the Java
-heap, the entities (rows in a database table) and relations (columns that contain
-indices into tables) become the nodes and edges in a graph.
+Let's step through an example of getting a data model to scale. This extended
+example focuses on modeling relationships between entities. This is a common
+data modeling task, such as when you're bringing in data from some relational
+data store. This might be user data that is stored in a relational database, or
+it could be correlated logging data from multiple sources. There are many
+examples that fall into this general space.
 
+Getting a relational data model design to scale is hard. Database developers
+from Oracle, IBM, and others, work for years to tune, balancing time an space
+for important cases. When this data is loaded into Java, we all pay much less
+attention to laying data out in memory. A general-purpose storage strategy,
+using Java objects in the natural way, is very likely not to scale well.
+% To achieve good scalability usually requires optimizing for the ways in which
+% the data will be used by other parts of your application.
+At each step along the way, as the data model is tuned for certain use cases,
+this discussion will be focused on the two important aspects of scalability:
+unit costs and asymptotic bloat factor.
+
+\paragraph{Modeling Relationships Means Modeling Graphs}
+Representing relationships between entities boils down to the task of
+representing a graph of nodes and edges. For example, when caching data from a
+relational database in the Java heap, the entities (rows in a database table)
+and relations (columns that contain indices into tables) become the nodes and
+edges in a graph.
 %\begin{example}{Storing a Graph}
 If a graph has a great many nodes and edges, you must design its storage
 carefully. Consider the small example illustrated in 
