@@ -293,38 +293,57 @@ unit costs and asymptotic bloat factor.
 Representing relationships between entities is no different than representing a
 graph of nodes and edges: entities are nodes, and relationships are edges. For
 example, when caching data from a relational database in the Java heap, each
-database row is an entity. Columns such as numbers, dates, string, and binary
-large objects (BLOBs) columns are all attributes of these entities. The
-cross-table index data, such as the employees under a manager, are handled
-differently, at least in a database. In a database, this information is usually
-stored in a separate table; e.g. a table that maps managers to the employees
-they supervise. In Java, this isn't a very natural way to model things. It is
-much more convenient to model relationships as references to collections of
-other entities: a manager object points to a set of employee objects. The Java
-heap itself is a graph of objects, and so this is a natural, though possibly
-inefficient, mapping of relational data into Java classes and fields.
-% \begin{example}{Storing a Graph}
+database row is an entity. Columns containing numbers, dates, string,
+and binary large objects (BLOBs) data are all attributes of these entities. So
+far, the way you'd store this entity information in Java is somewhat similar to
+the way you'd store things in a relational database. 
 
-If a graph has a great many nodes and edges, you must design its storage
-carefully. Consider the small example illustrated in \autoref{fig:exampleGraph}.
-There are several ways to implement the abstract data types, of nodes and edges,
-shown in that figure. Each strategy has its positives and negatives, depending
-on whether ease of maintenance or memory consumption are of primary importance.
-% \end{example}
+\begin{wrapfigure}{r}{0.34\textwidth}
+    %\vspace{-5mm}
+    \centering
+	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
+	\caption{Example graph.}
+    \label{fig:example-storing-relations-graph}
+\end{wrapfigure}
+Storing relationships is where things start to diverge. 
+In
+Java, it is natural to store the relationship information, such as the employees
+under a manager, as references to collections of
+other entities: a manager object points to a set of employee objects.
+In a database, this information is usually
+stored in a separate table; e.g. a table that maps managers to the employees
+they supervise. In Java, this isn't a very natural way to model things.
+%The Java heap itself is a graph of objects, and so storing a graph of entities
+%and relations as a graph of objects is a natural, though possibly inefficient,
+%mapping of relational data into Java classes and fields.
+%If a graph has a great
+%many nodes and edges, you must design its storage carefully.
+\\ \indent % necessary to get the wrapfig to warp around the next paragraph,too
+Consider the small example illustrated in \autoref{fig:example-storing-relations-graph}.
+\autoref{fig:graph-interfaces} shows the interfaces for a
+\class{Graph}, \class{Node}, and \class{Edge} for this
+example. There are several ways to implement the abstract data types, of nodes
+and edges. Each strategy has its positives and negatives, depending on which of ease of
+maintenance or memory consumption is of primary importance.
+
+\paragraph{The Straightforward Implementation}
+A common implementation strategy, applied to the \class{Node} and \class{Edge}
+data types, is a straightforward mapping of interfaces to concrete classes.
+\autoref{fig:node-obvious-impl} shows such an implementation for the
+\class{Node} data type. Following this strategy, the \class{Node} class has
+three fields, to store its \class{Color} and the relations to children and
+parents; these relations are implemented with a standard collection, likely a
+\class{HashSet}. The \class{Edge} class has two fields, to store pointers to the
+source and target nodes. This implementation is easy to implement. It is also
+easy to maintain: changes to the interfaces can be directly mapped to changes to
+the implementation, because the two are parallel versions of each other. The
+nodes and edges, and relations between them, are objects that can be manipulated
+using normal object oriented practices; e.g. you can write
+\texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads as a fairly
+natural, albeit verbose, expression of what you intend.
 
 \begin{figure}
 \centering
-\subfigure[Example graph.]{
-\label{fig:example-storing-relations-graph}
-\shortstack{
-	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
-	\\ \vspace{5mm}
-	}
-}
-\qquad
-\begin{subfloat}
-\label{fig:graph-interfaces}
-\begin{minipage}[b]{0.45\textwidth}
 \begin{figurelisting}
 interface Graph {
 	Set<Node> getNodes();
@@ -343,11 +362,8 @@ enum Color {
 	White, LightGray, DarkGray
 }
 \end{figurelisting}
-\end{minipage}
 \caption{Abstract data types for nodes and edges.}
-\end{subfloat}
-	\caption{An example generic graph of three colors of nodes.}
-	\label{fig:exampleGraph}
+\label{fig:graph-interfaces}
 \end{figure}
 
 \begin{figure}
@@ -382,23 +398,6 @@ public Node(Color color) {
 \caption{A straightforward implementation of the Node interface.}
 \label{fig:node-obvious-impl}
 \end{figure}
-
-\autoref{fig:graph-interfaces} shows the interfaces for a \class{Graph},
-\class{Node}, and \class{Edge} that one must implement. A common implementation
-strategy, applied to the \class{Node} and \class{Edge} data types, is a
-straightforward mapping of interfaces to concrete classes.
-\autoref{fig:node-obvious-impl} shows such an implementation for the
-\class{Node} data type. Following this
-strategy, the \class{Node} class has three fields, to store its \class{Color}
-and the relations to children and parents; these relations are implemented with a
-standard collection, likely a \class{HashSet}. The \class{Edge} class has two
-fields, to store pointers to the source and target nodes. This implementation is
-easy to implement. It is also easy to maintain: changes to the interfaces can be
-directly mapped to changes to the implementation, because the two are parallel
-versions of each other. The nodes and edges, and relations between them, are
-objects that can be manipulated using normal object oriented practices; e.g. you
-can write \texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads
-as a fairly natural, albeit verbose, expression of what you intend.
 
 \paragraph{A Straightforward Implementation}
 Without any thought for memory concerns, the constructor for a node would be as
