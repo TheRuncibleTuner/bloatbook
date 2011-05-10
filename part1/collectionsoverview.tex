@@ -258,7 +258,7 @@ example
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing lifetime with
 	weak references. Support for other cases is available from some alternative
-	collections frameworks, such as Apache Commons. &
+	collections frameworks. &
 	Section~\ref{}
 	\\
 	Java 1 collections & Some of the classes in the earlier, Java
@@ -273,27 +273,70 @@ for certain cases where synchronized collections are needed & Section~\ref{}
 
 
 In addition to the standard Java collections classes, there are a number of
-open source collections frameworks available. Many of these frameworks
-are designed to provide additional functionality or to make it easier to
-program. With some exceptions, most are not designed to be efficient from a
-space standpoint. Some actually have a
-larger footprint for the same functionality than the standard libraries. So as
-in anything else, being an informed consumer (by measuring) is the best way to
-avoid problems later. Below is a short summary of the most
-popular alternative collections frameworks.
+open source collections frameworks available. Many of these frameworks are
+designed to provide additional functions and can make it easier to
+program. FIXME However, they don't all address space or time
+performance. In fact, there are some specialized classes with
+APIs for common use cases, with implementations that use more
+memory than the standard collections. As always, there is no substitute for
+analyzing space usage yourself.
+
+We'll look at four of the most recent and relevant
+open source frameworks. Throughout the book we'll look at a few of their
+classes and see how they can be used to solve specific memory problems.
+Table~\ref{tab:alternative-collections} gives a summary of the capabilities that
+we cover in this book.  This is only a sampling of what's out there
+--- we encourage you to further explore these frameworks and others on your own.
+
+The Guava framework, which grew out of the Google Collections, was
+designed primarily with programmer productivity in mind, providing commonly
+needed functionality that has been missing from the standard Java collections. 
+Although space usage has not been the focus, there are some specialized
+classes, for example the immutable collections, that are more
+space-efficient compared to more general-purpose equivalents. For lifetime
+management, Guava's \class{MapMaker} class provides very general support for
+many commonly needed functions, such as maps using strong or weak
+references, and caches, all in a concurrent setting. Guava has emphasized
+strong compatibility with the standard collections APIs.
+
+The Apache Commons Collections framework has similar objectives to the Guava
+framework, focusing mainly on programmer productivity rather than on
+efficiency per se. Of the two, Commons has been around longer. However,
+as of this writing it there have not been recent releases, and its API has not been updated to take advantage of generics. From a memory usage standpoint, it provides capabilities for implementing some customization
+of map and linked list storage. It also provides lifetime management support
+through its \class{ReferenceMap} class, in a less general manner than the Guava
+equivalent.
+
+The GNU Trove framework has time and space efficiency as its primary goal.
+From a memory standpoint its highlights are: collections of primitives that
+avoid boxing and unboxing; more space-efficient map
+and set implementations; and linked lists that can be
+customized to use less memory.
+
+The fastutil framework has similar goals to Trove, aiming for time and space
+efficiency.  fastutil provides FINISH
 
 Important note: there are many kinds of open source licenses. Each has different
 restrictions on usage. Make sure to check with your organization's open
 source software policies to see if you may use a specific framework in 
 your product, service or internal system.
 
-\paragraph{Apache Commons Collections}
+\begin{table}
+\centering
+	\begin{tabular}{l p{6cm} p{4cm}}
+	\toprule
 
-\paragraph{Guava - formerly Google Collections}
+	   Functionality & Supported by & Discussed in
+	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
+	\\ a & b & c
+	\\
+	\bottomrule
+	\end{tabular}
+	\caption{Some useful resources available in open source frameworks}
+	\label{tab:alternative-collections}
+\end{table}
 
-\paragraph{GNU Trove Collections}
-
-\paragraph{Collections Classes in Other Frameworks}
+%collection classes buried in other frameworks
 
 \section{Summary}
 Using collections carefully can
