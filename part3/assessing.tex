@@ -226,14 +226,15 @@ high an asymptotic bloat factor you can afford, for various amounts of actual
 data (the four level curves). For many cases, you can simply consult these
 charts. However, it isn't difficult to construct your own:
 
-\callout{ezscalability}{Quickly Deriving Scalability Formulas}{
+\callout{ezscalability}{Deriving Scalability Formulas \textsc{[For Experts]}}{
 It is easy to construct these kinds of charts, using your favorite spreadsheet
 software. For example, the formula for the chart in \autoref{fig:maxBloatFactor}
 was dervied as follows. Let $C$ is the bytes of memory available, $A$ is the number of entities, and $D$
-is the unit cost of your actual data; then the number of entities you can afford
-is $C/A$, and total unit cost of your data, including overhead is
-$\frac{1}{1-x} D$. You can afford as a bloat factor, $x$, that is just small
-enough to let you fit at least one element of data in memory:
+is the unit cost of your actual data. Then the number of entities you can afford
+is $C/A$. We want to solve for the highest bloat factor, $x$, that is just small
+enough to let you fit at least one element of data in memory.
+The total unit cost of your data, including overhead is
+$\frac{1}{1-x} D$. Thus:
 \begin{align*}
 \frac{C}{A} \frac{1}{\frac{1}{1-x} D}  &\ge 1
  \\
@@ -341,6 +342,10 @@ nodes and edges, and relations between them, are objects that can be manipulated
 using normal object oriented practices; e.g. you can write
 \texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads as a fairly
 natural, albeit verbose, expression of what you intend.
+
+%\begin{subfloat}
+%\label{fig:graph-interfaces}
+%\begin{minipage}[b]{0.45\textwidth}
 
 \begin{figure}
 \centering
