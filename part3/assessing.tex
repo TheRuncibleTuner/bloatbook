@@ -290,19 +290,27 @@ this discussion will be focused on the two important aspects of scalability:
 unit costs and asymptotic bloat factor.
 
 \paragraph{Modeling Relationships Means Modeling Graphs}
-Representing relationships between entities boils down to the task of
-representing a graph of nodes and edges. For example, when caching data from a
-relational database in the Java heap, the entities (rows in a database table)
-and relations (columns that contain indices into tables) become the nodes and
-edges in a graph.
-%\begin{example}{Storing a Graph}
+Representing relationships between entities is no different than representing a
+graph of nodes and edges: entities are nodes, and relationships are edges. For
+example, when caching data from a relational database in the Java heap, each
+database row is an entity. Columns such as numbers, dates, string, and binary
+large objects (BLOBs) columns are all attributes of these entities. The
+cross-table index data, such as the employees under a manager, are handled
+differently, at least in a database. In a database, this information is usually
+stored in a separate table; e.g. a table that maps managers to the employees
+they supervise. In Java, this isn't a very natural way to model things. It is
+much more convenient to model relationships as references to collections of
+other entities: a manager object points to a set of employee objects. The Java
+heap itself is a graph of objects, and so this is a natural, though possibly
+inefficient, mapping of relational data into Java classes and fields.
+% \begin{example}{Storing a Graph}
+
 If a graph has a great many nodes and edges, you must design its storage
-carefully. Consider the small example illustrated in 
-\autoref{fig:exampleGraph}. There are several ways to implement the abstract
-data types, of nodes and edges, shown in that figure. Each strategy has its
-positives and negatives, depending on whether ease of maintenance or memory
-consumption are of primary importance.
-%\end{example}
+carefully. Consider the small example illustrated in \autoref{fig:exampleGraph}.
+There are several ways to implement the abstract data types, of nodes and edges,
+shown in that figure. Each strategy has its positives and negatives, depending
+on whether ease of maintenance or memory consumption are of primary importance.
+% \end{example}
 
 \begin{figure}
 \centering
