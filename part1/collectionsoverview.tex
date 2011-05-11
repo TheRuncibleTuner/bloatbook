@@ -1,7 +1,7 @@
 \chapter{Collections: An Introduction}
 \label{chapter:brief-introduction-collections}
 
-Collections are the glue that bind your data together.  Whether 
+Collections are the glue that bind your data together.  Whether
 providing random or sequential access, or enabling
 look up by value, collections are an essential part of any
 design. In Java, collections are easy to use, and, just as easily, to misuse when
@@ -13,19 +13,25 @@ of the Java heap. The way collections are employed can make
 or break a system's ability to scale up.
 
 %awareness of costs; thorough analysis of scalability; whether or not will scale
-
 This chapter and the next four chapters are about using
-collections in a space-efficient way.  Collections may serve a number of very
-different purposes in an application. They can be used to implement
+collections in a space-efficient way. 
+Collections may serve a number of very
+different purposes in your application. You may use them to implement
 relationships, to organize data into tables, to enable quick lookup via indexes, or
-to store annotations with more formally modeled data. Each use
-has its own best practices as well as traps. The current chapter
+to store annotations alongside more formally modeled data. Each use
+has its own best practices as well as traps. 
+
+The current chapter
 is a short introduction to common issues that are important to understand in
-any use of collections. The next§ four chapters are an in-depth guide to 
-the different ways collections are used. Each of these chapters takes
-you through typical patterns of usage, shows what collections cost for those
-patterns, and gives you techniques for analyzing how local implementation
-decisions will play out at a larger scale. 
+any use of collections. It concludes with a summary of resources
+that are available in the standard and some open source alternative
+frameworks. Each of the following four
+chapters then goes into depth about a specific way that collections can be
+used. Each of these chapters takes
+you through typical patterns of usage, shows what collections cost for those patterns,
+and gives you techniques for analyzing how local implementation decisions will play out at a larger scale. 
+We will also look at the internal design of a few collection
+classes.
 %Here is a roadmap of the next four chapters:
 
 %Clarifying requirements can lead to specialized solutions
@@ -84,11 +90,11 @@ cost.
 
 \end{description}
 
-Across all of these different uses, collections have some common themes.
-The next section is an overview of issues to
-be aware of in any use of collections. It is followed by a
-survey of collections resources available in the
-standard libraries and some open source alternatives.
+%Across all of these different uses, collections have some common themes.
+%The next section is an overview of issues to
+%be aware of in any use of collections. It is followed by a
+%survey of collections resources available in the
+%standard libraries and some open source alternatives.
 
 \section{The Cost of Collections}
 %\section{Designing with Collections}
@@ -99,7 +105,7 @@ of the standard collections are high overall.
 The very smallest collection, an \emph{empty}
 \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
-itself, but when deeply nested in a design, that cost could easily be multiplied
+itself, but when deeply nested in a design, that could easily be multiplied
 by a few hundred thousand instances.  
 
 
@@ -134,7 +140,7 @@ Section~\ref{sec:better-designs} we saw a similar example, achieving a large
 improvement when real-time
 maintenance of sort order wasn't needed. In the next chapters we'll see more
 examples of how a careful look at your system's
-requirements can help reduce space.
+requirements can help you reduce space.
 
 There is also much that is not under your control in the cost
 of collections.
@@ -146,7 +152,7 @@ internal layers of delegation, and extra fields for features that your program m
 collections do have a few options that can help, such as
 specifying the excess capacity for growth. On the whole, though, they do not
 provide many levers for tuning to different situations. They were mostly
-designed for speed rather than space. They also seem to have been designed for
+designed for speed rather than space.  They seem to have been designed for
 applications with a few large and growing collections. Yet many systems have large numbers
 of small collections that never grow once initialized. Given all of this, it is important
 to be aware of what collections cost, so you can make informed choices as early as possible. 
@@ -155,22 +161,22 @@ It is not enough to know the cost of a collection in the abstract, but to
 understand \emph{how it will work in your design}. This is because the same
 collection class will scale differently in
 different situations. One map class may work fine as an index over
-a large table, but can be too expensive when there are many instances of it
-nested inside a multilevel index. Collections have \emph{fixed} and
-\emph{variable} costs, as discussed in Section~\ref{sec:scalability}. 
+a large table, but will be too expensive when you have many instances of it
+nested inside a multilevel index. Collections have fixed and
+variable costs, as discussed in Section~\ref{sec:scalability}. 
 The fixed cost is the minimum space needed with or
 without any elements; the variable cost is the additional space needed to
 store each element. The way these costs add up
 depends on the context ---
 whether there are many small collections, a few large ones, or some
 combination. High fixed costs only matter when there are many
-collection \emph{instances}. High variable costs add up when
-there are a lot of \emph{elements}, regardless of whether the elements are spread across a lot of small collections
+collection instances. High variable costs add up when
+there are a lot of elements, regardless of whether the elements are spread across a lot of small collections
 or concentrated in a few large ones.
 Table~\ref{tab:collections-fixed-and-variable} shows the costs for some commonly
-used collections.  Collections with high fixed costs should only be used as large collections, so
-that the fixed cost will be amortized.
-\class{ArrayList} (and other array-based collections) have
+used collections.  Collections with high fixed costs should only be used for
+large collections, so that the fixed cost will be amortized over a large number
+of elements. \class{ArrayList} (and other array-based collections) have
 much lower variable costs than other collection classes.
 
 \begin{table}
@@ -209,10 +215,10 @@ much lower variable costs than other collection classes.
 %Certain collections are designed
 %to be used at a certain scale --- when there are a few large collections, not a
 %lot of smaller ones.  
-It is also helpful to look at collection costs 
+It is helpful to look at collection costs 
 together with the data they are storing. If a data structure uses expensive collections
 to store small amounts of data, than it
-will have a high overhead ratio, and ultimately the application's ability to
+will have a high bloat factor, and ultimately the application's ability to
 support a large amount of data will be limited. The next chapters show
 how to analyze collection costs in the context of your design.
 % to ensure that your system will scale when it is time for deployment.
@@ -220,18 +226,21 @@ This analysis will help you choose the right collection for your design, or
 restructure your data into a more efficient design if necessary.
 
 
-
 \section{Collections Resources}
 
-In the next four chapters we will look in detail at how various
-collection classes can best be used in different situations. We focus mostly
-on the standard collections. We also include a few examples from some open
-source collection frameworks. We will also take a look inside
-a few collection classes, to give you insight into how they use memory.
+%In the next four chapters we will look in detail at how various
+%collection classes can best be used in different situations. 
+
+In this book we focus
+mostly on the standard collections. We also include some information on classes
+from alternative, open source frameworks that can be helpful in keeping
+memory costs down.
+
+% just a selection throughout the book.  Encourage the reader to explore more
+% for themselves.
 
 There are some lesser-known classes in the standard Java
-Collections framework that provide
-useful functionality, and in some cases can help you save memory.
+Collections framework that can help you save memory.
 Table~\ref{tab:lesser-known-collections} is a guide to the ones
 we discuss in this book.
 
@@ -256,12 +265,11 @@ example
 	\\
 	\class{EnumSet} & Concise representation of a set of flags & Section~\ref{}
 	\\
-	\class{WeakHashMap} & Supports one common scenario for managing lifetime with
-	weak references. Support for other cases is available from some alternative
-	collections frameworks. &
+	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
+	using weak references. &
 	Section~\ref{}
 	\\
-	Java 1 collections & Some of the classes in the earlier, Java
+	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
 for certain cases where synchronized collections are needed & Section~\ref{}
 	\\
@@ -272,49 +280,69 @@ for certain cases where synchronized collections are needed & Section~\ref{}
 \end{table}
 
 
-In addition to the standard Java collections classes, there are a number of
-open source collections frameworks available. Many of these frameworks are
-designed to provide additional functions and can make it easier to
-program. FIXME However, they don't all address space or time
-performance. In fact, there are some specialized classes with
-APIs for common use cases, with implementations that use more
-memory than the standard collections. As always, there is no substitute for
-analyzing space usage yourself.
+In addition to the standard Java classes, there are a number of
+open source collections frameworks available. Some are designed
+specifically to improve space and time efficiency, while others are aimed at
+making it easier to program, adding commonly needed features not
+found in the standard libraries. 
+The alternative collections frameworks can be helpful in two ways when it comes to saving memory. First,
+some frameworks provide space-optimized collection implementations. Some are
+general-purpose collection classes, while  
+others are specialized for common use cases. Second, some of these frameworks
+provide classes that make it easier to manage object lifetime. Building your
+own object lifetime management mechanisms, for example a concurrent cache, can
+be error-prone (see, for example, Section~\ref{}). Well-tested implementations
+will save you a lot of effort, and can lead to better overall use of space.
+Keep in mind that not all alternative collection classes have
+been optimized for space.
+Some of them actually take up more space than a similar design using the
+standard collections. As always, there is no substitute for analyzing space costs empirically.
+%analyzing space usage yourself
 
-We'll look at four of the most recent and relevant
-open source frameworks. Throughout the book we'll look at a few of their
-classes and see how they can be used to solve specific memory problems.
+
+In this book we'll look at four of the most recent and relevant
+open source collections frameworks. In various chapters we'll look at how you
+can use some of these classes to solve specific problems.
 Table~\ref{tab:alternative-collections} gives a summary of the capabilities that
-we cover in this book.  This is only a sampling of what's out there
---- we encourage you to further explore these frameworks and others on your own.
+we discuss (sometimes only briefly). This is only a sampling of what's out
+there. We encourage you to further explore these and other frameworks on your own.
+%on your own
 
-The Guava framework, which grew out of the Google Collections, was
-designed primarily with programmer productivity in mind, providing commonly
-needed functionality that has been missing from the standard Java collections. 
-Although space usage has not been the focus, there are some specialized
-classes, for example the immutable collections, that are more
-space-efficient compared to more general-purpose equivalents. For lifetime
-management, Guava's \class{MapMaker} class provides very general support for
-many commonly needed functions, such as maps using strong or weak
-references, and caches, all in a concurrent setting. Guava has emphasized
-strong compatibility with the standard collections APIs.
+The Guava framework, which grew out of the Google Collections, is
+designed primarily for programmer productivity, providing many useful
+features missing from the standard Java collections. 
+Although space usage has not been the main focus, it does include some
+specialized classes, for example the immutable collections, that are more
+space-efficient than their general-purpose equivalents. Guava's \class{MapMaker}
+class provides very general support for 
+building caches and other lifetime management mechansism, with optional support for concurrency. 
+While most open source frameworks provide some level of compatibility with the
+standard collections APIs, Guava has made compatibility a priority.
 
 The Apache Commons Collections framework has similar objectives to the Guava
-framework, focusing mainly on programmer productivity rather than on
-efficiency per se. Of the two, Commons has been around longer. However,
-as of this writing it there have not been recent releases, and its API has not been updated to take advantage of generics. From a memory usage standpoint, it provides capabilities for implementing some customization
-of map and linked list storage. It also provides lifetime management support
-through its \class{ReferenceMap} class, in a less general manner than the Guava
-equivalent.
+framework, focusing mostly on programmer productivity rather than on
+efficiency per se. 
+%Of the two, Commons has been around longer. However, as of this writing it
+% there have not been recent releases, 
+It does however provide some capabilities for saving memory, such as
+maps and linked lists with customizable storage, and specialized 
+maps that contain just a few elements. It also provides lifetime management
+support through its \class{ReferenceMap} class, in a less general
+manner than the Guava equivalent. As of this writing,
+the Commons API has not been updated to take advantage of generics.
 
-The GNU Trove framework has time and space efficiency as its primary goal.
+The GNU Trove framework has time and space efficiency as its main goal.
 From a memory standpoint its highlights are: collections of primitives that
-avoid boxing and unboxing; more space-efficient map
-and set implementations; and linked lists that can be
-customized to use less memory.
+avoid boxing and unboxing;  map
+and set implementations that are lighter weight than the standard ones; and
+linked lists that can be customized to use less memory.
 
-The fastutil framework has similar goals to Trove, aiming for time and space
-efficiency.  fastutil provides FINISH
+The fastutil framework has similar goals to Trove, primarily time and space
+efficiency. Like Trove, fastutil provides primitive collections, along with
+lighter-weight implementations of maps and sets. Some other memory-related
+features include array-based implementations for small
+maps and sets, and support for very large arrays and collections when working
+in a 64-bit address space.
 
 Important note: there are many kinds of open source licenses. Each has different
 restrictions on usage. Make sure to check with your organization's open
@@ -323,16 +351,35 @@ your product, service or internal system.
 
 \begin{table}
 \centering
-	\begin{tabular}{l p{6cm} p{4cm}}
+	\begin{tabular}{p{6cm} p{3cm} p{4cm}}
 	\toprule
 
-	   Functionality & Supported by & Discussed in
+	   Feature & Supported by & Discussed in
 	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
-	\\ a & b & c
+	Primitive collections & fastutil, Trove & Section~\ref{}
+	\\
+	\\
+	Lighter-weight maps and sets of objects & fastutil, Trove & Section~\ref{}
+	\\
+	\\
+	Immutable collections & fastutil, Guava & Section~\ref{}
+	\\
+	\\
+	Small collections & Commons (maps only), fastutil & Section~\ref{}
+	\\
+	\\
+	Customized linked list storage & Trove & Section~\ref{}
+	\\
+	\\
+	Maps with weak/soft references & Commons, Guava & Chapters~\ref{} and ~\ref{}
+	\\
+	\\
+	Caches & Guava & Section~\ref{}
 	\\
 	\bottomrule
 	\end{tabular}
-	\caption{Some useful resources available in open source frameworks}
+	\caption{A sampling of memory-related resources available in open source
+	frameworks}
 	\label{tab:alternative-collections}
 \end{table}
 
@@ -343,15 +390,15 @@ Using collections carefully can
 make the difference between a design that scales well and one that
 doesn't. Some items to be aware of when working with collections:
 \begin{itemize}
-  \item The standard Java collections, along with most alternative
-  collections, were designed more for speed than for space. They are
-  not optimized for some common cases, such as designs with many small
+  \item The standard Java collections were designed more for speed than for
+  space. They are not optimized for some common cases, such as designs with many small
   collections. In general the Java collections use a lot of memory.
  %not designed for the ways they are actually used.
   \item Collections vary widely in their memory usage. Awareness of
   costs is an essential first step in choosing well. Sometimes there is a less
-  expensive choice of collection class available. Initialization options
-  can also make a difference.
+  expensive choice of collection class available, either from the standard
+  library or from open source alternatives. Initialization options can also make
+  a difference.
   \item The same collection class will scale differently depending on its
   context. Ensuring scalability means
   analyzing how a collection's fixed and variable costs
