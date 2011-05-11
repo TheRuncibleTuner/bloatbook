@@ -152,12 +152,14 @@ of the variable costs of the collection plus the unit cost of what's inside.
 \autoref{fig:ec-scalability-example} is annotated with the four numbers that
 govern the scalability of this structure: the fixed and variable costs of the
 collection you use, and the unit cost and bloat factor of the data you're
-storing inside of it. Let $V$ be the collection's variable costs, $U$ be the
-unit cost of the contained structures, and $B$ be the bloat factor of the
-contained structures. Then the asymptotic bloat factor of a collection of data
+storing inside of it. The asymptotic bloat factor of a collection of data
 structures is given by:
-
-$$\frac{V + B U}{V + U}$$
+\begin{align*}
+V &= \textrm{collection variable cost} \\
+U &= \textrm{unit cost of contained structures} \\
+B &= \textrm{bloat factor of contained structures} \\
+\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + B U}{V + U}
+\end{align*}
 
 For example, the variable cost of a \class{HashMap} is 48 bytes. If you're
 storing structures with a unit cost of 88 bytes each with a bloat factor of
@@ -180,6 +182,17 @@ afford, is at least as large as you need. For example, if you have one gigabyte
 of memory available, and each user comes with a unit cost of one megabyte, then
 you can support at most 1000 simultaneous users. Is this enough? 
 
+\begin{figure}
+\callout{when-to-tune}{Rule of Thumb: When Should I Bother Tuning?}{
+A good rule of thumb to following, when deciding whether to tune or to buy more
+hardware in order to increase scalability, is to look at the asymptotic bloat
+factor of your dominant structures. For each data structure that are expected
+to grow the largest, tune it only when its asymptotic bloat factor is above
+50\%. You can estimate which structures are the dominant ones by looking at
+the unit cost of each, and multiplying these figures out by how many elements
+you'd like to have in each.}
+\end{figure}
+
 If not, then you have two options: buy more hardware, or tune. If possible, you
 could buy more memory, or more machines if your current machines cannot accept
 any more physical memory. You must also pay attention to address space limits,
@@ -190,24 +203,13 @@ option is to tune your data models.
 
 The asymptotic bloat factor of your dominant data structures can help you to
 understand whether you should bother tuning. If a data structure has a low bloat
-factor, then there isn't much bloat to optimize away. 
-
-\callout{when-to-tune}{Rule of Thumb: When Should I Bother Tuning?}{
-A good rule of thumb to following, when deciding whether to tune or to buy more
-hardware in order to increase scalability, is to look at the asymptotic bloat
-factor of your dominant structures. For each data structure that are expected
-to grow the largest, tune it only when its asymptotic bloat factor is above
-50\%. You can estimate which structures are the dominant ones by looking at
-the unit cost of each, and multiplying these figures out by how many elements
-you'd like to have in each.}
-
-For example, in a web application server, session state will scale up roughly
-depending on the number of concurrent users. If the unit cost per user is one
-megabyte, and you'd like to support 1000 concurrent users, then this is clearly
-a dominant structure. If you can't afford one gigabyte for session state, then
-and if the bloat factor of your session state data models is greater than 50\%,
-then you should consider tuning these models.
-
+factor, then there isn't much bloat to optimize away. For example, in a web
+application server, session state will scale up roughly depending on the number
+of concurrent users. If the unit cost per user is one megabyte, and you'd like
+to support 1000 concurrent users, then this is clearly a dominant structure. If
+you can't afford one gigabyte for session state, then and if the bloat factor of
+your session state data models is greater than 50\%, then you should consider
+tuning these models.
 
 \section{Quickly Estimating the Scalabilty of an Application}
 
@@ -272,14 +274,22 @@ tune your data model for certain use cases, is to keep a focus on the two
 important aspects of scalability: unit costs and asymptotic bloat factor. These
 factors will determine the scalability success of your design.
 
+\begin{wrapfigure}{r}{0.34\textwidth}
+    %\vspace{-5mm}
+    \centering
+	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
+	\caption{Example graph.}
+    \label{fig:example-storing-relations-graph}
+\end{wrapfigure}
 \paragraph{Modeling Relationships Means Modeling Graphs}
 Representing relationships between entities is no different than representing a
-graph of nodes and edges: entities are nodes, and relationships are edges. For
-example, when caching data from a relational database in the Java heap, each
-database row is an entity. Columns containing numbers, dates, string,
-and binary large objects (BLOBs) data are all attributes of these entities. So
-far, the way you'd store this entity information in Java is somewhat similar to
-the way you'd store things in a relational database. 
+graph of nodes and edges: entities are nodes, and relationships are edges. A
+small example is illustrated in \autoref{fig:example-storing-relations-graph}.
+For example, when caching data from a relational database in the Java heap, each
+database row is an entity. Columns containing numbers, dates, string, and binary
+large objects (BLOBs) data are all attributes of these entities. So far, the way
+you'd store this entity information in Java is somewhat similar to the way you'd
+store things in a relational database.
 
 \begin{figure}
 \callout{ezscalability}{Deriving Scalability Formulas \hfill [For Experts]}{
@@ -313,28 +323,18 @@ $$\frac{M}{N} \frac{1}{\frac{1}{1-x} D}  \ge 1
 }
 \label{fig:deriving-scalability-formulas}
 \end{figure}
-\begin{wrapfigure}{r}{0.34\textwidth}
-    %\vspace{-5mm}
-    \centering
-	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
-	\caption{Example graph.}
-    \label{fig:example-storing-relations-graph}
-\end{wrapfigure}
-Storing relationships is where things start to diverge. 
-In
-Java, it is natural to store the relationship information, such as the employees
-under a manager, as references to collections of
-other entities: a manager object points to a set of employee objects.
-In a database, this information is usually
-stored in a separate table; e.g. a table that maps managers to the employees
-they supervise. In Java, this isn't a very natural way to model things.
-%The Java heap itself is a graph of objects, and so storing a graph of entities
-%and relations as a graph of objects is a natural, though possibly inefficient,
-%mapping of relational data into Java classes and fields.
-%If a graph has a great
-%many nodes and edges, you must design its storage carefully.
-\\ \indent % necessary to get the wrapfig to warp around the next paragraph,too
-Consider the small example illustrated in \autoref{fig:example-storing-relations-graph}.
+
+Storing relationships is where things start to diverge. In Java, it is natural
+to store the relationship information, such as the employees under a manager, as
+references to collections of other entities: a manager object points to a set of
+employee objects. In a database, this information is usually stored in a
+separate table; e.g. a table that maps managers to the employees they supervise.
+In Java, this isn't a very natural way to model things.
+% The Java heap itself is a graph of objects, and so storing a graph of entities
+% and relations as a graph of objects is a natural, though possibly inefficient,
+% mapping of relational data into Java classes and fields. If a graph has a
+% great many nodes and edges, you must design its storage carefully. 
+
 \autoref{fig:graph-interfaces} shows the interfaces for a
 \class{Graph}, \class{Node}, and \class{Edge} for this
 example. There are several ways to implement the abstract data types, of nodes
@@ -343,9 +343,7 @@ maintenance or memory consumption is of primary importance.
 
 \paragraph{The Straightforward Implementation}
 An easy implementation strategy is a straightforward mapping of interfaces to
-concrete classes
-
-. \autoref{fig:node-obvious-impl} shows such an implementation
+concrete classes. \autoref{fig:node-obvious-impl} shows such an implementation
 for the \class{Node} data type. Following this strategy, the \class{Node} class
 has three fields, to store its \class{Color} and the relations to children and
 parents; these relations are implemented with a standard collection, likely a
