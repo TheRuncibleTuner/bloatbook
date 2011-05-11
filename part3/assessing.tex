@@ -334,26 +334,47 @@ In Java, this isn't a very natural way to model things.
 % mapping of relational data into Java classes and fields. If a graph has a
 % great many nodes and edges, you must design its storage carefully. 
 
-\autoref{fig:graph-interfaces} shows the interfaces for a
-\class{Graph}, \class{Node}, and \class{Edge} for this
-example. There are several ways to implement the abstract data types, of nodes
-and edges. Each strategy has its positives and negatives, depending on which of ease of
-maintenance or memory consumption is of primary importance.
+The implementation strategy you choose depends heavily upon the use cases that
+you need to handle. Do your edges have properties, such as an edge weight? Do
+you need random access to the edges? Do you need edges at all, or only nodes
+along with edge fanouts? How will you be traversing the edges? The Java
+interfaces help to shape your implementation to these use cases.
+
+Every interface fixes some things, while sitll allowing some degree of freedom
+in the implementation. \autoref{fig:graph-interfaces} shows two interfaces that
+this example will work through. In one case, there are no edge properties, and
+in the second case, each edge as an associated weight. If your edges don't have
+any properties associated with them, then there is no need for an \class{IEdge}
+interface. 
+
+%There are several ways to implement the abstract data types, of nodes and
+%edges. Each strategy has its positives and negatives, depending on which of
+%ease of maintenance or memory consumption is of primary importance.
 
 \paragraph{The Straightforward Implementation}
-It is easy in Java to start with a straightforward mapping of interfaces to
+A reasonable place to start is with a straightforward mapping of interfaces to
 concrete classes. \autoref{fig:node-obvious-impl} shows such an implementation
 for the \class{Node} data type. Following this strategy, the \class{Node} class
 has three fields, to store its \class{Color} and the relations to children and
-parents; these relations are implemented with a standard collection, likely a
-\class{HashSet}. The \class{Edge} class has two fields, to store pointers to the
-source and target nodes. This implementation is easy to implement. It is also
-easy to maintain: changes to the interfaces can be directly mapped to changes to
-the implementation, because the two are parallel versions of each other. The
-nodes and edges, and relations between them, are objects that can be manipulated
-using normal object oriented practices; e.g. you can write
-\texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads as a fairly
-natural, albeit verbose, expression of what you intend.
+parents; these two relations are implemented with a standard \class{HashSet}
+collection. The \class{Edge} class has two fields, to store pointers to the
+source and target nodes.
+
+This is a pretty natural expression of a graph in Java, and it's easy to
+implement and maintain. There are no corner cases to handle, in terms of adding
+or removing nodes or edges. It's easy for new project members to map between
+interface and implementation, because the two are parallel versions of each
+other. The nodes and edges, and relations between them, are objects that can be
+manipulated using normal object oriented practices; e.g. you can write
+\texttt{node.getChildren().get(5).getTo()\-.getColor()} and, later, quickly
+understand what is going on. Contrast this with interacting with a
+non-object-oriented data storage, such as
+memcached\index{memcached}\cite{memcached} or a relational database. To access
+an attribute in this non-OO data is tedious.\footnote{There are frameworks
+that hide the details of accessing this information, such as
+Hibernate\cite{hibernate}. Under the covers, though, the same mismatch exists,
+and now you are faced with the added complexities of interacting with these
+APIs.}
 
 
 \begin{figure}
@@ -361,10 +382,10 @@ natural, albeit verbose, expression of what you intend.
 \begin{subfloat}
 \label{fig:graph-interfaces}
 \begin{minipage}[b]{0.45\textwidth}
+%interface IGraph {
+	%Set<Node> getNodes();
+%}
 \begin{framedlisting}
-interface IGraph {
-	Set<Node> getNodes();
-}
 interface INode {
 	Color getColor();
 	List<Node> getChildren();
@@ -381,11 +402,11 @@ enum Color {
 \begin{subfloat}
 \label{fig:graph-interfaces}
 \begin{minipage}[b]{0.45\textwidth}
+%interface IGraph {
+   %Set<Node> getNodes();
+   %Set<Edge> getEdges();
+%}
 \begin{framedlisting}
-interface IGraph {
-   Set<Node> getNodes();
-   Set<Edge> getEdges();
-}
 interface INode {
    Color getColor();
    List<Edge> getChildren();
@@ -400,20 +421,20 @@ interface IEdge {
 \end{minipage}
 \caption{If you do!}
 \end{subfloat}
-\caption{Abstract data types for nodes and edges.}
+\caption{Java interfaces that define the abstract data types for nodes and
+edges.}
 \label{fig:graph-interfaces}
 \end{figure}
 
 \begin{figure}
 \centering
 \begin{subfloat}
-\begin{minipage}[b]{0.3\textwidth}
+\begin{minipage}[b]{0.315\textwidth}
 \begin{framedlisting}
-class Node {
+class Node<Edge> {
    Color color;
    Set<Edge> parent;
-   Set<Edge> child1;
-   Set<Edge> child2;
+   Set<Edge> children;
 }
 \end{framedlisting}
 \end{minipage}
@@ -424,7 +445,7 @@ class Node {
 \label{fig:node-obvious-constructor}
 \begin{minipage}[b]{0.5\textwidth}
 \begin{framedlisting}
-public Node(Color color) {
+public Node<Edge>(Color color) {
    color = color;
    parents = new HashSet<Edge>();
    children = new HashSet<Edge>();
@@ -433,7 +454,9 @@ public Node(Color color) {
 \end{minipage}
 \caption{Node constructor that uses the default \class{HashSet} constructor.}
 \end{subfloat}
-\caption{A straightforward implementation of the Node interface.}
+\caption{A straightforward implementation of the \class{INode} interface,
+one that is parameterized by the \class{Edge} type used for parents and
+children.}
 \label{fig:node-obvious-impl}
 \end{figure}
 
