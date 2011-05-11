@@ -242,14 +242,13 @@ charts. However, it isn't difficult to construct your own, as described in
 % C is megabytes of memory available A is number of entitles D is unit cost of
 % actual data x is the unknown bloat factor C*1024*1024/A / (1/(1-x) * D)) >= 1
 % x <= 1-A*D/(C*1024*1024)
-    \subfigure[The maximum bloat factor you can afford. This chart is based upon
-    having 1 gigabyte of Java heap. Note the
-non-linear scale of the horizontal axis.]{
+    \subfigure[The area under each curve shows the bloat factor you can afford,
+    for various amounts of actual data that you need to store.]{
 	   \label{fig:maxBloatFactor}
 \includegraphics[width=\textwidth]{part3/Figures/assessing/maxBloatFactor} }
    \caption{You can consult these charts to get a quick sense of where your
    design fits in the space of scalability. These charts are based upon having 1
-   gigabyte of Java heap. Note the non-linear scale of the horizontal axis.}
+   gigabyte of Java heap. Note the logarithmic scale of the horizontal axis.}
 \end{figure}
 
 \section{Example: Designing a Graph Model for Scalability}
@@ -296,9 +295,9 @@ store things in a relational database.
 It isn't hard to make your own scalability charts, with some simple algebra
 and your favorite spreadsheet software. Before you can plot anything, you
 will need to construct a formula that governs how things scale. Consider the chart in
-\autoref{fig:maxBloatFactor}
+\autoref{fig:maxBloatFactor},
 which 
-plots the highest bloat factor that will let you fit \emph{at
+plots the bloat factor that will let you fit \emph{at
 least} one element of data in memory.
 The formula behind this chart depends upon a
 couple of straightforward quantities: let $M$ be the bytes of memory available,
@@ -342,7 +341,7 @@ and edges. Each strategy has its positives and negatives, depending on which of 
 maintenance or memory consumption is of primary importance.
 
 \paragraph{The Straightforward Implementation}
-An easy implementation strategy is a straightforward mapping of interfaces to
+It is easy in Java to start with a straightforward mapping of interfaces to
 concrete classes. \autoref{fig:node-obvious-impl} shows such an implementation
 for the \class{Node} data type. Following this strategy, the \class{Node} class
 has three fields, to store its \class{Color} and the relations to children and
@@ -356,30 +355,51 @@ using normal object oriented practices; e.g. you can write
 \texttt{node.getChildren().get(5).getTo()\-.getColor()}, which reads as a fairly
 natural, albeit verbose, expression of what you intend.
 
-%\begin{subfloat}
-%\label{fig:graph-interfaces}
-%\begin{minipage}[b]{0.45\textwidth}
 
 \begin{figure}
 \centering
-\begin{figurelisting}
-interface Graph {
+\begin{subfloat}
+\label{fig:graph-interfaces}
+\begin{minipage}[b]{0.45\textwidth}
+\begin{framedlisting}
+interface IGraph {
 	Set<Node> getNodes();
-	Set<Edge> getEdges();
 }
-interface Node {
+interface INode {
 	Color getColor();
-	Set<Edge> getChildren();
-	Set<Edge> getParents();
-}
-interface Edge {
-	Node getFrom();
-	Node getTo();
+	List<Node> getChildren();
+	List<Node> getParents();
 }
 enum Color {
 	White, LightGray, DarkGray
 }
-\end{figurelisting}
+\end{framedlisting}
+\end{minipage}
+\caption{If you don't need edge properties.}
+\end{subfloat}
+%\qquad
+\begin{subfloat}
+\label{fig:graph-interfaces}
+\begin{minipage}[b]{0.45\textwidth}
+\begin{framedlisting}
+interface IGraph {
+   Set<Node> getNodes();
+   Set<Edge> getEdges();
+}
+interface INode {
+   Color getColor();
+   List<Edge> getChildren();
+   List<Edge> getParents();
+}
+interface IEdge {
+   Node getFrom();
+   Node getTo();
+   int getWeight();
+}
+\end{framedlisting}
+\end{minipage}
+\caption{If you do!}
+\end{subfloat}
 \caption{Abstract data types for nodes and edges.}
 \label{fig:graph-interfaces}
 \end{figure}
@@ -388,36 +408,35 @@ enum Color {
 \centering
 \begin{subfloat}
 \begin{minipage}[b]{0.3\textwidth}
-\begin{figurelisting}
+\begin{framedlisting}
 class Node {
    Color color;
    Set<Edge> parent;
    Set<Edge> child1;
    Set<Edge> child2;
 }
-\end{figurelisting}
+\end{framedlisting}
 \end{minipage}
 \caption{Concrete classes}
 \end{subfloat}
 \quad
 \begin{subfloat}
+\label{fig:node-obvious-constructor}
 \begin{minipage}[b]{0.5\textwidth}
-\begin{figurelisting}
+\begin{framedlisting}
 public Node(Color color) {
    color = color;
    parents = new HashSet<Edge>();
    children = new HashSet<Edge>();
 }
-\end{figurelisting}
+\end{framedlisting}
 \end{minipage}
 \caption{Node constructor that uses the default \class{HashSet} constructor.}
-\label{fig:node-obvious-constructor}
 \end{subfloat}
 \caption{A straightforward implementation of the Node interface.}
 \label{fig:node-obvious-impl}
 \end{figure}
 
-\paragraph{A Straightforward Implementation}
 Without any thought for memory concerns, the constructor for a node would be as
 shown in \autoref{fig:node-obvious-constructor}. In this implementation, the
 memory cost per node is three pointers plus two collections of default size. As
