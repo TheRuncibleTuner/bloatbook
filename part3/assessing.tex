@@ -156,16 +156,17 @@ storing inside of it. The asymptotic bloat factor of a collection of data
 structures is given by:
 \begin{align*}
 V &= \textrm{collection variable cost} \\
-U &= \textrm{unit cost of contained structures} \\
+U &= \textrm{unit cost of actual data} \\
 B &= \textrm{bloat factor of contained structures} \\
-\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + B U}{V + U}
+\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + \frac{B}{1-B} U}{V +
+\frac{1}{1-B} U}
 \end{align*}
 
 For example, the variable cost of a \class{HashMap} is 48 bytes. If you're
-storing structures with a unit cost of 88 bytes each with a bloat factor of
-48\%, then the asymptotic bloat factor is $\frac{48 + 0.48 * 88}{48 + 88} =
-66\%$. No matter how many elements you store in this data structure, you will
-achieve no better than 34\% actual data.
+storing structures with a unit cost of 40 bytes each with a bloat
+factor of 50\%, then the asymptotic bloat factor is $\frac{48 + 0.5/(1-.5) *
+40}{48 + 1/(1-.5)*40} = 69\%$. No matter how many elements you store in this
+data structure, you will achieve no better than 31\% actual data.
 
 %A similar accounting is possible to help you estimate how a collection of
 %objects will grow in size as elements are added. Every additional element added
@@ -347,36 +348,6 @@ in the second case, each edge as an associated weight. If your edges don't have
 any properties associated with them, then there is no need for an \class{IEdge}
 interface. 
 
-%There are several ways to implement the abstract data types, of nodes and
-%edges. Each strategy has its positives and negatives, depending on which of
-%ease of maintenance or memory consumption is of primary importance.
-
-\paragraph{The Straightforward Implementation}
-A reasonable place to start is with a straightforward mapping of interfaces to
-concrete classes. \autoref{fig:node-obvious-impl} shows such an implementation
-for the \class{Node} data type. Following this strategy, the \class{Node} class
-has three fields, to store its \class{Color} and the relations to children and
-parents; these two relations are implemented with a standard \class{HashSet}
-collection. The \class{Edge} class has two fields, to store pointers to the
-source and target nodes.
-
-This is a pretty natural expression of a graph in Java, and it's easy to
-implement and maintain. There are no corner cases to handle, in terms of adding
-or removing nodes or edges. It's easy for new project members to map between
-interface and implementation, because the two are parallel versions of each
-other. The nodes and edges, and relations between them, are objects that can be
-manipulated using normal object oriented practices; e.g. you can write
-\texttt{node.getChildren().get(5).getTo()\-.getColor()} and, later, quickly
-understand what is going on. Contrast this with interacting with a
-non-object-oriented data storage, such as
-memcached\index{memcached}\cite{memcached} or a relational database. To access
-an attribute in this non-OO data is tedious.\footnote{There are frameworks
-that hide the details of accessing this information, such as
-Hibernate\cite{hibernate}. Under the covers, though, the same mismatch exists,
-and now you are faced with the added complexities of interacting with these
-APIs.}
-
-
 \begin{figure}
 \centering
 \begin{subfloat}
@@ -388,8 +359,8 @@ APIs.}
 \begin{framedlisting}
 interface INode {
 	Color getColor();
-	List<Node> getChildren();
-	List<Node> getParents();
+	List<INode> getChildren();
+	List<INode> getParents();
 }
 enum Color {
 	White, LightGray, DarkGray
@@ -409,12 +380,12 @@ enum Color {
 \begin{framedlisting}
 interface INode {
    Color getColor();
-   List<Edge> getChildren();
-   List<Edge> getParents();
+   Set<IEdge> getChildren();
+   Set<IEdge> getParents();
 }
 interface IEdge {
-   Node getFrom();
-   Node getTo();
+   INode getFrom();
+   INode getTo();
    int getWeight();
 }
 \end{framedlisting}
@@ -426,57 +397,119 @@ edges.}
 \label{fig:graph-interfaces}
 \end{figure}
 
+%There are several ways to implement the abstract data types, of nodes and
+%edges. Each strategy has its positives and negatives, depending on which of
+%ease of maintenance or memory consumption is of primary importance.
+
+\paragraph{The Straightforward Implementation}
+A reasonable place to start is with a straightforward mapping of interfaces to
+concrete classes.
+\autoref{fig:node-obvious-impl} shows such an implementation for the
+\class{Node} data type.
+Following this strategy, the \class{Node} class has three fields, one to store
+its \class{Color}, and two for the relations to children and parents. These two
+relations are implemented with a standard \class{HashSet} collection. In the
+case where the design requires edge properties, there is an \class{Edge} class
+with one field that stores the weight, and two reference fields that store the
+source and target nodes.
+
+This is a pretty natural expression of a graph in Java, and it's easy to
+implement and maintain. There are no corner cases to handle, in terms of adding
+or removing nodes or edges. It's easy for new project members to map between
+interface and implementation, because the two are parallel versions of each
+other. The nodes and edges, and relations between them, are objects that can be
+manipulated using normal object oriented practices; e.g. you can write
+\texttt{node.getChildren().get(5).getTo()\-.getColor()} and, later, quickly
+understand what is going on. Contrast this with interacting with a
+non-object-oriented data storage, such as
+memcached\index{memcached}\cite{memcached} or a relational database. To access
+an attribute in this non-OO data would be more work, and would not read as
+cleanly.\footnote{There are frameworks that hide the details of accessing this
+information, such as Hibernate\cite{hibernate}. Under the covers, though, the
+same mismatch exists, and now you are faced with the added complexities of
+interacting with these APIs.}
+
 \begin{figure}
 \centering
 \begin{subfloat}
-\begin{minipage}[b]{0.315\textwidth}
+\begin{minipage}[b]{0.59\textwidth}
 \begin{framedlisting}
-class Node<Edge> {
+class Node<E> {
    Color color;
-   Set<Edge> parent;
-   Set<Edge> children;
+   Set<E> parent = new HashSet<E>();
+   Set<E> children = new HashSet<E>();
 }
 \end{framedlisting}
 \end{minipage}
-\caption{Concrete classes}
+\caption{Node implementation.}
 \end{subfloat}
-\quad
+%\quad
 \begin{subfloat}
-\label{fig:node-obvious-constructor}
-\begin{minipage}[b]{0.5\textwidth}
+\begin{minipage}[b]{0.33\textwidth}
 \begin{framedlisting}
-public Node<Edge>(Color color) {
-   color = color;
-   parents = new HashSet<Edge>();
-   children = new HashSet<Edge>();
+class Edge {
+   int weight;
+   Node<Edge> from, to;
 }
 \end{framedlisting}
 \end{minipage}
-\caption{Node constructor that uses the default \class{HashSet} constructor.}
+\caption{Edge implementation.}
 \end{subfloat}
 \caption{A straightforward implementation of the \class{INode} interface,
-one that is parameterized by the \class{Edge} type used for parents and
-children.}
+one that is parameterized the type used for parents and
+children; e.g. a node without edge properties would be a subclass of
+\class{Node<Node>}, because the parents and children point directly to other
+nodes.}
 \label{fig:node-obvious-impl}
 \end{figure}
 
-Without any thought for memory concerns, the constructor for a node would be as
-shown in \autoref{fig:node-obvious-constructor}. In this implementation, the
-memory cost per node is three pointers plus two collections of default size. As
-\autoref{tab:collection-costs} shows, the the default constructor of a
-\class{HashSet} allocates an array to hold 16 elements; the per-collection cost
-is 136 bytes and the per-entry cost is 28 bytes. If, on average, a node has one
-parent and 2 children, then each node will consume one object header plus $3*4
-+2*136 + 2*3*28$, or $464$ bytes; using \class{ArrayList} instead of a hash map
-would cost $3*4+ 2*(80 + 10*4)$, or $264$ bytes. Both choices result in 24\% of
-memory wasted on null pointers.
-% hashset: 112=14 entries at 4 bytes each, times two for parents and children 
+In this implementation, the unit cost per node is three pointers plus two
+collections of default size. If a typical node has one parent and two children,
+then the unit cost of a node will be $404$ bytes: one object header, plus three
+pointer fields, plus two 136-byte collection fixed costs, plus three 28-byte
+collection variable costs (\autoref{tab:collection-costs} shows the fixed and
+variable costs of standard collections). At this unit cost, you can fit at most
+2.6 million nodes into one gigabyte of Java heap. Is it worth tuning? That
+depends on the asymptotic bloat factor, as things scale up. 
+
+Every node stores 16
+bytes of actual data (its color, parent, and two children), compared to its 380
+byte total unit cost. Let's assume that the nodes are stored in a simple array.
+This means the asymptotic bloat factor of every node:
+\begin{align*}
+V &= 4 ~~~~~~~~~~~~~~~~~\textrm{(variable cost of node array)}\\
+U &= 16 ~~~~~~~~~~~~~~~\textrm{(actual data per node)}\\
+B &= 1-16/380 ~~~~\textrm{(bloat factor of node)}\\
+\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + \frac{B}{1-B} U}{V +
+\frac{1}{1-B} U} = 96\%
+\end{align*}
+That's a very high degree of bloat, and seems to merit some tuning.
+
+
+Using \class{ArrayList} instead of a hash map would lower the total unit cost
+per node from 404 bytes down to $B$ factor to 224 bytes, 
+%header + two 40-byte ArrayList plus 10*4*2 (default array size is 10)
+resulting in an asymptotic bloat factor of 93\%. This is still high, but this
+small change has increased the number of nodes you can fit in a gigabyte from
+2.8 million up to 4.8 million. 
+
+That's great, but, 93\% bloat factor is still bad. So there's still room for big
+improvements. If you know that the number of parents and children will be
+typically no more than two, then you can use a better initial size for the edge
+lists. If you update the constructor call for the \class{ArrayList}s to request
+an initial capacity of two elements, then the total unit cost of the nodes drops
+to 160 bytes. This only drops the asymptotic bloat factor to 90\%, but increases
+your capacity for nodes to 6.7 million.
+
+%cost $3*4+ 2*(80 + 10*4)$, or $264$ bytes. Both choices result in
+%24\% of memory wasted on null pointers.
+% hashset: 112=14 entries at 4 bytes each, times two for parents and children
 % arraylist: 68=8 entries at 4 bytes each, times two for parents and children
-The 136 bytes (29\%) spent on the parent collection is unnecessary, for those
-nodes that have exactly one parent. Even an optimally structured set which
-includes just one pointer for a set with one entry would still impose two pointer
-costs to reference a single parent node: one pointer to reference the set, one
-for the set to reference the parent node.
+%The 136 bytes (29\%) spent on the parent collection is unnecessary, for those
+%nodes that have exactly one parent. Even an optimally structured set which
+%includes just one pointer for a set with one entry would still impose two
+%pointer costs to reference a single parent node: one pointer to reference the
+%set, one for the set to reference the parent node.
 
 In addition to the cost of the nodes are the cost of the edges objects. By
 objectifying each edge, this implementation pays a cost of one object header
