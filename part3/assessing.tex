@@ -148,25 +148,24 @@ with four entries, then the total cost is the fixed cost plus four times the sum
 of the variable costs of the collection plus the unit cost of what's inside.
 
 
-\paragraph{Determining the Asymptote}
+\paragraph{Determining the Maximum Room For Improvement}
 \autoref{fig:ec-scalability-example} is annotated with the four numbers that
 govern the scalability of this structure: the fixed and variable costs of the
 collection you use, and the unit cost and bloat factor of the data you're
-storing inside of it. The asymptotic bloat factor of a collection of data
-structures is given by:
+storing inside of it. The maximum room for improvement of a
+collection of data structures is given by:
 \begin{align*}
 V &= \textrm{collection variable cost} \\
 U &= \textrm{unit cost of actual data} \\
 B &= \textrm{bloat factor of contained structures} \\
-\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + \frac{B}{1-B} U}{V +
-\frac{1}{1-B} U}
+\textbf{\textrm{maximum room for improvement}} &= \frac{V}{U} + \frac{1}{1-B}
 \end{align*}
 
 For example, the variable cost of a \class{HashMap} is 48 bytes. If you're
-storing structures with a unit cost of 40 bytes each with a bloat
-factor of 50\%, then the asymptotic bloat factor is $\frac{48 + 0.5/(1-.5) *
-40}{48 + 1/(1-.5)*40} = 69\%$. No matter how many elements you store in this
-data structure, you will achieve no better than 31\% actual data.
+storing structures with a unit cost of 40 bytes each with a bloat factor of
+50\%, then the maximum room for improvement is $\frac{48}{40} + \frac{1}{1-0.5}$
+or 3.2x. This means that there is a fairly good scalability benefit you'll see from
+tuning.
 
 %A similar accounting is possible to help you estimate how a collection of
 %objects will grow in size as elements are added. Every additional element added
@@ -358,12 +357,12 @@ interface.
 %}
 \begin{framedlisting}
 interface INode {
-	Color getColor();
-	List<INode> getChildren();
-	List<INode> getParents();
+  Color color();
+  Collection<INode> children();
+  Collection<INode> parents();
 }
 enum Color {
-	White, LightGray, DarkGray
+  White, LightGray, DarkGray
 }
 \end{framedlisting}
 \end{minipage}
@@ -379,9 +378,9 @@ enum Color {
 %}
 \begin{framedlisting}
 interface INode {
-   Color getColor();
-   Set<IEdge> getChildren();
-   Set<IEdge> getParents();
+  Color color();
+  Collection<IEdge> children();
+  Collection<IEdge> parents();
 }
 interface IEdge {
    INode getFrom();
@@ -401,7 +400,7 @@ edges.}
 %edges. Each strategy has its positives and negatives, depending on which of
 %ease of maintenance or memory consumption is of primary importance.
 
-\paragraph{The Straightforward Implementation}
+\paragraph{Tweaking the Straightforward Implementation}
 A reasonable place to start is with a straightforward mapping of interfaces to
 concrete classes.
 \autoref{fig:node-obvious-impl} shows such an implementation for the
@@ -419,7 +418,7 @@ or removing nodes or edges. It's easy for new project members to map between
 interface and implementation, because the two are parallel versions of each
 other. The nodes and edges, and relations between them, are objects that can be
 manipulated using normal object oriented practices; e.g. you can write
-\texttt{node.getChildren().get(5).getTo()\-.getColor()} and, later, quickly
+\texttt{node.children().get(5).getTo()\-.color()} and, later, quickly
 understand what is going on. Contrast this with interacting with a
 non-object-oriented data storage, such as
 memcached\index{memcached}\cite{memcached} or a relational database. To access
@@ -453,7 +452,7 @@ class Edge {
 }
 \end{framedlisting}
 \end{minipage}
-\caption{Edge implementation.}
+\caption{Edge implementation, if you have edge properties.}
 \end{subfloat}
 \caption{A straightforward implementation of the \class{INode} interface,
 one that is parameterized the type used for parents and
@@ -470,36 +469,76 @@ pointer fields, plus two 136-byte collection fixed costs, plus three 28-byte
 collection variable costs (\autoref{tab:collection-costs} shows the fixed and
 variable costs of standard collections). At this unit cost, you can fit at most
 2.6 million nodes into one gigabyte of Java heap. Is it worth tuning? That
-depends on the asymptotic bloat factor, as things scale up. 
+depends on the maximum room For improvement of this design, as things scale up.
 
 Every node stores 16
 bytes of actual data (its color, parent, and two children), compared to its 380
 byte total unit cost. Let's assume that the nodes are stored in a simple array.
-This means the asymptotic bloat factor of every node:
+From these values, we can compute the maximum room for improvement:
 \begin{align*}
 V &= 4 ~~~~~~~~~~~~~~~~~\textrm{(variable cost of node array)}\\
 U &= 16 ~~~~~~~~~~~~~~~\textrm{(actual data per node)}\\
 B &= 1-16/380 ~~~~\textrm{(bloat factor of node)}\\
-\textbf{\textrm{asymptotic bloat factor}} &= \frac{V + \frac{B}{1-B} U}{V +
-\frac{1}{1-B} U} = 96\%
+\textbf{\textrm{maximum room for improvement}} &= \frac{V}{U} + \frac{1}{1-B} =
+24x
 \end{align*}
-That's a very high degree of bloat, and seems to merit some tuning.
+The maximum room for improvement is a factor of 24x, which is very high.
+\autoref{tab:graph-mri} tracks the maximum room for improvement of various
+storage designs.
 
+If you need to support edge properties, then the scalability story gets worse.
+In this case, In addition to the cost of the nodes are the cost of the edge
+objects. By objectifying each edge, this implementation pays a cost of one
+object header, one 4-byte data field, and two pointers, or 24 bytes. For the
+example an average of one parent and two children per node means three
+\class{Edge} objects per node. This increases the effective cost per node to
+$380 + 3*24$, or $428$ bytes. In this case, the Maximum Room for Improvement is
+27x.
 
-Using \class{ArrayList} instead of a hash map would lower the total unit cost
-per node from 404 bytes down to $B$ factor to 224 bytes, 
-%header + two 40-byte ArrayList plus 10*4*2 (default array size is 10)
-resulting in an asymptotic bloat factor of 93\%. This is still high, but this
-small change has increased the number of nodes you can fit in a gigabyte from
-2.8 million up to 4.8 million. 
+\begin{wraptable}{r}{0.4\textwidth}
+\centering
+\begin{tabular}{lcc}
+\toprule
+& \multicolumn{2}{c}{MRI} \\
+storage design & without & with \\
+& \multicolumn{2}{c}{edge properties} \\
+\cmidrule(r){1-1} \cmidrule(l){2-3} 
+\\
+\class{HashSet} & 24x & 27x \\
+\class{ArrayList} & 14x & 19x \\
+\class{ArrayList}(2) & 10x & 15x \\
+no collections & 2x & 7x \\
+\bottomrule
+\end{tabular}
+\caption{The Maximum Room For Improvement (MRI) of storage designs for a
+graph, both without and with edge properties.}
+\label{tab:graph-mri}
+\end{wraptable}
+An easy way to increase scalability is to use a list, rather than a set, to
+store the edges. An \class{ArrayList} has much lower fixed and variable costs than a
+\class{HashSet}. This should be a fine replacement, as long as you don't
+need the ability to randomly delete edges from the graph, or check for
+duplicate edges in a node with many edges. An \class{ArrayList} handles random
+deletions just fine, but deletions from the middle of a list are a hidden cost
+of which you should be cautious. What's worse, whereas a \class{HashSet} quickly
+and transparently eliminates duplicates, you have to manage duplicate
+elimination yourself, and with expensive linear scans. This linear scans
+won't be a problem if the number of parent or child edges per node is less than
+around three. Using \class{ArrayList} instead
+of a hash map would lower the total unit cost per node from 404 bytes down to
+224 bytes. This small change has increased the number of nodes you can fit in a
+gigabyte from 2.8 million up to 4.8 million.
+% header + two 40-byte ArrayList plus 10*4*2 (default array size is 10)
+The maximum room for improvement of this design is 14x (19x with edge
+properties).
 
-That's great, but, 93\% bloat factor is still bad. So there's still room for big
-improvements. If you know that the number of parents and children will be
-typically no more than two, then you can use a better initial size for the edge
-lists. If you update the constructor call for the \class{ArrayList}s to request
-an initial capacity of two elements, then the total unit cost of the nodes drops
-to 160 bytes. This only drops the asymptotic bloat factor to 90\%, but increases
-your capacity for nodes to 6.7 million.
+This means that there remains quite a bit more bloat to be squeezed out. If you
+know that the number of parents and children will be typically no more than two,
+then you can use a smaller initial size for the edge lists. If you update the
+constructor call for the \class{ArrayList}s to request an initial capacity of
+two elements, then the total unit cost of the nodes drops to 160 bytes. You can
+now fit 6.7 million nodes in a gigabyte heap, and the remaining maximum room for
+improvement is now 10x (15x with edge properties).
 
 %cost $3*4+ 2*(80 + 10*4)$, or $264$ bytes. Both choices result in
 %24\% of memory wasted on null pointers.
@@ -511,134 +550,136 @@ your capacity for nodes to 6.7 million.
 %pointer costs to reference a single parent node: one pointer to reference the
 %set, one for the set to reference the parent node.
 
-In addition to the cost of the nodes are the cost of the edges objects. By
-objectifying each edge, this implementation pays a cost of one object header
-plus two pointers, or 24 bytes (20 bytes, before rounding up to an 8-byte
-alignment boundary). For the example with an average of one parent and two
-children per node, the effective cost per node is $264 + 3*24$, or $336$ bytes.
+%Ideally, a node with one parent and two children should consume four pointers,
+%or 16 bytes: one to reference a \class{Color}, one to reference the parent
+%node, and two pointers to reference the children. The disparity between this
+%optimal value and the cost of the standard implementation is 320 bytes. A
+%inspection of \autoref{fig:maxActualData} shows that this implementation, with
+%16 bytes of actual data and 320 bytes of overhead, can support at most 2.7
+%million nodes per gigabyte of heap. An ideal implementation, with no storage
+%costs beyond the necessary 16 bytes of pointers, would be able to support at
+%most 65 million nodes per gigabyte of heap.
 
-Ideally, a node with one parent and two children should consume four pointers, or
-16 bytes: one to reference a \class{Color}, one to reference the parent node, and
-two pointers to reference the children. The disparity between this optimal value
-and the cost of the standard implementation is 320 bytes. A inspection of
-\autoref{fig:maxActualData} shows that this implementation, with 16 bytes of
-actual data and 320 bytes of overhead, can support at most 2.7 million nodes per
-gigabyte of heap. An ideal implementation, with no storage costs beyond the
-necessary 16 bytes of pointers, would be able to support at most 65 million nodes
-per gigabyte of heap.
+These easy tweaks can bring you a great return on a minimal investment of your
+time. They don't in any great way negatively impact the maintainability of the
+code. But there's still a very large amount of bloat remaining. The variations
+so far haven't greatly impacted the functionality of the implementation. By
+specializing your code to handle only a limited degree of functionality, you can
+achieve a fair degree of compactness without much additional effort.
 
-\paragraph{Optimizing the Implementation}
-By specializing your code to handle only a limited degree of functionality, you
-can achieve a fair degree of compactness without much effort. If every node has
-exactly the same number of incoming and outgoing edges, an easy alternative
-implementation presents itself. You can specialize the implementation for this
-structural special case, and thereby eliminate the waste that comes from allowing
-a flexible number of incident edges.
-\autoref{fig:node-tuned-impls}a shows an implementation of the \class{Node}
-interface that does away with collections. On top of the ideal implementation,
-the cost per node is one object header plus two pointers for each of the three
-\class{Edge} objects. On top of the 16 byte ideal cost, this implementation costs
-an additional $3*(2*12 + 2*4)$ bytes, for a total of 112 bytes. This cost is one
-third that of the initial implementation, though 7 times the cost of the ideal
-implementation. This implementation supports just over 9 million nodes per
-gigabyte of heap.
+\paragraph{Specializing the Implementation: Removing Collections Altogether}
+One of the main remaining sources of bloat lies in the use of collections to
+store edges. Every node has two collections, even if it only has one or two
+outgoing edges. As a result, every node pays for the fixed cost of a collection
+and, with only a small number of incident or outgoing edges, does not amortize
+these fixed costs.
 
-Even if many nodes have no parents, or fewer than two children, this specialized
-implementation remains preferable to the original one that uses collections. This
-is because an empty collection consumes no less than then the one pointer that
-this collection-free implementation costs; this is the case if you point to the
-singleton \code{Collections.emptySet()}. In the case when a node has one child,
-then a set must be allocated, whose expense, even if the set has only a single
-entry, will always be higher than a single pointer.
-
-\begin{figure}
+\begin{wrapfigure}{r}{0.33\textwidth}
 \centering
-\begin{subfloat}
-\begin{minipage}[b]{0.38\textwidth}
-\begin{shortlisting}
-class Node {
+\begin{minipage}[b]{0.24\textwidth}
+\begin{framedlisting}
+class Node<E> {
    Color color;
-   Edge parent;
-   Edge child1;
-   Edge child2;
+   E parent;
+   E child1;
+   E child2;
 }
-\end{shortlisting}
+\end{framedlisting}
 \end{minipage}
-\label{fig:node-no-collections}
-\caption{No collections}
-\end{subfloat}
-\qquad
-\begin{subfloat}
-\begin{minipage}[b]{0.38\textwidth}
-\begin{shortlisting}
-class Node {
-   Color color;
-   Node parent;
-   Node child1;
-   Node child2;
-}
-\end{shortlisting} 
-\end{minipage}
-\caption{No objectified Edges}
-\label{fig:node-no-Edge-objects}
-\end{subfloat}
-\caption{Two implementations that have been specialized for the case where
-no object has more than one parent and no more than two children.}
-\label{fig:node-tuned-impls}
-\end{figure} 
+\caption{A specialized design for the case that
+no object has more than one parent and two children.}
+\label{fig:node-specialized-impl}
+\end{wrapfigure} 
+If every node has exactly the same small number of incoming and outgoing edges,
+an alternative implementation presents itself.
+\autoref{fig:node-specialized-impl}a shows an implementation of the \class{Node}
+interface that does away with collections.
+Even if many nodes have no parents, or fewer than two children, this
+specialized implementation remains preferable to the original one that uses
+collections. The flexibility of collections simply does not pay off at this
+small scale.
+% On top of the ideal implementation,
+%the cost per node is one object header plus two pointers for each of the three
+%\class{Edge} objects.
+For each node, on top of the 16 bytes of actual data ideal cost, this
+implementation costs only one object header. The bloat factor is 43\%, which
+reduces the maximum room for improvement to $\frac{V}{U}-\frac{1}{1-B}=
+\frac{4}{16}-\frac{1}{1-.43}$, or 2x. You can now support around 38 million
+nodes per gigabyte of heap! If you need edge properties, then the maximum room
+for improvement is still high, at 7x.
+%edges: costs an additional $3*(2*12 + 2*4)$ bytes, for a total of 112 bytes. 
+%This cost
+%is one third that of the initial implementation, though 7 times the cost of the
+%ideal implementation. This implementation supports just over 9 million nodes
+%per gigabyte of heap.
 
-\autoref{fig:node-tuned-impls}b shows a yet more highly optimized \class{Node}
-implementation that stores pointers to \class{Node}s, rather than \class{Edge}s.
-One somewhat extreme variant of this implementation does not store \class{Edge}
-objects at all. This \class{Edge}-free implementation approaches the ideal
-implementation, in its capacity for storing large graphs. You must still pay one
-object header per node, for the \class{Node} objects themselves. Thus, this
-impementation has a per-node memory cost of 16 bytes for the pointers plus 12
-bytes for the header. At this unit cost, a one gigabyte heap would support at
-most 38 million nodes.
+% old text on why this is good even with no parents or <2 children
+%This
+%is because an empty collection consumes no less than then the one pointer that
+%this collection-free implementation costs; this is the case if you point to the
+%singleton \code{Collections.emptySet()}. In the case when a node has one child,
+%then a set must be allocated, whose expense, even if the set has only a single
+%entry, will always be higher than a single pointer.
 
-Though quite scalable, this implementation presents several complications. First
-is the obvious limitation to at most one parent and at most two children per
-node. Second, an \class{Edge}-free storage strategy dictates that the
-\class{Node} API also be updated so that \code{Node.getChildren()} and
-\code{getParents()} return a set of nodes, rather than a set of edges. You
-cannot avoid storing \class{Edge} objects and yet support an external interface
-of \class{Edge}s The same issue holds for an implementation that stores only a
-single parent pointer: how can one efficiently support an interface that expects
-a set of edges, if the storage contains only a single pointer? If you don't make
+%\autoref{fig:node-tuned-impls}b shows a yet more highly optimized \class{Node}
+%implementation that stores pointers to \class{Node}s, rather than
+%\class{Edge}s. One somewhat extreme variant of this implementation does not
+%store \class{Edge} objects at all. This \class{Edge}-free implementation
+%approaches the ideal implementation, in its capacity for storing large graphs.
+%You must still pay one object header per node, for the \class{Node} objects
+%themselves. Thus, this impementation has a per-node memory cost of 16 bytes for
+%the pointers plus 12 bytes for the header. At this unit cost, a one gigabyte
+%heap would support at most 38 million nodes.
+
+Though quite scalable, this implementation presents several complications.
+% First is the obvious limitation to at most one parent and at most two children
+% per; node. Second, an \class{Edge}-free storage strategy dictates that the
+% \class{Node} API also be updated so that \code{Node.getChildren()} and
+% \code{getParents()} return a set of nodes, rather than a set of edges. You
+% cannot avoid storing \class{Edge} objects and yet support an external
+% interface of \class{Edge}s The same issue holds for an implementation that
+% stores only a single parent pointer:
+The \class{INode.parents()} interface is specified to return a
+\class{Collection}. How can one efficiently support an interface that expects a
+collection, if the storage contains only a single pointer? If you don't make
 this API change, and instead choose to return facades that route the edge
-operations properly, users of the API will be in for some surprises. The
-following implementation does not work:
+operations properly, users of the API will be in for some surprises:
 \begin{shortlisting}
-public Set<Edge> getParent() {
-   Set<Edge> set = new HashSet<Edge>();
-   set.add(parent);
-   return set;
+public Collection<E> parents() {
+   return Collections<E>.singletonList(parent);
+}
+public Collection<E> children() {
+   List<E> l = new ArrayList<E>(2);
+   l.add(child1); l.add(child2);
+   return l;
 }
 \end{shortlisting}
 This implementation will not reflect any updates that the caller makes to the
-returned set. It also violates the implicit reference-equality contract of
-interfaces in Java: two calls to the \code{getParents()} interface must have
-reference, i.e. \code{==}, equality. If possible, you can update
-the written specification for the interface to indicate that a read-only
-\emph{copy} of the parent set is returned. Unforunately, neither of these
-policies can be statically enforced, and are hence prone to misuse.
-Worse, if the interface design is out of the
-scope of changes you can make, then you are out of luck and must cache the
-returned set somewhere, so as to preserve reference equality.
+returned collection. It also violates a contract that is implicit in the
+interface: two calls to the \code{parents()} interface no longer have
+reference (i.e. \code{==}) equality.
+The only solution that avoids caching these collections (and thus undoing this
+optimization entirely) requires that you revise the \class{INode}
+interface. This is not a very appealing requirement, to expose implementation
+details to the interface.
+If possible, you can update the 
+documentation of the \class{INode} interface 
+to indicate that a read-only
+\emph{copy} of the parent set is returned. Unforunately, this
+policy cannot be statically enforced, and is hence prone to misuse.
 
 Third, in addition to being quite expensive, in creating a set for every call to
-\code{getParent}, this implementation lacks in expressive power compared to the
+\code{parent()}, this implementation lacks in expressive power compared to the
 other implementations presented so far. For example you will find it more
 difficult to extend the graph interface to support edge labels. Adding edge
 labels with low overhead is not impossible, but requires some careful planning,
 and thinking outside the Java box.
 
 \paragraph{Difficulties of Supporting Edge Properties in Optimized
-Implementations} If the API method \code{Node.getChildren()} returns a set of
+Implementations} If the API method \code{Node.children()} returns a set of
 nodes, rather than a set of edges, then the code to access an edge label of the
 second child of a node can no longer be
-\texttt{node.getChildren().\-get(1).getLabel()}. This way of traversing the graph
+\texttt{node.children().\-get(1).getLabel()}. This way of traversing the graph
 leads to a node, not an edge! Instead, edge labels must be fetched from some
 larger entity, such as the graph model itself: e.g. \texttt{graph.getEdge(from,
 to).getLabel()}, or \texttt{graph.getEdgeLabel(from, to)}. Without some care,
