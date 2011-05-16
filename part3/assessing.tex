@@ -3,7 +3,16 @@
 %\chapter{Assessing Scalability}
 \label{chap:estimating-scalability}
 
-
+It would be nice to be able to predict how well a data model design and
+implementation will scale up, as you increase the complexity or number of
+entities. The bloat factor of a data structure tells you, for a given size, what
+fraction of its size is overhead versus actual data. To judge whether it will
+scale requires extrapolating these costs out. This chapter introduces a metric,
+and some facilitating techniques, that enable you to more quickly make these
+predictions. The metric is called the Maximum Room for Improvement\index{Maximum
+Room for Improvement}, which is the highest factor of improvement in scalability
+you can expect to wring out of a given design, after all possibly amortizable
+costs have been amortized away.
 
 \section{The Asymptotic Nature of Bloat}
 Up till now, bloat factor has been treated as a scalar quantity: e.g., 95\% of
@@ -17,7 +26,7 @@ matter how big it grows.
 %%%% ASYMPTOTIC BLOAT FACTOR CALLOUT
 %%%%
 \callout{asymptoticbloatfactor}{Data Structure Scaling: Asymptotic Bloat
-Factor}{ A data structure scales well, or not, depending upon how its bloat
+Factor}{A data structure scales well, or not, depending upon how its bloat
 factor changes as it grows. It starts by decreasing, as the collection's fixed
 costs are amortized over a larger amount of actual data, and soon levels off.
 This \emph{asymptotic bloat factor} is governed by the collection's
@@ -25,6 +34,17 @@ variable cost and the bloat factor and \emph{unit cost} of the contents.}
 %%%%
 %%%% ASYMPTOTIC BLOAT FACTOR CALLOUT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\autoref{fig:asymptotic-bloat-factor} illustrates an example of the asymptotic
+behavior of bloat factor for two collection types. With a small number of
+elements, the fixed costs dominate. For this example, for a \class{HashMap},
+with more than about 10 elements, fixed costs are pretty much fully amortized;
+the fixed cost of a \class{ConcurrentHashMap} requires more elements to amortize
+away. In either case, at this point, the bloat factor of the elements being
+stored in the collection, along with the collection's variable costs, become the
+dominant factors. In this example, the total cost per element is 128 bytes, 64
+bytes of which is overhead. Ultimately, it is that ratio of 64/128, or 0.5,
+which governs the asymptotic bloat factor of this structure.
 
 
 \begin{figure}
@@ -34,17 +54,6 @@ variable cost and the bloat factor and \emph{unit cost} of the contents.}
 \caption{An example of the asymptotic behavior of bloat factor.}
 \label{fig:asymptotic-bloat-factor}
 \end{figure}
-
-\autoref{fig:asymptotic-bloat-factor} illustrates an example of the asymptotic
-behavior of bloat factor for two collection typesq. With a small number of
-elements, the fixed costs dominate. For this example, for a \class{HashMap},
-with more than about 10 elements, fixed costs are pretty much fully amortized;
-the fixed cost of a \class{ConcurrentHashMap} requires more elements to amortize
-away. In either case, at this point, the bloat factor of the elements being
-stored in the collection, along with the collection's variable costs, become the
-dominant factors. In this example, the total cost per element is 128 bytes, 64
-bytes of which is overhead. Ultimately, it is that ratio of 64/128, or 0.5,
-which governs the asymptotic bloat factor of this structure.
 
 \paragraph{Amortizing Fixed Costs}
 Data structures that can change in size, as opposed to having a fixed size,  do
@@ -149,13 +158,21 @@ tuning.
 
 \paragraph{Will It Fit? Should I Tune?}
 
-From unit costs and asymptotic bloat factor, you can estimate answers to the
-these two important scalability questions. If you have a fixed amount of heap
+From unit costs and the maximum room for improvement, you can estimate answers
+to the these two important scalability questions. If you have a fixed amount of heap
 size that each process has access to, then your data model designs will fit if
 memory capacity divided by unit cost, which is the number of elements you can
 afford, is at least as large as you need. For example, if you have one gigabyte
 of memory available, and each user comes with a unit cost of one megabyte, then
 you can support at most 1000 simultaneous users. Is this enough? 
+
+If not, then you have two options: buy more hardware, or tune. If possible, you
+could buy more memory, or more machines if your current machines cannot accept
+any more physical memory. You must also pay attention to address space limits,
+as discussed in \autoref{sec:address-space}: if your 32-bit processes cannot fit
+anything more into the constrained address space, then the answer to ``Will It
+Fit?'' is no! In this case, buying more physical memory won't help, and your only
+option is to tune your data models.
 
 \begin{figure}
 \callout{when-to-tune}{Rule of Thumb: When Should I Bother Tuning?}{
@@ -168,16 +185,8 @@ the unit cost of each, and multiplying these figures out by how many elements
 you'd like to have in each.}
 \end{figure}
 
-If not, then you have two options: buy more hardware, or tune. If possible, you
-could buy more memory, or more machines if your current machines cannot accept
-any more physical memory. You must also pay attention to address space limits,
-as discussed in \autoref{sec:address-space}: if your 32-bit processes cannot fit
-anything more into the constrained address space, then the answer to ``Will It
-Fit?'' is no! In this case, buying more physical memory won't help, and your only
-option is to tune your data models.
-
-The asymptotic bloat factor of your dominant data structures can help you to
-understand whether you should bother tuning. If a data structure has a low bloat
+The maximum room for improvement of your dominant data structures can help you
+to understand whether you should bother tuning. If a data structure has a low bloat
 factor, then there isn't much bloat to optimize away. For example, in a web
 application server, session state will scale up roughly depending on the number
 of concurrent users. If the unit cost per user is one megabyte, and you'd like
@@ -226,6 +235,38 @@ charts. However, it isn't difficult to construct your own, as described in
    gigabyte of Java heap. Note the logarithmic scale of the horizontal axis.}
 \end{figure}
 
+
+\begin{figure}
+\callout{ezscalability}{Deriving Scalability Formulas \hfill [For Experts]}{
+It isn't hard to make your own scalability charts, with some simple algebra
+and your favorite spreadsheet software. Before you can plot anything, you
+will need to construct a formula that governs how things scale. Consider the chart in
+\autoref{fig:maxBloatFactor},
+which 
+plots the bloat factor that will let you fit \emph{at
+least} one element of data in memory.
+The formula behind this chart depends upon these quantities: let $M$ be the
+bytes of memory available, $N$ be the number of entities, and $D$ be the unit cost of your actual data, and
+$x$ be the unknown maximum room for improvement that you need to solve for.
+
+The \emph{maximum} number of bytes per entity you can afford is the ratio of
+memory capacity to the number of entities: $M/N$. The exact cost per entity,
+including overhead is $\frac{1}{1-x} D$; e.g. 20 bytes of actual data with a
+bloat factor of 60\% means the total size per entity is 50 bytes. 
+%(because $50 - 50 * 0.6 = 20$).
+% \begin{align*}
+$$\frac{M}{N} \ge \frac{1}{1-x} D
+ %\\
+% \frac{M (1-x)}{N D}  &\ge 1
+% \\
+% 1-x  &\ge \frac{N D}{M}
+% \\
+~~~~\Longrightarrow~~~~ x  \le 1-\frac{N D}{M} $$
+% \end{align*}
+}
+\label{fig:deriving-scalability-formulas}
+\end{figure}
+
 \section{Example: Designing a Graph Model for Scalability}
 
 Let's step through an example of getting a data model to scale. This extended
@@ -248,13 +289,6 @@ tune your data model for certain use cases, is to keep a focus on the two
 important aspects of scalability: unit costs and asymptotic bloat factor. These
 factors will determine the scalability success of your design.
 
-\begin{wrapfigure}{r}{0.34\textwidth}
-    %\vspace{-5mm}
-    \centering
-	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
-	\caption{Example graph.}
-    \label{fig:example-storing-relations-graph}
-\end{wrapfigure}
 \paragraph{Modeling Relationships Means Modeling Graphs}
 Representing relationships between entities is no different than representing a
 graph of nodes and edges: entities are nodes, and relationships are edges. A
@@ -265,38 +299,14 @@ large objects (BLOBs) data are all attributes of these entities. So far, the way
 you'd store this entity information in Java is somewhat similar to the way you'd
 store things in a relational database.
 
-\begin{figure}
-\callout{ezscalability}{Deriving Scalability Formulas \hfill [For Experts]}{
-It isn't hard to make your own scalability charts, with some simple algebra
-and your favorite spreadsheet software. Before you can plot anything, you
-will need to construct a formula that governs how things scale. Consider the chart in
-\autoref{fig:maxBloatFactor},
-which 
-plots the bloat factor that will let you fit \emph{at
-least} one element of data in memory.
-The formula behind this chart depends upon a
-couple of straightforward quantities: let $M$ be the bytes of memory available,
-$N$ be the number of entities, and $D$ be the unit cost of your actual data, and
-$x$ be the unknown asymptotic bloat factor that you need to solve for.
 
-The \emph{maximum} number of bytes per entity you can afford is the ratio of
-memory capacity to the number of entities: $M/N$. The exact cost per entity
-depends on the (unknown) asymptotic bloat factor $x$ and $D$. The
-total unit cost of your data, including overhead is $\frac{1}{1-x} D$; e.g. 20
-bytes of actual data with a bloat factor of 60\% means the total size per entity
-is 50 bytes (because $50 - 50 * 0.6 = 20$).  Thus:
-% \begin{align*}
-$$\frac{M}{N} \frac{1}{\frac{1}{1-x} D}  \ge 1
- %\\
-% \frac{M (1-x)}{N D}  &\ge 1
-% \\
-% 1-x  &\ge \frac{N D}{M}
-% \\
-~~~~\Longrightarrow~~~~ x  \le 1-\frac{N D}{M} $$
-% \end{align*}
-}
-\label{fig:deriving-scalability-formulas}
-\end{figure}
+\begin{wrapfigure}{r}{0.34\textwidth}
+    %\vspace{-5mm}
+    \centering
+	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph}
+	\caption{Example graph.}
+    \label{fig:example-storing-relations-graph}
+\end{wrapfigure}
 
 Storing relationships is where things start to diverge. In Java, it is natural
 to store the relationship information, such as the employees under a manager, as
