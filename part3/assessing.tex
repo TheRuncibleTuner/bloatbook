@@ -382,10 +382,10 @@ interface INode {
   Collection<IEdge> children();
   Collection<IEdge> parents();
 }
-interface IEdge {
-   INode getFrom();
-   INode getTo();
-   int getWeight();
+interface IEdge<Property> {
+   Property property();
+   INode from();
+   INode to();
 }
 \end{framedlisting}
 \end{minipage}
@@ -400,7 +400,7 @@ edges.}
 %edges. Each strategy has its positives and negatives, depending on which of
 %ease of maintenance or memory consumption is of primary importance.
 
-\paragraph{Tweaking the Straightforward Implementation}
+\subsection{Tweaking the Straightforward Implementation}
 A reasonable place to start is with a straightforward mapping of interfaces to
 concrete classes.
 \autoref{fig:node-obvious-impl} shows such an implementation for the
@@ -409,8 +409,8 @@ Following this strategy, the \class{Node} class has three fields, one to store
 its \class{Color}, and two for the relations to children and parents. These two
 relations are implemented with a standard \class{HashSet} collection. In the
 case where the design requires edge properties, there is an \class{Edge} class
-with one field that stores the weight, and two reference fields that store the
-source and target nodes.
+with one field that stores the edge property, and two reference fields that
+store the source and target nodes.
 
 This is a pretty natural expression of a graph in Java, and it's easy to
 implement and maintain. There are no corner cases to handle, in terms of adding
@@ -446,8 +446,8 @@ class Node<E> {
 \begin{subfloat}
 \begin{minipage}[b]{0.33\textwidth}
 \begin{framedlisting}
-class Edge {
-   int weight;
+class Edge<Property> {
+   Property property;
    Node<Edge> from, to;
 }
 \end{framedlisting}
@@ -489,11 +489,12 @@ storage designs.
 If you need to support edge properties, then the scalability story gets worse.
 In this case, In addition to the cost of the nodes are the cost of the edge
 objects. By objectifying each edge, this implementation pays a cost of one
-object header, one 4-byte data field, and two pointers, or 24 bytes. For the
-example an average of one parent and two children per node means three
-\class{Edge} objects per node. This increases the effective cost per node to
-$380 + 3*24$, or $428$ bytes. In this case, the Maximum Room for Improvement is
-27x.
+object header, one 4-byte data field (let's assume that the edge properties are
+simple weights, and you store the primitive integer inline with the edge
+object), and two pointers, or 24 bytes. For the example an average of one parent
+and two children per node means three \class{Edge} objects per node. This
+increases the effective cost per node to $380 + 3*24$, or $428$ bytes. In this
+case, the Maximum Room for Improvement is 27x.
 
 \begin{wraptable}{r}{0.4\textwidth}
 \centering
@@ -567,7 +568,7 @@ so far haven't greatly impacted the functionality of the implementation. By
 specializing your code to handle only a limited degree of functionality, you can
 achieve a fair degree of compactness without much additional effort.
 
-\paragraph{Specializing the Implementation: Removing Collections Altogether}
+\subsection{Specializing the Implementation to Remove Collections}
 One of the main remaining sources of bloat lies in the use of collections to
 store edges. Every node has two collections, even if it only has one or two
 outgoing edges. As a result, every node pays for the fixed cost of a collection
@@ -586,7 +587,7 @@ class Node<E> {
 }
 \end{framedlisting}
 \end{minipage}
-\caption{A specialized design for the case that
+\caption{No collections: a specialized design for the case that
 no object has more than one parent and two children.}
 \label{fig:node-specialized-impl}
 \end{wrapfigure} 
@@ -642,8 +643,9 @@ Though quite scalable, this implementation presents several complications.
 The \class{INode.parents()} interface is specified to return a
 \class{Collection}. How can one efficiently support an interface that expects a
 collection, if the storage contains only a single pointer? If you don't make
-this API change, and instead choose to return facades that route the edge
-operations properly, users of the API will be in for some surprises:
+this API change, and instead choose to return a \emph{facade} that routes the
+edge operations to the underlying storage, users of the API will be in for some
+surprises:
 \begin{shortlisting}
 public Collection<E> parents() {
    return Collections<E>.singletonList(parent);
@@ -654,102 +656,114 @@ public Collection<E> children() {
    return l;
 }
 \end{shortlisting}
-This implementation will not reflect any updates that the caller makes to the
-returned collection. It also violates a contract that is implicit in the
-interface: two calls to the \code{parents()} interface no longer have
-reference (i.e. \code{==}) equality.
-The only solution that avoids caching these collections (and thus undoing this
-optimization entirely) requires that you revise the \class{INode}
+Firstly, if a caller of \class{children()} does so in a loop, then making this
+change will result in a potentially big slowdown. A loop that
+depends heavily upon calls to this method run an order of magnitude slower
+after this change.
+Secondly, this implementation will not reflect any updates that the
+caller makes to the returned collections. Finally, it violates a contract
+that is implicit in the interface: that two calls to the \code{parents()}
+interface have reference (i.e. \code{==}) equality.
+The only solution, short of caching these collections (and thus undoing this
+optimization entirely), requires that you revise the \class{INode}
 interface. This is not a very appealing requirement, to expose implementation
 details to the interface.
-If possible, you can update the 
-documentation of the \class{INode} interface 
-to indicate that a read-only
-\emph{copy} of the parent set is returned. Unforunately, this
-policy cannot be statically enforced, and is hence prone to misuse.
+%If possible, you can update the 
+%documentation of the \class{INode} interface 
+%to indicate that a read-only
+%\emph{copy} of the parent set is returned. Unforunately, this
+%policy cannot be statically enforced, and is hence prone to misuse.
 
 Third, in addition to being quite expensive, in creating a set for every call to
 \code{parent()}, this implementation lacks in expressive power compared to the
 other implementations presented so far. For example you will find it more
 difficult to extend the graph interface to support edge labels. Adding edge
-labels with low overhead is not impossible, but requires some careful planning,
-and thinking outside the Java box.
+labels with low overhead is not impossible, but requires some careful planning.
 
-\paragraph{Difficulties of Supporting Edge Properties in Optimized
-Implementations} If the API method \code{Node.children()} returns a set of
-nodes, rather than a set of edges, then the code to access an edge label of the
-second child of a node can no longer be
-\texttt{node.children().\-get(1).getLabel()}. This way of traversing the graph
-leads to a node, not an edge! Instead, edge labels must be fetched from some
-larger entity, such as the graph model itself: e.g. \texttt{graph.getEdge(from,
-to).getLabel()}, or \texttt{graph.getEdgeLabel(from, to)}. Without some care,
-every edge label query will require a hash table lookup. Your design necessitates
-storing the edge labels in a side data structure, one whose elements are not
-directly connected, via pointers, to the nodes.
+\subsection{Supporting Edge Properties in An Optimized Implementation}
 
-Storing edge labels in a parallel map-like structure makes sense only if a small
-fraction of the edges have labels. Otherwise, the costs of the map infrastructure
-may very well overwhelm the cost of the labels. Let's say that each label
-consumes 4 bytes of actual data. A quick look at
-\autoref{tab:collection-costs} shows that the per-entry cost of a \class{HashMap}
-is 28 bytes. If, without edge labels, your implementation supports 38 million
-nodes per gigabyte of heap (recall that this implementation supports at most
-one parent and two children per node)
-% 38 million is 16 bytes of data plus 12 bytes of header per node
-then adding edge labels, in an ideal fashion that adds no additional overhead,
-will decrease your capacity to 26.8 million nodes per gigabyte --- a reduction
-in capacity of 30\%.
-% 33.5 million is 16 + 12 + 4 bytes per node
-If you store them in a \class{HashMap}, your capacity will decrease to at most
-10.3 million nodes per gigabyte: the map costs 28 bytes per entry,
-plus you need to create some sort of \class{Pair} object to house the source and
-target nodes that form the map's key, plus you need to create a wrapper object to
-house the edge label itself.
-% 16 of actual data plus 12 bytes of header for the node 12+4+4 for the edges 4
-% of actual data for the edge label 28 for the $Entry 12+4 for the Value 12+4+4
-% for the Key
-In contrast to the 30\% reduction of an ideal implementation of edge labels,
-this straightforward implementation results in a 73\% reduction in capacity. In
-this case the penalty of using a map is especially high because the starting
-implementation, i.e. one supporting 38 million nodes per gigabyte, was fairly
-highly tuned. The more highly tuned your memory design, the larger the negative
-repercussions of subsequent bad choices. For example, if your starting
-implementation supported 22 million nodes per gigabyte, then the penalty of a
-map-based implementation of edge labels would be a somewhat lower 61\%.
+If you do need edge properties, but want to avoid the expense of \class{Edge}
+objects, things can get tricky in a language like Java. In this design, the API
+method \code{Node.children()} returns a collection of nodes, not one of edges.
+Thus, the code to access an edge label requires an API change. You could play a
+trick similar to the one above, where transient collections were created in
+order to avoid the cost of persistant collections while preserving a
+collections-oriented API for accessing edges. This change also requires that you
+store the edge properties somewhere other than in \class{Edge} objects:
 
-A more efficient approach, if you have the luxury of modifying the \class{Node}
-implementation directly, or subclassing it and overriding factory methods, is to
-inline the edge labels directly into the \class{Node} class:
 \begin{shortlisting}
-class Node {
-   Color color;
-   Node parent;
-   Node child1;
-   Node child2;
-   Label parentLabel;
-   Label child1Label;
-   Label child2Label;
+class Node<Property> {
+   Node parent, child1, child2;
+   Property parentEdgeProp;
+   
+   public Collection<IEdge> parent() {
+      return Collections<IEdge>.singleton(new EdgeFacade(parent, this, parentProperty));
+   }
 }
-\end{shortlisting} 
-To avoid any need to maps, though, would require you to update the API for
-fetching edge labels. Calling \code{graph.getEdge(from, to).getLabel()} with
-this implementation would require an intervening map structure. In contrast,
-an API that had the form \code{node.getParentLabel(0)} and
-\code{node.getChildLabel(1)} would allow for direct access to the labels,
-without a map. Inlining the storage for labels requires a concomitant inlining
-of the APIs. Therefore, while this implementation
-approaches the optimal capacity, it is not especially desirable, from an
-engineering perspective.
- 
-%\paragraph{Insufficiencies of Pure Object Orientation}
-This activity of tuning the original graph implementation has lead to two
-difficult ends. First, it is difficul to support nodes with widely
-varying numbers of parents and children. If all nodes had only a very small number of incident
+\end{shortlisting}
+Notice how, since, in this special form of a graph, each node has at most one
+parent, therefore you needn't store edge properties of a node's outgoing
+(children) edges. These edge properties can be accessed from
+\code{child1.parentEdgeProp}. With this design, you add no bloat in
+supporting edge properties, and so you can achieve the same maximum room for
+improvement with or without edge properties. The downside comes from the
+computational expense of the \code{parent()} and \code{children()} calls. These
+can be quite expensive, as each call to these methods entails creating and
+initializing two temporary objects. Also, as with the previous facade-based
+solution, the breakage of reference equality needs to be strongly documented
+along with the API.
+
+An alternative is to store edge properties in a side map.
+% \texttt{graph.getEdge(from, to).getLabel()}, or
+%\texttt{graph.getEdgeLabel(from, to)}. 
+This  makes sense only if a small
+fraction of the edges have labels. Otherwise, the costs of the map
+infrastructure may very well overwhelm the cost of the labels. Each
+edge property now consumes an extra 28 bytes for a \class{HashMap} entry object,
+plus an object header (you will be forced, if you use the standard Java collections, to fully
+objectify the property values, even if each is a scalar quantity), or 30 bytes
+more than the clever implementation that inlines the properties into the node
+object.
+
+%Let's say that
+%each label consumes 4 bytes of actual data. A quick look at
+%\autoref{tab:collection-costs} shows that the per-entry cost of a
+%\class{HashMap} is 28 bytes. If, without edge labels, your implementation
+%supports 38 million nodes per gigabyte of heap (recall that this implementation
+%supports at most one parent and two children per node)
+%% 38 million is 16 bytes of data plus 12 bytes of header per node
+%then adding edge labels, in an ideal fashion that adds no additional overhead,
+%will decrease your capacity to 26.8 million nodes per gigabyte --- a reduction
+%in capacity of 30\%.
+%% 33.5 million is 16 + 12 + 4 bytes per node
+%If you store them in a \class{HashMap}, your capacity will decrease to at most
+%10.3 million nodes per gigabyte: the map costs 28 bytes per entry, plus you
+%need to create some sort of \class{Pair} object to house the source and target
+%nodes that form the map's key, plus you need to create a wrapper object to
+%house the edge label itself.
+%% 16 of actual data plus 12 bytes of header for the node 12+4+4 for the edges 4
+%% of actual data for the edge label 28 for the $Entry 12+4 for the Value 12+4+4
+%% for the Key
+%In contrast to the 30\% reduction of an ideal implementation of edge labels,
+%this straightforward implementation results in a 73\% reduction in capacity. In
+%this case the penalty of using a map is especially high because the starting
+%implementation, i.e. one supporting 38 million nodes per gigabyte, was fairly
+%highly tuned. The more highly tuned your memory design, the larger the negative
+%repercussions of subsequent bad choices. For example, if your starting
+%implementation supported 22 million nodes per gigabyte, then the penalty of a
+%map-based implementation of edge labels would be a somewhat lower 61\%.
+
+% \paragraph{Insufficiencies of Pure Object Orientation}
+This activity of tuning the original graph implementation has raised two
+problems. First, it is difficul to support nodes with widely varying numbers of
+parents and children. If all nodes had only a very small number of incident
 edges, or a very large number, then specialized implementations are possible.
+But even these have issues, such as requiring users, via documentation rather
+than compiler assisted analysis, to avoid using reference equality.
 Second, optimizing storage has come at the expense of easy extensibility; one
-can remove the use of \class{Edge} objects, but, to support edge labels 
-requires either expensive maps to parallel data structures, or 
-pollution of data types not directly connected to the planned extension.
+can remove the use of \class{Edge} objects, but, to support edge labels requires
+either expensive maps to parallel data structures, or pollution of data types
+not directly connected to the planned extension.
 
 \subsection{Supporting Singleton Sets}
 \index{Singleton Collections}
