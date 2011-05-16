@@ -1,34 +1,9 @@
-\chapter{The Maximum Room For Improvement Metric}
+\chapter{Estimating How Well a Design Will Scale}
+%\chapter{The Maximum Room For Improvement Metric}
+%\chapter{Assessing Scalability}
+\label{chap:estimating-scalability}
 
-Despite heroic efforts at tuning classes and optimizing the use of collections,
-you may still be unable to fit your application into available physical memory
-or address space. Sometimes, heroic efforts are not even possible, because this
-problem was discovered very late in the development cycle. If you don't discover
-till the final stages of testing that your application won't fit, you will have
-difficulty finding the resources to perform extensive tuning. Optimizing earlier
-in the development process would help, but these things need to be budgeted.
-Resources spent on earlier tuning are resources taken away from other aspects of
-development, such as architectural design and coding. To avoid wasting time
-blindly tuning everything, it is helpful to have a quick way of knowing whether
-an inefficient data structure will really matter in the grand scheme of things.
-A particular structure might have a bloat factor of 95\%, being composed of only
-5\% actual data, but if that structure only contributes to a few percent of
-overall memory consumption, who cares?
 
-You can focus your tuning efforts by adopting a design strategy that assesses
-the \emph{scalability} of your data structures. By focusing on scalability, you
-can answer two kinds of questions:
-
-\begin{itemize}
-  \item \textbf{Will It Fit?} As you scale up your application, adding more
-  users for example, it'd be nice to know whether it will fit
-  within a given memory budget. 
-  %This requires knowing the \emph{variable cost} of each user.
-  \item \textbf{Should I Bother Tuning?} Your tuning efforts should focus 
-on those structures that can benefit from the tuning tasks described in
-the \autoref{part:1}. 
-%This requires knowing how how bloat factor changes as a data structure grows.
-\end{itemize}
 
 \section{The Asymptotic Nature of Bloat}
 Up till now, bloat factor has been treated as a scalar quantity: e.g., 95\% of

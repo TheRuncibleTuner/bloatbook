@@ -1,0 +1,81 @@
+\chapter{Assessing Scalability}
+
+Despite heroic efforts at tuning classes and optimizing the use of collections,
+you may still be unable to fit your application into available physical memory
+or address space. Sometimes, heroic efforts are not even possible, because this
+problem was discovered very late in the development cycle. If you don't discover
+till the final stages of testing that your application won't fit, you will have
+difficulty finding the resources to perform extensive tuning. Optimizing earlier
+in the development process would help, but these things need to be budgeted.
+Resources spent on earlier tuning are resources taken away from other aspects of
+development, such as architectural design and coding. To avoid wasting time
+blindly tuning everything, it is helpful to have a quick way of knowing whether
+an inefficient data structure will really matter in the grand scheme of things.
+A particular structure might have a bloat factor of 95\%, being composed of only
+5\% actual data, but if that structure only contributes to a few percent of
+overall memory consumption, who cares?
+
+You can focus your tuning efforts by adopting a design strategy that assesses
+the \emph{scalability} of your data structures. By focusing on scalability, you
+can answer two kinds of questions:
+
+\begin{itemize}
+  \item \textbf{Will It Fit?} As you scale up your application, adding more
+  users for example, it'd be nice to know whether it will fit
+  within a given memory budget. 
+  %This requires knowing the \emph{variable cost} of each user.
+  \item \textbf{Should I Bother Tuning?} Your tuning efforts should focus 
+on those structures that can benefit from the tuning tasks described in
+the \autoref{part:1}. 
+%This requires knowing how how bloat factor changes as a data structure grows.
+\end{itemize}
+
+The rest of this part of the book will help you in answering these
+questions, and in developing solutions for the cases when the answers to both
+questions are no. If so, then you need to consider stepping outside of the Java
+box.
+
+\paragraph{Will My Design Fit?}
+\autoref{chap:estimating-scalability} introduces a metric that you can use to
+estimate the answers to these questions. The metric, called the  Maximum Room
+For Improvement, quantifies how much your design can benefit from tuning. From
+this number, you can extrapolate how much memory will be required to fit your
+data. If the room for improvement is high, then you should consider
+applying the tuning regimen detailed in \autoref{part:1}.
+
+If your design doesn't fit in physical memory constraints, but you still have
+address space available (see \autoref{sec:address-space}), then the first
+solution you should consider is buying more physical memory. If your budget
+allows for this, then by all means you should strongly consider doing so.
+% There are some downsides to keep in mind. The first is heap size limits. At
+% some point, you will need to switch from a 32-bit JVM to a 64-bit
+% JVM\index{64-bit}. This switch will result in a large increase in overhead. As
+% discussed earlier, the amount of blowup resulting from a switch to a 64-bit
+% JVM depends on the degree of delegation in your data models. A 64-bit JVM only
+% adds overhead to the extent that your data models have headers and pointers.
+% The alternative, running with compressed references\index{Compressed
+% References}, limits you to around 32GB of memory, and imposes a few percent
+% slowdown. In addition, running with a large heap can result in increases in
+% the length and fluctuations in pause times.
+
+
+\paragraph{Making it Fit by Breaking the Java Mold} Despite being an
+object-oriented language, there are still some tricks you can use that let you
+continue to program in Java, but store objects in a non-object oriented way.
+These tricks come at the expense of some xtra programming time and maintenance
+expense, but can dramatically increase the scalability of your data models.
+\autoref{chapter:large-long-lived} describes these \emph{bulk storage}
+techniques.
+%It is possible to store data only in arrays, as one would in
+%a language such as Fortran, and retain a great deal of object orientation in
+%your data models and programming interfaces.
+
+\paragraph{It Still Won't Fit}
+% Shuttle Objects in and Out of the Java Heap}
+Rather than attempting to fit all of your objects into a single heap, you can
+store them outside of the Java heap, and swap them in (and out), on demand. If
+the logic of your application allows for recomputing the data stored in these
+objects, you need to be careful to compare the recreation cost with the costs of
+marshalling objects. You can choose to marshall objects to and from a local
+disk, or you can use one of several frameworks that provide a distributed
+key-value map.
