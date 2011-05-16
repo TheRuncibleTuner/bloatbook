@@ -400,7 +400,8 @@ edges.}
 %edges. Each strategy has its positives and negatives, depending on which of
 %ease of maintenance or memory consumption is of primary importance.
 
-\subsection{Tweaking the Straightforward Implementation}
+\subsection{The Straightforward Implementation, and Some Tweaks}
+\label{sec:graph-straightforward}
 A reasonable place to start is with a straightforward mapping of interfaces to
 concrete classes.
 \autoref{fig:node-obvious-impl} shows such an implementation for the
@@ -569,6 +570,7 @@ specializing your code to handle only a limited degree of functionality, you can
 achieve a fair degree of compactness without much additional effort.
 
 \subsection{Specializing the Implementation to Remove Collections}
+\label{sec:graph-removing-collections}
 One of the main remaining sources of bloat lies in the use of collections to
 store edges. Every node has two collections, even if it only has one or two
 outgoing edges. As a result, every node pays for the fixed cost of a collection
@@ -765,79 +767,99 @@ can remove the use of \class{Edge} objects, but, to support edge labels requires
 either expensive maps to parallel data structures, or pollution of data types
 not directly connected to the planned extension.
 
-\subsection{Supporting Singleton Sets}
+\subsection{Supporting Growable Singleton Collections}
 \index{Singleton Collections}
 
-% If the distribution of the sizes of these sets is starkly bimodal, where most
-% of the sets are either fairly large, or
+\autoref{sec:graph-removing-collections} shows how to specialize an
+implementation for the case when nodes have only one or two incident and
+outgoing edges. This implementation is pretty efficient, but inflexible: it has
+to be the case that every node has this property. If, as you populate the graph,
+you realize that even one node violates it, then you'll need to code up
+complicated fallback cases. You would need to create a more general-purpose form
+of the node, copy over the edges you've added up until this point, remove the
+old node instance from the node set of the graph, and then iterate over all of
+the existing nodes, rerouting their edges to point to the new node instance.
+This is tedious code to write and maintain. Plus, if this happens even
+moderately often while populating the graph, can result in bad performance.
 
-One common case, when using collections, is that many of them contain zero or
-only a single element. It seems silly to pay the expense of a full-fledged
-collection for these special cases. The Java standard library offers a
-partial solution to the case of many empty collections, in the form of the family
-of factor methods that include \code{Collections.emptySet()} and
-\code{Collections.emptyList()}.
-\index{Empty Collections}
-These are partial solutions, because they only handle the case of unchanging
-collections. There is no provision, in the standard libraries, for optimized
-storage of single-entry collections. Consider our graph from the previous
-section:
-\begin{shortlisting}
-class Node {
-	Color color;
-	Set<Edge> parents;
-	Set<Edge> children;
+%One common case, when using collections, is that many of them contain zero or
+%only a single element. It seems silly to pay the expense of a full-fledged
+%collection for these special cases. The Java standard library offers a
+%partial solution to the case of many empty collections, in the form of the
+%family of factor methods that include \code{Collections.emptySet()} and
+%\code{Collections.emptyList()}.
+%\index{Empty Collections}
+%These are partial solutions, because they only handle the case of unchanging
+%collections. There is no provision, in the standard libraries, for optimized
+%storage of single-entry collections. Consider our graph from the previous
+%section:
+%\begin{shortlisting}
+%class Node {
+	%Color color;
+	%Set<Edge> parents;
+	%Set<Edge> children;
+%}
+%\end{shortlisting}
+%The previous section proposed an optimization for the special case of nodes
+%with at most one parent. If this were always the case, for every single node
+%ever created by your application, then it is valid, and indeed a good idea,
+%to change the \class{Node} class definition to inline the pointer to that
+%potential part. If it is only sometimes the case, then this trick does not
+%work.
+
+\begin{wrapfigure}{r}{0.667\textwidth}
+\centering
+\begin{framedlisting}
+interface Singleton<T> extends Collection<T> {
 }
-\end{shortlisting}
-The previous section proposed an optimization for the special case of nodes with
-at most one parent. If this were always the case, for every single node ever
-created by your application, then it is valid, and indeed a good idea,
-to change the \class{Node} class definition to inline the pointer to that
-potential part. If it is only sometimes the case, then this trick does not work.
+\end{framedlisting}
+\caption{The Singleton Collection pattern.}
+\label{fig:singleton-collection-pattern}
+\end{wrapfigure}
+It is possible to maintain a degree of flexibility, allowing nodes with
+widely varying edge counts, while keeping the updates localized to a node, as
+its edge counts exceed special case boundaries. This is especially true for the
+special case of single-element collections.
+A node can also be a singleton collection if it obeys a simple
+contract, the \emph{singleton collection pattern} shown in
+\autoref{fig:singleton-collection-pattern}: \code{class Node implements
+Singleton<Node>}.
 
-You can regain a degree of flexibility, at the expense of some added coding
-complexity. First, you must update the \class{Edge} interface to indicate that an
-edge is also capable of acting as a singleton set of edges:
-\begin{shortlisting}
-interface Edge extends Set<Edge> {
-}
-\end{shortlisting}
+%Second, you must update your edge implementations to implement the boilerplate
+%of the \class{Set<Edge>} interface; this part is straightforward. For example,
+%you must implement all of the mutating methods, such as insertion and removal,
+%to thow an unsupported operation exception. This ugliness wouldn't be necessary
+%if the standard library had an interface that represented an unmodifiable set;
+%instead, an unmodifiable set is only a hidden implementation constructed via
+%the \class{Collections.unmodifiable} family of factory methods.
 
-Second, you must update your edge implementations to implement the boilerplate of
-the \class{Set<Edge>} interface; this part is straightforward. For example,
-you must implement all of the mutating methods, such as insertion and removal,
-to thow an unsupported operation exception. This ugliness wouldn't be necessary
-if the standard library had an interface that represented an unmodifiable set;
-instead, an unmodifiable set is only a hidden implementation constructed via
-the \class{Collections.unmodifiable} family of factory methods.
+In this way, it becomes possible to have a single node implementation that
+supports arbitrary numbers of parents, while remaining optimized those nodes
+with only a single parent. Furthermore, you needn't change the fields of the
+\class{Node} class from the straightforward, most general, implementation of
+\autoref{sec:graph-straightforward}: a field \class{Collection<Node> parents}
+can, transparently, be either a single node or a more general collection.
 
-Now you have an edge that is also a singleton set of edges. It then becomes
-possible to have a single node implementation that supports arbitrary numbers of
-parents, but is also optimized the special case of nodes with only a single
-parent. This is possible, without your having to change the fields of the
-\class{Node} class in any way: a field \class{Set<Edge> parents} can,
-transparently, be either an optimized singleton, or a more general set.
+%So far, the changes necessary to implement this optimization have been local in
+%scope. They have not violated any principles of abstraction, because changes
+%have been isolated to the \class{Edge} details. The final change you need to
+%make requires some abstraction-violating changes. This implementation of the
+%constructor and \class{addParent} does not specialize for small collections:
 
-So far, the changes necessary to implement this optimization have been local in
-scope. They have not violated any principles of abstraction, because changes have
-been isolated to the \class{Edge} details. The final change you need to make
-requires some abstraction-violating changes. This implementation of the
-constructor and \class{addParent} does not specialize for small collections:
+%\begin{shortlisting}
+%class Node {
+  %public Node() { // constructor
+     %this.parents = new HashSet<Edge>();
+  %}
+  %public void addParent(Node parent) {
+     %parents.add(new Edge(this. parent));
+  %}
+%}
+%\end{shortlisting} 
 
-\begin{shortlisting}
-class Node {
-  public Node() { // constructor
-     this.parents = new HashSet<Edge>();
-  }
-  public void addParent(Node parent) {
-     parents.add(new Edge(this. parent));
-  }
-}
-\end{shortlisting} 
-
-In order to take advantage of the edge-as-singleton-set optimization, you must
-pollute the node's \code{addParent} implemnetation. Here is an implementation
-that optimizes both for empty and singleton sets:
+In order to take advantage of this technique, you will need to modify the node's
+\code{addParent()} method. Here is an implementation that optimizes both for
+empty and singleton sets:
 
 \begin{shortlisting}
 class Node {
@@ -845,39 +867,50 @@ class Node {
      this.parents = Collections.emptySet();
   }
   public void addParent(Node parent) {
-     if (parents.size() == 0) parents = new HashSet<Edge>();
+     if (parents.size() == 0) parents = parent;
      else if (parents.size() == 1) {
-        Edge firstParent = parents.iterator().next();
-        parents = new HashSet<Edge>();
+        Node firstParent = parents.iterator().next();
+        parents = new ArrayList<Node>(2);
         parents.add(firstParent);
+     } else {
+        parents.add(parent);
      }
-     parents.add(new Edge(this. parent));
   }
 }
 \end{shortlisting} 
 
-This data abstraction violation is unfortunate and only avoidable by
-reintroducing the very wrappers you have sought to eliminate. It would be nice if
-\code{Edge.add()}, i.e. the implementation of the \class{Set} interface, could
-reroute of all pointers to this edge to point to a proper set. However, in Java,
-it is not possible to have \code{Edge.add()} change this edge's reference
-identity. Doing so would require a level of indirection, where edges are
-referenced via \emph{handles}, pointers to pointers, rather than direct
-pointers.\index{Handles} An \class{ArrayList} does this, by wrapping an object
-around the underlying array. This storage structure offers a degree of
-transparency, where the array can be reallocated, or conceivably changed to an
-entirely different storage structure without any global changes. The Smalltalk
-language\index{Smalltalk} provides a \code{become}
-primitive\index{\texttt{become} primitive} that allows for pointer rerouting,
-without the use of handles, though at a nontrivial runtime expense. In the worst,
-but common, case, every call to \code{become} requires a full garbage collection.
+% This data abstraction violation is unfortunate and only avoidable by
+% reintroducing the very wrappers you have sought to eliminate.
+It would be nice if this transition, from a singleton to a fully formed
+collection, could be done more transparently. But this would involve rerouting
+all pointers to this singleton to point to a proper set. In Java, it is not
+possible to write a program that transparently changes an object's reference
+identity, without using wrapper objects.
+% Doing so would require a level of indirection, where edges are referenced via
+% \emph{handles}, pointers to pointers, rather than direct
+% pointers.\index{Handles}
+An \class{ArrayList} does this, by wrapping an object around the underlying
+array, thus allowing the identity of the array to change as it is reallocated
+to be of larger or smaller size.\footnote{The Smalltalk
+language\index{Smalltalk} provides a \code{become} primitive\index{\texttt{become} primitive} that allows for pointer
+rerouting, without the use of handles, though at a nontrivial runtime expense.
+In the worst, but common, case, every call to \code{become} requires a full
+garbage collection.}
 
-\paragraph{Insufficiencies of Pure Object Orientation}
-Using a fully object-oriented Java design, it is impossible to achieve both
-compactness of storage and the generality to handle a variety of graph
-structures. To do so requires coding in a style that is not conventionally object
-oriented.
-% what?
-%By specifying that the parents of a node are a \class{List<Edge>},
-%you are forced to 
+\section{Summary}
+
+\begin{itemize}
+  \item When designing and implementing your data models, you should keep two
+  questions in mind: ``Will it Fit?'', and ``Should I Bother Tuning?''.
+  \item It is often not possible to fully amortize the amount of bloat in a data
+  structure. Eventually, the amount of bloat will reach an asymptote, no matter
+  how many elements you add to it.
+  \item The Maximum Room For Improvement is a useful metric in helping you to
+  answer the two important questions. It is based on the asymptotic value of
+  bloat in a data structure.
+  \item Using a fully object-oriented Java design, it is impossible to achieve
+  both compactness of storage and the generality to handle a variety of graph
+structures. To do so requires coding in a style that is not conventionally
+object oriented.
+\end{itemize}
 
