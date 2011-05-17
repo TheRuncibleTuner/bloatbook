@@ -4,6 +4,7 @@
 \chapter{When It Won't Fit: Bulk Storage}
 %\chapter{Extreme Scalability of Long-lived Data}
 \label{chapter:large-long-lived}
+\index{Bulk Storage}
 
 % All of the tuning advice presented so far in this book can only get you so
 % far.
@@ -36,18 +37,18 @@ down for various reasons.
       \includegraphics[width=0.45\textwidth]{part3/Figures/extreme/EC-example-for-columns1}
       }
       \quad
-   \subfigure[Entity attributes are stored in arrays of
+   \subfigure[Attributes are store in arrays of
    data.]{
-      \includegraphics[width=0.3\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
+      \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
       }
 \end{figure}
 
 
+\section{When to Consider Using Bulk Storage}
 
-
-\section{Column-oriented Storage}
+\section{A Bulk Storage Strategy: Column-oriented Storage}
 \label{sec:column-oriented}
-\index{Column-based Storage}
+\index{Column-oriented Storage}
 
 The examples of the previous section worked through various optimizations of
 representing relationships, and illustrated the interplay of storage optimization
