@@ -1,16 +1,25 @@
 %about objects not information; we can discuss in outside the box the issue of
 %information needed forver but shuttled in and out.
 
-\chapter{Bulk Storage}
+\chapter{When It Won't Fit: Bulk Storage}
 %\chapter{Extreme Scalability of Long-lived Data}
 \label{chapter:large-long-lived}
 
-%All of the tuning advice presented so far in this book can only get you so far.
+% All of the tuning advice presented so far in this book can only get you so
+% far.
 There are limits to how well you can get an object-oriented data model to scale.
+At some point, you will be faced with the ineluctable limits of tuning objects.
+Each object has its header, and this is an unavoidable cost. The only way to
+avoid delegation costs, and thus amortize the cost of a header over more data
+fields, is to go through the manual, iterative, process of inlining the fields
+of one class into another. You of course make a best effort, but too much of
+this runs at odds to principled engineering. Often, you are blocked because you
+run into code that you do not own, or base classes whose field layout is locked
+down for various reasons.
 
-Sometimes, despite your best effors of tuning entities and collections, your
-application's objects still do not fit into the memory constraints of the target
-platform. 
+%Sometimes, despite your best effors of tuning entities and collections, your
+%application's objects still do not fit into the memory constraints of the
+%target platform. 
 
 
 %Managing a great number of long-lived objects therefore comes with its
@@ -21,9 +30,17 @@ platform.
 %demand paging, or code your data models in a non-object oriented way.
 
 
-This chapter presents a methodology for predicting the scalability of your data
-models, and presents several solutions to demand-marshalling objects, and for
-storing objects in a ``Fortran style''.
+\begin{figure}
+\centering
+   \subfigure[Entities are objects, attributes are fields.]{
+      \includegraphics[width=0.45\textwidth]{part3/Figures/extreme/EC-example-for-columns1}
+      }
+      \quad
+   \subfigure[Entity attributes are stored in arrays of
+   data.]{
+      \includegraphics[width=0.3\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
+      }
+\end{figure}
 
 
 
