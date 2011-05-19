@@ -61,27 +61,31 @@ You may (wisely!) be unwilling to touch a class that is also used by other
  \class{X}, or duplicating the implementation of \class{X} into a modified version of \class{B}. Neither alternative seems very appealing.
  This is a variant of what is known as the \emph{fragile base class problem}.
 
-\begin{wrapfigure}{l}{0.47\textwidth}
+\begin{wrapfigure}[19]{l}{0.47\textwidth}
 \centering
    \includegraphics[width=0.46\textwidth]{part3/Figures/extreme/EC-example-for-columns1}
    \caption{A conventional storage strategy maps entities to objects, 
    attributes to fields, and relations to collections.}
    \label{fig:extreme-ec}
 \end{wrapfigure}
-If you break out of the Java mold, you can overcome these issues. An
+If you break out of the Java mold, you may be able to overcome these issues. An
 Entity-Collection diagram such as \autoref{fig:extreme-ec} maps pretty
 inefficiently to a straightforward Java implementation. Each entity pays a
 header cost, but has only a few data fields. Most of the collections,
 representing relationships such as the number of employees under a manager, will
 be small. 
 
-\begin{wrapfigure}[13]{l}{0.3\textwidth}
+\begin{wrapfigure}{r}{0.29\textwidth}
 \centering
-   \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
-   \caption{With column-oriented storage, each attribute is stored in an array
-   of pure data.}
+\vspace{-4mm}
+\begin{framedlisting}
+struct Node {
+  enum Color color;
+} nodes[20]
+\end{framedlisting}
+\caption{In C, \code{nodes} is an array of 20 integers, not
+pointers to 20 separate heap allocations.}
 \end{wrapfigure}
-
 Storing data in bulk form means that the relations are stored in a small and
 fixed number of collections, and the entities are stored in a small and fixed
 number of objects --- across \emph{all} entities and relations between them.
@@ -89,14 +93,26 @@ They key is that the number of allocations is small and fixed, and therefore
 object header overheads (and allocation costs) are easily amortized. The trick
 to accomplishing a bulk storage approach is to store data in large arrays. This
 can be accomplished in two ways: arrays of records and column-oriented storage.
-Arrays of records are not an option in Java, and so this chapter focuses on the
-latter approach.
+\index{Fortran}
+\index{COBOL}
+\index{Pascal}
+\index{Arrays of records}
+An array of records stores the fields of the entities back to back in the array,
+without intervening pointers or headers. Arrays of records are not an option in
+Java (they are in languages such as C, Pascal, COBOL, and C\#) and so this
+chapter focuses on the latter approach: column-oriented storage.
 
-In a way that a graph of interconnected Java objects can never be, this bulk
-approach of storage is highly optimized for having a large number of entities.
-However, you must not forget that bulk storage violates some basic tenets of
-object-oriented data modeling. These benefits to scalability come with some
-design costs, and may not suit the way your data is accessed and updated.
+% In a way that a graph of interconnected Java objects can never be, a bulk
+% approach of storage is highly optimized for having a large number of entities.
+
+\textbf{Warning!} Bulk storage violates some basic tenets of object-oriented
+data modeling. Everything is a stored in an array, and thus there are no objects
+to encapsulate the state of an individual entity. You will learn that
+subclassing is more difficult to express, and
+% Frthermore, these benefits to scalability come with some design costs, and
+that a column-oriented approach may not suit the way your data is accessed and
+updated.
+% as discussed in \autoref{sec:when-bulk-storage-is-applicable}.
 Nonetheless, with careful consideration of these issues, you can reap
 substantial benefits.
 
@@ -115,7 +131,27 @@ substantial benefits.
 %demand paging, or code your data models in a non-object oriented way.
 
 
+\section{Column-oriented Storage}
+\begin{wrapfigure}[13]{r}{0.3\textwidth}
+\centering
+   \vspace{-3mm}
+   \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
+   \caption{With column-oriented storage, each attribute is stored in an array
+   of pure data.}
+\end{wrapfigure}
+
+
 \section{When to Consider Using Bulk Storage}
+\label{sec:when-bulk-storage-is-applicable}
+The choice between bulk storage and using normal objects is analogous to the
+choice between using an \class{ArrayList} versus a \class{LinkedList} to store a
+list. An array-based list is more efficient than its linked counterpart, but
+does not support efficient insertion and deletion of random list elements. Bulk
+storage removes all delegation, and stores data and relations densely, in
+arrays. Removing an entity therefore entails removing an entry from the array
+that stores each of the attributes of that type of entity.
+
+ 
 
 also, the data doesn't need to be long-lived, that's an (also imprecise)
 description of the preconditions under which the technique (bulk storage)
@@ -162,27 +198,8 @@ attributes can be stored in a flattened form. If you store the data compactly,
 you can avoid much of the pointer and header overhead that plagues most normal
 object oriented storage representations.
 
-\begin{wrapfigure}{l}{0.29\textwidth}
-\begin{framedlisting}
-struct Node {
-   Color color;
-}
-struct Node[] nodes;
-\end{framedlisting}
-\caption{In C, you can use arrays of records.}
-\end{wrapfigure}
-\index{Fortran}
-\index{COBOL}
-\index{Pascal}
-\index{Arrays of records}
-To store data compactly, you have two options: either use arrays of records, or
-in parallel arrays of attributes.
 
- either store data in the style of
-C, Pascal, or COBOL arrays of records, or in the style of Fortran parallel
-arrays. An array of C structs, or Pascal records, stores the fields of the structures
-densely. The fields of each record are stored back to back in the array, without
-intervening pointers or headers. 
+ 
 %If the records of nodes are stored in
 %an array called \code{nodes}, then
 %to retrieve the color of the node
