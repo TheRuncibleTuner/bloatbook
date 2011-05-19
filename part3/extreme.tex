@@ -8,15 +8,99 @@
 
 % All of the tuning advice presented so far in this book can only get you so
 % far.
-There are limits to how well you can get an object-oriented data model to scale.
+There are limits to how well an object-oriented data model can scale.
 At some point, you will be faced with the ineluctable limits of tuning objects.
 Each object has its header, and this is an unavoidable cost. The only way to
 avoid delegation costs, and thus amortize the cost of a header over more data
 fields, is to go through the manual, iterative, process of inlining the fields
-of one class into another. You of course make a best effort, but too much of
-this runs at odds to principled engineering. Often, you are blocked because you
-run into code that you do not own, or base classes whose field layout is locked
-down for various reasons.
+of one class into another. Some amount of this manual inlining makes sense, but
+too much runs counter to principled engineering. Often, you are blocked because
+you run into code that you do not own, or classes whose field layout is,
+for one reason or another, set in stone.
+
+In this way, a conventional storage strategy, one which maps entities to objects
+and relations to collections, suffers from two problems that impact scaling up
+the size and complexity of a design.
+
+\paragraph{Amortizing away header costs.} Since entities are
+  objects, and each object pays a header cost imposed by the \jre, you need to
+  craft your design so that there is enough data in each object to amortize the
+  cost of the headers, and to avoid high delegation costs.
+ 
+\begin{wrapfigure}{r}{0.31\textwidth}
+ \centering
+ \vspace{-2mm}
+ \begin{framedlisting}
+ class X {
+   A a;
+ }
+ class B extends A {
+   int w, x;
+ }
+ class C extends A {
+   int z;
+ }
+ \end{framedlisting}
+ \caption{Delegation costs one object header, a cost that is easy to amortize.} 
+ \label{fig:fragile-base-class}
+\end{wrapfigure}
+\paragraph{The Fragile Base Class problem.}
+ %Any attempt to optimize, by
+ %manually inlining the fields of one class into another, will likely suffer
+ %from the fragile base class problem.
+ \index{Fragile base class problem}
+You may (wisely!) be unwilling to touch a class that is also used by other
+ teams for fear of adversely impacting their correctness or
+ memory footprint. For example, say class \class{X} delegates some of its
+ behavior to an instance of class \class{A}, and that both \class{B} (your
+ class) and \class{C} (the other team's class) are instances of \class{A}.
+ %\autoref{fig:fragile-base-class} shows this example.
+ Ignoring the other teams needs, you might prefer to collapse the fields of
+ \class{B} into the \class{X} class, removing this need for delegation and that
+ extra object header. To do so requires either modifying the implementation of
+ \class{X}, or duplicating the implementation of \class{X} into a modified version of \class{B}. Neither alternative seems very appealing.
+ This is a variant of what is known as the \emph{fragile base class problem}.
+
+\begin{wrapfigure}{l}{0.47\textwidth}
+\centering
+   \includegraphics[width=0.46\textwidth]{part3/Figures/extreme/EC-example-for-columns1}
+   \caption{A conventional storage strategy maps entities to objects, 
+   attributes to fields, and relations to collections.}
+   \label{fig:extreme-ec}
+\end{wrapfigure}
+If you break out of the Java mold, you can overcome these issues. An
+Entity-Collection diagram such as \autoref{fig:extreme-ec} maps pretty
+inefficiently to a straightforward Java implementation. Each entity pays a
+header cost, but has only a few data fields. Most of the collections,
+representing relationships such as the number of employees under a manager, will
+be small. 
+
+\begin{wrapfigure}[13]{l}{0.3\textwidth}
+\centering
+   \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
+   \caption{With column-oriented storage, each attribute is stored in an array
+   of pure data.}
+\end{wrapfigure}
+
+Storing data in bulk form means that the relations are stored in a small and
+fixed number of collections, and the entities are stored in a small and fixed
+number of objects --- across \emph{all} entities and relations between them.
+They key is that the number of allocations is small and fixed, and therefore
+object header overheads (and allocation costs) are easily amortized. The trick
+to accomplishing a bulk storage approach is to store data in large arrays. This
+can be accomplished in two ways: arrays of records and column-oriented storage.
+Arrays of records are not an option in Java, and so this chapter focuses on the
+latter approach.
+
+In a way that a graph of interconnected Java objects can never be, this bulk
+approach of storage is highly optimized for having a large number of entities.
+However, you must not forget that bulk storage violates some basic tenets of
+object-oriented data modeling. These benefits to scalability come with some
+design costs, and may not suit the way your data is accessed and updated.
+Nonetheless, with careful consideration of these issues, you can reap
+substantial benefits.
+
+
 
 %Sometimes, despite your best effors of tuning entities and collections, your
 %application's objects still do not fit into the memory constraints of the
@@ -31,20 +115,21 @@ down for various reasons.
 %demand paging, or code your data models in a non-object oriented way.
 
 
-\begin{figure}
-\centering
-   \subfigure[Entities are objects, attributes are fields.]{
-      \includegraphics[width=0.45\textwidth]{part3/Figures/extreme/EC-example-for-columns1}
-      }
-      \quad
-   \subfigure[Attributes are store in arrays of
-   data.]{
-      \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
-      }
-\end{figure}
-
-
 \section{When to Consider Using Bulk Storage}
+
+also, the data doesn't need to be long-lived, that's an (also imprecise)
+description of the preconditions under which the technique (bulk storage)
+applies. it's also not read-mostly, because, with bulk storage, it's ok if the
+attribute values change rapidly (in fact, things will probably be faster here,
+due to cache locality), and it's also ok if the set of attributes changes (here
+again bulk storage does a better job, much better in this case, than java). the
+only thing that can't happen too much is deletion of entities.
+
+3(you wrote, in your notes, "Is the data immutable", and "is it stable after a
+point in time", neither of which is i think an absolute precondition of bulk
+storage, or at least not that broadly; immutability only matters for the domain
+of entities, but, even then, additions are OK, and even infrequent removals are
+OK; or is this what you meant by "stability"?)
 
 \section{A Bulk Storage Strategy: Column-oriented Storage}
 \label{sec:column-oriented}
@@ -77,24 +162,31 @@ attributes can be stored in a flattened form. If you store the data compactly,
 you can avoid much of the pointer and header overhead that plagues most normal
 object oriented storage representations.
 
+\begin{wrapfigure}{l}{0.29\textwidth}
+\begin{framedlisting}
+struct Node {
+   Color color;
+}
+struct Node[] nodes;
+\end{framedlisting}
+\caption{In C, you can use arrays of records.}
+\end{wrapfigure}
+\index{Fortran}
 \index{COBOL}
 \index{Pascal}
 \index{Arrays of records}
-To store data compactly, you have two options: either store data in the style of
+To store data compactly, you have two options: either use arrays of records, or
+in parallel arrays of attributes.
+
+ either store data in the style of
 C, Pascal, or COBOL arrays of records, or in the style of Fortran parallel
 arrays. An array of C structs, or Pascal records, stores the fields of the structures
 densely. The fields of each record are stored back to back in the array, without
-intervening pointers or headers. If the records of node attributes are stored in
-an array called \code{nodeAttributes}:
-\begin{shortlisting}
-// this is C code
-typedef struct NodeAttributes {
-   Color color;
-} NodeAttributes;
-NodeAttributes[] nodeAttr;
-\end{shortlisting}
-then, to retrieve the color of the node
-with index 5 becomes \code{nodeAttr[5].color}.
+intervening pointers or headers. 
+%If the records of nodes are stored in
+%an array called \code{nodes}, then
+%to retrieve the color of the node
+%with index 5 becomes \code{nodes[5].color}.
 
 Unfortunately, Java does not allow for arrays of structures. If the storage size
 of every field is known, and fixed, you can mimic this storage structure in Java,
@@ -108,25 +200,28 @@ appropriately.
 
 \newcommand{\light}[1]{\footnotesize{\textcolor{Lighter}{#1}}}
 
-\index{Fortran}
+\begin{wrapfigure}{r}{0.48\textwidth}
+\begin{framedlisting}
+class NodeModel {
+  Color[] colors;
+  Color getColor(int nodeIndex) {
+    return colors[nodeIndex];
+  }
+}
+\end{framedlisting}
+\end{wrapfigure}
+%\index{Fortran}
 \index{Parallel arrays}
-The alternative is to store your data in a Fortran style, where each attribute is
-stored in its own array. With this storage structure, you avoid the messy details
+The alternative is to store your data in a column-oriented style, where each
+attribute is stored in its own array. With this storage structure, you avoid the messy details
 of addressing fields with a non-uniformly typed record. Furthermore, adding new
 attributes to nodes or edges is a trivial operation. Each is merely an extra
-array in the set of parallel arrays. In this style of storage, you express
+array in the set of parallel arrays.
+In this style of storage, you express
 collections of objects, rather than individual objects. The individuals are
 represented by indices. Instead of having a class for a node, you have a class
 for a group of nodes that participate, together, in a graph or several related
-graphs:
-\begin{shortlisting}
-class NodeModel {
-	Color[] colors;
-	public Color getColor(int nodeIndex) {
-		return colors[nodeIndex];
-	}
-}
-\end{shortlisting}
+graphs, as shown on the right.
 \autoref{fig:fortran-style} gives an example of a graph with 9 nodes.
 
 \begin{figure}
@@ -196,7 +291,7 @@ node's index.
 class TransientNode {
    NodeModel nodeModel;
    int nodeIndex;
-   public Color getColor() {
+   Color getColor() {
       return nodeModel.getColor(nodeIndex);
    }
 }
@@ -218,10 +313,10 @@ source and target node indices of each edge, as shown in
 \begin{shortlisting}
 class EdgeModel {
    int[] from, to;
-   public int getEdgeFrom(int i) {
+   int getEdgeFrom(int i) {
       return from[i];
    }
-   public int getEdgeTo(int i) {
+   int getEdgeTo(int i) {
       return to[i];
    }
 }
@@ -232,7 +327,7 @@ incoming edges from a given node. Even a \class{TransientEdge} class would not
 help, because there is no connection between a node index and an index
 into the edge model. Properly representing edges requires a bit more work. 
 
-\paragraph{Representing Relationships in a Column-oriented Storage Model}
+\section{Bulk Storage of Relationships}
 
 To allow for efficient traversals of the edges, you must index them, as a
 database would. First, consider the outgoing edges from a node. If the
@@ -336,31 +431,8 @@ be nodes 3 and 4.}
 \label{fig:fortran-style-edge-optimization}
 \end{figure}
 
-\paragraph{Limitations of Column-oriented Storage}
-
-There are two main problems you will run into, with a column-oriented approach.
-The first has been touched on briefly: the lack of strong typing for nodes and
-edges. If everything is just an integer, your code will be buggy and hard to
-maintain. Java does not have a facility for naming types, such as \code{typedef}
-in the C language. The Java \code{enum} construct seems like it could help, but
-this use case would require a permanent object for every node, and, besides,
-this construct is limited to around 65,000 entries per enumeration. You can use transient
-nodes, with some cost to performance, but your code must still obey an implicit
-contract, one not enforced by the \code{javac} compiler, that reference equality
-is never used on these transient facades.
-
-The second problem centers around modifications to the node or edge model. This
-style of storage works fantasically well, much better than normal Java objects,
-for certain kinds of modifications. Adding attributes to models is easy.
-Adding nodes is straigtforward. However, deleting nodes, and adding or
-removing edges from existing nodes can only be done with some extra work. For
-deletions, you would have to implement a form of garbage collection yourself.
-Nodes and edges can be marked as deleted; deleted elements would be ignored by
-normal access mechanisms. Adding edges to existing nodes is even more difficult.
-For these reasons, it is highly recommended that you only employ column-oriented
-storage for data structures that do not change in these ways.
-
-\section{Storing Variable-length, Immutable Data (e.g. Strings)}
+%  used to have immutable in it
+\section{Bulk Storage of Variable-length Data} %(e.g. Strings)}
 \label{sec:bulk-sharing-pool}
 \index{Bulk Sharing Pool}
 
@@ -485,6 +557,30 @@ The chart makes it pretty clear how much a few headers and pointers can affect
 the scalability of your application. With only a bit of work, you can have an
 implementation that scales very well, with only minimal overhead on top of the
 actual data.
+
+\paragraph{Limitations of Bulk Storage Strategies}
+
+There are two main problems you will run into, with a column-oriented approach.
+The first has been touched on briefly: the lack of strong typing for nodes and
+edges. If everything is just an integer, your code will be buggy and hard to
+maintain. Java does not have a facility for naming types, such as \code{typedef}
+in the C language. The Java \code{enum} construct seems like it could help, but
+this use case would require a permanent object for every node, and, besides,
+this construct is limited to around 65,000 entries per enumeration. You can use transient
+nodes, with some cost to performance, but your code must still obey an implicit
+contract, one not enforced by the \code{javac} compiler, that reference equality
+is never used on these transient facades.
+
+The second problem centers around modifications to the node or edge model. This
+style of storage works fantasically well, much better than normal Java objects,
+for certain kinds of modifications. Adding attributes to models is easy.
+Adding nodes is straigtforward. However, deleting nodes, and adding or
+removing edges from existing nodes can only be done with some extra work. For
+deletions, you would have to implement a form of garbage collection yourself.
+Nodes and edges can be marked as deleted; deleted elements would be ignored by
+normal access mechanisms. Adding edges to existing nodes is even more difficult.
+For these reasons, it is highly recommended that you only employ column-oriented
+storage for data structures that do not change in these ways.
 
 
 \section{Summary}
