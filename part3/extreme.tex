@@ -93,7 +93,6 @@ They key is that the number of allocations is small and fixed, and therefore
 object header overheads (and allocation costs) are easily amortized. The trick
 to accomplishing a bulk storage approach is to store data in large arrays. This
 can be accomplished in two ways: arrays of records and column-oriented storage.
-\index{Fortran}
 \index{COBOL}
 \index{Pascal}
 \index{Arrays of records}
@@ -116,6 +115,9 @@ updated.
 Nonetheless, with careful consideration of these issues, you can reap
 substantial benefits.
 
+%The main goals are to support a combination of flexibility and
+%scalability that is not possible when following the precepts of object
+%orientation.
 
 
 %Sometimes, despite your best effors of tuning entities and collections, your
@@ -130,73 +132,94 @@ substantial benefits.
 %solutions at your disposal: throw hardware at the problem, implement a kind of
 %demand paging, or code your data models in a non-object oriented way.
 
-
-\section{Column-oriented Storage}
-\begin{wrapfigure}[13]{r}{0.3\textwidth}
-\centering
-   \vspace{-3mm}
-   \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
-   \caption{With column-oriented storage, each attribute is stored in an array
-   of pure data.}
-\end{wrapfigure}
-
-
-\section{When to Consider Using Bulk Storage}
-\label{sec:when-bulk-storage-is-applicable}
-The choice between bulk storage and using normal objects is analogous to the
-choice between using an \class{ArrayList} versus a \class{LinkedList} to store a
-list. An array-based list is more efficient than its linked counterpart, but
-does not support efficient insertion and deletion of random list elements. Bulk
-storage removes all delegation, and stores data and relations densely, in
-arrays. Removing an entity therefore entails removing an entry from the array
-that stores each of the attributes of that type of entity.
-
- 
-
-also, the data doesn't need to be long-lived, that's an (also imprecise)
-description of the preconditions under which the technique (bulk storage)
-applies. it's also not read-mostly, because, with bulk storage, it's ok if the
-attribute values change rapidly (in fact, things will probably be faster here,
-due to cache locality), and it's also ok if the set of attributes changes (here
-again bulk storage does a better job, much better in this case, than java). the
-only thing that can't happen too much is deletion of entities.
-
-3(you wrote, in your notes, "Is the data immutable", and "is it stable after a
-point in time", neither of which is i think an absolute precondition of bulk
-storage, or at least not that broadly; immutability only matters for the domain
-of entities, but, even then, additions are OK, and even infrequent removals are
-OK; or is this what you meant by "stability"?)
-
-\section{A Bulk Storage Strategy: Column-oriented Storage}
+\section{Storing Your Data in Columns}
 \label{sec:column-oriented}
 \index{Column-oriented Storage}
 
-The examples of the previous section worked through various optimizations of
-representing relationships, and illustrated the interplay of storage optimization
-and API design. Very often, achieving a high level of memory efficiency requires
-breaking what would generally considered to be the object orientation of the API
-or the storage. The main goals are to support a combination of flexibility and
-scalability that is not possible when following the precepts of object
-orientation.
+In a column-oriented storage strategy, attributes are stored as arrays of data,
+and an entity is implicitly represented by \emph{index} into these parallel
+arrays. \autoref{fig:parallel-arrays} gives an example which takes the graph of
+objects from \autoref{fig:extreme-ec} and represents the attributes of the
+\class{Employee} entities in this fashion. Every group of entities, such as the
+set of all employees, is stored in what amounts to a table of data. The range of
+indices, 0 to 6 in this case, over the domain of attributes (\class{name},
+\class{ID}, etc.), altogether represent what was previously a graph of
+individual objects.
 
-It would be nice if you could avoid the overhead of collections, without having
-to pollute your code with special cases. It would also be nice if you could add
-edge or node properties, without having to worry about the interaction of their
-storage with the storage of the relations themselves. If your main use of the
-relational information is for traversals that don't modify the graph structure
-itself, then there is an opportunity to dramatically reduce the overheads of
-storing this information.
+\callout{column-oriented}{Column-oriented Storage}{ A column-oriented strategy
+stores everything, your data and the relations between them, as sets of parallel
+arrays. Entities, rather than being individual allocations, are indicies into
+these arrays.}
 
-\paragraph{Breaking the Mold of Object Orientation}
+\index{Parallel arrays}
+\begin{wrapfigure}{r}{0.3\textwidth}
+\centering
+\vspace{-5mm}
+   \includegraphics[width=0.28\textwidth]{part3/Figures/extreme/EC-example-for-columns2}
+   \caption{Storing attributes in parallel arrays.}
+   \label{fig:parallel-arrays}
+\end{wrapfigure}
+A column-oriented storage strategy consists of four tasks. First is storing the
+primitive attributes of your entities, such as the \class{boolean} and
+\class{int} data. Second is storing the relations between entities. Third is
+storing variable-length attributes, such as string data. Finally is the task of
+establishing the set of tables. There will be one per set of entities, one per relation between
+entities, and one per source of variable length data. The tables are indexed by
+an integer that represents the entity. Let's step through these tasks now,
+continuing the example from the previous chapter: storing a graph model.
 
-Consider the simple example graph from
+\section{Bulk Storage of Attributes}
+
+The example graph of the previous chapter finished with a bit of a condundrum.
+You could store a flexible number of nodes and edges, but at high level of
+memory bloat. Alternatively, by severely restricting the flexibility of the
+implementation, could you achieve a pretty good level of scalability. Within the
+normal confines of Java, these were the two choices. You should be able to
+achieve a better balance by storing the graph in a bulk form.
+
+\begin{wrapfigure}{l}{0.4\textwidth}
+\vspace{-2mm}
+\begin{framedlisting}
+class Attribute<T> {
+  T[] data;
+  T get(int nodeIndex) {
+     return data[nodeIndex];
+  }
+}
+\end{framedlisting}
+\end{wrapfigure}
+A graph model is a good candidate for storing in a column-oriented fashion.
+Stored in this way, a graph without node attributes is simply one that has no
+arrays to store node attributes. The is a direct correspondence between need for
+and the existence of storage that is hard to achieve in a purely object-oriented
+approach.
+
 \autoref{fig:example-storing-relations-graph}, which has been updated in
 \autoref{fig:example-storing-relations-graph-with-node-numbers} to include a
 dense index for each node. The indices are natural numbers that range, in this
-example from 1--9, with no gaps. If each node has a dense index, then each node
-attributes can be stored in a flattened form. If you store the data compactly,
-you can avoid much of the pointer and header overhead that plagues most normal
-object oriented storage representations.
+example from 1--9, with no gaps. As far as node attributes are concerned, the
+dense index of each node need not be stored anywhere. Once every node has been
+assigned a dense index, then the attribute value of a given node attribute can
+be stored and accessed in with that index.
+
+\begin{wrapfigure}{r}{0.49\textwidth}
+\vspace{-3mm}
+\begin{framedlisting}
+class MyNodeModel {
+  Attribute<Color> colors;
+}
+\end{framedlisting}
+\end{wrapfigure}
+%  int getColor(int nodeIndex) {
+    %return colors.data[nodeIndex];
+  %}
+In a column-oriented storage approach, rather than having interfaces and
+implementations for individual nodes, you instead have them for a
+\emph{set} of nodes. An instance of a \class{NodeModel} 
+defines the range of node indices for the nodes of that model, and
+includes whatever combination
+of node attributes that you need for your given purpose. If, for one use case,
+you need 
 
 
  
@@ -205,40 +228,27 @@ object oriented storage representations.
 %to retrieve the color of the node
 %with index 5 becomes \code{nodes[5].color}.
 
-Unfortunately, Java does not allow for arrays of structures. If the storage size
-of every field is known, and fixed, you can mimic this storage structure in Java,
-to a point. However, if your records have fields of varying types, this style of
-programming can boils down to doing the very same work you would do for
-marshalling data in and out of the Java heap. If the first and third attributes
-of your nodes are of \class{byte} size and the second is of \class{int} size,
-then accessing the third field of the node with index 5 is tricky. It requires
-treating the entire record as a bit bucket, and shifting and masking
-appropriately.
+%Unfortunately, Java does not allow for arrays of structures. If the storage
+%size of every field is known, and fixed, you can mimic this storage structure
+%in Java, to a point. However, if your records have fields of varying types,
+%this style of programming can boils down to doing the very same work you would
+%do for marshalling data in and out of the Java heap. If the first and third
+%attributes of your nodes are of \class{byte} size and the second is of
+%\class{int} size, then accessing the third field of the node with index 5 is
+%tricky. It requires treating the entire record as a bit bucket, and shifting
+%and masking appropriately.
 
 \newcommand{\light}[1]{\footnotesize{\textcolor{Lighter}{#1}}}
 
-\begin{wrapfigure}{r}{0.48\textwidth}
-\begin{framedlisting}
-class NodeModel {
-  Color[] colors;
-  Color getColor(int nodeIndex) {
-    return colors[nodeIndex];
-  }
-}
-\end{framedlisting}
-\end{wrapfigure}
-%\index{Fortran}
-\index{Parallel arrays}
-The alternative is to store your data in a column-oriented style, where each
-attribute is stored in its own array. With this storage structure, you avoid the messy details
-of addressing fields with a non-uniformly typed record. Furthermore, adding new
-attributes to nodes or edges is a trivial operation. Each is merely an extra
-array in the set of parallel arrays.
-In this style of storage, you express
-collections of objects, rather than individual objects. The individuals are
-represented by indices. Instead of having a class for a node, you have a class
-for a group of nodes that participate, together, in a graph or several related
-graphs, as shown on the right.
+From a storage perspective, adding new attributes to nodes or edges is a trivial
+operation. Adding a new node attribute requires an extra array. You needn't
+reach a concensus among developers as to whether this is a good idea
+
+In this style
+of storage, you express collections of objects, rather than individual objects.
+The individuals are represented by indices. Instead of having a class for a
+node, you have a class for a group of nodes that participate, together, in a
+graph or several related graphs, as shown on the right.
 \autoref{fig:fortran-style} gives an example of a graph with 9 nodes.
 
 \begin{figure}
@@ -272,7 +282,7 @@ index.]{
 \subfigure[Edges.]{
 \shortstack{
 \begin{tabular}{r@{~~$\rightarrow$~~}l}
-\textbf{from} & \textbf{to}
+\textbf{source} & \textbf{target}
 \\ \toprule
 0 & 1 \\
 0 & 2 \\
@@ -290,11 +300,14 @@ index.]{
 \\ \vspace{0mm}
 }
 }
-\caption{A graph of nodes and edges can be represented
-as a set of parallel arrays --- a column-oriented approach to storage, in the
-style of Fortran. Edge attributes, along with additional node attributes, would
-be stored in additional columns. The \light{index} column is not a stored
-attribute, it is only shown in the table, for clarity.}
+\caption{A graph of nodes and edges stored in 
+ a column-oriented fashion.
+%Edge attributes, along with additional node attributes, would
+%be stored in additional columns.
+The \light{index} column is not a stored
+attribute, it is only shown for clarity. The edge table stores
+the source and target node indices, though more compact storage of edges is
+possible, as shown in \autoref{fig:fortran-style-edge-optimization}.}
 \label{fig:fortran-style}
 \end{figure}
 
@@ -575,7 +588,22 @@ the scalability of your application. With only a bit of work, you can have an
 implementation that scales very well, with only minimal overhead on top of the
 actual data.
 
-\paragraph{Limitations of Bulk Storage Strategies}
+
+
+
+
+\section{When to Consider Using Bulk Storage}
+\label{sec:when-bulk-storage-is-applicable}
+
+
+The choice between bulk storage and using normal objects is analogous to the
+choice between using an \class{ArrayList} versus a \class{LinkedList} to store a
+list. An array-based list makes more efficient use of memory than its linked
+counterpart, but does not support efficient insertion and deletion of random
+list elements. Analogously, bulk storage removes all of the delegation links,
+and stores data and relations in arrays. Removing an entity therefore entails
+removing an entry from the arrays that stores the attributes of that type of
+entity.
 
 There are two main problems you will run into, with a column-oriented approach.
 The first has been touched on briefly: the lack of strong typing for nodes and
@@ -600,9 +628,39 @@ For these reasons, it is highly recommended that you only employ column-oriented
 storage for data structures that do not change in these ways.
 
 
+ 
+\begin{comment}
+also, the data doesn't need to be long-lived, that's an (also imprecise)
+description of the preconditions under which the technique (bulk storage)
+applies. it's also not read-mostly, because, with bulk storage, it's ok if the
+attribute values change rapidly (in fact, things will probably be faster here,
+due to cache locality), and it's also ok if the set of attributes changes (here
+again bulk storage does a better job, much better in this case, than java). the
+only thing that can't happen too much is deletion of entities.
+
+3(you wrote, in your notes, "Is the data immutable", and "is it stable after a
+point in time", neither of which is i think an absolute precondition of bulk
+storage, or at least not that broadly; immutability only matters for the domain
+of entities, but, even then, additions are OK, and even infrequent removals are
+OK; or is this what you meant by "stability"?)
+\end{comment}
+
+
 \section{Summary}
 
-
+\begin{itemize}
+  \item Bulk storage is a technique for storing large volumes of data. It
+  eliminates many of the usual overheads of storing objects, such as headers and
+  delegation. Column-oriented storage is one way to store data in bulk form,
+  and is well suited for use in Java applications. With this storage
+  strategy, you can still program in Java and enjoy many of the benefits of the
+  language, while simultaneusly enjoying large improvements in scalability.
+  \item There are restrictions that will limit performance of column-oriented
+  storage under certain circumstances. If the set of entities is in constant
+  flux, then this strategy may not pay off.
+  \item Your code quality will suffer somewhat. Entities are passed around as
+  numbers, reducing the benefits of static type checking.
+\end{itemize}
 
 
 % Shortly, we will discuss the
