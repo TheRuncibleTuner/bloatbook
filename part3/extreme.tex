@@ -137,7 +137,7 @@ substantial benefits.
 \index{Column-oriented Storage}
 
 In a column-oriented storage strategy, attributes are stored as arrays of data,
-and an entity is implicitly represented by \emph{index} into these parallel
+and an entity is implicitly represented by an index into these parallel
 arrays. \autoref{fig:parallel-arrays} gives an example which takes the graph of
 objects from \autoref{fig:extreme-ec} and represents the attributes of the
 \class{Employee} entities in this fashion. Every group of entities, such as the
@@ -164,8 +164,7 @@ primitive attributes of your entities, such as the \class{boolean} and
 \class{int} data. Second is storing the relations between entities. Third is
 storing variable-length attributes, such as string data. Finally is the task of
 establishing the set of tables. There will be one per set of entities, one per relation between
-entities, and one per source of variable length data. The tables are indexed by
-an integer that represents the entity. Let's step through these tasks now,
+entities, and one per source of variable length data. Let's step through these tasks now,
 continuing the example from the previous chapter: storing a graph model.
 
 \section{Bulk Storage of Scalar Attributes}
@@ -183,8 +182,8 @@ achieve a better balance by storing the graph in a bulk form.
 \begin{framedlisting}
 class Attribute<T> {
   T[] data;
-  T get(int nodeIndex) {
-     return data[nodeIndex];
+  T get(int node) {
+     return data[node];
   }
   int extent() {
     return data.length;
@@ -201,14 +200,14 @@ demands that instances of that entity be created.
 
 \autoref{fig:example-storing-relations-graph-with-node-numbers} repeats the
 example graph from \autoref{fig:example-storing-relations-graph}, this time
-including a dense index for each node. The indices are natural numbers that
-range, in this example from 1--9, with no gaps. As far as node attributes are
-concerned, the dense index of each node need not be stored anywhere. The figure
-illustrates the indices for clarity, only. Once every node has been assigned a
-dense index, then the attribute value of a given node attribute can be stored
-and accessed in with that index.
+including an identifier for each node. Each identifier is a natural number that
+ranges, in this example, from 1--9 with no gaps. As far as node attributes are
+concerned, the identifier of each node need not be stored anywhere. The figure
+illustrates the identifiers for clarity, only. Once every node has been assigned
+a dense identifier, then the attribute value of a given node attribute can be
+stored and accessed in with that identifier.
 
-\begin{wrapfigure}[16]{l}{0.48\textwidth}
+\begin{wrapfigure}[16]{l}{0.525\textwidth}
 \begin{framedlisting}
 interface INodes {
   int numNodes();
@@ -221,14 +220,14 @@ class ColorNodes implements INodes {
     return colors.extent();
   }
   
-  Color getColor(int nodeIndex) {
-    return colors.get(nodeIndex);
+  Color getColor(int node) {
+    return colors.get(node);
   }
 }
 \end{framedlisting}
 \end{wrapfigure}
-% int getColor(int nodeIndex) {
-    % return colors.data[nodeIndex];
+% int getColor(int node) {
+    % return colors.data[node];
   % }
 In a column-oriented storage approach, rather than having interfaces and
 implementations for individual nodes, you instead have them for a
@@ -237,6 +236,21 @@ defines the range of node indices for the nodes of that model, and includes
 whatever combination of node attributes that you need for your given purpose.
 If, for one use case, your nodes have colors, then you include that attribute in
 your \class{INodes} model.
+
+\paragraph{Freedom from Concensus Building}
+If an object-oriented design is expected to be used by multiple groups, there is
+usually a painful, iterative, process of reaching a concensus. Many groups, with
+possibly competing trade-offs of time and space, and of what attributes are
+necessary or optional, must reach a consensus as to how to lay out the data in a
+class hierarchy.
+Deciding which attributes belong in base classes versus
+inherited classes, and of when to store attributes as fields or in a side
+object, cannot be made in isolation, one group at a time. 
+
+For the most part, these issues are much simpler when using column-oriented
+storage. Adding new attributes to nodes or edges is a trivial operation. Adding
+a new node attribute requires an extra array. You needn't reach a concensus
+among developers as to whether this is a good idea.
 
 \paragraph{Transient Need for Attributes}
 If you only need node colors for the first phase of a multi-step algorithm, then
@@ -251,7 +265,7 @@ color is a enumerated type.
 %If the records of nodes are stored in
 %an array called \code{nodes}, then
 %to retrieve the color of the node
-%with index 5 becomes \code{nodes[5].color}.
+%with identifier 5 becomes \code{nodes[5].color}.
 
 %Unfortunately, Java does not allow for arrays of structures. If the storage
 %size of every field is known, and fixed, you can mimic this storage structure
@@ -259,13 +273,11 @@ color is a enumerated type.
 %this style of programming can boils down to doing the very same work you would
 %do for marshalling data in and out of the Java heap. If the first and third
 %attributes of your nodes are of \class{byte} size and the second is of
-%\class{int} size, then accessing the third field of the node with index 5 is
+%\class{int} size, then accessing the third field of the node with identifier 5
+% is
 %tricky. It requires treating the entire record as a bit bucket, and shifting
 %and masking appropriately.
 
-From a storage perspective, adding new attributes to nodes or edges is a trivial
-operation. Adding a new node attribute requires an extra array. You needn't
-reach a concensus among developers as to whether this is a good idea
 
 %In this style
 %of storage, you express collections of objects, rather than individual objects.
@@ -276,67 +288,41 @@ reach a concensus among developers as to whether this is a good idea
 
 
 
-\begin{wrapfigure}{r}{0.5\textwidth}
+\begin{wrapfigure}[9]{r}{0.46\textwidth}
 \centering
+\vspace{-3mm}
 \begin{framedlisting}
 class TransientNode {
-  NodeModel nodeModel;
-  int nodeIndex;
+  ColorNodes nodes;
+  int node;
+  
   Color getColor() {
-    return nodeModel.getColor(nodeIndex);
+    return nodes.getColor(node);
   }
 }
 \end{framedlisting}
 \end{wrapfigure}
 \paragraph{Transient Boxing}
-If you need the convenience of an actual \class{Node} object, you can have a bit
-of both worlds. As long as you use the node objects only for temporary purposes,
-then you have a good chance of avoiding a memory footprint problem. These
-transient node objects act as facades to the \class{INodes} model, but require a
-reference to the \class{NodeModel} and the node's index.
-Though it has one extra field, on top of the earlier node implementations, for
-the \class{NodeModel} reference, as long as it is transient, it could be fine.
-This is something that requires experimentation in your setup. With transient
-node facades, you are trading off more time spent in garbage collection for
-convenience and the greater assurances you get from strong typing, compared to
-passing around integers throughout your code, to represent node indices.
-If these result in big drags in performance for your use cases, remember
-that there is no absolute need for these transient node facades. You must also
-be careful to either disallow, by convention, reference equality checks against
-transient nodes, or cache any created objects.
-
-The edges of a graph can be represented as two parallel arrays, storing the
-source and target node indices of each edge, as shown in
-\autoref{fig:fortran-style}c, and prototyped here:
-\begin{shortlisting}
-class EdgeModel {
-   int[] from, to;
-   int getEdgeFrom(int i) {
-      return from[i];
-   }
-   int getEdgeTo(int i) {
-      return to[i];
-   }
-}
-\end{shortlisting}
-However, this edge representation cannot efficiently support graph
-traversals. There is no efficient way to retrieve the outgoing or
-incoming edges from a given node. Even a \class{TransientEdge} class would not
-help, because there is no connection between a node index and an index
-into the edge model. Properly representing edges requires a bit more work. 
+Since individual nodes are now just numbers, you may quickly run into some
+coding and maintenance problems. The Java compiler won't be of much use in
+giving you static typing guarantees, because a node is an \class{int}
+(serving as an index into arrays) just as much as integers that represent
+other quantities. Imagine code where methods commonly have 5
+\class{int} parameters, and trying to make sure you're passing the integer
+values in the proper order.
 
 \newcommand{\light}[1]{\footnotesize{\textcolor{Lighter}{#1}}}
 \begin{figure}
 \centering
-\subfigure[Each node has an index.]{
+\subfigure[Each node has an identifer.]{
 \label{fig:example-storing-relations-graph-with-node-numbers}
 	\includegraphics[width=0.3\textwidth]{part3/Figures/assessing/exampleGraph-withNodeNumbers}
 	}
 \quad
-\subfigure[The node attribute.]{
+\subfigure[Node attribute.]{
 \shortstack{
 \begin{tabular}{ll}
-\multicolumn{1}{r}{\light{index}} & \multicolumn{1}{l}{\textbf{Color}}
+\multicolumn{1}{r}{\light{id}} & \multicolumn{1}{l}{\textbf{Color}}
 \\ \toprule
 \light{0} & LightGray \\ \midrule
 \light{1} & White \\ \midrule
@@ -378,7 +364,7 @@ into the edge model. Properly representing edges requires a bit more work.
  a column-oriented fashion.
 %%Edge attributes, along with additional node attributes, would
 %%be stored in additional columns.
-%The \light{index} column is not a stored
+%The \light{id} column is not a stored
 %attribute, it is only shown for clarity.
 %This edge table stores
 %the source and target node indices. More compact storage is
@@ -387,7 +373,69 @@ into the edge model. Properly representing edges requires a bit more work.
 \label{fig:fortran-style}
 \end{figure}
 
+Using transient node facades can help here. Instead of passing around integers
+to represent nodes, you can pass around temporary \class{Node} objects. As long
+as manage the lifetime of these facades properly, being careful never to store
+them in long-lived collections, then it is possible that you won't see a huge
+performance hit by using them. With transient node facades, you are trading off
+more time spent in garbage collection for convenience and the greater assurances
+you get from strong typing. 
+
+These transient node objects act as facades to the \class{INodes} model, and so
+most store both a reference to the \class{INodes} model and the node's
+identifier. Notice that these facades have two fields. If your nodes have only
+one attribute, a purely object-oriented implementation would have only a single
+field. Though it has one extra field, on top of the earlier node
+implementations, for the \class{INodes} reference, as long as it is transient,
+there is some chance that this won't result in an increase in garbage collection
+overhead. This is something that requires experimentation in your setup. If
+these result in big drags in performance for your use cases, remember that there
+is no absolute need for these transient node facades.
+
+You must also be careful to disallow, by convention, reference equality
+checks against transient nodes. If you are not careful, you will need to persist
+the transient facades, ruining any benefits of the column-oriented approach.
+Similarly, if the lifetime of the facades is neither temporary, nor correlated
+with a short-running method, you will certainly see negative impacts on garbage
+collection overheads.
+
 \section{Bulk Storage of Relationships}
+
+\begin{wrapfigure}[17]{l}{0.36\textwidth}
+\centering
+\vspace{-3mm}
+\begin{framedlisting}
+class WeightedEdges {
+  int[] source, target, weight;
+  
+  int source(int edge) {
+    return source[edge];
+  }
+  
+  int target(int edge) {
+    return target[edge];
+  }
+  
+  int weight(int edge) {
+    return weight[edge];
+  }
+}
+\end{framedlisting}
+\end{wrapfigure}The edges of a graph can be represented as two parallel arrays, storing the
+source and target node indices of each edge, as shown to the left.  
+\autoref{fig:fortran-style}c illustrates a concrete example for a graph with 11
+edges. For example, row number 4 represents the edge from node 1
+to node 3. Any edge attributes, such as an edge weight, can easily be
+represented as attributes parallel to the source and target arrays. 
+
+This representation is a nice first step towards storing relations in a bulk
+form, but it cannot efficiently support graph traversals. In order to traverse
+the edges of a graph from a given node, you need to know the outgoing edges of a
+given node.
+% Even a \class{TransientEdge} class would not help, because
+In this edge layout, the only way to get the outgoing edges of a node is to scan
+the entire edge table, pulling out those rows whose \code{source} attribute
+matches the given node identifier.
 
 To allow for efficient traversals of the edges, you must index them, as a
 database would. First, consider the outgoing edges from a node. If the
