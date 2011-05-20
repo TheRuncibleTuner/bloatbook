@@ -895,7 +895,17 @@ garbage collection.}
   bloat in a data structure.
   \item Using a fully object-oriented Java design, it is impossible to achieve
   both compactness of storage and the generality to handle a variety of graph
-structures. To do so requires coding in a style that is not conventionally
-object oriented.
+structures. 
 \end{itemize}
+
+We are left in a bit of a hard spot. If your nodes have no attributes, then you
+needn't waste any space on \class{Node} objects. All of the information lies in
+the edges, yet a design that includes a \class{INode} interface (which supports
+\code{getChildren()} and related calls such as shown in
+\autoref{fig:graph-interfaces}), is forced to creation node objects at some
+point. You could overhaul the design to optimize for this case, but the new
+design will be foiled as soon as a use case comes along that requires node
+attributes. There is no degree of flexibility here. Achieving this kind of
+flexibility requires coding in a style that is not conventionally object
+oriented. This is the subject of the next chapter: bulk storage.
 
