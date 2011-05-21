@@ -201,7 +201,7 @@ demands that instances of that entity be created.
 \autoref{fig:example-storing-relations-graph-with-node-numbers} repeats the
 example graph from \autoref{fig:example-storing-relations-graph}, this time
 including an identifier for each node. Each identifier is a natural number that
-ranges, in this example, from 1--9 with no gaps. As far as node attributes are
+ranges, in this example, from 0--8 with no gaps. As far as node attributes are
 concerned, the identifier of each node need not be stored anywhere. The figure
 illustrates the identifiers for clarity, only. Once every node has been assigned
 a dense identifier, then the attribute value of a given node attribute can be
@@ -437,40 +437,46 @@ In this edge layout, the only way to get the outgoing edges of a node is to scan
 the entire edge table, pulling out those rows whose \code{source} attribute
 matches the given node identifier.
 
+\paragraph{Indexing the Edges}
 To allow for efficient traversals of the edges, you must index them, as a
 database would. First, consider the outgoing edges from a node. If the
-\class{EdgeModel} parallel arrays are sorted by the \textbf{from} attribute, then
-all of the children of a node will be stored contiguously. For example, the
-edges in \autoref{fig:fortran-style}c have been sorted in this fashion.
-At this point, it is
-easy to establish an index, as an extra attribute of the \class{INodes} model.
-This attribute will store an index into this sorted edge model, which marks where the
-children of each node begin. Once you have this index, then you no longer need to
-store the \textbf{from} attribute in the edge model; it is implicit, in the
-combination of the edge-start attribute of the node model. If you do so,
-however, then you must also store the number of children of each node. 
-\autoref{fig:fortran-style-edge-optimization} shows an update to
-\autoref{fig:fortran-style}, where the node model now has, for the outgoing
-edges, two new attributes: \textbf{EdgeStart} and \textbf{Num}. The same thing
-can be done for the incoming edges, if we instead sort the edges of 
-\autoref{fig:fortran-style}c by the \textbf{to} attribute.
-\autoref{fig:fortran-style-edge-optimization}a also shows the two new attributes
-for the incoming edges.  For example, node 2 has two children and
-one parent. The children start at index 4 in
-\autoref{fig:fortran-style-edge-optimization}b, which shows the two children to
-be nodes 3 and 4.
+\class{source} and \class{target} arrays are sorted by the \textbf{source}
+attribute, then all of the children of a node will be stored as contiguous rows.
+This is a nice trick, and is what is shown in
+\autoref{fig:fortran-style}c. 
+
+Having sorted the edges, you can now leverage this property to allow for more
+efficient traversal, as well as more efficient storage of the edge data. Notice
+how the outgoing edges of node 2 start at row 5, and stop at row 6 (inclusive).
+To visit the children of this node, without having to traverse the entire edge
+model, you need to store these two row numbers somewhere. These two boundary
+values, 5 and 6, are attributes of node 2. This means that a natural place to
+store the edge index is as integer attributes in the node model; let's call
+these \code{start} and \code{end}.
+
+Also notice how the \code{source} attribute of \autoref{fig:fortran-style}c
+contains lots of duplicate data; e.g. the two rows that represent the outgoing
+edges of node 2 have the same \code{source} value (the value 2!). The
+\code{start} and \code{end} node attributes, combined with the \code{target}
+edge attribute is all you need to traverse the graph. 
+
+Therefore, a more compact representation can eliminate the \code{source}
+attribute entirely. \autoref{fig:fortran-style-edge-optimization} shows an
+update to \autoref{fig:fortran-style}, where the node model now has, for the
+outgoing edges, the two new attributes: \code{start} and \code{end}.
+
 
 \begin{figure}
 \centering
-\subfigure[Node attributes.]{
+\subfigure[Node attributes. \code{start} and \code{end} are edge identifiers.]{
 \shortstack{
 \begin{tabular}{ll|ll|ll}
 & & \multicolumn{2}{c|}{\textbf{Children}} &
 \multicolumn{2}{c}{\textbf{Parents}} \\
-\light{index} & \multicolumn{1}{l|}{\textbf{Color}} &
-\multicolumn{1}{l}{\textbf{EdgeIndex}} & \multicolumn{1}{l|}{\textbf{Num}} & 
-\multicolumn{1}{l}{\textbf{EdgeIndex}} &
-\multicolumn{1}{l}{\textbf{Num}} \\ \toprule
+\light{node id} & \multicolumn{1}{l|}{\textbf{Color}} &
+\multicolumn{1}{l}{\textbf{start}} & \multicolumn{1}{l|}{\textbf{end}} & 
+\multicolumn{1}{l}{\textbf{start}} &
+\multicolumn{1}{l}{\textbf{end}} \\ \toprule
 \light{0} & LightGray & 0  & 3 & -- & 0 \\
 \light{1} & White     & 3  & 1 & 0  & 1 \\
 \light{2} & White     & 4  & 2 & 1  & 1 \\
@@ -485,12 +491,12 @@ be nodes 3 and 4.
 \\ \vspace{0mm}
 }
 }
-\quad
+\qquad
 \subfigure[Children edges.]{
 \shortstack{
 \begin{tabular}{ll}
-\multicolumn{1}{r}{\light{index}} &
-\multicolumn{1}{l}{\textbf{NodeIndex}} \\ \toprule
+\multicolumn{1}{r}{\light{edge id}} &
+\multicolumn{1}{l}{\textbf{node id}} \\ \toprule
 \light{0} & 1 \\
 \light{1} & 2 \\
 \light{2} & 5 \\ \midrule
@@ -511,8 +517,8 @@ be nodes 3 and 4.
 \subfigure[Parent edges.]{
 \shortstack{
 \begin{tabular}{ll}
-\multicolumn{1}{r}{\light{index}} &
-\multicolumn{1}{l}{\textbf{NodeIndex}}
+\multicolumn{1}{r}{\light{edge id}} &
+\multicolumn{1}{l}{\textbf{node id}}
 \\ \toprule
 \light{0} & 0 \\ \midrule  % 1 -> 0
 \light{1} & 0 \\ \midrule  % 2 -> 0
@@ -539,35 +545,55 @@ be nodes 3 and 4.}
 \label{fig:fortran-style-edge-optimization}
 \end{figure}
 
+\paragraph{Parent Edges}
+The same thing can be done for the incoming edges, if we instead sort the edges
+of \autoref{fig:fortran-style}c by the \textbf{to} attribute.
+\autoref{fig:fortran-style-edge-optimization}a also shows the two new attributes
+for the incoming edges.  For example, node 2 has two children and one parent.
+The children start at index 4 in \autoref{fig:fortran-style-edge-optimization}b,
+which shows the two children to be nodes 3 and 4.
+
 %  used to have immutable in it
 \section{Bulk Storage of Variable-length Data} %(e.g. Strings)}
 \label{sec:bulk-sharing-pool}
 \index{Bulk Sharing Pool}
 
-Primitive arrays are often the repository for most of your application's actual
-data. If your application has a few large primitive arrays, then the overhead of
-the arrays will be dwarfed by the actual data contained therein. A common problem
-with Java applications is that they have many small primitive arrays.
-\index{Small Primitive Arrays} If the large majority of your actual data is in
-these primitive arrays, and the average length of each array is 10 characters,
-then your application will have a memory bloat factor of 61\%
-% 16/(10 + 16)
---- almost half of your heap will be wasted on the object headers of the
-primitive arrays. The problem grows worse if these primitive arrays are wrapped
-inside of objects such as \class{String} or \class{ByteArrayOutputStream}. If
-wrapped inside of \class{String} objects, then your application is doomed to a
-memory bloat factor of 83\%.
-% (16+32)/(10+16+32)
+The last remaining type of data is the strings and other data of variable
+length. Storing a node or edge attribute in an array works well for any
+attributes each of whose values is one of Java's primitive data types. If each
+attribute value is an array, such as the case with string attributes, then a
+single attribute array does not suffice. 
 
-If these primitive arrays store only a small number of distinct sequences, this
-problem of high overhead can, at least indirectly, be addressed by
-interning.\index{Interning} Earlier, \autoref{sec:sharing-strings} discussed
-string interning. If your primitive data is string data, then you can use the
-\jres built-in mechansm for pooling this data, so that only one copy of each
-string is kept in memory. For non-string data, you will have to roll your own
-solution. In any case, however, interning only tackles a part of the problem at
-hand. By keeping only a single canonical copy of the primitive data, you
-eliminate the primitive array headers for the duplicates.
+Even though the standard column-oriented storage strategy doesn't suffice, there
+is still a big gain to be had to finding some way to store this data in a bulk
+form.
+% If your application has a few large primitive arrays, then the overhead of the
+% arrays will be dwarfed by the actual data contained therein. A common
+%In Java applications, a common problem is having many small primitive arrays.
+%\index{Small Primitive Arrays}
+If the length of an array is 10 characters, then it has a memory bloat factor of
+61\%.
+% 16/(10 + 16)
+The problem grows worse if these primitive arrays are wrapped inside of objects
+such as \class{String}. If wrapped inside of \class{String} objects, then your
+the string has a bloat factor of 83\%.
+% (16+32)/(10+16+32)
+This is a pretty common problem, and so you should consider bulk storage of your
+variable-length data, eve if you decide not to store your entities and relations
+in bulk form.
+
+There are several ways, within the constraints of Java, to avoid the object
+headers of many small character arrays. One possibility is to use the built-in
+string interning mechanism covered in
+\autoref{sec:sharing-strings}\index{Interning}. By interning strings, your code
+will pay for the string wrapper and the character array only once, rather than
+once per occurrence of that string in the heap. Interning works well in reducing
+overall heap consumption --- you're removing not only the many primitive array
+object headers, but the entire content of duplicated arrays. As discussed in
+that earlier chapter, you must pay careful attention, because interning is an
+expensive process, and you only see reductions in memory footprint if there are
+indeed duplicates to be found. 
+
 \autoref{fig:bulk-sharing-pool}(a) and \autoref{fig:bulk-sharing-pool}(b)
 illustrate a simple case of interning. Of three strings, there are two duplicate
 ``grape'' sequences. The residual high overhead is due to the remaining
@@ -575,6 +601,9 @@ primitive array object headers; all of the \class{String} objects are eliminated
 by interning. Interning removes only the primitive array overheads of
 \emph{duplicate} strings.
 
+Of course, you can only use this built-in mechanism for \class{String} data. For
+non-string data, or when there isn't much in the way of duplication, you can
+still implement a solution that stores this data in a bulk form.
 
 \begin{figure}
 \centering
@@ -596,6 +625,8 @@ by interning. Interning removes only the primitive array overheads of
 	\label{fig:bulk-sharing-pool}
 \end{figure}
 
+
+\begin{comment}
 By eliminating many duplicates via interning, you stand to save a large amount of
 memory, but your memory bloat factor will still be quite high. Instead of a bloat
 factor of 83\%, with interning your heap will have a bloat factor of at least
@@ -607,19 +638,17 @@ but an increasingly large number of total sequences, your memory bloat factor ca
 approach 100\%. In this case, the per-sequence memory overhead grows with the
 number of sequences, but the amount of actual data is bounded by the number of
 distinct sequences.
+\end{comment}
 
-There are two further optimizations open to you, but these require deeper
-changes. Both optimizations store all of the sequences in a single, large array.
-This storage style is an example of optimizing for a bulk of uniformly typed data
-that is accessed in a uniform, and stylized, fashion. Why pay the expense of many
-small primitive arrays, if your code does not need each sequence to be a Java
-object? If you will never synchronize or reflect on sequences, as objects, then
-the primitive array header is a needless expense.
+\paragraph{Bulk Sharing Pools}
+
+If you will never synchronize or reflect on sequences, as objects, then the
+primitive array header and string wrapper are a needless expense. Another
+possibility is to concatenate your many small arrays into fewer, longer, arrays.
 \autoref{fig:bulk-sharing-pool}(c) illustrates this bulk storage of the
-sequences in a single large array. You pay the primitive array overhead just once, across
-all pooled sequences, rather than for every sequence. 
-%In this case, your heap
-%will have a memory bloat factor of
+sequences in a single large array. You pay the primitive array overhead just
+once, across all pooled sequences, rather than for every sequence.
+% In this case, your heap will have a memory bloat factor of
 % 3*(16+32)/(10*2+3*(16+32))
 
 To achieve the ultimate in memory efficiency, you must also eliminate the
@@ -661,8 +690,8 @@ distinct characters, so the actual data consumes about 10 megabytes. You can see
 that the cross-over point, where the most extreme optimization begins to pay
 off, occurs when about 10\% of the strings are distinct.
 
-The chart makes it pretty clear how much a few headers and pointers can affect
-the scalability of your application. With only a bit of work, you can have an
+The chart shows just how much a few headers and pointers can affect the
+scalability of your application. With only a bit of work, you can have an
 implementation that scales very well, with only minimal overhead on top of the
 actual data.
 
