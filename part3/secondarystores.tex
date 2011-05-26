@@ -1,48 +1,75 @@
 \chapter{When It Won't Fit: Working with Secondary Stores}
 
+When you've tried every trick in the book, and your data still does not fit
+within the constraints of available memory or address space, your remaining
+option is to shuttle it in and out of the heap. While a subset of your data is
+stored in the heap, the entirety of the data needs to be persisted on some kind
+of \emph{secondary storage} device. Commonly, data is persisted as files on a
+local filesystem or a distributed filesystems such as Hadoop's HDFS, in
+flat-file data stores such as sqlite or Berkeley db, as key-value pairs in
+distributed in-memory caches such as memcached, as tuples in a directory server,
+or tables in a relational database. You have lots of options!
+
+Most often, the choice you make of how to store the data dictates how you get
+the data to and from the secondary store. The provider of the storage mechanism
+usually provides a Java library that implements a data access API. For example,
+every relational database comes with code that implements the Java DataBase
+Connectivity (JDBC) API. This API takes care of the task of turning database
+query results (a list of rows) into Java objects, and vice versa. These
+processes are termed \emph{deserialization} and
+\emph{serialization}\index{Serialization}. These terms are sometimes
+synonymously referred to as the steps of \emph{marshalling} data.\footnote{Some
+sticklers distinguish marshalling to be serialization and deserialization along
+with a protocol for ensuring compatibility between code releases. In this
+lexicon, a marshalled object is a record not only of the data, but also of the
+version of serialized form.}
+
+On top of the basic data access layers, there exist a number of libraries that
+hide the low-level details that are particular to any one secondary store. Most
+JDBC libraries will marshall data to and from Java objects, but these objects
+are not the objects you care about. THey are instead quite literal Java
+manifestations of relational database concepts: connections, prepared
+statements, and result sets. Hibernate, for example, raises the level of
+interfacing with relational databases so that you needn't be concerned with
+these lower level details.
+
+
+
 \section{Serialization}
 \index{Serialization}
 
-There are often situations where your data structures must be shuttled in and out
-of the Java heap. Your application might be distributed across multiple boxes
-that are connected by a network, rather than a distributed shared memory. It is
-possible that your your data structures do not fit into available physical
-memory, and so, rather than relying on the operating system's paging
-functionality, you may find that you must implement a facility for doing so more
-efficiently. Sometimes, you have enough physical memory, but are constrained by
-available address space.\index{Address space exhasution} This is especially
-likely to happen if you are running on a 32-bit \jre; e.g. if you run with a 1.5
-gigabyte Java heap, and have one hundred thousand more more loaded classes, you
-run the risk of exhausting the 2 gigabyte limit that most 32-bit operating
-systems have, for each process. On many 32-bit versions of the Windows operating
-system, and on 31-bit IBM mainframes, the address space limit is even lower than
-2 gigabytes. It might also be that you have a need to perform relational queries
-against your Java data structures, and are considering storing them in a
-relational store to avoid having to implement the querying logic yourself. Your
-reality might also be some combination of these.
+%Your application might be distributed across multiple boxes
+%that are connected by a network, rather than a distributed shared memory. It is
+%possible that your your data structures do not fit into available physical
+%memory, and so, rather than relying on the operating system's paging
+%functionality, you may find that you must implement a facility for doing so
+%more efficiently. Sometimes, you have enough physical memory, but are
+%constrained by available address space.\index{Address space exhasution} This is
+%especially likely to happen if you are running on a 32-bit \jre; e.g. if you
+%run with a 1.5 gigabyte Java heap, and have one hundred thousand more more
+%loaded classes, you run the risk of exhausting the 2 gigabyte limit that most
+%32-bit operating systems have, for each process. On many 32-bit versions of the
+%Windows operating system, and on 31-bit IBM mainframes, the address space limit
+%is even lower than 2 gigabytes. It might also be that you have a need to
+%perform relational queries against your Java data structures, and are
+%considering storing them in a relational store to avoid having to implement the
+%querying logic yourself. Your reality might also be some combination of these.
 
-It is important to remember that, in Java, the terms marshalling and
-serialization are not synonymous. Serialization is the task of writing out the
-bits, and the form of those bits. Marshalling, in the Java lexicon, is
-serialization plus the assurance that all parties in the communication can agree
-upon the version of the code that generated those bits. Without this agreement,
-it can become difficult to manage evolving code bases, in the face of legacy
-installations. This disparity of terminology is somewhat unique to Java, but the
-distinction is nonetheless important. 
 
-This book does not address the issues of compatibility of code bases, other than
-to observe that, if your use case does not require handling code skew, then you
-have options that will perform much better than using the built-in Java
-marshalling mechanisms. In Java, there are several commonly available mechanisms
-for marshalling your objects into and out of the Java heap. These include the
-built-in Java object serialization, the Apache \class{XMLSerializer} and
-\class{XMLDeserializer}. There is also a variety of libraries that provide a
-mapping between Java objects and a relational backing store; an example is
-RedHat's \class{Hibernate}. All of these come with a fair amount of expense,
-because the \emph{operational} form of the data, that is the way the bits are
-laid out as your Java code operates on them, is different from the serialized
-form. Therefore, use of these serialization libraries usually entails an
-expensive translation between two disparate storage formats.
+% This book does not address the issues of compatibility of code bases, other
+% than to observe that,
+If your use case does not require handling code skew, then you have options that
+will perform much better than using the built-in Java marshalling mechanisms. In
+Java, there are several commonly available mechanisms for marshalling your
+objects into and out of the Java heap. These include the built-in Java object
+serialization, the Apache \class{XMLSerializer} and \class{XMLDeserializer}.
+There is also a variety of libraries that provide a mapping between Java objects
+and a relational backing store; an example is RedHat's \class{Hibernate}. All of
+these come with a fair amount of expense, because the \emph{operational} form of
+the data, that is the way the bits are laid out as your Java code operates on
+them, is different from the serialized form. Therefore, use of these
+serialization libraries usually entails an expensive translation between two
+disparate storage formats.
 
 
 
