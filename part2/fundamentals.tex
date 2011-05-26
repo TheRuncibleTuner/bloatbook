@@ -1,4 +1,8 @@
-% TODO maybe introduce weaks and softs??
+% gary notes 20110525
+%
+% first few sentences of threads of managed runtimes
+%  
+
 
 \chapter{Memory Management Basics}
 
@@ -22,8 +26,10 @@ implementing appropriate caching policies.
 
 Taking advantage of these facilities requires some care, from issues as
 straightforward sounding as choosing a reasonable bound for memory consumption,
-to deciphering the cause of failures due to memory exhaustion. Furthermore, some
-of the runtime facilities appear in the form of low-level JVM hooks, or implicit
+to deciphering the cause of failures due to memory exhaustion. Surprisingly,
+memory leaks are possible, even common, in Java, and can easily lead to
+application failures without good design and testing. Furthermore, some of the
+runtime facilities appear in the form of low-level JVM hooks, or implicit
 behavior that you have to carefully govern, and so require careful coding to
 make correct use of them.
 % You need to appreciate what the runtime is doing for you, before considering
@@ -37,11 +43,11 @@ As your program runs, there is a good chance that quite a bit of memory will be
 allocated and reclaimed. Some of the memory allocations will come directly from
 your code, as it calls \code{new} to instantiate classes. Other times, memory
 will be allocated behind the scenes, such as by the class loading or JIT
-compilation mechanisms, or by native code that your code eventually uses. Under
-the covers, the managed runtime will service allocation requests from a number
-of memory pools. Most of these will be allocated on the \emph{Java heap}, but
-there are other memory areas that you need to be aware of. Each area has its own
-sizing and growth policies, and its own constraints on maximum capacity.
+compilation mechanisms, or by native code that your code uses. Under the covers,
+the managed runtime will service allocation requests from a number of memory
+pools. Most of these will be allocated on the \emph{Java heap}, but there are
+other memory areas that you need to be aware of. Each area has its own sizing
+and growth policies, and its own constraints on maximum capacity.
 
 %Some memory is allocated on the \emph{stack}, and some, as a
 %result of calls to {\tt new}, is allocated on various \emph{heaps}. Sometimes
@@ -52,20 +58,21 @@ sizing and growth policies, and its own constraints on maximum capacity.
 \index{Heap}
 Usually, a call to {\tt new} results in a memory allocation on the Java heap.
 The heap is a region of memory that the JVM allocates on startup, sized to your
-specification. It contains objects, linked together in the way that they
+specification. It contains Java objects, linked together in the way that they
 reference eachother. In Java, each object can contain either primitive data or
-references to other objects. Unlike in a language such as C or C\#, one Java
-object cannot contain another Java object.  In those other languages, this is
-possible through the use of {\tt struct}s\index{C language}\index{C
-structs}\index{C\# language}.
+references to other objects. One Java object cannot contain, inline, the fields
+another Java object. This is possible in languages such as C or C\# through the
+use of {\tt struct}s\index{C language}\index{C structs}\index{C\# language}.
 
-If you don't choose an initial and maximum size for this
-heap, the \jre will choose these criteria for you. Each \jre implementation,
-from Sun to IBM to JRockit, has a different policy for choosing the default
-initial and maximum size. Older \jres, typically those prior to \javafive,
-tended to have hard-coded default values, indepdendent of how much physical memory your
-machine actually had. Most \jres now attempt to adjust the default
-maximum size based on the physical memory capacity of your machine. 
+In Java, the heap is bounded in size, and so it will never consume more than a
+fixed amount of memory. The maximum size of the heap, along with the initial
+size and a policy for growing the heap, are all under your control. If you don't
+make a choice for any of these, the \jre will choose some reasonable defaults.
+Always experiment to see whether the defaults suit your needs.  The defaults
+vary, from one \jre to the next. Older \jres, typically those prior to
+\javafive, tend to have hard-coded default values, indepdendent of how much
+physical memory your machine actually has. Most \jres now attempt to adjust the
+the heap sizing criteria based on the physical memory capacity of your machine.
 
 It often makes sense to keep a small initial Java heap size and a large maximum
 size.  If your application requires a varying amount of memory, an amount that
@@ -80,6 +87,8 @@ initial size to the maximum size, and back down, as it finds that your
 application memory needs change. Still, you should always experiment! \jres
 don't always get this right.
 
+%%  TODO 20110525 different cases: pause time, throughput, startup time.. JRE
+% can't predict which you want to optimize, and so experimentatino is important
 Experimentation is also important, because the default choice of initial and
 maximum Java heap size may result in your application running more slowly than
 it should. Sometimes, this sub-par performance is due to having an
@@ -92,10 +101,16 @@ that you have already learned by your own experimentation?
 In terms of finding a good maximum heap size, you should be very careful never
 to set it to be more than the amount of physical memory on your machine. If your
 application runs as multiple processes, you have to make sure to divide physical
-memory between them! This practice is important, given the disparity between the
-speed of accessing RAM versus the speed of accessing disk; these days, swapping
-memory to and from disk is too slow to be worth even considering.
-
+memory between them. Also, the operating system itself, and other processes
+running on the machine will consume physical memory, taking away from the
+resources available to your application. Further complicating matters, behind
+the scenes aspects of the managed runtime will consume resources even within
+your process. This practice of continual experimentation is important, given the
+disparity between the speed of accessing RAM versus the speed of accessing disk;
+these days, swapping memory to and from disk is too slow to be worth even
+considering. In particular, the way that the managed runtime reclaims memory,
+via automatic garbage collection, usually doesn't mix well at all with swapping
+memory to and from disk.
 
 To specify the initial size of the Java heap, pass the {\tt -Xms} flag on
 the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
@@ -130,38 +145,6 @@ events.
 %\autoref{fig:heaps_and_stacks_C} shows what is possible in a language such as
 %C.
 
-
-\paragraph{The Stack}
-\index{Stack}
-The Java heap is the main storage for your objects, including all of their
-fields and primitive data. When your code has a local variable that references
-an object, this pointer is stored on the \emph{stack}:
-\begin{shortlisting}
-void f() {
-   X x = new X();
-   X y = new X();
-   int z = ...;
-   ...
-}
-\end{shortlisting}
-For the duration of an invocation of the method \code{f}, your code needs to
-store references to those two instances of \class{X} and
-the primitive data value \code{z}. The JIT compiler
-sets aside space for these three local variables on
-the stack, as illustrated in \autoref{fig:stack-frames}.   Each method
-invocation, in each thread, has memory associated with it to store these local
-variables. This space is pushed and popped,
-as the thread invokes and returns from the execution of methods. The stack
-memory that is set aside for a method invocation is commonly called a
-\emph{stack frame}\index{stack frame}.\footnote{Historically, it has also been
-referred to as an \emph{activation frame} or \emph{activation record}\index{activation
-frame}\index{activation record}.} As with the heap, in Java the stack can only
-contain primitive data or references to objects.
-%It cannot contain, unlike in the case of C or C\#, an object itself.  
-%The compiler inserts
-%this stack management code, and so it is invisible to you except if you inspect
-%the generated assembly code
-
 \begin{figure}
 \centering
 \includegraphics[width=0.7\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
@@ -170,6 +153,40 @@ the storage (called \emph{stack frames}) that hold your local variables and
 method parameters.}
 \label{fig:stack-frames}
 \end{figure}
+
+\begin{wrapfigure}[7]{r}{0.3\textwidth}
+\centering
+\vspace{-3mm}
+\begin{framedlisting}
+void f() {
+   X x = new X();
+   X y = new X();
+   int z = ...;
+   ...
+}
+\end{framedlisting}
+\end{wrapfigure}
+\paragraph{The Stack}
+\index{Stack}
+The Java heap is the main storage for your objects, including all of their
+fields and primitive data. When your code has a local variable that references
+an object, this pointer is stored on the \emph{stack}. In the example on the
+right, for the duration of an invocation of the method \code{f}, your code needs
+to store references to those two instances of \class{X} and the primitive data
+value \code{z}. The JIT compiler sets aside space for these three local
+variables on the stack, as illustrated in \autoref{fig:stack-frames}.  Each
+method invocation, in each thread, has memory associated with it to store these
+local variables. This space is pushed and popped, as the thread invokes and
+returns from the execution of methods. The stack memory that is set aside for a
+method invocation is commonly called a \emph{stack frame}\index{stack
+frame}.\footnote{Historically, it has also been referred to as an
+\emph{activation frame} or \emph{activation record}\index{activation
+frame}\index{activation record}.} As is the case with Java objects, it is also
+the case that the stack can only contain primitive data or references to
+objects.
+% It cannot contain, unlike in the case of C or C\#, an object itself. The
+% compiler inserts this stack management code, and so it is invisible to you
+% except if you inspect the generated assembly code
 
 Like the heap, the stack also has limits to its size. Each thread in your
 program can have a stack no deeper than a fixed limit, in bytes. If, during the
@@ -222,8 +239,10 @@ on a stack frame; it is as if you were using C {\tt struct}s.
 % specifically which of your calls to {\tt new} will be, or were in any
 % particular run, stack allocated by the JIT.
 Though the JIT compiler can optimize away a fair number of short-lived objects
-via stack allocation, you should not depend upon this optimization for your
-long-lived data. It is a tricky thing for the JIT compiler to do correctly, and
+via stack allocation, you should not depend upon this optimization.
+% for your
+%long-lived data.
+It is a tricky thing for the JIT compiler to do correctly, and
 so the compiler is very conservative in its application.\footnote{If you are
 curious, the best you can do is to analyze performance both with and without the
 underlying anlaysis. On Sun JVMs, you can disable the analysis by adding {\tt
@@ -304,9 +323,9 @@ Java program also has separate memory areas devoted to native data. The native
 heap stores a variety of things, including memory allocations made by native
 code that your application uses and the JIT compiled code of your application.
 The \jre imposes an upper limit on the Java heap. In contrast, the operating
-system sometimes imposes no limit on the size of the native heap. Therefore you
-should be careful, and observe whether your application is indeed swapping any
-native allocations to and from disk.
+system sometimes imposes no limit on the total amount of memory consumed by a
+process. Therefore you should be careful, and observe whether your application
+is indeed swapping any native allocations to and from disk.
 
 In addition, every thread in a Java program actually has two stacks, one for the
 Java stack frames and one to hold the stack frames of any native methods that
@@ -356,8 +375,11 @@ boot option, which increases this limit from 1.8GB to 3GB.} A pointer that is 32
 bits wide can address 4 gigabytes, of which the operating system reserves
 roughly half for its own use. If a process of your application attempts to
 allocate memory beyond this address space limit, a failure will occur. It is
-quite often the case that this failure will manifest itself misleadingly as a
-{\tt java.lang.OutOfMemoryError}.
+quite often the case that this failure will manifest itself also as a
+{\tt java.lang.OutOfMemoryError}. 
+Since both Java heap exhaustion and address space exhaustion can manifest as the
+same error, you will need to dig down to root out the true nature of the
+failure.
 
 \begin{table}
 \centering
@@ -384,15 +406,19 @@ application is still constrained
 \label{tab:address-space-limits}
 \end{table}
 
+\begin{wrapfigure}[7]{r}{0.3\textwidth}
+\begin{framedlisting}
+% ulimit -m 1048576
+\end{framedlisting}
+\caption{Limiting the addressible memory of a process to 1 gigabyte.}
+\label{fig:ulimit}
+\end{wrapfigure}
 Some operating systems let you specify limits on the amount of address space
 that a process can use. This is similar to the way that you can specify {\tt
 -Xmx} to limit the maximum amount of Java heap that a process should consume. On
 UNIX platforms, you can use the {\tt ulimit} command. For example, on Linux, to
 limit the amount of address space any process launched from the current shell
-can access, say to 1 gigabyte, issue this command:
-\begin{shortlisting}
-% ulimit -m 1048576     // units in kilobytes
-\end{shortlisting}
+can access, say to 1 gigabyte, issue this command in \autoref{fig:ulimit}.
 %You can also limit the size of the native stacks by issuing a similar command,
 %except with the {\tt -s} flag.\index{ulimit} Very often, there are no memory
 %limits by default. Native stack sizes are often limited to be in the megabyte
@@ -415,25 +441,28 @@ and sharing them across threads.
 
 \section{The Garbage Collector}
 The garbage collector is the mechanism for determining when an object should be
-reclaimed. It is governed by a number of configuration choices that you can make.
-These configuration choices guide the schedule that the collector follows. This
-includes, for example, the frequency of collection and the lengths of pauses your
-application experiences. In any case, the collector will obey some basic
-principles, dictated by how your data structures are interconnected, when
+reclaimed. It is governed by a number of configuration choices that you can
+make. These configuration choices guide the schedule that the collector follows.
+This includes, for example, the frequency of collection and the lengths of
+pauses your application experiences.
+\autoref{chapter:advanced-lifetime-techniques} goes into more detail on the
+tuning parameters at your disposal. In any case, the collector will obey some
+basic principles, dictated by how your data structures are interconnected, when
 determining \emph{what} to collect.
 
-%\paragraph{What a Collection Collects: Reachability and Unique Ownership}
-Each time a garbage collection occurs, the collector inspects the heap for
-possibly \emph{live} objects. The collector treats the heap as a graph of
-objects. The nodes are the objects themselves, and the edges are field or array
-slots that result in a pointer from one object to another. \index{Heap, as a
-graph of objects} Recursively, an object is live either if it is a referenced
-either by a live object, or, in the base case, by a \emph{root}. The roots of
-garbage collection are those that come from outside the Java space, and include:
-objects serving as monitors, objects on the stack of a method invocation in
-progress, and references from native code via the Java Native Interface (JNI).
-Every other object not live, in this sense, are ready for collection; they are
-garbage.
+% \paragraph{What a Collection Collects: Reachability and Unique Ownership}
+Each time a garbage collection occurs, the collector scans the heap for objects
+that might possibly be used in the future.
+% % TODO 20110525 maybe talk about conservative estimate is reachability?
+The collector treats the heap as a graph of objects. The nodes are the objects
+themselves, and the edges are field or array slots that result in a pointer from
+one object to another. \index{Heap, as a graph of objects} Recursively, an
+object is live either if it is a referenced either by a live object, or, in the
+base case, by a \emph{root}. The roots of garbage collection % those that come
+from outside the Java space include: objects serving as monitors, objects on the
+stack of a method invocation in progress, and references from native code via
+the Java Native Interface (JNI). Every other object not live, in this sense, is
+ready for collection.
 
 \begin{figure}
 \centering
@@ -464,13 +493,24 @@ be kept around. It is also helpful for programmers to know which objects become
 dead as the result of a pointer being clipped. The objects within the shaded
 region of \autoref{fig:reachability-b} have the property that each is reachable
 \emph{only} from the clipped reference. That clipped reference is the unique
-owner of the shaded objects. The graph property that describes unique ownership
-is called \emph{dominance}\index{Dominance}\label{sec:dominance}; the clipped
-reference is said to dominate those objects that it uniquely owns.
+owner of the shaded objects. The clipped reference is said to dominate those
+objects that it uniquely owns.
 
-Almost all the time, the garbage collector does what you'd expect, and you
-needn't worry about freeing up memory. However, for more complex cases, such as
-those involving caching, or the use of native resources, things get tricky. For
+\callout{dominance}{Dominance (Unique Ownership)} {
+\index{Dominance}\label{sec:dominance} One node in a graph \emph{dominates}
+another if the only way to reach the latter is by traveling through zero or more
+nodes from the former; note how this property is reflexive, in every node at
+least dominates itself. This property is important for determining which other
+objects will be garbage collectible when an object is reclaimed: those it
+dominates. If an object only dominates itself, but isn't a root of the graph,
+then you know that it has \emph{shared ownership}. Otherwise, it is
+\emph{uniquely owned} by that dominating node.}
+
+Most of the time, the garbage collector does what you'd expect, and you needn't
+worry about freeing up memory. You will learn about bugs, such as memory leaks,
+and cases where memory allocations \emph{drag} out their lifetime, beyond when
+your code needs them. In these, and other more complex cases, such as those
+involving caching or the use of native resources, things can get tricky. For
 these cases, you need to be aware of the how the managed runtime treats an
 object in various stages of its life.
 
@@ -505,12 +545,6 @@ continues with the application making use of it, and concludes with the
 space. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
 object in a well behaved application.
 
-\begin{figure}
-	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
-	\caption{Timeline of the life of a typical object.}
-	\label{fig:typical-lifecycle}
-\end{figure}
-
 
 \begin{example}{Parsing a Date} Consider a loop that shows an easy way to parse
 a list of dates. What objects are created, and what are their lifetimes?
@@ -523,16 +557,26 @@ for (String string : inputList) {
 \end{shortlisting}
 \end{example}
 
-For each iteration of this loop, this code takes a date that is represented as a
-string and produces a standard Java \class{Date} object. In doing so, a number of
-objects are created. Two of these are easy to see, in the two \code{new} calls
-that create the parse position and date parser objects. The programmer who wrote
-this created two objects, but many more are created by the standard libraries to
-finish the task. These include a calendar object, number of arrays, and the
-\class{Date} itself. None of these objects are used beyond the iteration of the
-loop in which they were created. Within one iteration, they are created, almost
-immediately used, and then enter a state of drag.
 
+\begin{figure}
+	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
+	\caption{Timeline of the life of a typical object.}
+	\label{fig:typical-lifecycle}
+\end{figure}
+
+For each iteration of this loop, this code takes a date that is represented as a
+string and produces a standard Java \class{Date} object. In doing so, a number
+of objects are created. Two of these are easy to see, in the two \code{new}
+calls that create the parse position and date parser objects. The programmer who
+wrote this created two objects, but many more are created by the standard
+libraries behind the scenes. These include a calendar object, number of arrays,
+and the \class{Date} itself. None of these objects are used beyond the iteration
+of the loop in which they were created. Within one iteration, they are created,
+almost immediately used, and then enter a state of drag.
+
+% TODO 20110525
+% three cases: drag forever, drag until next iteration, and drag because GC
+% never runs
 \callout{drag}{Memory Drag}{
 \index{Drag}
 At some point, an object will never be used again, but the \jre doesn't yet know
@@ -564,7 +608,7 @@ of time during which your application allocates very few objects in the Java
 heap, it could be quite a while before these dragging objects are reclaimed. You
 should be cautious here if, during these lulls in Java object creation, your
 application is heavily exercising the native heap. For example, say your
-application has small Java objects that implicitly reference large native
+application has small Java objects that hold on to large native
 resources. Even if, once the Java objects are collected you can up the
 associated nativ resources, you may still exhaust native resources. This is
 because dragging Java objects will only be collected when you run out of Java
@@ -572,31 +616,43 @@ heap space. The \jre doesn't know to schedule a garbage collection when you
 exhust native resources.
 
 
-\begin{figure}
-	\centering
-	\includegraphics[width=\textwidth]{part2/Figures/lifetime/states}
-	\caption{After its last use, an object enters a kind of limbo: the application
-	is done with it, but it is not yet a candidate for garbage collection. When an
-	object exits this limbo depends on the way it is referenced by your
-	application.}
-		\label{fig:limbo-exit}
-\end{figure}
+%\begin{figure}
+	%\centering
+	%\includegraphics[width=\textwidth]{part2/Figures/lifetime/states}
+	%\caption{After its last use, an object enters a kind of limbo: the application
+	%is done with it, but it is not yet a candidate for garbage collection. When an
+	%object exits this limbo depends on the way it is referenced by your
+	%application.}
+		%\label{fig:limbo-exit}
+%\end{figure}
 
 \section{The Basic Ways of Keeping an Object Alive}
+% TODO 20110525 each reference has a certain lifetime scope
+% an object is kept alive depending on which assortment of references reach it,
+% are on paths from GC roots to that object
+% TODO 20110525 put instance field first
 Depending on how the object is referenced by your application, it will
 transition from in-use to garbage-collectable in a different manner. The main
 ways of referencing an object are
 
-\begin{enumerate}
-  \item local variable of a method
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\fcolorbox{black}{Light}{\begin{minipage}{0.49\textwidth}
+  The basic ways of referencing an object:
+\begin{itemize}
+  \item instance field of any other object
   \item static field of a class
+  \item local variable of a method
 %  \item instance field of a \class{java.util.ref.WeakReference} object
   %\item instance field of a \class{java.util.ref.SoftReference} object
   %\item instance field of a \class{java.util.ref.PhantomReference} object
   %\item \tls
-  \item instance field of any other object
-  \item some combination of the above
-\end{enumerate}
+  \item a \emph{shared} combination of the above
+\end{itemize}
+\vspace{.75mm}
+\end{minipage}
+}
+\end{wrapfigure}
 
 The first three are cases of unique ownership of an object. There exists
 only one path, via that particular reference, to reach the object. The fourth
@@ -609,8 +665,9 @@ its lifetime. For example, if the only reference to an object is from a field of
 some other object, and your code reassigns that reference to \code{null}, this
 becomes a point of transition, from application control to \jre control. Each of
 the four ways of referencing an object comes with its own guidelines as to when
-this transition occurs. \autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
-summarizes how an object transitions to \jre control.
+this transition occurs. 
+%\autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
+%summarizes how an object transitions to \jre control.
 \begin{comment}
  The following code gives
 examples of these eight patterns of ownership:
@@ -699,69 +756,25 @@ class Foo {
 \end{table}
 \end{comment}
 
-\paragraph{The Lifetime of Local Variables}
-\label{sec:lifetime-of-locals}
-Variables that are declared within a method body often have a lifetime that is
-bound to, at most, the duration of an invocation of that method.
-% If an object is uniquely owned by a local variable of a method, the \jre will
-% begin to consider reclaming its storage no sooner than when the local
-% variable's scope exits.
-Common examples of this are local variables, loop variables, and variables
-declared within some inner scope such as within the body of a loop or \code{if}
-statement. For these variables, when a loop continues to the next iteration as in
-the case of \code{localVariableReference2}, when the body of a clause of an
-if/then/else statement finishes, or when the method invocation returns as in the
-case of \code{localVariableReference1}, there is a good chance that the object
-referenced by that variable will be reclaimable.
+\paragraph{The Lifetime of Instance Field References}
+If object \code{B} is dominated by an instance field of object \code{A}, then
+\code{B} will become garbage collectible only under two circumstances. Once
+\code{A} becomes collectible, then so will \code{B}. Notice how, in this way, a
+dominating reference is one way to implement the correlated lifetime pattern of
+\autoref{sec:correlated-lifetime-pattern}. The other possibility is that you
+insert code that, at some point, assigns this reference to \code{null}. Since
+\code{A} dominates \code{B}, therefore, at this point, there will be no way for
+the garbage collector to reach \code{B}, and so it will become garbage
+collectible.
 
-There are situations where an object may \emph{escape} the local scope in which
-it was declared.\index{Escaping Objects} In these cases, the object has
-\emph{shared ownership}\index{Shared Ownership} until this local scope exits.
-See below for further discussion of shared ownership. This is an example of an
-object escaping a local variable scope, so that it is, for the duration of that
-local scope, also owned by a static field of a class object:
-\begin{shortlisting}
-class Foo {
-   static Object static_obj;
-   
-   void foo() {
-      Object obj = new Object();
-      static_obj = obj;
-      ... // uses of obj
-   } // obj scope exits, but static_obj ownership persists
-}
-\end{shortlisting}
-The next section discusses the lifetime of static fields.
-
-The minimum that the Java language specification requires is that non-escaping
-objects that are declared within some scope inside of a method will be
-reclaimable by the time that scope exits. Many modern \jres try to optimize by
-inferring, when they can, the line of code at which an object will certainly
-never be used again. For this reason, some (but not all!) sources of memory
-drag\index{Drag} that would have been a problem with older \jres, are no longer
-an issue. For example, you can run this test program and, by inspecting the
-output, determine whether your \jre is performing this kind of optimization:
-\begin{shortlisting}
-/* Test for whether the optimizer detects that obj is reclaimable before the end of this method */
-static public void main(String[] args) {
-   Object obj = new Object() {
-      protected void finalize() {
-         System.out.println("Finalized");
-      }
-   };
-   System.out.println("StartOfLoop");
-   for (int i = 0; i < 1000000; i++) {
-       new HashSet().add(i);
-   }
-   System.out.println("EndOfLoop");
-}
-\end{shortlisting}
-If you see the \code{Finalized} message before the end of loop message, this is a
-sure sign that the \jre is being clever. Be careful to remember that seeing the
-finalized message is definitive evidence, but not seeing that message might only
-mean that your loop doesn't iterate enough times to cause a garbage collection to
-occur. You may need to experiment with the number of loop iterations, before
-coming to a conclusion.
+%As long as an object \code{B} is dominated by an instance field of another
+%object \code{A}, then \code{B} will live as long as \code{A} does, and become
+%collectible whenever \code{A} does. The only device at your disposal to make
+%\code{B} garbage collectible before \code{A} is to break all paths of
+%references from \code{A} to \code{B}. In simple cases, where \code{B} is
+%directly referenced by a field of \code{A}, then reassigning that reference to
+%\code{null} will do the trick. After doing so, the \code{B} object will now be
+%a candiate for garbage collection.
 
 \paragraph{The Lifetime of Statics, and Class Unloading}
 \index{Class Unloading}
@@ -786,7 +799,7 @@ If you need classes to be unloaded, then you must manually specify a class loade
 to use. Unloading a class is then accomplished by ensuring that all references to
 both the class object and your custom class loader, are set to \code{null}. This
 will render the class unloadable, and will also render objects referenced by
-static fields all classes loaded into that class loader as garbage collectable.
+static fields all classes loaded into that class loader as garbage collectible.
 There exist module management systems, such as OSGi~\cite{OSGi_2007}, that
 facilitate this task.
 
@@ -800,16 +813,85 @@ garbage collection root through the static field reference. In this way, storing
 a reference in a \code{static} field of an class is one way to implement a
 permanently resident lifetime policy.
 
-\paragraph{The Lifetime of Instance Field References}
 
-As long as an object \code{B} is dominated by an instance field of another
-object \code{A}, then \code{B} will live as long as \code{A} does, and become
-collectible whenever \code{A} does. The only device at your disposal to make
-\code{B} garbage collectable before \code{A} is to break all paths of references
-from \code{A} to \code{B}. In simple cases, where \code{B} is directly
-referenced by a field of \code{A}, then reassigning that reference to
-\code{null} will do the trick. After doing so, the \code{B} object will now be a
-candiate for garbage collection.
+
+\begin{wrapfigure}{l}{0.43\textwidth}
+\centering
+\vspace{-2mm}
+\begin{framedlisting}
+class F {
+  static Object static_obj;
+   
+  void f() {
+    Object obj = new Object();
+    static_obj = obj;
+    ...
+  }
+}
+\end{framedlisting}
+\caption{When \code{f} returns, \code{obj} ownership automatically ends, but
+\code{static\_obj} ownership persists.}
+\end{wrapfigure}
+\paragraph{The Lifetime of Local Variables}
+\label{sec:lifetime-of-locals}
+Variables that are declared within a method body often have a lifetime that is
+bound to, at most, the duration of an invocation of that method.
+% If an object is uniquely owned by a local variable of a method, the \jre will
+% begin to consider reclaming its storage no sooner than when the local
+% variable's scope exits.
+Common examples of this are local variables, loop variables, and variables
+declared within some inner scope such as within the body of a loop or \code{if}
+statement. For these variables, when a loop continues to the next iteration,
+when the body of a clause of an if/then/else statement finishes, or when the
+method invocation returns, there is a good chance that the object referenced by
+that variable will be reclaimable. If the local variable was the sole owner of
+the object, it will indeed become reclaimable.
+
+There are situations where an object may \emph{escape} the local scope in which
+it was declared.\index{Escaping Objects}
+% In these cases, the object has \emph{shared ownership}\index{Shared Ownership}
+% until this local scope exits. See below for further discussion of shared
+% ownership.
+This is an example of an object escaping a local variable scope, so that, beyond
+the duration of the local scope, it will remain alive, now owned by a static
+field of a class object:
+The next section discusses the lifetime
+of static fields.
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\begin{framedlisting}
+static public void main(String[] args) {
+  Object obj = new Object() {
+    protected void finalize() {
+       System.out.println("Yes");
+    }
+  };
+  for (int i = 0; i < 1000000; i++) {
+     new HashSet().add(i);
+  }
+  System.out.println("End");
+}
+\end{framedlisting}
+\end{wrapfigure}
+The minimum that the Java language specification requires is that non-escaping
+objects that are declared within some scope inside of a method will be
+reclaimable by the time that scope exits. Many modern \jres try to optimize
+this, by attempting to infer a more precise line of code after which an object
+will not be used. For this reason, a \emph{few} cases of memory drag\index{Drag}
+that would have been a problem with older \jres, are no longer an issue. If
+you're curious to know whether your \jre does something clever, you can run the
+test program on the right. The \code{obj} object is owned by a local variable
+that is declared in the scope of the \code{main} method. This method does not
+return until the program exits. 
+If you see the message before the program terminates, this means that the \jre
+has smartly determined that \code{obj} is not used beyond a certain point.
+If you see the \code{Yes} message before the
+end of loop message, this is a sure sign that the \jre is being clever. Be
+careful to remember that seeing the message is definitive evidence,
+but not seeing that message might only mean that your loop doesn't iterate
+enough times to cause a garbage collection to occur. You may need to experiment
+with the number of loop iterations, before coming to a conclusion.
 
 
 
@@ -867,9 +949,9 @@ to mind the worst of the days of explicitly managing memory in a language like C
 
 In the case where there is more than one reference to the object, the story gets
 more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
-suffices for deallocation, in Java \emph{all} references to an object must be
-assigned to \code{null}. This is tricky in many cases, because it may not be easy
-to know where all those references emanate from.
+suffices for deallocation, in Java \emph{all} paths to an object must be
+clipped. This is tricky in many cases, because it may not
+be easy to know where all of path paths emanate from.
 \autoref{fig:reachability-sharing} illustrates a situation where three references
 must be clipped before an object, the darkly shaded one, becomes a candidate for
 garbage collection. There are two other important things to note in this example.
@@ -883,10 +965,12 @@ within the data structure you no longer need.
 \begin{figure}
 \centering
 \subfigure[Diamond sharing.]{
+	% source reachability.odp
 	\includegraphics[height=0.25\textheight]{part2/Figures/lifetime/reachability4}
 	}
 \qquad
 \subfigure[Root sharing.]{
+	% source reachability.odp
 	\includegraphics[height=0.22\textheight]{part2/Figures/lifetime/reachability3}
 	}
 	\caption{When an object is shared, such as the shaded ones shown
@@ -896,38 +980,38 @@ within the data structure you no longer need.
 \end{figure}
 
 \section{The Advanced Ways of Keeping an Object Alive}
-Sometimes, you need an object to stay alive, or not, in a way that has nothing
-to do with whether it is reachable from local variables or static fields. For
-example, to implement the correlated lifetime policy described in
-\autoref{sec:correlated-lifetime}, using only the mechanisms presented so far,
-is difficult. 
+%Sometimes, you need an object to stay alive, or not, in a way that has nothing
+%to do with whether it is reachable from local variables or static fields. For
+%example, to implement the correlated lifetime policy described in
+%\autoref{sec:correlated-lifetime}, using only the mechanisms presented so far,
+%is difficult. 
 
-Using reachability, the only way to guarnatee that one object
-$B$ will become a candidate for garbage collection when another object $A$ does,
-would be to have $A$ dominate $B$. Sometimes this can work, but more often,
-this is not possible. Doing so requires modifying $A$, or something that $A$
-dominates, so that it points to $B$. But what if you don't own any of that code?
-\autoref{fig:reachability-b} illustrates an example of this. There are three
-objects contained within the shaded region; these three objects will all be garbage collectible if
-the indicated dominating reference is set to \code{null}. In this way, the
-lifetime of the lower two can be correlated with the lifetime of the object
-directly pointed to by the dominating reference.
+%Using reachability, the only way to guarnatee that one object
+%$B$ will become a candidate for garbage collection when another object $A$
+%does, would be to have $A$ dominate $B$. Sometimes this can work, but more
+%often, this is not possible. Doing so requires modifying $A$, or something that
+%$A$ dominates, so that it points to $B$. But what if you don't own any of that
+%code? \autoref{fig:reachability-b} illustrates an example of this. There are
+%three objects contained within the shaded region; these three objects will all
+%be garbage collectible if the indicated dominating reference is set to
+%\code{null}. In this way, the lifetime of the lower two can be correlated with
+%the lifetime of the object directly pointed to by the dominating reference.
 
-In addition to requiring the pollution of class definitions, it also can result
-in wasted memory. If only some \class{A} instances have a correlated \class{B},
-then you will be wasting a pointer slot for every instance of \class{A}. It turns
-out that this is how the Java standard \class{HashMap} was implemented, in its
-mechanism for maintainin a correlation between the various views (the key set,
-value set, and entry set), and the map itself:
-\begin{shortlisting}
-class HashMap {
-   Set keySet, valueSet, entrySet;
-}
-\end{shortlisting}
-This choice had a big implication on the memory bloat factor of small maps. As
-we have learned in previous chapters, every instance of a standard Java hash map
-must pay the expense for potential use of features. These features aren't
-always employed, and certain rarely together, for a single map instance.
+%In addition to requiring the pollution of class definitions, it also can result
+%in wasted memory. If only some \class{A} instances have a correlated \class{B},
+%then you will be wasting a pointer slot for every instance of \class{A}. It
+%turns out that this is how the Java standard \class{HashMap} was implemented,
+%in its mechanism for maintainin a correlation between the various views (the
+%key set, value set, and entry set), and the map itself:
+%\begin{shortlisting}
+%class HashMap {
+   %Set keySet, valueSet, entrySet;
+%}
+%\end{shortlisting}
+%This choice had a big implication on the memory bloat factor of small maps. As
+%we have learned in previous chapters, every instance of a standard Java hash
+%map must pay the expense for potential use of features. These features aren't
+%always employed, and certain rarely together, for a single map instance.
 
 The Java language provides mechanisms that allow you more flexibility in
 implementing lifetime management policies. These advanced features are exposed
@@ -937,7 +1021,22 @@ reference\index{Reference, Strong}; i.e. this is what you get when you use
 fields of objects or local variables,
 
 
+% TODO 20110525 maybe a table of references:
+% kind             purpose      sections where discussed
+% weak             correlated
+% soft
+% final/phantom
+% thread-local
+
 \paragraph{Soft and Weak References}
+% TODO 20110525 clean up wrong parts. weak and soft say B's lifetime is
+% independent of A, it's ony a question of hysteresis
+
+% weakly reachable, weakly owned
+
+% TODO 20110525 define weakly reachable, meaning either immediately referenced
+% by weak, or all paths from roots go through weak references.
+% softly reachable means 
 \index{Reference, Weak}
 \index{Reference, Soft}
 % Programmers
@@ -960,6 +1059,9 @@ collectible --- just the reverse of a normal strong reference! In this way, weak
 references can form the basis of the implementation of correlated lifetime
 patterns.
 
+% TODO 20110525 mention weak hashmap
+% guava has more cases
+
 ``Soft'' and ``weak'' are strange terms, but the rules are pretty much as simple
 as that. Programmers are often confused by these two, and web searches will
 reveal some degree of misinformation. It is common for web sites misdefine
@@ -978,6 +1080,18 @@ fashion: soft references that haven't been traversed in a while will be clipped
 before those that are frequently used. In this way, soft references can form the
 basis for cache implementations.
 
+\begin{wrapfigure}{l}{0.5\textwidth}
+\centering
+\begin{framedlisting}
+void foo(DateFormat f) {
+   SoftReference<DateFormat> ref;
+   ref = new SoftReference<DateFormat>(f);
+   ...
+}
+\end{framedlisting}
+\caption{Creating soft references.}
+\label{fig:soft-ref-creation}
+\end{wrapfigure}
 You should not use these references lightly. \autoref{tab:reference-costs}
 summarizes the costs of the ways of one object referencing another. A strong
 reference costs one pointer, which is 4 bytes (32 bits) on a 32-bit \jre. In
@@ -985,31 +1099,7 @@ comparison, a weak reference is \emph{seven times} more costly, at 28 bytes per
 reference, and a soft reference is nine times more costly. The reason for these
 expenses is that you must create an extra \class{Reference} object for
 every soft or weak reference you use. To softly reference a date formatter,
-you would write:
-\begin{shortlisting}
-void foo(DateFormat dateFormatter) {
-   SoftReference<DateFormat> ref = new SoftReference<DateFormat>(dateFormatter);
-   ...
-}
-\end{shortlisting}
-
-\begin{table}
-\centering
-	\begin{tabular}{ll}
-		\toprule
-		reference type & memory cost \\
-        \cmidrule(r){1-1} \cmidrule(l){2-2}		
-		strong         & 4 bytes (one pointer) \\
-		finalization   & 28 bytes \\
-        phantom        & 28 bytes \\ 
-		weak           & 28 bytes \\
-		soft           & 36 bytes \\
-		\bottomrule
-	\end{tabular}
-	\caption{The cost, per reference, of the various ways of one object
-	referencing another.}
-	\label{tab:reference-costs}
-\end{table}
+you would write code such as appears in \autoref{fig:soft-ref-creation}.
 
 %   the 4 pointer fields of java.lang.ref.Reference = 16
 %   plus an object header = 8
@@ -1028,6 +1118,24 @@ soft references to implement a cache (this is discussed in more detail in
 subsequent chapters), then you will probably need to perform some cleanup work
 when the reference is clipped.
 
+
+\begin{wraptable}{l}{0.5\textwidth}
+\centering
+	\begin{tabular}{ll}
+		\toprule
+		reference type & memory cost \\
+        \cmidrule(r){1-1} \cmidrule(l){2-2}		
+		strong         & 4 bytes (one pointer) \\
+		finalization   & 28 bytes \\
+        phantom        & 28 bytes \\ 
+		weak           & 28 bytes \\
+		soft           & 36 bytes \\
+		\bottomrule
+	\end{tabular}
+	\caption{The per-reference cost one object
+	referencing another.}
+	\label{tab:reference-costs}
+\end{wraptable}
 Java provides reference queues for exactly this purpose. When you construct a
 soft or weak reference, and associate it with a reference queue, then something
 different happens when the reference is clipped. Instead of becoming
@@ -1056,15 +1164,18 @@ database machine has these, too, and the database process also has some
 internal state about that connection. All of this state needs to be cleaned up
 when the Java facade for it is reclaimed.
 
-Java assumes a closed world about resources. As long as the resources fall
-within its boundaries, then the automated mechanisms, such as garbage
-collection, work well, without much intervention on your part. For these
-more complex cases, such as a database connection, the nice fully automated
-world start to fall apart a bit.
+As long as the resources your application uses fall within the \jress
+boundaries, then the automated mechanisms, such as garbage collection and class
+loading, work without much intervention on your part. For the more complex cases
+involving external resources, such as a database connection, the nicely
+automated world starts to fall apart a bit. The \jre doesn't know about inherent
+limits on the capacity of external resources, nor the relationship between Java
+objects and them, and so cannot manage the complete picture. 
+
 One recourse is to fall back to the C style of resource management, for these
 cases of external resources. You can design the API specifications so as to
 require users of the API to adopt a convention that requires explicit closing,
-or freeing of resources. 
+or freeing, of resources.
 
 Java provides \emph{finalization} as a way around this problem, though it comes
 with many gotchas. Finalization is very much like the system of weak references,
@@ -1072,13 +1183,18 @@ in that it is a way to correlate an action with the death of an object. If you
 write a class with a \code{finalize} method, then, when that object is
 reclaimed, the finalize method will be called. Behind the scenes, the \jre
 allocates an extra object (of type \class{java.lang.ref.FinalReference}) and
-stores these in a reference queue (called the finalization queue). Phantom
-references are a minor variation of finalization that lets you manage the queues
-more flexibly: you can use separate queues for different groups of objects, and
-manage how often to poll the queues, rather than having a single queue and
-relying on the \jre to poll the queue when it feels like it.\index{References,
-Phantom}
+stores these in a reference queue (called the finalization queue). For the most
+part, these days, the \class{FinalReference} objects are allocated when the
+object is queued up for finalization Some older \jres allocate this object up
+front, when the object (that will eventually be queued for finalization) is
+initially allocated. In both cases, there is an extra memory overhead associated
+with using finalization. Phantom references are a minor variation of
+finalization that lets you manage the queues more flexibly: you can use separate
+queues for different groups of objects, and manage how often to poll the queues,
+rather than having a single queue and relying on the \jre to poll the queue when
+it feels like it.\index{References, Phantom}
 
+% 20110525 TODO maybe move to later chapter
 Now for the gotchas. First, you can't assume that the finalize method will be
 called immediately after the correlated objects death. The Java language
 specification does not dictate a timeliness criterion for invoking your
