@@ -13,7 +13,7 @@ of the Java heap. The way collections are employed can make
 or break a system's ability to scale up.
 
 %awareness of costs; thorough analysis of scalability; whether or not will scale
-This chapter and the next four chapters are about using
+This chapter and the next three chapters are about using
 collections in a space-efficient way. 
 Collections may serve a number of very
 different purposes in your application. You may use them to implement
@@ -25,14 +25,13 @@ The current chapter
 is a short introduction to common issues that are important to understand in
 any use of collections. It concludes with a summary of resources
 that are available in the standard and some open source alternative
-frameworks. Each of the following four
+frameworks. Each of the following three
 chapters then goes into depth about a specific way that collections can be
 used. Each of these chapters takes
 you through typical patterns of usage, shows what collections cost for those patterns,
 and gives you techniques for analyzing how local implementation decisions will play out at a larger scale. 
 We will also look at the internal design of a few collection
 classes.
-%Here is a roadmap of the next four chapters:
 
 %Clarifying requirements can lead to specialized solutions
 %can suggest space-saving solutions, so that you are not paying for
@@ -41,7 +40,7 @@ classes.
 %
 
 \begin{description}
-\item[Chapter~\ref{chapter:representing-relationships}. Representing
+\item[Chapter~\ref{chapter:representing-relationships}.
 Relationships] An important use of collections is to implement
 relationships that let you quickly navigate from an object to related objects
 via references. This chapter covers the patterns and pitfalls of
@@ -54,8 +53,8 @@ The main issues to watch for
 are: keeping the cost of small and empty collections to a minimum, sizing
 collections properly, and paying only for features you really need.
 
-\item[Chapter~\ref{chapter:tables-indexes}. Tables and Indexes] A collection
-can serve as the jumping off
+\item[Chapter~\ref{chapter:tables-indexes}. Indexes and Other Large Collection
+Structures] A collection can serve as the jumping off
 point for accessing a large number of objects. For example, your application
 might maintain a list of all the objects of one type, or have an index for
 looking up objects by unique key. This chapter shows how to analyze the memory
@@ -76,17 +75,17 @@ these dynamic records. This chapter looks at the common cases where dynamic reco
 are needed, and shows how to identify properties of your data that could lead to
 more space-efficient solutions.
 
-\item[Chapter~\ref{chapter:additional-collection-behaviors}. Additional
-Collection Behaviors] Collections sometimes need to support additional features
-beyond data storage and access. For example,
-you may need to protect a table from inadvertent
-updates, or minimize contention on a map when running in a
-multithreaded environment. Java collections provide these capabilities through
-specialized classes, or through wrappers that alter
-the operation of other collections. This chapter covers the costs of
-these collections.  The granularity
-at which you use them can have a big impact on their memory
-cost.
+%\item[Chapter~\ref{chapter:additional-collection-behaviors}. Additional
+%Collection Behaviors] Collections sometimes need to support additional features
+%beyond data storage and access. For example,
+%you may need to protect a table from inadvertent
+%updates, or minimize contention on a map when running in a
+%multithreaded environment. Java collections provide these capabilities through
+%specialized classes, or through wrappers that alter
+%the operation of other collections. This chapter covers the costs of
+%these collections.  The granularity
+%at which you use them can have a big impact on their memory
+%cost.
 
 \end{description}
 
@@ -158,11 +157,13 @@ of small collections that never grow once initialized. Given all of this, it is 
 to be aware of what collections cost, so you can make informed choices as early as possible. 
 
 It is not enough to know the cost of a collection in the abstract, but to
-understand \emph{how it will work in your design}. This is because the same
-collection class will scale differently in
-different situations. One map class may work fine as an index over
-a large table, but will be too expensive when you have many instances of it
-nested inside a multilevel index. Collections have fixed and
+understand \emph{how it will work in your design}. This is because some
+collections were only designed to be used at a certain scale. 
+%the same collection
+%class will scale differently in different situations. 
+For example, a certain map class may work
+fine as an index over a large table, but can be prohibitively expensive when you
+have many instances of it nested inside a multilevel index. Collections have fixed and
 variable costs, as discussed in Section~\ref{sec:scalability}. 
 The fixed cost is the minimum space needed with or
 without any elements; the variable cost is the additional space needed to
@@ -176,7 +177,7 @@ or concentrated in a few large ones.
 Table~\ref{tab:collections-fixed-and-variable} shows the costs for some commonly
 used collections.  Collections with high fixed costs should only be used for
 large collections, so that the fixed cost will be amortized over a large number
-of elements. \class{ArrayList} (and other array-based collections) have
+of elements. As a rule, \class{ArrayList} and other array-based collections have
 much lower variable costs than other collection classes.
 
 \begin{table}
@@ -239,10 +240,12 @@ memory costs down.
 % just a selection throughout the book.  Encourage the reader to explore more
 % for themselves.
 
-There are some lesser-known classes in the standard Java
-Collections framework that can help you save memory.
-Table~\ref{tab:lesser-known-collections} is a guide to the ones
-we discuss in this book.
+There are some lesser-known resources in the standard Java
+Collections framework that provide specialized functionality. Some can help you
+save memory if you require only those features.  Others provide useful
+features, but can have a significant memory cost if not used carefully.
+Table~\ref{tab:lesser-known-collections} is a guide to the resources we discuss
+in this book.
 
 \begin{table}
 \centering
@@ -251,19 +254,23 @@ we discuss in this book.
 
 	   Resource & Description & Discussed in
 	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
-	\class{Collections} statics & Provides static methods and instances of
-	specialized collections, such as singleton and empty collections & Section~\ref{}
+	\class{Collections} statics & Memory-efficient
+	implementations of singleton and empty collections. & Section~\ref{} 
+	\\ 
+	& Unmodifiable, checked, and synchronized
+	behaviors are added via collection wrappers. Can be costly if used at too fine
+	a granularity. & Section~\ref{}
 	\\
-	\class{Arrays} statics & Provides static methods that can help when creating
-your own collection functionality from arrays & Section~\ref{} shows one
+	\class{Arrays} statics & Provides static methods if you need to create
+simple collection functionality from arrays & Section~\ref{} shows one
 example
 	\\
 	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
 	& Section~\ref{}
 	\\
-	\class{EnumMap} & Lower-cost map when keys are \class{Enum}s & Section~\ref{}
+	\class{EnumMap} & Compact map when keys are \class{Enum}s & Section~\ref{}
 	\\
-	\class{EnumSet} & Concise representation of a set of flags & Section~\ref{}
+	\class{EnumSet} & Compact representation of a set of flags & Section~\ref{}
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
 	using weak references. &
@@ -271,7 +278,10 @@ example
 	\\
 	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
-for certain cases where synchronized collections are needed & Section~\ref{}
+in some contexts where synchronized collections are needed & Section~\ref{}
+	\\
+	\class{ConcurrentHashMap} & Hash map when contention is a concern. Avoid use at
+	too fine a granularity. & Section~\ref{}
 	\\
 	\bottomrule
 	\end{tabular}
@@ -286,9 +296,7 @@ specifically to improve space and time efficiency, while others are aimed at
 making it easier to program, adding commonly needed features not
 found in the standard libraries. 
 The alternative collections frameworks can be helpful in two ways when it comes to saving memory. First,
-some frameworks provide space-optimized collection implementations. Some are
-general-purpose collection classes, while  
-others are specialized for common use cases. Second, some of these frameworks
+some frameworks provide space-optimized collection implementations. Second, some frameworks
 provide classes that make it easier to manage object lifetime. Building your
 own object lifetime management mechanisms, for example a concurrent cache, can
 be error-prone (see, for example, Section~\ref{}). Well-tested implementations
@@ -301,8 +309,8 @@ standard collections. As always, there is no substitute for analyzing space cost
 
 
 In this book we'll look at four of the most recent and relevant
-open source collections frameworks. In various chapters we'll look at how you
-can use some of these classes to solve specific problems.
+open source collections frameworks. In the next few chapters we'll look at how
+you can use some of these classes to solve specific problems.
 Table~\ref{tab:alternative-collections} gives a summary of the capabilities that
 we discuss (sometimes only briefly). This is only a sampling of what's out
 there. We encourage you to further explore these and other frameworks on your own.
@@ -315,8 +323,8 @@ Although space usage has not been the main focus, it does include some
 specialized classes, for example the immutable collections, that are more
 space-efficient than their general-purpose equivalents. Guava's \class{MapMaker}
 class provides very general support for 
-building caches and other lifetime management mechansism, with optional support for concurrency. 
-While most open source frameworks provide some level of compatibility with the
+building caches and other lifetime management mechansisms, with optional support
+for concurrency. While most open source frameworks provide some level of compatibility with the
 standard collections APIs, Guava has made compatibility a priority.
 
 The Apache Commons Collections framework has similar objectives to the Guava
