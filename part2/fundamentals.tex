@@ -87,11 +87,12 @@ initial size to the maximum size, and back down, as it finds that your
 application memory needs change. Still, you should always experiment! \jres
 don't always get this right.
 
-%%  TODO 20110525 different cases: pause time, throughput, startup time.. JRE
+% NMM 20110526. i don't think this is necessary or even quite right. 
+%%  different cases: pause time, throughput, startup time.. JRE
 % can't predict which you want to optimize, and so experimentatino is important
 Experimentation is also important, because the default choice of initial and
 maximum Java heap size may result in your application running more slowly than
-it should. Sometimes, this sub-par performance is due to having an
+it could. Sometimes, this sub-par performance is due to having an
 \emph{initial} size that is too low. It takes a while for the \jre to learn that
 it should increase the heap size beyond the initial size. If your application
 only runs for a short time, and your application commonly needs more than the
@@ -112,24 +113,12 @@ considering. In particular, the way that the managed runtime reclaims memory,
 via automatic garbage collection, usually doesn't mix well at all with swapping
 memory to and from disk.
 
-To specify the initial size of the Java heap, pass the {\tt -Xms} flag on
-the launch command line; to specify the maximum size, pass the {\tt -Xmx} flag.
-For example, by passing {\tt -Xms100M -XmX1G}, you are telling the \jre to use
-an initial size of 100 megabytes, and a maximum size of 1 gigabyte.
-
-\index{Memory Exhaustion}
-If you application exhausts the Java heap, you will observe an
-\class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
-Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
-exceeded}\index{GC overhead limit exceeded}. On all JVMs, it is possible that
-the runtime will enter a nasty state where it is spending all of its time
-reclaiming memory. You will observe that your application seemingly hangs; the
-\jre may not even respond to a console interrupt or other normal shutdown
-events.
-
-
-
-
+To specify the initial size of the Java heap, pass the {\tt -Xms} flag on the
+launch command line; to specify the maximum size, pass the {\tt -Xmx} flag. For
+example, by passing {\tt -Xms100M -XmX1G}, you are telling the \jre to use an
+initial size of 100 megabytes, and a maximum size of 1 gigabyte.
+\autoref{chapter:advanced-lifetime-techniques} goes into more detail on the
+tuning parameters at your disposal.
 
 
 
@@ -440,29 +429,32 @@ font handles open for each thread, rather than keeping a common pool of them,
 and sharing them across threads.
 
 \section{The Garbage Collector}
-The garbage collector is the mechanism for determining when an object should be
-reclaimed. It is governed by a number of configuration choices that you can
-make. These configuration choices guide the schedule that the collector follows.
-This includes, for example, the frequency of collection and the lengths of
-pauses your application experiences.
-\autoref{chapter:advanced-lifetime-techniques} goes into more detail on the
-tuning parameters at your disposal. In any case, the collector will obey some
-basic principles, dictated by how your data structures are interconnected, when
-determining \emph{what} to collect.
+Garbage collection is the mechanism that determines when the memory allocation
+of an object can be reclaimed for future use. To determine whether an object is
+dead, the garbage collector looks at the structure of object interconnections in
+the heap. Any objects that future code cannot possibly access are certainly
+ready to be reclaimed. 
 
-% \paragraph{What a Collection Collects: Reachability and Unique Ownership}
-Each time a garbage collection occurs, the collector scans the heap for objects
-that might possibly be used in the future.
-% % TODO 20110525 maybe talk about conservative estimate is reachability?
+Your application uses objects by traversing references to them. For example
+ \code{o.f} gives access to the contents of the object referenced by field
+\code{f} of instance \code{o}. Your code has to start this chain of field
+references somewhere, of course, and the garbage collector simulates this
+process. It traverses references from all possible variables that your code
+might possibly access. Each time a garbage collection occurs, the collector
+scans the heap for \emph{live} objects in this way. A live object is one that
+might possibly be used in the future.
+% \paragraph{What a Collection Collects: Reachability and Unique Ownership} %
+% TODO 20110525 maybe talk about conservative estimate is reachability?
+
+\paragraph{Reachability}
 The collector treats the heap as a graph of objects. The nodes are the objects
-themselves, and the edges are field or array slots that result in a pointer from
-one object to another. \index{Heap, as a graph of objects} Recursively, an
-object is live either if it is a referenced either by a live object, or, in the
-base case, by a \emph{root}. The roots of garbage collection % those that come
-from outside the Java space include: objects serving as monitors, objects on the
-stack of a method invocation in progress, and references from native code via
-the Java Native Interface (JNI). Every other object not live, in this sense, is
-ready for collection.
+themselves, and the edges are the non-null fields and non-null entries of
+arrays. \index{Heap, as a graph of objects} Liveness is a recursive concept: an
+object is \emph{live} if it is referenced either by a live object or, in the
+base case, by a \emph{root}. The roots of garbage collection include: objects
+serving as monitors, objects on the stack of a method invocation in progress,
+and references from native code via the Java Native Interface (JNI). Every other
+object is ready for collection.
 
 \begin{figure}
 \centering
@@ -499,11 +491,13 @@ objects that it uniquely owns.
 \callout{dominance}{Dominance (Unique Ownership)} {
 \index{Dominance}\label{sec:dominance} One node in a graph \emph{dominates}
 another if the only way to reach the latter is by traveling through zero or more
-nodes from the former; note how this property is reflexive, in every node at
-least dominates itself. This property is important for determining which other
-objects will be garbage collectible when an object is reclaimed: those it
-dominates. If an object only dominates itself, but isn't a root of the graph,
-then you know that it has \emph{shared ownership}. Otherwise, it is
+nodes from the former.
+% ; note how this property is reflexive, in every node at least dominates
+% itself.
+This property is important for determining which other objects will be garbage
+collectable when an object is reclaimed: those it dominates. If an object only
+dominates itself, but isn't a root of the graph, then you know that it has
+\emph{shared ownership}. Otherwise, it is
 \emph{uniquely owned} by that dominating node.}
 
 Most of the time, the garbage collector does what you'd expect, and you needn't
@@ -513,6 +507,49 @@ your code needs them. In these, and other more complex cases, such as those
 involving caching or the use of native resources, things can get tricky. For
 these cases, you need to be aware of the how the managed runtime treats an
 object in various stages of its life.
+
+\paragraph{Running Out of Java Heap}
+\index{Memory Exhaustion}
+If your application exhausts the Java heap, you will observe an
+\class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
+Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
+exceeded}\index{GC overhead limit exceeded}. On all JVMs, it is possible that
+the runtime will enter a nasty state where it is spending all of its time
+reclaiming memory.
+% You will observe that your application seemingly hangs; the \jre may not even
+% respond to a console interrupt or other normal shutdown events.
+
+\callout{gc-death}{GC Death}{Sometimes, your application will appear to grind to
+a halt, without any exceptions appearing on the error console. If you observe
+this situation, then your application may be suffering from what is
+affectionately called \emph{GC death}. In this situation, the \jre is
+frantically, but ineffectually, trying to find free space. The situation becomes
+dire when the time it takes the garbage collector to perform one scan is large
+relative to the time before your application next runs out of space.}
+
+It is easy to know whether your application is suffering from GC death. A
+universal way to do this, one that works on any JVM, is to enable verbose
+garbage collection\index{Verbose Garbage Collection}. This requires modifying
+your application's command line, and therefore restarting it, if this option is
+not already enabled. Each \jre provider offers good alternatives to verbose
+garbage collection. If you are using a Sun JDK build of the \jre, then you can
+use the \code{jstat} tool\index{Sun jstat tool}.\footnote{The \code{jstat} tool
+is only available with JDK builds. It is neither available with JRE builds, nor
+with any builds prior \javafive.} If you are using an IBM \jre, then you can
+request \code{javacores}, which contain a small historical window of  garbage
+collection events\index{IBM Javacores}. Neither of these require modifying your
+application command line, and so are very nice alternatives. In any case, by
+inspecting the resulting output, you will observe that the collector is active
+99\% or more of the time.
+
+
+% NMM 20110526 we talk about this all in The Heap section, above
+%\paragraph{Configuring the Garbage Collector} 
+%The garbage collector is governed by a number of configuration
+%choices that you can make. These configuration choices guide the schedule that
+%the collector follows. This includes, for example, the frequency of collection
+%and the lengths of pauses your application experiences.
+
 
 \section{The Object Lifecycle}
 \index{Object Lifecycle}
@@ -536,6 +573,14 @@ objects go through many more stages.
 %point. Second, there is a delay from the point at which you indicate an object
 %is no longer needed until its storage is reclaimed.
 
+
+\begin{figure}
+	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
+	\caption{Timeline of the life of a typical object.}
+	\label{fig:typical-lifecycle}
+\end{figure}
+
+
 % \paragraph{The Lifecycle of an Object} These two delays are but a part of the
 % larger lifecycle that every Java object goes through, from creation to
 % reclamation.
@@ -546,23 +591,22 @@ space. \autoref{fig:typical-lifecycle} illustrates the lifecycle of a typical
 object in a well behaved application.
 
 
-\begin{example}{Parsing a Date} Consider a loop that shows an easy way to parse
+\begin{example}{Parsing a Date}
+Consider a loop that shows an easy way to parse
 a list of dates. What objects are created, and what are their lifetimes?
-\begin{shortlisting}
+\begin{center}
+\begin{minipage}{0.74\textwidth}
+\begin{framedlisting}
 for (String string : inputList) {
-	ParsePosition pos = new ParsePosition(0);
-	SimpleDateFormat parser = new SimpleDateFormat();
-	System.out.println(parser.parse(string, pos));
+  ParsePosition pos = new ParsePosition(0);
+  SimpleDateFormat parser = new SimpleDateFormat();
+  parser.parse(string, pos);
+  ...
 }
-\end{shortlisting}
+\end{framedlisting}
+\end{minipage}
+\end{center}
 \end{example}
-
-
-\begin{figure}
-	\includegraphics[width=0.9\textwidth]{part2/Figures/lifetime/object-lifecycle}
-	\caption{Timeline of the life of a typical object.}
-	\label{fig:typical-lifecycle}
-\end{figure}
 
 For each iteration of this loop, this code takes a date that is represented as a
 string and produces a standard Java \class{Date} object. In doing so, a number
@@ -574,9 +618,6 @@ and the \class{Date} itself. None of these objects are used beyond the iteration
 of the loop in which they were created. Within one iteration, they are created,
 almost immediately used, and then enter a state of drag.
 
-% TODO 20110525
-% three cases: drag forever, drag until next iteration, and drag because GC
-% never runs
 \callout{drag}{Memory Drag}{
 \index{Drag}
 At some point, an object will never be used again, but the \jre doesn't yet know
@@ -584,24 +625,39 @@ that this is the case. The object hangs around, taking up space in the Java heap
 until the point when some action is taken, either by the \jre or by the
 application itself, to make the object a candidate for reclamation. The interval
 of time between its last use and ultimate reclamation is refered to as
-\emph{drag}.}
+\emph{drag}. 
+}
 
-The \code{pos} object represents to the parser the position within the input
-string to begin parsing. The implementation of the \code{parse} method uses it
-early on in the process of parsing. Despite being unused for the remainder of the
-parsing, the \jre does not know this until the current iteration of the loop has
-finished. For this duration of time the object is in a kind of limbo, where it is
-referenced but never be used again. This limbo time also includes the entirety of
-the call to \code{System.out.println}, an operation entirely unrelated to the
-creation or use of the parse position object. Once the current loop iteration
-finishes, these two objects will become candidates for garbage collection.
-The object now enters a second stage of this limbo. There are no pointers to
-{\tt pos} that should keep its memory around, but the memory will stay around
-until the next garbage collection.
-Only when the garbage collector performs a sweep over memory, looking
-for reclaimable objects, will the memory for {\tt pos} be ready for new objects.
-Most of the time, this second stage of limbo is short, because garbage
-collections typically run ever few seconds.
+An object can either:
+
+\begin{itemize}
+  \item \textbf{Drag forever}. This can happen when you allocate and
+  use a data structure at application startup, but never again.
+\item \textbf{Drag with lexical
+scope}. This can happen when a data structure is allocated early on in a
+method invocation, but not used after some early point in the execution of that method.
+\item \textbf{Drag until GC}, i.e. the next time the \jre decides to scan the
+heap, looking for dead objects. This can be a problem if your application creates temporary
+objects at a low rate, or if you have configured a very large heap. In either
+case, the next garbage collection may be far in the future.
+\end{itemize} 
+
+In the date formatting loop above, the \code{pos} object represents to the
+parser the position within the input string to begin parsing. The implementation
+of the \code{parse} method uses it early on in the process of parsing. Despite
+being unused for the remainder of the parsing, the \jre does not know this until
+the current iteration of the loop has finished. For this duration of time the
+object is in a kind of limbo, where it is referenced but never be used again.
+This limbo time also includes the entirety of the call to
+\code{System.out.println}, an operation entirely unrelated to the creation or
+use of the parse position object. Once the current loop iteration finishes,
+these two objects will become candidates for garbage collection. The object now
+enters a second stage of this limbo. There are no pointers to {\tt pos} that
+should keep its memory around, but the memory will stay around until the next
+garbage collection. Only when the garbage collector performs a sweep over
+memory, looking for reclaimable objects, will the memory for {\tt pos} be ready
+for new objects. Most of the time, this second stage of limbo is short, because
+garbage collections typically run ever few seconds.
 
 However, if there is a long interval
 of time during which your application allocates very few objects in the Java
@@ -627,17 +683,9 @@ exhust native resources.
 %\end{figure}
 
 \section{The Basic Ways of Keeping an Object Alive}
-% TODO 20110525 each reference has a certain lifetime scope
-% an object is kept alive depending on which assortment of references reach it,
-% are on paths from GC roots to that object
-% TODO 20110525 put instance field first
-Depending on how the object is referenced by your application, it will
-transition from in-use to garbage-collectable in a different manner. The main
-ways of referencing an object are
-
-\begin{wrapfigure}{r}{0.5\textwidth}
+\begin{wrapfigure}{r}{0.51\textwidth}
 \centering
-\fcolorbox{black}{Light}{\begin{minipage}{0.49\textwidth}
+\fcolorbox{black}{Light}{\begin{minipage}{0.48\textwidth}
   The basic ways of referencing an object:
 \begin{itemize}
   \item instance field of any other object
@@ -653,21 +701,28 @@ ways of referencing an object are
 \end{minipage}
 }
 \end{wrapfigure}
+An object will stay around as long as it is reachable from some chain of
+references. For the most part, the nature of the references along any
+chains (for there may be multiple such chains!) leading up to your object will
+determine how long it'll stick around.
+After your program creates an object, it references the object in one or more of
+three basic ways shown on the right.
+Each comes with its own guidelines as to how it governs lifetime, and how you
+can control it.
 
-The first three are cases of unique ownership of an object. There exists
-only one path, via that particular reference, to reach the object. The fourth
-case is one of \emph{shared} ownership. After your program creates an object, it
-references the object in one or more of these three basic ways. The ownership of
-an object may vary over time --- as your program runs, these references will come
-and go. After some time, program execution may reach a point where the object is
-no longer under application control. At this point, the \jre is now in charge of
-its lifetime. For example, if the only reference to an object is from a field of
-some other object, and your code reassigns that reference to \code{null}, this
-becomes a point of transition, from application control to \jre control. Each of
-the four ways of referencing an object comes with its own guidelines as to when
-this transition occurs. 
-%\autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit}
-%summarizes how an object transitions to \jre control.
+
+% The first three are cases of unique ownership of an object. There exists only
+% one path, via that particular reference, to reach the object. The fourth case
+% is one of \emph{shared} ownership.
+% The ownership of an object may vary over time --- as your program runs, these
+% references will come and go. After some time, program execution may reach a
+% point where the object is no longer under application control. At this point,
+% the \jre is now in charge of its lifetime. For example, if the only reference
+% to an object is from a field of some other object, and your code reassigns
+% that reference to \code{null}, this becomes a point of transition, from
+% application control to \jre control.
+% \autoref{fig:limbo-exit} %and \autoref{tab:limbo-exit} summarizes how an
+% object transitions to \jre control.
 \begin{comment}
  The following code gives
 examples of these eight patterns of ownership:
@@ -758,19 +813,19 @@ class Foo {
 
 \paragraph{The Lifetime of Instance Field References}
 If object \code{B} is dominated by an instance field of object \code{A}, then
-\code{B} will become garbage collectible only under two circumstances. Once
-\code{A} becomes collectible, then so will \code{B}. Notice how, in this way, a
+\code{B} will become garbage collectable only under two circumstances. Once
+\code{A} becomes collectable, then so will \code{B}. Notice how, in this way, a
 dominating reference is one way to implement the correlated lifetime pattern of
 \autoref{sec:correlated-lifetime-pattern}. The other possibility is that you
 insert code that, at some point, assigns this reference to \code{null}. Since
 \code{A} dominates \code{B}, therefore, at this point, there will be no way for
 the garbage collector to reach \code{B}, and so it will become garbage
-collectible.
+collectable.
 
 %As long as an object \code{B} is dominated by an instance field of another
 %object \code{A}, then \code{B} will live as long as \code{A} does, and become
-%collectible whenever \code{A} does. The only device at your disposal to make
-%\code{B} garbage collectible before \code{A} is to break all paths of
+%collectable whenever \code{A} does. The only device at your disposal to make
+%\code{B} garbage collectable before \code{A} is to break all paths of
 %references from \code{A} to \code{B}. In simple cases, where \code{B} is
 %directly referenced by a field of \code{A}, then reassigning that reference to
 %\code{null} will do the trick. After doing so, the \code{B} object will now be
@@ -799,7 +854,7 @@ If you need classes to be unloaded, then you must manually specify a class loade
 to use. Unloading a class is then accomplished by ensuring that all references to
 both the class object and your custom class loader, are set to \code{null}. This
 will render the class unloadable, and will also render objects referenced by
-static fields all classes loaded into that class loader as garbage collectible.
+static fields all classes loaded into that class loader as garbage collectable.
 There exist module management systems, such as OSGi~\cite{OSGi_2007}, that
 facilitate this task.
 
@@ -947,21 +1002,6 @@ after having parsed it, but the formatter maintains a reference in order to avoi
 reparsing the same string in back to back calls. This calls
 to mind the worst of the days of explicitly managing memory in a language like C.
 
-In the case where there is more than one reference to the object, the story gets
-more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
-suffices for deallocation, in Java \emph{all} paths to an object must be
-clipped. This is tricky in many cases, because it may not
-be easy to know where all of path paths emanate from.
-\autoref{fig:reachability-sharing} illustrates a situation where three references
-must be clipped before an object, the darkly shaded one, becomes a candidate for
-garbage collection. There are two other important things to note in this example.
-First, just as in \autoref{fig:reachability-b}, after clipping the three
-indicated references, an entire data structure, not just that darkly shaded
-object, becomes a candidate for reclamation. This structure consists of the two
-objects contained within the lightly shaded region. The second important thing to
-note is that you needn't clip the backwards edge, or any edge contained entirely
-within the data structure you no longer need.
-
 \begin{figure}
 \centering
 \subfigure[Diamond sharing.]{
@@ -979,6 +1019,21 @@ within the data structure you no longer need.
 	\label{fig:reachability-sharing}
 \end{figure}
 
+In the case where there is more than one reference to the object, the story gets
+more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
+suffices for deallocation, in Java \emph{all} paths to an object must be
+clipped. This is tricky in many cases, because it may not
+be easy to know where all of path paths emanate from.
+\autoref{fig:reachability-sharing} illustrates a situation where three references
+must be clipped before an object, the darkly shaded one, becomes a candidate for
+garbage collection. There are two other important things to note in this example.
+First, just as in \autoref{fig:reachability-b}, after clipping the three
+indicated references, an entire data structure, not just that darkly shaded
+object, becomes a candidate for reclamation. This structure consists of the two
+objects contained within the lightly shaded region. The second important thing to
+note is that you needn't clip the backwards edge, or any edge contained entirely
+within the data structure you no longer need.
+
 \section{The Advanced Ways of Keeping an Object Alive}
 %Sometimes, you need an object to stay alive, or not, in a way that has nothing
 %to do with whether it is reachable from local variables or static fields. For
@@ -993,7 +1048,7 @@ within the data structure you no longer need.
 %$A$ dominates, so that it points to $B$. But what if you don't own any of that
 %code? \autoref{fig:reachability-b} illustrates an example of this. There are
 %three objects contained within the shaded region; these three objects will all
-%be garbage collectible if the indicated dominating reference is set to
+%be garbage collectable if the indicated dominating reference is set to
 %\code{null}. In this way, the lifetime of the lower two can be correlated with
 %the lifetime of the object directly pointed to by the dominating reference.
 
@@ -1021,12 +1076,20 @@ reference\index{Reference, Strong}; i.e. this is what you get when you use
 fields of objects or local variables,
 
 
-% TODO 20110525 maybe a table of references:
-% kind             purpose      sections where discussed
-% weak             correlated
-% soft
-% final/phantom
-% thread-local
+\begin{table}
+\centering
+	\begin{tabular}{lll}
+	\toprule
+	Advanced Reference & Purpose                & Chapter \\
+	\cmidrule(r){1-1} \cmidrule(r){2-2} \cmidrule(l){3-3}
+    weak           & correlated lifetimes           & \autoref{chapter:lifetime-implementation-strategies}  \\
+    soft           & caching, safety valves & \autoref{chapter:trading-space-for-time} \\
+    final, phantom & cleaning up external resources & \autoref{chapter:lifetime-implementation-strategies} \\
+    thread-local   & avoiding lock contention & \autoref{chapter:trading-space-for-time} \\ 
+	\bottomrule
+	\end{tabular}
+	\caption{Java offers several more advanced ways of referencing objects.}
+\end{table}
 
 \paragraph{Soft and Weak References}
 % TODO 20110525 clean up wrong parts. weak and soft say B's lifetime is
@@ -1050,12 +1113,12 @@ collection rules apply. If one object \emph{softly references} another, then
 the garbage collector is free to clip that reference whenever it wants. Once the
 garbage collector decides to make that reference go away, then the normal rules
 of reachability apply; if it is not reachable from static fields or local
-variables, then it is collectible.
+variables, then it is collectable.
 A \emph{weak} reference acts like a reverse strong reference. In the case of a
 normal strong reference from object $A$ to object $B$ (assuming no other
-references to $B$), once $A$ is collected, $B$ becomes collectible. If $A$
-weakly references $B$, then once $B$ becomes collectible, $A$ becomes
-collectible --- just the reverse of a normal strong reference! In this way, weak
+references to $B$), once $A$ is collected, $B$ becomes collectable. If $A$
+weakly references $B$, then once $B$ becomes collectable, $A$ becomes
+collectable --- just the reverse of a normal strong reference! In this way, weak
 references can form the basis of the implementation of correlated lifetime
 patterns.
 
@@ -1110,7 +1173,7 @@ you would write code such as appears in \autoref{fig:soft-ref-creation}.
 \paragraph{Reference Queues}
 Normally, when you create a soft reference, and the \jre decides to clip it,
 then the associated \class{Reference} object becomes immediately garbage
-collectible. You get no warning that the \jre has clipped this reference.
+collectable. You get no warning that the \jre has clipped this reference.
 Sometimes, this is good, because it lets you very easily take advantage of the
 soft and weak referencing mechanisms. More often, however, your code will need
 some warning that a reference has been clipped. For example, if you are using
@@ -1139,7 +1202,7 @@ when the reference is clipped.
 Java provides reference queues for exactly this purpose. When you construct a
 soft or weak reference, and associate it with a reference queue, then something
 different happens when the reference is clipped. Instead of becoming
-collectible, when clipped, it is placed on the associated reference queue. It is
+collectable, when clipped, it is placed on the associated reference queue. It is
 your job to periodically \emph{poll} the reference queue in order to enquire as
 to whether any references have been clipped. If this somes tedious and error
 prone, it is! Subsequent chapters show how to get it right.
