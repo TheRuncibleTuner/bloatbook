@@ -1002,6 +1002,21 @@ after having parsed it, but the formatter maintains a reference in order to avoi
 reparsing the same string in back to back calls. This calls
 to mind the worst of the days of explicitly managing memory in a language like C.
 
+In the case where there is more than one reference to the object, the story gets
+more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
+suffices for deallocation, in Java \emph{all} paths to an object must be
+clipped. This is tricky in many cases, because it may not
+be easy to know where all of path paths emanate from.
+\autoref{fig:reachability-sharing} illustrates a situation where three references
+must be clipped before an object, the darkly shaded one, becomes a candidate for
+garbage collection. There are two other important things to note in this example.
+First, just as in \autoref{fig:reachability-b}, after clipping the three
+indicated references, an entire data structure, not just that darkly shaded
+object, becomes a candidate for reclamation. This structure consists of the two
+objects contained within the lightly shaded region. The second important thing to
+note is that you needn't clip the backwards edge, or any edge contained entirely
+within the data structure you no longer need.
+
 \begin{figure}
 \centering
 \subfigure[Diamond sharing.]{
@@ -1018,21 +1033,6 @@ to mind the worst of the days of explicitly managing memory in a language like C
 	region you wish to reclaim.}
 	\label{fig:reachability-sharing}
 \end{figure}
-
-In the case where there is more than one reference to the object, the story gets
-more complicated. In contrast to C, where a \code{free} of \emph{any} pointer
-suffices for deallocation, in Java \emph{all} paths to an object must be
-clipped. This is tricky in many cases, because it may not
-be easy to know where all of path paths emanate from.
-\autoref{fig:reachability-sharing} illustrates a situation where three references
-must be clipped before an object, the darkly shaded one, becomes a candidate for
-garbage collection. There are two other important things to note in this example.
-First, just as in \autoref{fig:reachability-b}, after clipping the three
-indicated references, an entire data structure, not just that darkly shaded
-object, becomes a candidate for reclamation. This structure consists of the two
-objects contained within the lightly shaded region. The second important thing to
-note is that you needn't clip the backwards edge, or any edge contained entirely
-within the data structure you no longer need.
 
 \section{The Advanced Ways of Keeping an Object Alive}
 %Sometimes, you need an object to stay alive, or not, in a way that has nothing
@@ -1107,41 +1107,65 @@ fields of objects or local variables,
 %on the Internet; there is especially confusion over the use of soft and weak
 %references.
 
-Soft and weak references are two advanced ways for one object to reference
-another. If one object strongly references another, then the normal garbage
-collection rules apply. If one object \emph{softly references} another, then
-the garbage collector is free to clip that reference whenever it wants. Once the
-garbage collector decides to make that reference go away, then the normal rules
-of reachability apply; if it is not reachable from static fields or local
-variables, then it is collectable.
-A \emph{weak} reference acts like a reverse strong reference. In the case of a
-normal strong reference from object $A$ to object $B$ (assuming no other
-references to $B$), once $A$ is collected, $B$ becomes collectable. If $A$
-weakly references $B$, then once $B$ becomes collectable, $A$ becomes
-collectable --- just the reverse of a normal strong reference! In this way, weak
-references can form the basis of the implementation of correlated lifetime
-patterns.
+An object is \emph{strongly reachable} if it is reachable only from strong
+references. For a strongly reachable object, the normal garbage collection rules
+apply: when it is no longer reachable from the current set of roots, it is a
+candidate for garbage collection. Soft and weak references are features of the
+Java language that let you guide the normal process, so that you can more easily
+implement certain lifetime patterns. Programmers are often confused by these
+two, and web searches will reveal some degree of misinformation. It is common
+for web sites misdefine these two mechanisms, e.g. by swapping their roles.
 
-% TODO 20110525 mention weak hashmap
-% guava has more cases
+Soft references are useful when you need to implement any kind of logic that
+needs reclamation only when memory is tight. In this way, soft references can
+form the basis of caching\index{Caching}, or to implement safety
+valves\index{Safety Valves}. If an object is reachable by only a soft reference,
+then the garbage collector is free to reclaim it whenever it wants.
 
-``Soft'' and ``weak'' are strange terms, but the rules are pretty much as simple
-as that. Programmers are often confused by these two, and web searches will
-reveal some degree of misinformation. It is common for web sites misdefine
-these two mechanisms, e.g. by swapping their roles. In short:
-
-\callout{softweak}{Soft and Weak References}{ If one object \emph{softly
-references} another, then the garbage collector is free to clip that reference
-whenever it wants. A \emph{weak} reference acts like a reverse strong reference.
- }
- 
 The Java language specification places no firm criteria upon \jre
 implementations as to when they should clip soft references. In practice, soft
 references won't be clipped at the random whim of the \jre. All \jres these days
 will attempt to clip soft references in a roughly LRU (least-recently used)
 fashion: soft references that haven't been traversed in a while will be clipped
-before those that are frequently used. In this way, soft references can form the
+before those that are frequently used. This is why soft references can form the
 basis for cache implementations.
+
+Weak references can help you implement a correlated lifetime pattern. If an
+object is referenced by both a strong and a weak reference, then of course the
+object remains live, due to the strong reference. Your code has two ways to
+access the object, via either the strong or the weak reference, but only one of
+them is keeping the object alive. As soon as the strong reference goes away, the
+referenced object will become garbage collectable.
+
+If it's not immediately obvious to you how this behavior can be used to
+implement a correlated lifetime pattern, you're not alone. It's tricky! Say
+you'd like to correlate an annotation \code{A} with an object \code{X}. How
+should you link these together with strong and weak references to make the magic
+happen, i.e. that when \code{X} is reclaimed, then \code{A} must also be
+reclaimed? Should the weak reference point to \code{A}, since it is the object
+you'd like to go away automatically? You can't just only weakly reference
+\code{A}, otherwise it'd be reclaimed in very short order (at the next garbage
+collection). It turns out that getting this correct isn't easy.
+\autoref{sec:weak-references} goes into more detail on this topic, and shows you
+how to use the standard \code{WeakHashMap} class to avoid most of the messy
+details.
+% TODO 20110525 mention guava?
+
+In real code, things will be a bit more complicated. It is possible that an
+object is referenced entirely by strong references, but that it is
+\emph{reachable} only from a soft reference. In this case, everything dominated
+by that soft reference will become garbage collectable as soon as memory gets
+tight.
+
+\callout{softweak}{Softly and Weakly Reachable}{An object is \emph{softly
+reachable} if it is not strongly reachable, but there is at least one path that
+contains a \emph{soft reference}. An object is \emph{weakly reachable} if it is
+neither strong nor softly reachable, but there exists at least one path that
+contains a \emph{weak reference}.
+}
+
+ 
+
 
 \begin{wrapfigure}{l}{0.5\textwidth}
 \centering
