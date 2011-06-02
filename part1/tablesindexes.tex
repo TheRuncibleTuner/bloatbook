@@ -1,33 +1,50 @@
 \chapter{Large Structures for Accessing Data}
 \label{chapter:tables-indexes}
 
-In a relational database system, data is neatly organized into tables for you. 
-In object-oriented programming languages you have more freedom. You have a sea
-of interconnected objects, and you are
-responsible for designing structures that are the entry points into your
-data.  Collections, especially large collections, are the
-main tool you have. In this chapter we look at the memory considerations when
-designing collection structures for finding or gathering together your
-data. The bulk of the chapter is about indexes that let you look up data by
-value. We also look briefly at structures that simply collect your data together, such as
-a list of all the objects of one type. 
+In a relational database system, data is neatly organized for you into tables.
+You may suggest fields to index, but most of the details of indexes remain
+hidden. In object-oriented programming languages you have more freedom. You have a sea of
+interconnected objects, and you are responsible for designing structures that are the entry points into your
+data. Collections, especially large collections, are your
+main tool. In this chapter we look at the memory considerations when
+designing large collection structures for finding or gathering together your
+data. The bulk of the chapter is about indexes that let
+you look up data by value. Maps are the main implementation mechanism in these
+structures \footnote{We use the term map to mean a Java collection class,
+and the term index to describe the general functionality.}. We also look briefly
+at structures that just collect data in one place, such as a list
+of all the objects of one type.
 
-We start by looking at single large
-collections, whether lists, sets, or maps.  The same principles apply in any
-large collection: the overhead cost is dominated by the
-incremental overhead of adding each new element.  There are a number of
-collection choices you can make with very different overhead costs, in both the
-standard libraries and in open source frameworks if you are able to use them in your system. We'll look
-at how choosing carefully can make a big difference.  We
-next look at a number of special cases. If your requirements fit into one of
-these cases, there are some less expensive solutions
-available. The remainder of the chapter is about composite structures that have
-multiple levels of maps and other collections. We look at three representative cases: 
-an index with a multipart key, a multilevel concurrent index, and a multimap (a non-unique index). 
-The costs of composite structures are not always obvious, since fixed and variable costs of collections
-at different levels can all limit scalability. Without a careful analysis, it's easy to create very expensive designs.
-For the multikey index we walk through a sample analysis, comparing
-three alternative designs.
+We start by looking at single large collections.
+As we saw in the previous chapter, the
+overhead of different collection choices varies quite a bit. The costs for large
+collections play out somewhat differently than in smaller ones. In
+large collections, whether lists, sets, or maps, the main issue is the
+incremental cost of each new element. This is because the fixed cost of the
+collection is insignificant once the collection is above a certain size.  We'll
+look at ways to keep the incremental costs down: by choosing the right collection for the situation,
+by recognizing special cases that enable optimizations, and by using some of the open source
+collection classes if you are able to use them in your system.
+
+The rest of the chapter is about composite structures built from multiple levels of maps and other collections. 
+The costs of composite structures are not immediately obvious, since fixed and
+variable costs of collections at different levels can all limit scalability. There are 
+more decisions to make when designing these strutures, and 
+without a careful analysis, it's easy to create very expensive
+designs. We'll look at three common cases: an index
+with a multipart key, a multilevel concurrent index, and an index with multiple values per key.  
+
+%We walk
+%through a sample analysis, comparing three alternative designs.
+
+
+% Here we look at how the costs work out for large collections,
+%and what choices are available
+%including in open source frameworks if you are able to use these in your
+% system.  We'll also look at some
+%common special cases. If your requirements fit into one of these cases, there
+%are less expensive solutions available. 
+
 
 %In any large collection, the main
 %issue is how to keep down the cost of adding an element. The fixed
@@ -43,13 +60,51 @@ three alternative designs.
 
 \paragraph{Entry- vs. Array-based Collections}
 
+.. In general, the difference between entry- and
+array-based classes is dramatic, as we just saw.  
+
 \paragraph{Excess Capacity}
 
-\paragraph{Maps and Keys}
+As we saw in the previous chapter, many collection classes allocate excess
+capacity. Sometimes, as in \class{ArrayList}, this is to aid performance
+if we are expecting the collection to grow. In hash-based collections, 
+such as \class{HashMap} and \class{HashSet}, excess capacity allows for
+growth and it also serves to make collisions less likely. In some cases we may
+be able to reduce these costs, as we did with
+small collections, by sizing the collection carefully when it's created, or if
+the data structure has a distinct load phase, by calling \code{trimToFit()} when
+the load phase is complete.
+
+Capacity is typically a function of the number of
+elements in the collection. (-> verify that it's based on size and not current
+capacity) For example, for \class{ArrayList} ..   For \class{HashMap} we specify a load factor. .. details .. 
+For large collections, we can think of the spare capacity, as an addition to
+the variable cost, the cost each element incurs in the collection. Since
+collections grow in jumps, rather than in single steps, it makes sense to look
+at this cost on average across many elements. We'll use the term \emph{average
+variable cost} of a collection to mean the variable cost of the collection 
+plus the average of the excess capacity.  .. examples here ..  include example
+of a properly sized ArrayList?
+
+For large array-based collections, since their total overhead is
+so much smaller to begin with, the excess capacity can be significant. So from a
+relative standpoint, there is more benefit to be found in reducing it.  For
+\class{HashMap}, \class{HashSet}, and similar collections, since the bulk of the overhead is from the entry objects, reducing the excess capacity (which is
+reflected in the size of the array allocated) will have a much smaller effect on
+the size.  In addition, reductions are limited by the need to avoid
+collisions, so there's not much point in skimping on capacity in these
+structures.
+
 
 \paragraph{Array-based Maps and Sets}
 
-\paragraph{Sharing the Costs in Entry-based Collections}
+There are two primary ways of implementing hash tables.  The standard libraries
+use a technique known as open chaining, as shown in Figure~\ref{}. An entry
+object is allocated for each element of the collection, and there is a linked
+list of these entry objects for each bucket.
+
+
+\paragraph{Sharing the Costs of Entries in Entry-based Collections}
 
 \section{Identity Maps}
 
@@ -62,4 +117,6 @@ three alternative designs.
 \section{Multivalue Maps}
 
 \section{Summary}
+
+
 
