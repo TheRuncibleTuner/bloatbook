@@ -2,37 +2,41 @@
 \label{chapter:tables-indexes}
 
 In a relational database system, data is neatly organized for you into tables.
-You may suggest fields to index, but most of the details of indexes remain
-hidden. In object-oriented programming languages you have more freedom. You have a sea of
-interconnected objects, and you are responsible for designing structures that are the entry points into your
+You may suggest fields to index, and the details of indexes are
+taken care of for you. In object-oriented programming languages
+you have more freedom. You have a sea of interconnected objects, and you are responsible for designing structures that are the entry points into your
 data. Collections, especially large collections, are your
 main tool. In this chapter we look at the memory considerations when
 designing large collection structures for finding or gathering together your
-data. The bulk of the chapter is about indexes that let
-you look up data by value. Maps are the main implementation mechanism in these
-structures \footnote{We use the term map to mean a Java collection class,
-and the term index to describe the general functionality.}. We also look briefly
+data. We look briefly
 at structures that just collect data in one place, such as a list
-of all the objects of one type.
+of all the objects of one type.Then the bulk of the chapter is about indexes that let you look up data by value. 
+Maps are the main implementation
+mechanism in these structures \footnote{We use the term map to mean a Java collection class,
+and the term index to describe the general functionality.}. 
 
-We start by looking at single large collections.
-As we saw in the previous chapter, the
-overhead of different collection choices varies quite a bit. The costs for large
-collections play out somewhat differently than in smaller ones. In
-large collections, whether lists, sets, or maps, the main issue is the
-incremental cost of each new element. This is because the fixed cost of the
-collection is insignificant once the collection is above a certain size.  We'll
-look at ways to keep the incremental costs down: by choosing the right collection for the situation,
-by recognizing special cases that enable optimizations, and by using some of the open source
-collection classes if you are able to use them in your system.
+We start by looking at single large collections, and at ways to
+keep their costs down. As we saw with small collections, choosing the minimum
+functionality for the task can make a big difference. There are also 
+some open source collection classes that can save you a lot of space, if you are
+able to use them in your system. We'll next look at a few special cases where
+you can use some specialized, less expensive, solutions. The
+remainder of the chapter is about analyzing the space costs of more complex
+collection structures.  We look at three common cases: an index with a multipart
+key, a multilevel concurrent index, and an index with multiple values per key. 
+There are more decisions to make when designing these structures, and their costs are
+not obvious without a careful analysis. 
+%, it's easy to create very expensive designs. 
 
-The rest of the chapter is about composite structures built from multiple levels of maps and other collections. 
-The costs of composite structures are not immediately obvious, since fixed and
-variable costs of collections at different levels can all limit scalability. There are 
-more decisions to make when designing these strutures, and 
-without a careful analysis, it's easy to create very expensive
-designs. We'll look at three common cases: an index
-with a multipart key, a multilevel concurrent index, and an index with multiple values per key.  
+
+%As we saw in the previous chapter, the
+%overhead of different collection choices varies quite a bit. The costs for
+%large collections play out somewhat differently than in smaller ones. In
+%large collections, whether lists, sets, or maps, the main issue is the
+%incremental cost of each new element. This is because the fixed cost of the
+%collection is insignificant once the collection is above a certain size.  
+
+
 
 %We walk
 %through a sample analysis, comparing three alternative designs.
@@ -96,12 +100,45 @@ collisions, so there's not much point in skimping on capacity in these
 structures.
 
 
-\paragraph{Array-based Maps and Sets}
+\paragraph{Entry- vs. Array-based Maps and Sets}
 
-There are two primary ways of implementing hash tables.  The standard libraries
-use a technique known as open chaining, as shown in Figure~\ref{}. An entry
-object is allocated for each element of the collection, and there is a linked
-list of these entry objects for each bucket.
+There are two primary ways that hash tables are implemented. Most of the maps and sets
+in the standard libraries use a technique known as \emph{chaining} (also
+known as open hashing).  As we saw in Figure~\ref{}, there is a separate entry
+object for each element in the collection.  It points to the key, value, and
+possibly additional information such as a cached hash code. There is a linked
+list of these entry objects for each hash bucket.
+
+The other main technique is known as \emph{open addressing} (for added
+confusion, also known as closed hashing).  In this technique,
+keys, values, and other information for each element are stored directly in
+arrays. These are usually parallel arrays, though some implementations
+use a single array and interleave keys, values, etc. in successive slots. Chains
+of entries that map to the same bucket are threaded through the array(s).
+Figure~\ref{} shows a typical implementation. There are many variations in
+practice.
+
+Generally speaking, for larger collections, open addressing hash tables use less
+memory --- at least in Java, where the cost of an object is so high. The fastutil and Trove open source
+frameworks provide maps and sets that save space by using open addressing. An added
+advantage in both of these frameworks is that their set implementations are specialized for
+that purpose, rather than delegating their work to a map. So unlike in the Java standard libraries,
+you are paying only for a value, not a key and value, per entry. 
+
+Since open addressing hash tables usually use less memory, why do so many hash
+table libraries use chaining? Generally speaking, hash tables based
+on chaining are much simpler to implement. More importantly, there
+are performance differences between the two approaches, though there is no easy
+rule about one always being faster than the other. For your
+own system, if performance of your collections is critical it can be worth doing
+some timings first.  Keep in mind, though, that in many systems, the amount of time spent in
+hash table lookups is a small fraction of the total execution time to begin with. 
+
+Another thing to be aware of in open addressing implementations is that the
+need for excess capacity can reduce the space savings to a greater
+extent than in open chaining implementations. So it's important to look at the whole
+picture, at the average variable cost, when making decisions on which framework
+to use (see Table ~\ref{}).
 
 
 \paragraph{Sharing the Costs of Entries in Entry-based Collections}
