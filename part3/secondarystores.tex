@@ -77,8 +77,8 @@ disparate storage formats.
 \label{sec:memory-mapping}
 \index{Memory Mapping}
 
-One way to bring data in and out of Java without paying a marshalling expense
-is via memory mapped I/O. When you \emph{memory map} a file into your address
+One way to bring data in and out of Java without paying a marshalling expense is
+via memory mapped I/O. When you \emph{memory map} a file into your address
 space, you can treat the file as if it were an array. Reads and writes to the
 array are reflected as disk reads or writes, and these operations are usually
 done at a page granularity. Actual disk I/O may not occur with every array
@@ -87,10 +87,11 @@ physical memory to keep the written pages in memory, and you haven't specified
 that array writes should be written through to disk every time. Reads may be
 serviced from this cache, as well. In this way, memory mapped I/O can have the
 benefit of well-tested caching that balances that performance needs of all
-processes running on your machine, without any work on your part.  Memory mapping
-is a common trick used that is used by C programmers seeking the ultimate in
-performance.
+processes running on your machine, without any work on your part.  Memory
+mapping is a common trick used that is used by C programmers seeking a high
+level of performance.
 
+\paragraph{Additional Benefits of Memory Mapping}
 Since the cache is managed by the operating system, cached pages persist across
 process boundaries. Therefore, if your application runs as multiple steps, each
 in a separate process, then storing your data structures in memory mapped files
@@ -109,15 +110,21 @@ Java heap.
 
 \paragraph{Memory Mapping in Java}
 \index{\code{java.nio} library}
-As of Java 1.4, a memory mapping facility is provided by the \code{java.nio}
-library. This Java library manifests data as \class{ByteBuffer} objects. This
-interface mimics an array, providing random access and bulk \code{get} and
-\code{put} methods, but no insertion or deletion operations. Using this common
-interface, you can access four repositories of data: network transmissions, files
-on disk, memory allocations in the native heap, and allocations in the Java heap.
-While the latter two can serve only as transient repositories for your data, they
-avoid the expense of having to create a file on disk --- an expensive operation,
-on most file systems, if done frequently.
+As of version 1.4, Java offers a memory mapping facility through the
+\code{java.nio} library. This Java library provides a \class{ByteBuffer} API for
+accessing data. This interface acts like an array of primitive data, even though
+the data may not be stored in the Java heap at all. It provides both random
+access and bulk \code{get} and \code{put} methods, but no insertion or deletion
+operations.
+
+Using the \class{ByteBufer} interface, you can access data from four sources:
+network transmissions, files on disk, memory allocations in the native heap, and
+allocations in the Java heap. On UNIX platforms, these last two are often called
+\emph{anonymous} maps. They have the same API and mostly the same performance
+characteristics as memory-mapped files, without the benefits and liabilities of
+a persistent backing store. While the latter two can serve only as transient
+repositories for your data, they avoid the expense of having to create a file on
+disk --- an expensive operation, on most file systems, if done frequently.
 
 You may find it useful to have the option to have some data stored in transient
 storage, and others in persistent storage, backed by files on disk, and interact
@@ -126,52 +133,154 @@ important advantage of using native \class{ByteBuffer} storage, over Java heap
 storage, is that your application can run on arbitrarily large inputs without the
 constraints of a fixed-maximum size Java heap.
 
-No matter where the data is stored, you also have a choice of whether to use
-standard Java byte ordering, or the byte ordering of the platform on which the
-application is executing. Of course, this only matters if the data values you are
-accessing are larger than a byte. On top of a \class{ByteBuffer}, you can layer
-other primitive-type views. For example, the instance method
-\code{ByteBuffer.asIntBuffer()} returns an \class{IntBuffer} that takes care of
-any bit manipulations that are necessary to access the data as Java integers. If
-you have chosen to use native byte ordering, then accessing the elements of an
-\class{IntBuffer} on a 32-bit \jre requires no bit manipulation.
 
-An example use of this library to create an integer array-like view over a file
-is:
-
-\begin{shortlisting}
-IntBuffer mapAsIntegers(File file) {
-   ByteBuffer buffer = new RandomAccessFile(file).getChannel().map(MapMode.READ_WRITE,0,file.length());
-   // use platform, not Java, byte ordering
-   buffer.order(ByteOrder.nativeOrder());
-   return buffer.asIntBuffer();
+\begin{figure}
+\centering
+\begin{subfloat}
+\begin{minipage}{0.99\textwidth}
+\begin{figurelisting}
+ByteBuffer mapAnonymous(int numBytes) {
+  return ByteBuffer.allocateDirect(numBytes);
 }
-\end{shortlisting}
-
-\paragraph{Memory Mapping Your Column-oriented Storage}
-
-There is a beneficial combination of memory mapping and a column-oriented
-approach to storing your data. The interface to all memory mappings is an
-array, and a column-oriented storage structure stores data as arrays. The
-update, from the previous \class{EdgeModel} is easy, but requires a notion of a
-namespace for each edge model. The namespace is necessary so that the model can
-be mapped in from disk:
-
-\begin{shortlisting}
-class EdgeModel {
-   IntBuffer from, to;
-   public EdgeModel(File namespace) { // constructor
-      from = mapAsIntegers(new File(namespace, "from"));
-      to = mapAsIntegers(new File(namespace, "to"));
-   }
-   public int getEdgeFrom(int i) {
-      return from.get(i);
-   }
-   public int getEdgeTo(int i) {
-      return to.get(i);
-   }
+\end{figurelisting}
+\end{minipage}
+\caption{Mapping a native heap allocation into Java.}
+\end{subfloat}
+\begin{subfloat}
+\begin{minipage}{0.99\textwidth}
+\begin{figurelisting}
+ByteBuffer mapFile(String file) {
+  return new RandomAccessFile(file).getChannel().map(MapMode.READ_WRITE, 0, file.length());
 }
-\end{shortlisting}
+\end{figurelisting}
+\end{minipage}
+\caption{Mapping a file into Java.}
+\label{fig:java-nio-mapfile}
+\end{subfloat}
+\begin{subfloat}
+\begin{minipage}{0.99\textwidth}
+\begin{figurelisting}
+IntBuffer asInts(ByteBuffer buffer) {
+  return buffer.asIntBuffer().order(ByteOrder.nativeOrder());
+}
+\end{figurelisting}
+\end{minipage}
+\caption{Java offers facades that let you operate on the underlying bytes as
+larger primitives. It is highly recommended that you use native byte ordering
+when possible.}
+\label{fig:java-nio-asintbuffer}
+\end{subfloat}
+\caption{Some of the memory mapping facilities offered by Java.}
+\label{fig:java-nio}
+\end{figure}
+
+You also have a choice of whether to use standard Java byte ordering, or the
+byte ordering of the platform on which the application is executing. Of course,
+this only matters if the data values you are accessing are larger than a byte.
+On top of a \class{ByteBuffer}, you can layer other primitive-type views. For
+example, the instance method \code{ByteBuffer.asIntBuffer()} returns an
+\class{IntBuffer} that takes care of any bit manipulations that are necessary to
+access the data as Java integers; \autoref{fig:java-nio-asintbuffer} shows what
+your code might look like. If you don't force native byte ordering, and are
+running on hardware configured to run with little-endian bytes (e.g. an x86
+core), then every call to \code{getInt} or \code{putInt} requires expensive byte
+swapping; if you do force native byte ordering, then the JIT compiler will
+compile away these method calls entirely, thus rendering \code{getInt} and
+\code{putInt} no more expensive than accessing an array. There can be an order
+of magnitude difference in performance hinging on the decision to use native
+byte ordering.
+
+
+\paragraph{Memory Mapping is not Marshalling!}
+The data being read and written is limited to the Java primitive data types,
+such as integers and floating point numbers. For this reason, memory mapping is
+not an immediate replacement for object serialization. If you already have code
+that is using, say, built-in Java object serialization, then don't expect the
+\code{java.nio} memory mapping facilities to provide a drop-in replacement for
+your marshalling needs. Any preexisting code that is expecting to interact with
+Java objects will either require modification. Either that code must be modified
+so that it operates directly on data stored in a memory mapped form, or the
+users of that code must be modified to create temporary facade objects that
+implement the expected interfaces.
+
+\paragraph{Memory Mapping Your Column-oriented Bulk Storage}
+If you've \emph{already} committed to a column-oriented bulk storage approach
+(see \autoref{sec:column-oriented}) to storing your data, then you are in for a
+treat. In the context of a column-oriented approach, you've already made the
+necessary switch away from storing data as objects, and so any requisities for
+marshalling have already been done away with. What's better is that memory
+mapping and column-oriented bulk storage go hand-in-hand: the interface to all
+memory mappings is an array, and a column-oriented storage structure stores data
+as arrays. There are two variants to consider, depending on whether or not you
+need the data to be persisted. 
+
+If you don't need your column-oriented storage to be persisted, then the change
+required to shift from storing data as arrays to storing data as anonymous maps
+is minimal. For an integer-valued attribute over 100 elements, instead of
+allocating an array via \code{new int[100]}, you call
+\code{asInts(mapAnonymous(100))} (using the helper routines from
+\autoref{fig:java-nio}). This change should be minimal, and nicely localized.
+
+With only a few more coding changes, you can have your models persisted. This is
+one of the several strengths of a storage approach that is based on
+memory mapping. The decision of whether or not to persist data to a
+file system does not involve extensive code work, nor does it require
+establishing and maintaining versions of serialized forms and all of the
+associated marshalling code.
+
+To persist an attribute, you have to specify a place to persist it. The helper
+routine \code{mapFile} from \autoref{fig:java-nio-mapfile} requires a
+\code{File} in which to store the data. If your application has a graph model
+such as the one discussed in \autoref{chapter:large-long-lived}, and needs only
+one of them, then choosing file names isn't very difficult. For example, the
+edge model can be stored in a file called ``edges''; the nodes' weight attribute
+can be stored in a file called ``nodeWeights''. You need only choose an
+appropriate directory in which to keep these files.
+
+
+\begin{wrapfigure}{r}{0.62\textwidth}
+\centering
+\begin{framedlisting}
+class WeightedEdges {
+ IntBuffer source, target, weight;
+  
+ WeightedEdges(String name) {
+   from = asInts(mapFile(name+"from"));
+   to = asInts(mapFile(name+"to"));
+   weight = asInts(mapFile(name+"weight"));
+ }
+
+ int source(int edge) {
+   return source.get(edge);
+ }
+  
+ int target(int edge) {
+   return target.get(edge);
+ }
+  
+ int weight(int edge) {
+   return weight.get(edge);
+ }
+}  
+\end{framedlisting}
+\end{wrapfigure}
+
+If your application has multiple instances of graph models alive simultaneously,
+then the naming problem becomes more difficult. Now, the choice of directory
+becomes a critical one, so that you can avoid collisions of the edge and node
+models. To solve this problem, you will need to give a \emph{name} to each graph
+model. For example, you may have two edge models, one that stores the department
+to employee relation, and one that stores the manager to employee relation. It
+should be easy to come up with distinctive names for these. The
+ \class{WeightedEdges} example from
+\autoref{sec:bulk-storage-of-relationships}, shown on the right updated to use
+file-backed memory mapping, looks pretty similar to the original one that used
+Java arrays to store the data.
+
+ 
+%The update requi, from the previous
+%\class{EdgeModel} is easy, but requires a notion of a namespace for each edge
+%model. The namespace is necessary so that the model can be mapped in from disk:
 
 \paragraph{Difficulties with Memory Mapping in Java}
 
@@ -198,14 +307,14 @@ available for allocation. However, memory mappings fail, because the process's
 address space is fully consumed by older mappings, many of which would be
 unmapped if the garbage collector were only to run.
 
-This implementation decision has a strong negative interaction with the second
-problem: the \jre does not, upon address space exhaustion, attempt to run a
+What's worse, the \jre does not, upon address space exhaustion, attempt to run a
 garbage collection and finalization pass in order to clear out mapped byte
-buffers. Therefore, you may suffer from \class{OutOfMemoryException} failures,
+buffers that are ready to be cleaned up. Therefore, you may suffer from
+\class{OutOfMemoryError}\index{java.lang.OutOfMemoryError} failures,
 due to running out of address space, despite the fact that many of your mapped
 regions are actually ready to be unmapped.
 
-The third problem you may encounter is primarily to be found on Windows
+The second major problem you may encounter is primarily to be found on Windows
 platforms. The Windows operating system does not allow a file to be removed from
 the file system if there are existing memory maps over any part of the file.
 This, combined with the inability to explicitly unmap a mapping, can lead to a
@@ -226,11 +335,12 @@ force a garbage collection and finalization pass, and then retry the memory
 mapping; doing this several times in a loop is recommended. Third, on some
 versions of the \jre, you will find that a memory mapping failure results in the
 \jre terminating the process. This was one, by the \jre developers, with the
-thought that a memory mapping failure was a sign of catastrophic failure. You
-know now that this is not the case, it is rather a symptom of the overall poor
-design of the \code{java.nio} library. To work around this problem, you can set
-up a security policy that disables calls to \code{System.exit}, though you must
-be careful that your own code does not rely on this call.
+thought that a memory mapping failure was a sign of catastrophic failure.
+% You know now that this is not the case, it is rather a symptom of the overall
+% poor design of the \code{java.nio} library.
+To work around this problem, you can set up a security policy that disables
+calls to \code{System.exit}, though you must be careful that your own code does
+not rely on this call.
 
 The last good design principal, when using memory mapping in Java, is to rely on
 file-based memory mappings as little as possible. If you need only temporary
