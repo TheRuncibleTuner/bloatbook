@@ -7,24 +7,25 @@ taken care of for you. In object-oriented programming languages
 you have more freedom. You have a sea of interconnected objects, and you are responsible for designing structures that are the entry points into your
 data. Collections, especially large collections, are your
 main tool. In this chapter we look at the memory considerations when
-designing large collection structures for finding or gathering together your
+designing large collection structures for accessing your
 data. We look briefly
-at structures that just collect data in one place, such as a list
-of all the objects of one type.Then the bulk of the chapter is about indexes that let you look up data by value. 
-Maps are the main implementation
+at structures that just gather data in one place, such as a list
+of all the objects of one type. The bulk of the chapter is about indexes
+that let you look up data by value. Maps are the main implementation
 mechanism in these structures \footnote{We use the term map to mean a Java collection class,
 and the term index to describe the general functionality.}. 
 
-We start by looking at single large collections, and at ways to
-keep their costs down. As we saw with small collections, choosing the minimum
-functionality for the task can make a big difference. There are also 
-some open source collection classes that can save you a lot of space, if you are
-able to use them in your system. We'll next look at a few special cases where
-you can use some specialized, less expensive, solutions. The
-remainder of the chapter is about analyzing the space costs of more complex
-collection structures.  We look at three common cases: an index with a multipart
-key, a multilevel concurrent index, and an index with multiple values per key. 
-There are more decisions to make when designing these structures, and their costs are
+%Large collections, like much else in Java, can
+%take up a lot of memory, unless you choose and configure them carefully. 
+We'll first look at the costs of large collections, and some ways to keep them
+to a minimum for the task. There are also some open source
+collection classes that can save you a lot of space, if you are able to use them in your system. 
+We'll next look at a few special cases that enable you to use
+specialized, and less expensive, solutions. The remainder of the chapter is
+about analyzing the space costs of more complex, multi-level collection
+structures.  We look at three common cases: an index with a multipart key, a
+multilevel concurrent index, and an index with multiple values per key. There are more decisions
+to make when designing these structures, and their costs are
 not obvious without a careful analysis. 
 %, it's easy to create very expensive designs. 
 
@@ -62,52 +63,85 @@ not obvious without a careful analysis.
 
 \section{Large Collections}
 
-\paragraph{Entry- vs. Array-based Collections}
+Just as with small collections, choosing the right collection for the task
+can make a big difference in the memory overhead of large collections.  Suppose
+you need to maintain a collection of all the orders processed for the day.  At
+the end of the day these orders are posted in bulk to a remote database. The orders
+contain their own timestamps, so we don't really care about maintaining the
+sequence in which they were received. Figure~\ref{} compares an implementation
+using \class{ArrayList} with one using \class{HashSet}. As with small
+collections, if we don't need the uniqueness checking or some of the other features of \class{HashSet}, 
+then we are clearly much better off with \class{ArrayList}.
 
-.. In general, the difference between entry- and
-array-based classes is dramatic, as we just saw.  
+In larger collections, the variable costs --- the cost each
+element incurs --- determine the cost of the collection. That's because as a
+collection grows in size, its fixed overhead, such as wrapper objects or array headers, becomes insignificant.  For
+example, for an \class{ArrayList} with even 1000 elements, the fixed cost is
+just .1\% of the total.  Whereas with small collections we need to concern
+ourselves with both fixed and variable costs, for large collections we
+need only look at variable costs. The difference in size in the above example
+is pretty dramatic, more than 7:1. That reflects the difference in variable costs of the two collection classes. 
+As a general rule, the variable overhead of array-based collections, like
+\class{ArrayList} is much lower than that of entry-based collections, like \class{HashSet}, where a new entry
+object is allocated for each element in the collection. Table~\ref{} shows a
+comparison of variable costs.
+
+
+%You may have noticed that in our current example,
+%there is a much bigger difference between the two implementations than there
+%was in Section~\ref{}, where we compared the same two collection classes in a
+%design that had small collections.  For small collections, the fixed costs are
+%a larger part of the overhead, whereas here it's only the differences in
+%variable costs that matter.  
 
 \paragraph{Excess Capacity}
 
-As we saw in the previous chapter, many collection classes allocate excess
-capacity. Sometimes, as in \class{ArrayList}, this is to aid performance
-if we are expecting the collection to grow. In hash-based collections, 
-such as \class{HashMap} and \class{HashSet}, excess capacity allows for
-growth and it also serves to make collisions less likely. In some cases we may
-be able to reduce these costs, as we did with
-small collections, by sizing the collection carefully when it's created, or if
-the data structure has a distinct load phase, by calling \code{trimToFit()} when
-the load phase is complete.
+As we saw in the previous chapter, many collection
+classes allocate excess capacity for performance reasons, mainly to accomodate
+growth. One difference between small and large collections is the
+effect of excess capacity on the overall memory overhead.  
 
-Capacity is typically a function of the number of
-elements in the collection. (-> verify that it's based on size and not current
-capacity) For example, for \class{ArrayList} ..   For \class{HashMap} we specify a load factor. .. details .. 
-For large collections, we can think of the spare capacity, as an addition to
-the variable cost, the cost each element incurs in the collection. Since
-collections grow in jumps, rather than in single steps, it makes sense to look
-at this cost on average across many elements. We'll use the term \emph{average
-variable cost} of a collection to mean the variable cost of the collection 
-plus the average of the excess capacity.  .. examples here ..  include example
-of a properly sized ArrayList?
+As a collection grows, the amount of spare capacity allocated is usually based
+on the number of elements in the collection. For example, \class{ArrayList} reallocates an array that is 50\% larger
+when it needs extra space, and \class{HashMap} doubles the number of buckets when the number of elements reaches a user-specified load factor. So for large collections, we can think of the spare capacity as an additional charge
+on each element of the collection, an addition to the variable cost.
+Since collections grow in jumps, rather than in single steps, it makes sense to look at this cost
+on average across many elements, rather than as a cost on the last element we
+added. We'll use the term \emph{average variable cost} of a collection to mean the variable cost
+plus its share of the excess capacity.    .. examples here .. 
+include example of a properly sized ArrayList? .. average is just an estimate - can be higher or lower in practice, depending
+upon the exact size of your collection.
 
 For large array-based collections, since their total overhead is
 so much smaller to begin with, the excess capacity can be significant. So from a
 relative standpoint, there is more benefit to be found in reducing it.  For
-\class{HashMap}, \class{HashSet}, and similar collections, since the bulk of the overhead is from the entry objects, reducing the excess capacity (which is
+\class{HashMap}, \class{HashSet}, and similar collections, since the bulk of the overhead is from the entry objects,
+reducing the excess capacity (which is
 reflected in the size of the array allocated) will have a much smaller effect on
 the size.  In addition, reductions are limited by the need to avoid
 collisions, so there's not much point in skimping on capacity in these
 structures.
+
+Solutions for reducing excess capacity for large collections are the same as
+for small collections. If you can estimate the number of elements in advance,
+you can try to size the collection carefully when you create it.  If your data structure has a
+distinct load phase, and the collection has a \code{trimToFit()} call, you can
+trim the size of the collection after the load phase is complete. In hash-based collections, such as
+\class{HashMap} and \class{HashSet}, excess capacity is needed to reduce the
+likelihood of collisions, so it's important to leave headroom for this
+purpose. The default load factor is usually a pretty good guide. 
+
 
 
 \paragraph{Entry- vs. Array-based Maps and Sets}
 
 There are two primary ways that hash tables are implemented. Most of the maps and sets
 in the standard libraries use a technique known as \emph{chaining} (also
-known as open hashing).  As we saw in Figure~\ref{}, there is a separate entry
-object for each element in the collection.  It points to the key, value, and
-possibly additional information such as a cached hash code. There is a linked
-list of these entry objects for each hash bucket.
+known as open hashing), Figure~\ref{} shows a typical
+implementation. There is a separate entry object for element in the collection.
+Each entry object points to a key and a value, and possibly contains
+additional information such as a cached hash code. There is a linked list of
+entry objects for each hash bucket.
 
 The other main technique is known as \emph{open addressing} (for added
 confusion, also known as closed hashing).  In this technique,
@@ -121,7 +155,7 @@ practice.
 Generally speaking, for larger collections, open addressing hash tables use less
 memory --- at least in Java, where the cost of an object is so high. The fastutil and Trove open source
 frameworks provide maps and sets that save space by using open addressing. An added
-advantage in both of these frameworks is that their set implementations are specialized for
+advantage in both of these frameworks is that sets are specialized for
 that purpose, rather than delegating their work to a map. So unlike in the Java standard libraries,
 you are paying only for a value, not a key and value, per entry. 
 
