@@ -22,7 +22,7 @@ synonymously referred to as the steps of \emph{marshalling} data.\footnote{Some
 sticklers distinguish marshalling to be serialization and deserialization along
 with a protocol for ensuring compatibility between code releases. In this
 lexicon, a marshalled object is a record not only of the data, but also of the
-version of serialized form.}
+version, or even the schema itself, of serialized form.}
 
 On top of the basic data access layers, there exist a number of libraries that
 hide the low-level details that are particular to any one secondary store. Most
@@ -35,8 +35,59 @@ these lower level details.
 
 
 
-\section{Serialization}
+\section{Serialization: Copying Data in and Out}
 \index{Serialization}
+
+When interacting with secondary stores, there are three possible stages of the
+data between the in-transit form and your initial java objects: the serialized
+form, the in-memory intermediate form, and the initial form of your Java data
+modles. There of course may be even more forms of java objects, as the data
+flows through the Java code, but these are the three forms of data that are
+involved with communicating with secondary stores.
+
+\begin{figure}
+\centering
+  \includegraphics[width=0.95\textwidth]{part3/Figures/secondary/serializationforms}
+  \caption{An example of data that takes on three forms as it flows from a
+  secondary data source (in this case, a remote service) eventually into your
+  Java data model.}
+\end{figure}
+
+\begin{itemize}
+
+\item \textbf{Serialized Form} This is the data format that flows over the wire,
+or is stored to disk. Examples include the standard Java binary serialized form,
+relational database result sets, XML text (e.g. ``\verb+<element></element>+''),
+Google Protocol Buffers~\cite{google-protocol-buffers}, and the key/value string
+pairs that come back from a distributed map such as memcached~\cite{memcached}.
+
+\item \textbf{In-memory intermediate form} If the data access API requires
+random access to the elements of the data being streamed in, then the
+deserialization library needs to keep some sort of indexing structures, and
+probably even the entirety of the data, in some form that can be efficiently
+accessed. the important point here is that this form of the data won't be
+instances of \emph{your} data model, but rather instances of some data
+structures that the deserialization library provides. Examples include the XML
+DOM, which provides an objectified, in-memory, form of XML text.
+
+\item \textbf{One or more of your Java objects} After the data comes over the
+wire, you must populate an initial form of your Java data models. These model
+instances must be populated by copying, usually one field at a time, the
+serialized data or intermediate-form data, into your own Java objects. the
+reason that this copying needs to happen at such a fine granularity, rather than
+in bulk (either whole objects at a time, or, even better, whole result sets at a
+time), is that, in Java, there is no way to map an abstract data type onto
+existing memory. For this reason, in Java, it is difficult for the serialized
+form and the \emph{operational} form, i.e. the form that your Java code
+accesses, to be the same. In a language such as C, this \emph{is} possible,
+either through unions or by typecasting a pointer to a struct.
+\end{itemize}
+
+This mismatch between the various forms can result in expensive translation
+steps. For example, in a version of the Apache Daytrader
+benchmark~\cite{daytrader}, turning a single date field of SOAP message (which
+comes over the wire as XML text) into Java objects requires 268 method calls and
+the creation of 70 new objects.
 
 %Your application might be distributed across multiple boxes
 %that are connected by a network, rather than a distributed shared memory. It is
@@ -58,6 +109,8 @@ these lower level details.
 
 % This book does not address the issues of compatibility of code bases, other
 % than to observe that,
+\begin{comment}
+%old stuff
 If your use case does not require handling code skew, then you have options that
 will perform much better than using the built-in Java marshalling mechanisms. In
 Java, there are several commonly available mechanisms for marshalling your
@@ -70,10 +123,22 @@ the data, that is the way the bits are laid out as your Java code operates on
 them, is different from the serialized form. Therefore, use of these
 serialization libraries usually entails an expensive translation between two
 disparate storage formats.
+\end{comment}
+
+Google Protocol Buffers do a good job at reducing these expenses. Firstly, the
+serialized form is considerably more compact. In part this is because it is a
+binary format, and encodes the primitive data in a compact form. For example,
+with Protocol Buffers, not all numbers require the same number of bits. Common
+integers require only one byte, compared to 4 bytes in a naive encoding
+scheme.\footnote{Google calls these variable-width integers \emph{varints}.}
+Because the resulting serialized form is smaller, it takes less time to get data
+into and out of it. In addition, the encoding libraries are specialized for
+this, and only, this task. This is in contrast to most general-purpose XML
+parsers and formatters, which must handle every possible document schema. The
+Google designers mostly optimized for performance, at some cost in features.
 
 
-
-\section{Memory mapping}
+\section{Memory mapping: Avoiding Copying}
 \label{sec:memory-mapping}
 \index{Memory Mapping}
 
