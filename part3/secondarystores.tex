@@ -125,17 +125,27 @@ serialization libraries usually entails an expensive translation between two
 disparate storage formats.
 \end{comment}
 
-Google Protocol Buffers do a good job at reducing these expenses. Firstly, the
-serialized form is considerably more compact. In part this is because it is a
-binary format, and encodes the primitive data in a compact form. For example,
-with Protocol Buffers, not all numbers require the same number of bits. Common
-integers require only one byte, compared to 4 bytes in a naive encoding
-scheme.\footnote{Google calls these variable-width integers \emph{varints}.}
-Because the resulting serialized form is smaller, it takes less time to get data
-into and out of it. In addition, the encoding libraries are specialized for
-this, and only, this task. This is in contrast to most general-purpose XML
-parsers and formatters, which must handle every possible document schema. The
-Google designers mostly optimized for performance, at some cost in features.
+\paragraph{Example: Google Protocol Buffers}
+Google Protocol Buffers do a good job at reducing these expenses. The Google
+designers mostly optimized for performance, at some cost in features. There are
+two main tricks that Protocol Buffers uses to lower the costs of marshalling.
+First, the serialized form stores, for many common cases, pure data. The
+serialized form is not self describing: each end of the communication must know
+the schema. This data is also transported in a binary form, in contrast to XML
+text. In addition to it being binary and pure data, the binary data is written
+out in a compact form. With Protocol Buffers, not all numbers require the same
+number of bits. Common integers require only one byte, compared to 4 bytes in a
+naive encoding scheme.Google calls these variable-width integers \emph{varints}.
+Because the resulting serialized form is smaller, less effort is required to get
+data into and out of it.
+
+The second trick that Protocol Buffers employs is static compilation of
+specialized marshalling code. You specify the protocol, and then
+\emph{statically} generate Java classes that are specialized to the task of
+serializing and deserializing that kind of data. An XML parser knows nothing
+about the field layout of your specific classes. In contrast, with Protocol
+Buffers, the generated code that can marshal only that protocol. There is no
+introspection needed, to determine the type of the next field.
 
 
 \section{Memory mapping: Avoiding Copying}
