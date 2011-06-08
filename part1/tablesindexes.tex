@@ -1,4 +1,5 @@
-\chapter{Large Structures for Accessing Data}
+\chapter{Large Collection Structures}
+%\chapter{Large Structures for Accessing Data}
 \label{chapter:tables-indexes}
 
 In a relational database system, data is neatly organized for you into tables.
@@ -73,8 +74,8 @@ using \class{ArrayList} with one using \class{HashSet}. As with small
 collections, if we don't need the uniqueness checking or some of the other features of \class{HashSet}, 
 then we are clearly much better off with \class{ArrayList}.
 
-In larger collections, the variable costs --- the cost each
-element incurs --- determine the cost of the collection. That's because as a
+In larger collections, the variable overhead --- the cost each
+element incurs --- determines the cost of the collection. That's because as a
 collection grows in size, its fixed overhead, such as wrapper objects or array headers, becomes insignificant.  For
 example, for an \class{ArrayList} with even 1000 elements, the fixed cost is
 just .1\% of the total.  Whereas with small collections we need to concern
