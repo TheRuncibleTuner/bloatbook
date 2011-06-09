@@ -1264,67 +1264,23 @@ cases of external resources. You can design the API specifications so as to
 require users of the API to adopt a convention that requires explicit closing,
 or freeing, of resources.
 
-Java provides \emph{finalization} as a way around this problem, though it comes
-with many gotchas. Finalization is very much like the system of weak references,
-in that it is a way to correlate an action with the death of an object. If you
-write a class with a \code{finalize} method, then, when that object is
-reclaimed, the finalize method will be called. Behind the scenes, the \jre
-allocates an extra object (of type \class{java.lang.ref.FinalReference}) and
-stores these in a reference queue (called the finalization queue). For the most
-part, these days, the \class{FinalReference} objects are allocated when the
-object is queued up for finalization Some older \jres allocate this object up
-front, when the object (that will eventually be queued for finalization) is
-initially allocated. In both cases, there is an extra memory overhead associated
-with using finalization. Phantom references are a minor variation of
-finalization that lets you manage the queues more flexibly: you can use separate
-queues for different groups of objects, and manage how often to poll the queues,
-rather than having a single queue and relying on the \jre to poll the queue when
-it feels like it.\index{References, Phantom}
-
-% 20110525 TODO maybe move to later chapter
-Now for the gotchas. First, you can't assume that the finalize method will be
-called immediately after the correlated objects death. The Java language
-specification does not dictate a timeliness criterion for invoking your
-\code{finalize} method. This can lead to dragging of the resources, exactly like
-the problem of memory drag described earlier. Second, using finalization
-increases memory bloat. For every instance of a class with a \class{finalize}
-method, the \jre, behind the scenes, allocates an extra object (of type
-\class{java.lang.ref.FinalReference}). This object consumes 28 bytes; the
-pointer from the finalization queue adds an extra pointer cost.
-\index{Overwhelming the Finalizer Thread}
-Third, it is possible to overwhelm the finalization thread. This can happen if
-your program creates instances of objects with \code{finalize} methods at a high
-rate.
-\begin{comment}
- Such is the
-case in the following loop:
-\begin{shortlisting}
-import java.awt.Font;
-for (int i = 0; i < N; i++) {
-   Font font = new Font("SansSerif", Font.BOLD, 12);
-   ... // some small amount of work
-   // font does not escape the loop
-}
-\end{shortlisting}
-Since each loop iteration's instance of \code{font} is not used beyond the
-execution of that iteration, it seems like one could run this program on a
-small heap, for any value of \code{N}. The heap need only fit what it
-takes to allocate the handful of objects that represent an instance of
-\code{java.awt.Font}. Try it out, for various values of \code{N} and of
-\code{-Xmx}! On Sun and IBM \javasix \jres, you will find that, as \code{N}
-increases, you will need to increase the maximum heap size allotted to the \jre.
-If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
-
-The problem, in this case, is that \class{Font} class has a \code{finalize}
-method. Therefore, as the loop iterates, instances of \class{Font} begin to pile
-up the finalization queue. Periodically, the background finalizer thread wakes
-up and cleans up the backlog. But, if this loop nest creates many \class{Font}s
-quickly, or there are a large number of threads doing so concurrently, 
-the finalizer background thread becomes overwhelmed. Try sticking in this code:
-\code{if (i \% 100000 == 0) System.runFinalization()}. Here, you are explicitly
-putting your application's thread to sleep in order to let the finalizer thread
-catch up. In this case, this change fixes the problem.
-\end{comment}
+Java provides \emph{finalization} and \emph{phantom references} as two ways
+around this problem.\index{Finalization}\index{References, Phantom}
+% Finalization is very much like the system of weak references, in that it is a
+% way to correlate an action with the death of an object.
+If you add a \code{finalize} method to a class, then, when an instance is
+reclaimed, this finalization method will be called. You can use this opportunity
+to release any external resources that are associated with that Java object. On
+paper, this looks like exactly what you need: when the Java object is reclaimed,
+then the external resources will be freed up by your finalization method. The
+reality usually isn't so pretty, and \autoref{sec:external-resources-details}
+delves into the gorey details. Phantom references provide an alternative that
+gives you somewhat greater flexibility. When you use phantom references rather
+than finalization, you can use separate queues for different groups of objects,
+and manage how often to poll the queues, rather than having a single queue and
+relying on the \jre to poll the queue when it feels like it. Both are filled
+with potential dangers, so please read \autoref{sec:external-resources-details}
+before committing a design to these mechanisms.
 
 \paragraph{\TLS}
 \tlsindex % \index{\TLS} doesn't seem to work

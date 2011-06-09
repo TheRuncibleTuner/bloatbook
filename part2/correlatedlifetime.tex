@@ -1,4 +1,22 @@
-\chapter{Avoiding Leaks: Correlated Lifetime Patterns}
+% TODO 20110601
+% case        key    value
+% annotation  weak   strong
+% sharingpool strong weak
+
+% sharingpool:
+% HM(V,V)  e.g. string.intern
+% a weak hashmap is weak on the keys, so you need to make the values weak, too,
+% to avoid a diamond
+
+% versus
+% strong key weak value, which is an optimization of the first where the
+% canonical object is keyed by some subset of its state
+
+% discussion: weak references let you reference one object, per reference. so
+% with a weak map that has $Entry that extend WeakReference, you can reference
+% the key XOR the value for free. to reference both weakly references a wrapper
+
+\chapter{Avoiding Memory Leaks by Correlating Lifetimes}
 \label{chapter:lifetime-implementation-strategies}
 
 Typically, objects die soon after the point in time of their last use, once all
@@ -302,6 +320,7 @@ must be replaced with a \code{WeakReference<T> t}.
 %%%%%%%%%
 
 \section{Sharing Immutable Data Safely}
+% safely: meaning no leaks1	
 \paragraph{Review of Sharing Pools}
 \paragraph{A Leak-free Sharing Pool}
 \paragraph{A Trickier Example: An Annotation Pool}
@@ -359,6 +378,9 @@ facility, and is discussed in greater detail in Chapter~\ref{??} .
 
 
 \section{Cleaning Up: Listeners}
+
+% forgetting to unsubscribe on exception, or forget to call dispose on a larger
+% object (window) or window.dispose forgets to unregister itself
 
 Another common instance of the correlated lifetime pattern that is easy to mess
 up is the listener pattern. A common implementation strategy is to have the list
@@ -491,8 +513,70 @@ top-level request method; then, you only need to change the constructors of the
 maps and sets that store request-scoped data. There are many minor variations of
 this base implementation. You can tailor them to your specific needs.
 
-\section{Cleaning up associated resources}
+\section{Cleaning Up External Resources}
+\label{sec:external-resources-details}
 \paragraph{Finalizers and phantom references}
+
+Behind the scenes,
+the \jre allocates an extra object (of type
+\class{java.lang.ref.FinalReference}) and stores these in a reference queue
+(called the finalization queue). For the most part, these days, the
+\class{FinalReference} objects are allocated when the object is queued up for
+finalization Some older \jres allocate this object up front, when the object
+(that will eventually be queued for finalization) is initially allocated. In
+both cases, there is an extra memory overhead associated with using
+finalization. Phantom references are a minor variation of finalization that lets
+you manage the queues more flexibly: you can use separate queues for different
+groups of objects, and manage how often to poll the queues, rather than having a
+single queue and relying on the \jre to poll the queue when it feels like
+it.\index{References, Phantom}
+
+% 20110525 TODO maybe move to later chapter
+Now for the gotchas. First, you can't assume that the finalize method will be
+called immediately after the correlated objects death. The Java language
+specification does not dictate a timeliness criterion for invoking your
+\code{finalize} method. This can lead to dragging of the resources, exactly like
+the problem of memory drag described earlier. Second, using finalization
+increases memory bloat. For every instance of a class with a \class{finalize}
+method, the \jre, behind the scenes, allocates an extra object (of type
+\class{java.lang.ref.FinalReference}). This object consumes 28 bytes; the
+pointer from the finalization queue adds an extra pointer cost.
+\index{Overwhelming the Finalizer Thread}
+Third, it is possible to overwhelm the finalization thread. This can happen if
+your program creates instances of objects with \code{finalize} methods at a high
+rate.
+\begin{comment}
+ Such is the
+case in the following loop:
+\begin{shortlisting}
+import java.awt.Font;
+for (int i = 0; i < N; i++) {
+   Font font = new Font("SansSerif", Font.BOLD, 12);
+   ... // some small amount of work
+   // font does not escape the loop
+}
+\end{shortlisting}
+Since each loop iteration's instance of \code{font} is not used beyond the
+execution of that iteration, it seems like one could run this program on a
+small heap, for any value of \code{N}. The heap need only fit what it
+takes to allocate the handful of objects that represent an instance of
+\code{java.awt.Font}. Try it out, for various values of \code{N} and of
+\code{-Xmx}! On Sun and IBM \javasix \jres, you will find that, as \code{N}
+increases, you will need to increase the maximum heap size allotted to the \jre.
+If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
+
+The problem, in this case, is that \class{Font} class has a \code{finalize}
+method. Therefore, as the loop iterates, instances of \class{Font} begin to pile
+up the finalization queue. Periodically, the background finalizer thread wakes
+up and cleans up the backlog. But, if this loop nest creates many \class{Font}s
+quickly, or there are a large number of threads doing so concurrently, 
+the finalizer background thread becomes overwhelmed. Try sticking in this code:
+\code{if (i \% 100000 == 0) System.runFinalization()}. Here, you are explicitly
+putting your application's thread to sleep in order to let the finalizer thread
+catch up. In this case, this change fixes the problem.
+\end{comment}
+
+
 Java provides two other closely related cleanup hooks, in the form of
 finalization and phantom references. These hooks are called just after the
 garbage collector has discovered that the object is collectible, but before its
@@ -549,6 +633,8 @@ that the external storage should be reclaimed when an event occurs, or when a
 method returns, then you should do so.
 
 \section{The Single Strong Owner Pattern}
+% single strong owner is a requirement
+% home base is a methodology
 
 Lifetime management for temporaries (the lifetime pattern discussed in
 \autoref{sec:temporary-lifetime}), and for objects that are part of only one data
