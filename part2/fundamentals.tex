@@ -512,6 +512,15 @@ of the how the managed runtime treats an object in various stages of its life.
 \index{Memory Exhaustion}
 \index{Memory Leaks}
 
+\begin{figure}
+\centering
+	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
+	\caption{When your application suffers from a memory leak, you will likely
+	observe a trend of heap consumption that looks something like this.
+	}
+	\label{fig:memory-leak-trend}
+\end{figure}
+
 If your application seems to have periods where it runs very slowly, and then
 either magically recovers or dies, then it may be suffering from a memory leak.
 \autoref{fig:memory-leak-trend} shows a typical trend of heap consumption that
@@ -524,7 +533,7 @@ and are cleaned out as memory grows tight, or due to the natural ebb and flow of
 load on your application over time. Nevertheless, the upwards climb is stll
 there. As heap memory becomes less and less available, garbage collections
 become increasingly frequent.
-	
+
 If your application exhausts the Java heap, you will observe an
 \class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
 Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
@@ -533,15 +542,6 @@ the runtime will enter a nasty state where it is spending all of its time
 reclaiming memory.
 % You will observe that your application seemingly hangs; the \jre may not even
 % respond to a console interrupt or other normal shutdown events.
-
-\begin{figure}
-\centering
-	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
-	\caption{When your application suffers from a memory leak, you will likely
-	observe a trend of heap consumption that looks something like this.
-	}
-	\label{fig:memory-leak-trend}
-\end{figure}
 
 \callout{gc-death}{GC Death}{Sometimes, your application will appear to grind to
 a halt, without any exceptions appearing on the error console. If you observe
