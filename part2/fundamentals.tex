@@ -501,15 +501,30 @@ dominates itself, but isn't a root of the graph, then you know that it has
 \emph{uniquely owned} by that dominating node.}
 
 Most of the time, the garbage collector does what you'd expect, and you needn't
-worry about freeing up memory. You will learn about bugs, such as memory leaks,
-and cases where memory allocations \emph{drag} out their lifetime, beyond when
-your code needs them. In these, and other more complex cases, such as those
-involving caching or the use of native resources, things can get tricky. For
-these cases, you need to be aware of the how the managed runtime treats an
-object in various stages of its life.
+worry about freeing up memory. Java applications are frequently plagued by
+memory leaks, and cases where memory allocations \emph{drag} out their lifetime,
+beyond when your code needs them. Avoiding these problems, especially in more
+complex cases such as those involving caching or the use of native resources, is
+a perennial challenge of writing in Java. For these cases, you need to be aware
+of the how the managed runtime treats an object in various stages of its life.
 
-\paragraph{Running Out of Java Heap}
+\paragraph{Memory Leaks, and Running Out of Java Heap}
 \index{Memory Exhaustion}
+\index{Memory Leaks}
+
+If your application seems to have periods where it runs very slowly, and then
+either magically recovers or dies, then it may be suffering from a memory leak.
+\autoref{fig:memory-leak-trend} shows a typical trend of heap consumption that
+you may observe, if it indeed does have a leak. This chart represents how much
+Java heap memory is free \emph{after} each garbage collection. The
+characteristic aspect of a leak is an inexorable decrease in the amount of free
+memory after each garbage collection. Sometimes, the amount of free memory after
+a garbage collection sawtooth up and down, for example because caches fill up
+and are cleaned out as memory grows tight, or due to the natural ebb and flow of
+load on your application over time. Nevertheless, the upwards climb is stll
+there. As heap memory becomes less and less available, garbage collections
+become increasingly frequent.
+	
 If your application exhausts the Java heap, you will observe an
 \class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
 Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
@@ -518,6 +533,15 @@ the runtime will enter a nasty state where it is spending all of its time
 reclaiming memory.
 % You will observe that your application seemingly hangs; the \jre may not even
 % respond to a console interrupt or other normal shutdown events.
+
+\begin{figure}
+\centering
+	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
+	\caption{When your application suffers from a memory leak, you will likely
+	observe a trend of heap consumption that looks something like this.
+	}
+	\label{fig:memory-leak-trend}
+\end{figure}
 
 \callout{gc-death}{GC Death}{Sometimes, your application will appear to grind to
 a halt, without any exceptions appearing on the error console. If you observe
@@ -541,6 +565,8 @@ collection events\index{IBM Javacores}. Neither of these require modifying your
 application command line, and so are very nice alternatives. In any case, by
 inspecting the resulting output, you will observe that the collector is active
 99\% or more of the time.
+
+
 
 
 % NMM 20110526 we talk about this all in The Heap section, above
@@ -671,7 +697,6 @@ because dragging Java objects will only be collected when you run out of Java
 heap space. The \jre doesn't know to schedule a garbage collection when you
 exhust native resources.
 
-
 %\begin{figure}
 	%\centering
 	%\includegraphics[width=\textwidth]{part2/Figures/lifetime/states}
@@ -683,6 +708,16 @@ exhust native resources.
 %\end{figure}
 
 \section{The Basic Ways of Keeping an Object Alive}
+An object will stay around as long as it is reachable from some chain of
+references. The nature of the references along any
+chains (for there may be multiple such chains!) leading up to your object will
+determine how long it'll stick around.
+After your program creates an object, it references the object in one or more of
+three basic ways shown on the right.
+Each comes with its own guidelines as to how it governs lifetime, and how you
+can control it.
+
+
 \begin{wrapfigure}{r}{0.51\textwidth}
 \centering
 \fcolorbox{black}{Light}{\begin{minipage}{0.48\textwidth}
@@ -701,15 +736,6 @@ exhust native resources.
 \end{minipage}
 }
 \end{wrapfigure}
-An object will stay around as long as it is reachable from some chain of
-references. The nature of the references along any
-chains (for there may be multiple such chains!) leading up to your object will
-determine how long it'll stick around.
-After your program creates an object, it references the object in one or more of
-three basic ways shown on the right.
-Each comes with its own guidelines as to how it governs lifetime, and how you
-can control it.
-
 
 % The first three are cases of unique ownership of an object. There exists only
 % one path, via that particular reference, to reach the object. The fourth case
@@ -1035,6 +1061,7 @@ within the data structure you no longer need.
 \end{figure}
 
 \section{The Advanced Ways of Keeping an Object Alive}
+\label{sec:advanced-lifetime-features}
 %Sometimes, you need an object to stay alive, or not, in a way that has nothing
 %to do with whether it is reachable from local variables or static fields. For
 %example, to implement the correlated lifetime policy described in
