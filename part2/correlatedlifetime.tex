@@ -19,42 +19,65 @@
 \chapter{Avoiding Memory Leaks by Correlating Lifetimes}
 \label{chapter:lifetime-implementation-strategies}
 
-Typically, objects die soon after the point in time of their last use, once all
-dominating references are removed or naturally go out of scope. For a great many
-objects, the normal flow of method invocations results in local variables going
-out of scope, which renders these objects reclaimable without any special effort
-on your part. In the absence of memory leaks, and without any optimizations,
-objects live and die according to this \emph{natural lifetime}, as discussed in
-depth in \autoref{sec:natural-lifetime}. 
+For many objects, the normal flow of method invocations results in local
+variables going out of scope, which renders these objects reclaimable without
+any special effort on your part. All temporary objects (see
+\autoref{sec:temporary-lifetime}) fall into this camp. These objects are created
+and only reachable from local variables of the current method, or of a recent
+invocation on the stack. Once these local variables go out of scope, these
+temporaries can be reclaimed. A \emph{memory leak} occurs when an object is not
+reclaimed in the normal course of method invocations\index{Memory Leak}.
+% Typically, objects die soon after the point in time of their last use, once
+% all dominating references are removed or naturally go out of scope. In the
+% absence of memory leaks, and without any optimizations, objects live and die
+% according to this \emph{natural lifetime}, as discussed in depth in
+% \autoref{sec:natural-lifetime}.
 
-However, the built-in lifetime mechanisms, by relying on objects going out of
-scope, are insufficient to implement the more complicated patterns.
-Implementations of the correlated lifetime pattern, introduced in
-\autoref{sec:correlated-lifetime-pattern}, are very prone to memory leaks. You
-may need an object to survive for a period of time that is not bound to any one
-method invocation, but rather to the lifetime of another object. The lifetime of
-some objects are indeed correlated with an invocation, as in the case of objects
-correlated with a phase or request, but even here there are difficulties.
-Oftentimes, the invocation that marks the beginning of a request is in a part of
-the code outside of your control, or is distant from the allocation site of the
-objects that must go away when the request finishes. Implementations of the
-time-space tradeoff pattern, introduced in
-\autoref{sec:time-space-tradeoffs-pattern}, can be ineffective if they aren't
-sized properly. They, too, can result in memory exhaustion, e.g. if a cache's key
-misimplement equality, or if it is sized too large.
+If you expect an object to be reclaimable at some point, and normal control flow
+does not do the right thing, then you need to take a step back and determine how
+to properly ensure the lifetime correlation that you expect.
+% By relying on objects going out of scope, are insufficient to implement the
+% more complicated patterns. Implementations of the correlated lifetime pattern,
+% introduced in \autoref{sec:correlated-lifetime-pattern}, are very prone to
+% memory leaks.
+You may need an object to survive for a period of time that is not bound to any
+one method invocation, but rather to the lifetime of another object. The
+lifetime of an object may be correlated with an invocation, but referenced by
+global variables that inhibit its reclamation. This is a common, and often
+requisite coding practice. Oftentimes, the invocation that marks the beginning
+of a request is in a part of the code outside of your control, or is distant
+from the allocation site of the objects that must go away when the request
+finishes. In these cases, you should not, or can not, pass objects around as
+parameters.
 
-It is important to code according to practices that will assure that an object
-dies when it should. The correlated lifetime and time-space tradeoff patterns are
-the most difficult cases to get right, and so those most in need of rigorous
-coding practices.
+% Implementing a correlated lifetime pattern in a way that does not result in
+% memory drag or memory leaks is difficult.
+This chapter covers five important cases of correlated lifetime: annotations,
+sharing pools, listeners, phase/request-scoped objects, and external resources.
 
-Implementing a correlated lifetime pattern in a way that does not result in
-memory drag or memory leaks is difficult. There are four important cases:
-annotations, sharing pools, listeners, and phase/request-scoped objects.
 
-\section{Tools: Weak References and Weak Maps}
+
+%Implementations of the time-space tradeoff pattern, introduced in
+%\autoref{sec:time-space-tradeoffs-pattern}, can be ineffective if they aren't
+%sized properly. They, too, can result in memory exhaustion, e.g. if a cache's
+%key misimplement equality, or if it is sized too large.
+
+%It is important to code according to practices that will assure that an object
+%dies when it should. The correlated lifetime and time-space tradeoff patterns
+%are the most difficult cases to get right, and so those most in need of
+%rigorous coding practices.
+
+
+\section{Java Features and Gotchas}
+\autoref{sec:advanced-lifetime-features} introduced the advanced features that
+Java provides to help with implementing correlated lifetime
+patterns in a way that avoids memory leaks. Using these features correctly can
+be difficult. There are ``gotchas'', surprises and tricky intricasies, that you
+will need to navigate. The standard library, and some third party libraries as
+well, help with using these features correctly.
+
+\paragraph{Weak References and Weak Maps}
 \label{sec:weak-references}
-\paragraph{Weak References}
 The constructor for a \class{WeakReference} takes an object as a parameter. The
 resulting instance of \class{WeakReference} is said to \emph{weakly reference}
 that other object. A weakly referenced object will be garbage collectable, or
