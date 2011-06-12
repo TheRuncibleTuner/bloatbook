@@ -254,29 +254,24 @@ the return value of \code{newOwner} goes out of scope.
 %\autoref{sec:advanced-lifetime-features} introduced the advanced features that
 %Java provides to help with implementing correlated lifetime patterns in a way
 %that avoids memory leaks: finalization, and weak and phantom references. Using
-%these features correctly can be difficult. There are ``gotchas'', surprises and
-%tricky intricasies, that you will need to navigate. The standard library, and
-%some third party libraries as well, help with using these features correctly.
+%these features correctly can be difficult. 
 
-
-
-
-\paragraph{Using Weak References}
 
 As introduced in \autoref{softweak}, Java offers a feature called \emph{weak
-references}. 
+references}. There are ``gotchas'', surprises and tricky intricasies, that you
+will need to navigate. The standard library, and some third party libraries as
+well, help with using these features correctly. Even then, some care is
+required.
 
-Compared to normal (strong) references, such as  instance and
-static fields, and local variables, 
-a weak reference provides an alternate lifetime
-implications
+Normal (strong) references, such as  instance
+%and static fields, and local variables, a weak reference provides an alternate
+%lifetime implications.
 
-: . A weak
-reference is a is manifested is a wrapper object: to weakly reference an object
-\code{obj}, you create an instance \code{new WeakReference(obj)}. For the most
-part, this weak reference is like any other reference, in the sense that you can
-traverse it to access other objects. The only difference is that it does not
-inhibit \code{obj} from being reclaimed.
+A weak reference is manifested as a wrapper object: to weakly reference an
+object \code{obj}, you create an instance \code{new WeakReference(obj)}. For the
+most part, this weak reference is like any other reference, in the sense that
+you can traverse it to access other objects. The only difference is that it does
+not inhibit \code{obj} from being reclaimed.
 
 This means that, if an object is only referenced (perhaps indirectly) by weak
 references, then it is an immediate candidate for reclamation. An object is said
