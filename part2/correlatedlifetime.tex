@@ -251,98 +251,176 @@ the return value of \code{newOwner} goes out of scope.
 \end{comment}
 
 \section{Weak References: Features and Gotchas}
-%\autoref{sec:advanced-lifetime-features} introduced the advanced features that
+\label{sec:weak-references}
+%\autoref{sec:advanced-lifetime-features} introduced the
+% advanced features that
 %Java provides to help with implementing correlated lifetime patterns in a way
 %that avoids memory leaks: finalization, and weak and phantom references. Using
 %these features correctly can be difficult. 
 
 
 As introduced in \autoref{softweak}, Java offers a feature called \emph{weak
-references}. There are ``gotchas'', surprises and tricky intricasies, that you
-will need to navigate. The standard library, and some third party libraries as
-well, help with using these features correctly. Even then, some care is
-required.
+references}. Weak references can help you to implement correlated lifetime
+patterns in a more flexible way than is possible with normal (strong)
+references. They are powerful, but there are ``gotchas'', surprises and
+intricasies, that you will need to navigate in order to use them well.
+Incautious use of weak references can result in memory leaks that are harder to
+debug than the ones you are trying to avoid.
 
-Normal (strong) references, such as  instance
+%Normal (strong) references, such as  instance
 %and static fields, and local variables, a weak reference provides an alternate
 %lifetime implications.
 
-A weak reference is manifested as a wrapper object: to weakly reference an
+\begin{wrapfigure}[5]{r}{0.44\textwidth}
+\centering
+\begin{framedlisting}
+WeakReference<String> r = new WeakReference("cabbage")
+String s = r.get();
+\end{framedlisting}
+\end{wrapfigure}
+A weak reference is manifested as a wrapper object. To weakly reference an
 object \code{obj}, you create an instance \code{new WeakReference(obj)}. For the
 most part, this weak reference is like any other reference, in the sense that
 you can traverse it to access other objects. The only difference is that it does
 not inhibit \code{obj} from being reclaimed.
+This means that, if \emph{all} paths of references leading to an object contain
+at least one weak reference, then
+it is an immediate candidate for reclamation. Suc an object is said
+to be \emph{weakly reachable}.
 
-This means that, if an object is only referenced (perhaps indirectly) by weak
-references, then it is an immediate candidate for reclamation. An object is said
-to be \emph{weakly reachable} if all paths leading to that object go through at
-least one weak reference. This is a helpful feature, but, on its own, doesn't do
-everything you need in order to implement a correlated lifetime pattern.
+To unwrap a weak reference, and retrieve the weakly referenced object, call its
+\code{get} method. If this method returns \code{null}, then you know that the
+referenced object has been reclaimed. Otherwise, by calling the \code{get}
+method on a weak reference, you have now acquired a \emph{strong} reference.
 
-To tunnel through the level of indirection introduced by the weak reference, you
-call its \code{get} method. If this method returns \code{null}, then you know
-that the referenced object has been reclaimed.
-\autoref{chapter:correlted-lifetimes} discusses how to leverage this
-functionality for an alternative implementation of the correlated lifetime
-pattern.
+\paragraph{Weak References: Gotchas}
+This is where you have to be careful. As long as this strong reference is
+temporary, say if it is bound only to the current method invocation, then this
+new strong reference shouldn't alter the intended lifetime of the object.   If
+you were to squirrel away the resulting strong reference in some other
+long-lived data structure, you now have to remember to clip \emph{both}
+references (this new one, and the original one that was keeping the object alive
+up till now), in order to render the object reclaimable.
 
-There are three issues that you must handle with care. First, even though the
-weak reference itself does not prolong the lifetime of the referenced object,
-once you call \code{get}, you now have a regular reference to that object. If
-this reference is stored in a local variable, or in a field of another object, or
-in a collection, then you have now altered its lifetime. Once normally
-referenced, the underlying object now obeys the lifetime rules discussed earlier.
-Second, you must be careful to avoid race conditions, such as:
-\begin{shortlisting}
+%This is a helpful feature, but, on its own, doesn't do
+%everything you need in order to implement a correlated lifetime pattern.
+
+\begin{wrapfigure}{r}{0.39\textwidth}
+\centering
+\begin{framedlisting}
 class A {
-   WeakReference<B> b;
+  WeakReference<B> wrapper;
    
-   B getB() {
-      if (b.get() != null) {
-         return b.get();
-      } else {
-         // perform any necessary cleanup
-         // notify caller of b's reclamation
-      }
-   }
+  B getB() {
+    B b = wrapper.get();
+    if (b != null) {
+      return b;
+    } else {
+      // clean things up
+    }
+  }
 }
-\end{shortlisting}
-In that code, between the first call to \code{b.get()} and the second, the
-underlying object may have been reclaimed. You must modify that code to call
-\code{b.get()} only once, and stash the result in a local variable until
-\code{getB} returns. Third, if you need to be informed that the underlying object
-has been reclaimed, you must use the \emph{reference queue} mechanism, which will
-be discussed shortly.
+\end{framedlisting}
+\end{wrapfigure}
+You also need to be careful to avoid race conditions. The \code{get} method can
+return null at any time, and so you must not expect that a single check for
+\code{null} suffices; in-between the first call to \code{get} and the second,
+the garbage collector may have, behind the scenes, reclaimed the referenced
+object. Instead, call \code{get} once in a basic block, and store the result in
+a local variable, as shown on the right.
+
+It gets worse, though. In that code on the right, the \code{else} clause is
+intended to do some cleanup in the case that the referenced object is reclaimed.
+But the object is gone! The reference is already null, and so you have no way to
+pursue any cleaning action. If you need to be informed that the underlying
+object has been reclaimed, you must use the \emph{reference queue} mechanism,
+introduced in \autoref{sec:reference-queues}.
+
+The standard library, and some third party libraries as well, help with using
+weak references correctly. Even then, some care is required.
 
 \paragraph{Weak Maps}
-\index{WeakHashMap}
 \label{sec:weakhashmap}
 
-The standard library includes an important construct, the \class{WeakHashMap},
-that is not only quite useful, but also hides most of the complexity of managing
-reference queues. A weak hashmap is a map that only weakly references its keys.
-When a key is reclaimed, the map evicts the corresponding entry. Behind the
-scenes, it uses weak references and reference queues, but you needn't worry about
-any of that. Your own code is not polluted by mention of \class{WeakReference}
-and \class{ReferenceQueue}, nor of the polling complexities necessary to keep the
-reference queue from overflowing with reclaimed keys.
+\index{WeakHashMap}
+The Java standard library includes \class{WeakHashMap}, a class that hides most
+of the complexity of managing weak reference queues. This hashmap is a normal
+map, excep that it weakly references its keys and strong references its values.
+When a key is ready to be reclaimed, the map evicts the corresponding entry.
+Behind the scenes, it uses a reference queue, making sure to poll it at the
+right times, to know when keys are otherwise reclaimable --- the nice part is
+that you needn't worry about any of these details. Your own code is not polluted
+by mention of \class{WeakReference} and \class{ReferenceQueue}, nor of the
+polling complexities necessary to keep the reference queue from overflowing with
+reclaimed keys.
 
-\paragraph{The Danger of Diamonds}
+\begin{wrapfigure}[9]{l}{0.36\textwidth}
+\centering
+\begin{framedlisting}
+new MapMaker().concurrencyLevel(8).weakKeys().makeMap();
+\end{framedlisting}
+\caption{The Guava \code{MapMaker} factory facilitates creating almost any
+form of map that you will need.}
+\label{fig:mapmaker}
+\end{wrapfigure}
+\index{Guava, MapMaker}
+The Google Guava library~\cite{google-guava} includes a \class{MapMaker} factory
+class that provides more general control of the Java advanced referencing
+mechanisms. This factory class lets you easily configure whether you want
+concurrency or not, whether you need an eviction policy, and whether you need
+the keys or values to be specially referenced. The standard Java
+\class{WeakHashMap} is not concurrent. You can synchronize it, by using a
+\class{Collections.synchronizedMap} wrapper, but it will not be a truly
+concurrent map. To make a concurrent analog to the standard \class{WeakHashMap},
+you would use the code in \autoref{fig:mapmaker}.
+
+\paragraph{More Weak Reference Gotchas: The Danger of Diamonds}
 \label{sec:strongweakdiamonds}
 
-Using a construct such as \class{WeakHashMap} is not a guarantee of success. The
-danger lies in there being another reference to the key that is not a weak
-reference. If this strong reference comes from the key data structure itself,
-then there is no problem. It is expected that, for the expected lifetime of an
-entry, there will be a strong reference that comes from another data structure
---- this is the reference that you expect to keep the entry alive. The main
-danger lies in a second strong reference emanating from the value data structure
-of a key's entry in the map. If you insert values that strongly reference the
-key, as illustrated in \autoref{fig:strongweakdiamonds} then the key will very
-likely never be uniquely owned by the weak reference, even after the expected
+\begin{wrapfigure}[21]{r}{0.49\textwidth}
+\centering
+\vspace{-4mm}
+\begin{framedlisting}
+Object cycle(boolean oops) {
+  class Cycle {
+    Object diamond;
+  }
+  class Entry {
+    Object key; Cycle value;
+  }
+  Object key = new Object() {
+    protected void finalize() {
+      System.out.println("Good");
+    }
+  };
+  Entry e = new Entry();
+  e.key = new WeakReference(key);
+  e.value = new Cycle();
+  if (oops) e.value.diamond = key;
+  return e;
+}
+\end{framedlisting}
+\caption{If \code{loopback} is true, then the \code{Good}
+message will never appear.}
+\end{wrapfigure}
+Using a construct such as \class{WeakHashMap} or \class{MapMaker} is not a
+guarantee of success. These maps don't control the structure of your keys and
+values. A \class{WeakHashMap} weakly references its keys, with the implicit
+understanding that the strong owners of the key will properly govern each key's
+lifetime. What happens, though, if the value associated with a key strongly
+references the key (possibly indirectly)? If you insert values that strongly
+reference the key, as illustrated in \autoref{fig:strongweakdiamonds} then the
+key will very likely never become weakly reachable, even after the expected
 strong reference is reclaimed.
 
-\begin{figure}[h]   % NMM added [h] just to make formatting look good on 201007023, not necessary
+As is shown in the figure, this problematic reference structure has a diamond
+shape. The top of the diamond is the \code{Entry} object of the map, from which
+emanate two paths to the key, the weak reference from the \code{Entry} to the
+key, and the strong reference path that flows through the value. In
+\autoref{fig:strongweakdiamonds}, the darkly shaded object has a good chance of
+never being reclaimed. 
+
+\begin{figure}   % NMM added [h] just to make formatting look good on 201007023, not necessary
 \centering
 	\includegraphics[width=0.6\textwidth]{part2/Figures/lifetime/strongweakdiamonds}
 	\caption{Despite your best efforts to use weak references correctly, if you
@@ -352,36 +430,7 @@ strong reference is reclaimed.
 	\label{fig:strongweakdiamonds}
 \end{figure}
 
-As is shown in the figure, this problematic reference structure has a diamond
-shape. The top of the diamond is the \code{Entry} object of the map, from which
-emanate two paths to the key, the weak reference from the \code{Entry} to the
-key, and the strong reference path that flows through the value. In
-\autoref{fig:strongweakdiamonds}, the darkly shaded object has a good chance of
-never being reclaimed. 
 
-In the following code, if \code{loopback} is true, then the \code{Finalized}
-message will never appear.
-\begin{shortlisting}
-static public Object setupCycle(boolean loopback) {
-   class Cycle {
-       Object loopback;
-   }
-   class Entry {
-       Object key;
-       Cycle value;
-   }
-   Object key = new Object() {
-           protected void finalize() {
-               System.out.println("Finalized");
-           }
-       };
-   Entry e = new Entry();
-   e.key = new WeakReference(key);
-   e.value = new Cycle();
-   if (loopback) e.value.loopback = key;
-   return e;
-}
-\end{shortlisting}
 
 \section{Annotations}
 
@@ -856,5 +905,11 @@ method returns, then you should do so.
 
 \section{Summary}
 
+\begin{table}
+\centering
+\begin{tabular}{cc}
+
+\end{tabular}
+\end{table}
 
 
