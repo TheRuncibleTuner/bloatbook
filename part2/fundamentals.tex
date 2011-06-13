@@ -1222,6 +1222,7 @@ you would write code such as appears in \autoref{fig:soft-ref-creation}.
 %   plus the pointer to the Reference object itself = 4
 
 \paragraph{Reference Queues}
+\label{sec:reference-queues}
 Normally, when you create a soft reference, and the \jre decides to clip it,
 then the associated \class{Reference} object becomes immediately garbage
 collectable. You get no warning that the \jre has clipped this reference.
@@ -1256,11 +1257,15 @@ different happens when the reference is clipped. Instead of becoming
 collectable, when clipped, it is placed on the associated reference queue. It is
 your job to periodically \emph{poll} the reference queue in order to enquire as
 to whether any references have been clipped. If this somes tedious and error
-prone, it is! Subsequent chapters show how to get it right.
+prone, it is! Subsequent chapters show how to get it right, depending on your
+lifetime use case.
 
-Another point of caution: reference queues add an extra pointer to the already
-high memory expense of using soft or weak references. For example, a weak
-reference with an associated reference queue would cost 32 bytes per reference.
+Another point of caution: if you don't poll your reference queue at a rate that
+at least equals the worst case rate at which they will be queued, then the size
+of your reference queue will grow unboundedly. The worst case rate of objects
+queueing up is the rate at which they are created. Therefore, you should make
+sure to poll the queue in all code contexts that create any of the special kinds
+of references.
 
 \paragraph{Handling External Resources: Finalization and Phantom References}
 \index{Finalization of objects}
