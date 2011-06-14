@@ -138,7 +138,14 @@ A sharing pool itself adds
 memory costs, including additional per-entry costs. If there is not
 much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
-extra cost, and memory will be wasted instead of saved. 
+extra cost, and memory will be wasted instead of saved.
+
+% NMM 20110614 i thought this was a good idea, but in Java, a reference will
+% always be cheaper than an object, because of the header!
+%\paragraph{The shared data items must be sufficiently large.} The size of the
+%each pooled data item must be large, relative to the cost of a reference ---
+%when using a pool, you still need to pay at least one reference cost for
+%each use of the pooled items. 
 
 \paragraph{Shared objects should be garbage collected.}
 In Figure~\ref{fig:sharing-pool}(b), the sharing pool stores an object
