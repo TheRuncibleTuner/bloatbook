@@ -250,7 +250,7 @@ the return value of \code{newOwner} goes out of scope.
 %rigorous coding practices.
 \end{comment}
 
-\section{Weak References: Features and Gotchas}
+\section{Patterns Based on Weak References}
 \label{sec:weak-references}
 %\autoref{sec:advanced-lifetime-features} introduced the
 % advanced features that
@@ -294,13 +294,16 @@ referenced object has been reclaimed. Otherwise, by calling the \code{get}
 method on a weak reference, you have now acquired a \emph{strong} reference.
 
 \paragraph{Weak References: Gotchas}
-This is where you have to be careful. As long as this strong reference is
-temporary, say if it is bound only to the current method invocation, then this
-new strong reference shouldn't alter the intended lifetime of the object.   If
-you were to squirrel away the resulting strong reference in some other
-long-lived data structure, you now have to remember to clip \emph{both}
-references (this new one, and the original one that was keeping the object alive
-up till now), in order to render the object reclaimable.
+There are many ways to spoil the benefits of weak references. Many of the issues
+boil down to having strong references to the weakly referenced object that
+inhibit it from becoming reclaimed. When you call \code{get}, you acquire a
+strong reference. As long as this strong reference is temporary, say if it is
+bound only to the current method invocation, then this new strong reference
+shouldn't alter the intended lifetime of the object.   If you were to squirrel
+away the resulting strong reference in some other long-lived data structure, you
+now have to remember to clip \emph{both} references (this new one, and the
+original one that was keeping the object alive up till now), in order to render
+the object reclaimable.
 
 %This is a helpful feature, but, on its own, doesn't do
 %everything you need in order to implement a correlated lifetime pattern.
@@ -354,13 +357,14 @@ by mention of \class{WeakReference} and \class{ReferenceQueue}, nor of the
 polling complexities necessary to keep the reference queue from overflowing with
 reclaimed keys.
 
-\begin{wrapfigure}[9]{l}{0.36\textwidth}
+\begin{wrapfigure}[11]{l}{0.36\textwidth}
 \centering
 \begin{framedlisting}
 new MapMaker().concurrencyLevel(8).weakKeys().makeMap();
 \end{framedlisting}
 \caption{The Guava \code{MapMaker} factory facilitates creating almost any
-form of map that you will need.}
+form of map that you will need. This code creates a concurrent version of the
+standard \class{WeakHashMap}.}
 \label{fig:mapmaker}
 \end{wrapfigure}
 \index{Guava, MapMaker}
@@ -377,38 +381,35 @@ you would use the code in \autoref{fig:mapmaker}.
 \paragraph{More Weak Reference Gotchas: The Danger of Diamonds}
 \label{sec:strongweakdiamonds}
 
-\begin{wrapfigure}[21]{r}{0.49\textwidth}
+\begin{wrapfigure}{r}{0.47\textwidth}
 \centering
-\vspace{-4mm}
+\vspace{-5mm}
 \begin{framedlisting}
-Object cycle(boolean oops) {
-  class Cycle {
-    Object diamond;
-  }
-  class Entry {
-    Object key; Cycle value;
-  }
+class Value {
+  Object key;
+}
+void add(WeakHashMap map, Value value, boolean formDiamond) {
+
   Object key = new Object() {
     protected void finalize() {
       System.out.println("Good");
     }
   };
-  Entry e = new Entry();
-  e.key = new WeakReference(key);
-  e.value = new Cycle();
-  if (oops) e.value.diamond = key;
-  return e;
+  if (formDiamond)
+    value.key = key;
+
+  map.put(key, value);
 }
 \end{framedlisting}
-\caption{If \code{loopback} is true, then the \code{Good}
+\caption{If \code{formDiamond} is true, then the \code{Good}
 message will never appear.}
 \end{wrapfigure}
 Using a construct such as \class{WeakHashMap} or \class{MapMaker} is not a
 guarantee of success. These maps don't control the structure of your keys and
 values. A \class{WeakHashMap} weakly references its keys, with the implicit
 understanding that the strong owners of the key will properly govern each key's
-lifetime. What happens, though, if the value associated with a key strongly
-references the key (possibly indirectly)? If you insert values that strongly
+lifetime. Trouble happens, though, when the value associated with a key strongly
+references (possibly indirectly) the key. If you insert values that strongly
 reference the key, as illustrated in \autoref{fig:strongweakdiamonds} then the
 key will very likely never become weakly reachable, even after the expected
 strong reference is reclaimed.
@@ -432,52 +433,58 @@ never being reclaimed.
 
 
 
-\section{Annotations}
+\subsection{Annotations}
 
-If you don't have the luxury to change a class definition, but need to associate
-some information with it, then your only choice is to use a map. To ensure that
-the lifetime of the annotation is correlated with the lifetime of the annotated
-object, you can use a \class{WeakHashMap}. \autoref{sec:weakhashmap} introduced
-this utility class, that is part of the standard library. For example, to
-associate a class \class{A} with a class \class{T}:
-
-\begin{shortlisting}
-class AnnotationMap<T,A> extends WeakHashMap<T, A> {
-   public void annotate(T t, A a) {
-      super.put(t, a);
-   }
+\begin{wrapfigure}[8]{r}{0.43\textwidth}
+\centering
+\begin{framedlisting}
+class AnnotationMap<T,A> extends WeakHashMap<T,A> {
+  void annotate(T t, A a) {
+    super.put(t, a);
+  }
 }
-\end{shortlisting}
+\end{framedlisting}
+\end{wrapfigure}
+Normally, to associate information with an object, you would add fields to its
+class definition. If you don't have the luxury to change a class definition, but
+need to associate some information with it, then your only choice is to use a
+side map. The side map is keyed by the object you wish to annotate, and the
+value is the annotation itself. Usually, you need the annotation to live no
+longer than the annotated object. 
 
-This implementation works well, at least for single-threaded programs. Soon after
-an annotated T instance is reclaimed, the \class{WeakHashMap} will automatically
-take care of removing the annotation entry from the map. If your application has
-multiple threads concurrently accessing and creating these annotations, then you
-will suffer from lock contention.
-\autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
-problem.
-
-There is a more immediate potential problem, however. If your annotations are
-more than simple objects like dates, then you have to be very careful to avoid
-the strong-weak diamond problem described in \autoref{sec:strongweakdiamonds}.
-This problematic situation can arise if an annotation, either directly or via
-some chain of fields, strongly references the annotated object. This is a common
-and innocent mistake, when you code in a way that avoids the messiness of
-creating a reverse lookup map, from annotations to annotated objects:
-\begin{shortlisting}
-class TimestampAnnotation<T> {
-   T t;
-   Date date;
-   
-   public TimestampAnnotation(T t) {
-      this.t = t;
-      this.date = new Date();
-   }
+\begin{wrapfigure}[12]{l}{0.4\textwidth}
+\centering
+\begin{framedlisting}
+class TimeAnnotation<T> {
+  WeakReference<T> t;
+  Date date;
+  
+  TimeAnnotation(T t) {
+    this.t = new WeakReference<T>(t);
+    this.date = new Date();
+  }
 }
-\end{shortlisting}
-But this example will result in the annotation map leaking memory. You must have
-the annotaitons weakly reference the annotated object, i.e. the \code{T t} field
-must be replaced with a \code{WeakReference<T> t}. 
+\end{framedlisting}
+\end{wrapfigure}
+To ensure that the lifetime of the annotation is correlated with the lifetime of
+the annotated object, you can use a \class{WeakHashMap}. For the most part, you
+can use it pretty much in its unadulterated form, as shown on the right. Soon
+after an annotated \class{T} instance is reclaimed, the \class{WeakHashMap} will
+automatically take care of removing the annotation entry from the map. If your
+code updates the annotation map concurrently with other uses of the map, then
+you either need to use a \code{Collections.synchronizedMap} wrapper, from the
+standard library, or use the Guava \code{MapMaker} factory (see
+\autoref{fig:mapmaker}). Even then, you may suffer some concurrency issues.
+\autoref{sec:lifetime-management-concurrency-issues} discusses this issue in
+more detail.
+
+You have to be careful to avoid the strong-weak diamond problem described
+in \autoref{sec:strongweakdiamonds}.  This is a common and innocent mistake,
+because very often it is necessary for the annotations to reference (perhaps
+indirectly) the annotated object. This reverse mapping, from annotation to
+annotated object, is sometimes necessary to properly implement the annotation's
+functionality. Just make sure that the reverse mapping uses a \emph{weak}
+reference, otherwise the annotation map will leak memory.
 %Careful application of the
 %single strong owner principle would help to avoid these mistakes. For example,
 %you could offer a factory method 
@@ -586,7 +593,7 @@ must be replaced with a \code{WeakReference<T> t}.
 %shines.
 %%%%%%%%%
 
-\section{Sharing Immutable Data Safely}
+\subsection{Sharing Immutable Data Safely}
 % safely: meaning no leaks1	
 \paragraph{Review of Sharing Pools}
 \paragraph{A Leak-free Sharing Pool}
@@ -644,7 +651,7 @@ semantics and is not easy to use. Weak referencing is a lifetime management
 facility, and is discussed in greater detail in Chapter~\ref{??} .
 
 
-\section{Cleaning Up: Listeners}
+\subsection{Cleaning Up: Listeners}
 
 % forgetting to unsubscribe on exception, or forget to call dispose on a larger
 % object (window) or window.dispose forgets to unregister itself
@@ -666,7 +673,7 @@ base for the callbacks. For example, if you already have a place to store the
 callbacks, then the listener list can be created by a call to that home base
 factory: {ListenerList list = factory.newList()}.  
 
-\section{Phase/Request-Scoped Objects}
+\subsection{Phase/Request-Scoped Objects}
 
 It is a huge challenge to ensure that an object created within a phase or request
 dies soon after the phase or request completes. If the object is created at the
@@ -780,9 +787,9 @@ top-level request method; then, you only need to change the constructors of the
 maps and sets that store request-scoped data. There are many minor variations of
 this base implementation. You can tailor them to your specific needs.
 
-\section{Finalization: Features and Gotchas}
+\section{Patterns Based on Finalization or Phantom References}
 
-\paragraph{Finalizers and phantom references}
+\paragraph{Finalization Gotchas}
 
 Behind the scenes,
 the \jre allocates an extra object (of type
