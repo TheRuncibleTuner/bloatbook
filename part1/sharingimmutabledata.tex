@@ -127,11 +127,11 @@ also changes the value of B.
 
 \paragraph{The result of equality testing should be the same, whether or
 not objects are shared.}
- In particular, you should never use == on shared objects.
-In Figure~\ref{fig:sharing-pool}, \code{A==B} is false in
+ In particular, you should never use \code{==} on shared objects.
+In Figure~\ref{fig:sharing-pool}, \code{A == B} is false in
 Figure~\ref{fig:sharing-pool}(a) and true in Figure~\ref{fig:sharing-pool}(b),
- which can lead to very subtle bugs. It is dangerous to use == in any case,
- unless exact object identity is really required.
+ which can lead to very subtle bugs. It is dangerous to use \code{==} in any
+ case, unless exact object identity is really required.
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself adds
@@ -175,7 +175,7 @@ these concerns.
  its internal \emph{perm space}. To share a \class{String}, you simply call the
  method \code{intern} on it, and everything is taken care of automatically.
 Since \class{String}s are immutable, sharing is safe. However, the rule about
-not using == still holds on shared \class{String}s.
+not using \code{==} still holds on shared \class{String}s.
   
 In the example from section~\ref{literals},
 \class{ConfigurationWithStaticProperties} eliminates property
@@ -205,9 +205,10 @@ native memory overhead, and native memory is not free.
  Interning \class{String}s indiscriminately wastes memory and can result in an
  exception: \code{java.lang.OutOfMemoryError:PermGen Space}. 
 There are JVM parameters to adjust the perm space size:
-XX:PermSize=128m sets perm size to 128 megabytes, and -XX:MaxPermSize=512m sets
-the maximum perm size to 512 megabytes. Fortunately, the JVM performs garbage
-collection on the internal string pool, so there is no danger of a memory leak.
+\code{-XX:PermSize=128m} sets perm size to 128 megabytes, and
+\code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes.
+\index{Permspace Heap}
+Fortunately, the JVM performs garbage collection on the internal string pool, so there is no danger of a memory leak.
 
 TODO: shorten this to a quick forward reference. There is an
 important variant of a sharing pool called the Bulk Sharing Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
@@ -227,32 +228,43 @@ with many similar matters, in \autoref{chapter:large-long-lived}.
     % run time are newly created and therefore distinct.
 \section{Integer Sharing Pool}
 
-The Java library provides a sharing pool for \class{Integer}s. 
+As of \javafive, the Java library provides a sharing pool for \class{Integer}s.
 Unlike the string pool, the \class{Integer} pool is initialized at class load
 time to store all \class{Integer}s in a fixed range, from -128 to 127 by
-default. The method \code{Integer.valueOf(int value)} returns a pointer to an \class{Integer} 
-in the pool, provided \code{value} is in range.
+default. The method \code{Integer.valueOf(int value)} returns a pointer to an
+\class{Integer} in the pool, provided \code{value} is in range.
 
+\begin{wrapfigure}{r}{0.4\textwidth}
+\centering
+\begin{framedlisting}
+for (int i=1; i<=50; i++) {
+ numbers[i] = Integer.valueOf(i);
+}
+\end{framedlisting}
+\caption{By using the \code{valueOf} method, you can leverage the standard
+library's integer sharing pool.}
+\label{fig:integer-sharing-pool}
+\end{wrapfigure}
 Because the \class{Integer} sharing pool is pre-initialized and fixed in size,
-it's always a good idea to call \code{Integer.valueOf} instead of the constructor to
-create a new \class{Integer}. For example, the following code stores
-\class{Integer}s from 1 to 500 in an array:
-\begin{shortlisting}
-    for (int i = 1; i <= 500; i++) {
-        numbers[i] = Integer.valueOf(i);
-    }
-\end{shortlisting}
-For the first 127 numbers, \code{valueOf} returns an existing \class{Integer}. 
-For the rest of the numbers, \code{valueOf} returns a new
-\class{Integer}.  Calling \class{Integer.valueOf} incurs no extra overhead,
-and you never have to worry about wasting memory or getting a
-memory exception. The only precaution is avoid using == to compare potentially
-shared \class{Integer}s.
+it's always a good idea to call \code{Integer.valueOf} instead of the
+constructor to create a new \class{Integer}. For example, the code in
+\autoref{fig:integer-sharing-pool} stores \class{Integer}s from 1 to 50 in an
+array. Unless you tweak things from the command line,
+\code{valueOf} returns an existing \class{Integer}
+for the first 127 numbers, and, for the rest of the numbers, \code{valueOf}
+returns a new \class{Integer} instance. You should always make use of
+\class{Integer.valueOf}: the pooling aspect is very cheap, and you never have to
+worry about wasting memory. You do have to be careful, however, to avoid using
+\code{==} to compare potentially shared \class{Integer}s. The documentation for
+\class{Integer} does not specify anything about the default range of pooled
+values, and so you may be in for a surprise if you start assuming that
+\code{Integer.valueOf(100) == Integer.valueOf(100)}.
 
-There is a JVM parameter to change the size of the \class{Integer} sharing pool:
--XX:AutoBoxCacheMax=100 sets the high value in the pool to 100.
+There is a JVM parameter to change the size of the \class{Integer} sharing pool.
+By adding \code{-XX:AutoBoxCacheMax=100} to your applicaiton's command line, the
+pooled integers will range over the values 0 to 100.
 
-\section{Sharing Objects}
+\section{Canonicalizing Maps: Sharing General Objects}
 
 Beyond strings and boxed \class{Integer}s, there are often other kinds of
 duplicated objects and data structures consuming large portions of the heap. 
@@ -260,11 +272,11 @@ There is no built-in Java mechanism to share objects or data
 structures in general, so you have to implement a sharing pool for them from
 scratch. All of the sharing pool issues from Section~\ref{sec:sharing-pools} need to be
 addressed. The shared objects or structures must be immutable, they must not be
-compared using ==, there must be sufficient memory savings from sharing to
-justify the sharing pool, and the sharing pool must be not cause a memory leak. 
-Note that, in general, \code{equals} is
-implemented as ==, so sharing data structures typically requires writing a new
-\code{equals} method.
+compared using \code{==}, there must be sufficient memory savings from sharing
+to justify the sharing pool, and the sharing pool must be not cause a memory leak. 
+Note that, unless overridden, \code{equals} is
+implemented as \code{==}, so sharing data structures typically requires writing
+a new \code{equals} method.
 
 To illustrate a user-written sharing pool, consider a graph where the nodes
 have annotations, many of which are duplicates. Both the graph and the
@@ -273,15 +285,28 @@ ability to find existing annotations quickly to share them, and 2) the ability
 to release annotations that are no longer associated with any node, so they can
 be garbage collected.  The second requirement prevents a memory leak. 
 
-Interestingly, none of the common collection classes meet these
-requirements out-of-the-box. A \class{HashSet} can store
-\class{Annotation}s uniquely, but retrieving an existing \class{Annotation} is not easy. 
-The first requirement is best implemented as a \class{HashMap} mapping
-\class{Annotation}s to themselves:
-\begin{shortlisting}
- 	HashMap<Annotation><Annotation>   (1)
-\end{shortlisting}
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\begin{framedlisting}
+HashMap<Annotation, Annotation> canoncalizingMap;
+\end{framedlisting}
+\end{wrapfigure}
+Interestingly, none of the common collection classes meet these requirements
+out-of-the-box. A \class{HashSet} can store \class{Annotation}s uniquely, but
+retrieving an existing \class{Annotation} is not easy. The \class{HashSet}
+implementation can only speedily let you know whether an equivalent item already
+exists in the set, but can not return that existing item. To get the preexisting
+item, you would need to iterate over the entire set. Therefore, the first
+requirement is best implemented as a \class{HashMap} mapping an
+\class{Annotation}s to the canonical instance, as shown on the right. A common
+term for this structure is a \emph{canonicalizing map}.
+\index{Canonicalizing Map}
 
+A \class{HashMap} largely suits the role of a canonicalizing map. However, it is
+still possible to have memory issues, either because stale entries persist in
+the map, or because the map grows without bound.
+\autoref{sec:sharing-pools-safety} discusses how to avoid these issues, by using
+some more advanced features of Java.
 
 \section{Summary} 
 
