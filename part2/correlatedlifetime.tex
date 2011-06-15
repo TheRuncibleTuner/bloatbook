@@ -656,26 +656,29 @@ Storing multiple copies of long-lived data in your heap is wasteful, but
 thankfully a relatively straightforward problem to solve.
 \autoref{chapter:sharing-immutable-data} introduced the topic of sharing
 immutable data. That earlier chapter discussed how to eliminate duplicate data
-structures, such as strings, through the use of sharing pools. By pooling the
-underlying data, you store only one canonical copy, and reference it as needed.
+structures, such as strings, through the use of sharing pools. Pooling the
+underlying data allows you store only one canonical copy, and reference it as
+needed. The cost of a reference, in Java, will almost always be less than the
+cost of duplicating the data in Java objects.
 
 Once you have eliminated duplicate data in your heap, the biggest remaining
 concern is that the pools may contain stale data, or even grow in size without
-bound. A pool can suffer from memory \emph{drag} (see \autoref{drag}) if a
-pooled data item persists beyond any point in the code that will use it.
+bound. A pool can suffer from memory \emph{drag} (see \autoref{drag} for an
+introduction to memory drag) if a pooled data item persists beyond any point in
+the code that will use it.
 
-Sharing pools may even suffer from memory leaks (see
-\autoref{sec:memory-leaks}). In general, if a pool leaks memory, this is likely
-to be a sign that your code is misusing the pools. A pool should contain a
-bounded number of canonical data items. If it grows without bound, then either:
-you were wrong in your assumption that the set of data items was bounded; or,
-your lookup mechanism is flawed, and incorrecty indicates that the pool does not
-contain a given data item.
+Sharing pools may even suffer from memory leaks (see \autoref{sec:memory-leaks}
+for an introduction to memory leaks in Java). In general, if a pool leaks
+memory, this is likely to be a sign that your code is misusing the pools. A pool
+should contain a bounded number of canonical data items. If it grows without
+bound, then either: you were wrong in your assumption that the set of data items
+was bounded; or, your lookup mechanism is flawed, and incorrecty indicates that
+the pool does not contain a given data item.
 
-\paragraph{Keeping Sharing Pools Fresh}
-You can design pools so that they are impervious to memory drag or memory leaks.
+In either case, you should protect yourself from the worst effects of memory
+drag or memory leaks in your sharing pools. It is pretty easy.
 
-\paragraph{Safety Valves for Sharing Pools}
+\paragraph{Avoiding Stale Entries in Sharing Pools}
 
 
 \paragraph{Example: Annotation Pools}
@@ -687,36 +690,42 @@ You can design pools so that they are impervious to memory drag or memory leaks.
 % is a hashmap that stores keys as \class{WeakReferences}. That is, when there
 % are no strong references to a key, the entire entry is freed for garbage
 % collection.
-\autoref{sec:canonicalizing-maps} introduced the canonicalizing map construct.
-When you need to share objects, so that only the 
+\autoref{sec:canonicalizing-maps} introduced the canonicalizing map construct. A
+canonicalizing map is simply a map from a given instance to the canonical
+equivalent (shared) instance. The basic construct is straightforward, but it
+takes some care to avoid memory issues. For example, say you are annotating
+nodes in a graph. You have an \class{Annotation} for each \class{Node}, and need
+the annotation instance to go away when its associated \class{Node}s are no
+longer used. This can be implemented by a \class{WeakHashMap<Node, Annotation>}.
+Remember that this kind of map weakly references the keys, which means that it
+will not, on its own, prevent the node instances from being reclaimed. So, this
+looks like all you will need to store the mapping itself. How about storing the
+annotations? If every node has its own distinct annotation, then you are done.
 
-For example, say you have as an \class{Annotation} to go away when its
-associated \class{Node}s are no longer used. This can be implemented by a
-\class{WeakHashMap}:
-\begin{shortlisting}
-  WeakHashMap<Node,Annotation> nodeAnnotations;
-\end{shortlisting}
+If many nodes have the same annotation, then it is worthwhile figuring out how
+to share them. If the set of distinct annotations is known statically, then you
+can use an enumerated type. If not, then you will need to set up a \emph{second} map, a
+canonicalizing map, to maintain the distinct annotations.
 
-This looks close to what we need. So let's modify (1) to be a
-\class{WeakHashMap}, so that when an \class{Annotation} is no longer used,
- its sharing pool entry is freed for
-garbage collection:
-\begin{shortlisting}
-   WeakHashMap<Annotation,Annotation> sharingPool;     
-\end{shortlisting}
-This should do it. Wrong! Both the key and the value of the sharingPool
- reference the same \class{Annotation} object. The key is a
-weak reference, but the value is a strong reference, which prevents an
+The first map, from nodes to annotations, will strongly reference the
+annotations. Since you need the annotations to be reclaimed when a node is,
+therefore this second map, the annotation canonicalizing map, should only weakly
+reference them. This means that the sharing pool of annotations can be
+implemented by: \class{WeakHashMap<Annotation, Annotation>}.
+
+This should do it. Wrong! This map suffers from the diamond structure problem
+described in \autoref{sec:strongweakdiamonds}. Both the key and the value of
+the sharing pool reference the same (canonical) \class{Annotation} object. The
+key is a weak reference, but the value is a strong reference, which prevents an
 \class{Annotation} object from every being released. The value must also be a
-\class{WeakReference}. Here is the correct
-implementation of a sharing pool for \class{Annnotation}s:
-\begin{shortlisting}
+\class{WeakReference}. Here is the correct implementation of a sharing pool for
+\class{Annnotation}s:
+
+\begin{framedlisting}
 class AnnotationFactory {
-   static WeakHashMap<Annotation, WeakReference<Annotation>>sharingPool = 
-                   new WeakHashMap<Annotation, WeakReference<Annotation>>();
+   WeakHashMap<Annotation, WeakReference<Annotation>> sharingPool = new WeakHashMap<Annotation, WeakReference<Annotation>>();
     
-    public Annotation getAnnotation(Annotation annotation) {
-        if (annotation == null) return null;
+    public Annotation canonicalize(Annotation annotation) {
         WeakReference<Annotation> wref = sharingPool.get(annotation);
         if (wref != null) {
             Annotation oldAnnotation = wref.get();
@@ -727,14 +736,13 @@ class AnnotationFactory {
         sharingPool.put(annotation, new WeakReference(annotation));
         return annotation;
     }
-    ..
 }
-\end{shortlisting}
+\end{framedlisting}
 
 As this example shows,  Java's weak referencing capability has subtle
-semantics and is not easy to use. Weak referencing is a lifetime management
-facility, and is discussed in greater detail in Chapter~\ref{??} .
+semantics and is not easy to use.
 
+\paragraph{Avoiding Unbounded Growth in Sharing Pools (Safety Valves)}
 
 
 \subsection{Phase/Request-Scoped Objects}
