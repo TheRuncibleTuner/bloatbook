@@ -681,7 +681,7 @@ drag or memory leaks in your sharing pools. It is pretty easy.
 \paragraph{Avoiding Stale Entries in Sharing Pools}
 
 
-\paragraph{Example: Annotation Pools}
+%\paragraph{Example: Annotation Pools}
 % For the second requirement, Java provides some support for releasing unused
 % items from collections, namely, \class{WeakReference}s and
 % \class{WeakHashMap}s. A \class{WeakReference} is an object wrapper. An object
@@ -729,9 +729,7 @@ class AnnotationFactory {
         WeakReference<Annotation> wref = sharingPool.get(annotation);
         if (wref != null) {
             Annotation oldAnnotation = wref.get();
-            if (oldAnnotation != null) {
-                return oldAnnotation;
-            }
+            if (oldAnnotation != null) return oldAnnotation;
         }
         sharingPool.put(annotation, new WeakReference(annotation));
         return annotation;
@@ -742,7 +740,39 @@ class AnnotationFactory {
 As this example shows,  Java's weak referencing capability has subtle
 semantics and is not easy to use.
 
-\paragraph{Avoiding Unbounded Growth in Sharing Pools (Safety Valves)}
+\paragraph{Avoiding Unbounded Growth in Sharing Pools (Capacity Safety Valves)}
+If you already know that your sharing pool has the possibility of growing
+without bound, then you should engage the developers to find and fix the
+underlying problem. For example, perhaps there truly is not a finite number of
+annotations. If, for every new node comes a new annotation, and you have a
+steady stream of new nodes, then your sharing pool will leak memory; you will
+eventually run out of heap space, and your application will fail.
+
+In some cases, you can protect against this problem. For example, if the map
+from node to annotation can be recreated, say from some secondary store, then
+you should consider using \emph{soft references}. The node-to-annotation map
+should weakly reference the annotations, and the sharing pool
+should weakly and softly reference the annotations, as shown in
+\autoref{fig:soft-weak-sharing-pool}.
+
+\begin{figure}[h]
+\centering
+\begin{framedlisting}
+WeakHashMap<Node, WeakReference<Annotation>> map;
+WeakHashMap<Annotation, SoftReference<Annotation>> sharingPool;
+\end{framedlisting}
+\caption{A modified form of the sharing pool example that uses soft references
+as a safety valve on the maximum memory consumption of the structures.}
+\label{fig:soft-weak-sharing-pool}
+\end{figure}
+
+In this way, the value of the sharing pool map will be the sole reference
+keeping the annotations alive (every other reference is weak). When the \jre
+finds that it needs space, that sole non-weak reference will be clipped, thus
+starting a cascade that will lead to both weak maps cleaning up the entries. You
+will then need to update the node-to-annotation map to detect this case, and
+recreate the mapping on demand. \autoref{chapter:trading-space-for-time} goes
+into more detail on the use of soft references.
 
 
 \subsection{Phase/Request-Scoped Objects}
