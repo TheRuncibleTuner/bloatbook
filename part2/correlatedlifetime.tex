@@ -597,6 +597,58 @@ reference, otherwise the annotation map will leak memory.
 %shines.
 %%%%%%%%%
 
+\subsection{Registrars and Listeners}
+
+Applications that process asynchronous events need a way to decouple event
+generation and event handling. For example, it is nice to separate the event
+generators, such as windows that generate mouse click events, from the drawing
+canvas that will paint the appropriate elements on the screen. This separation
+allows for greater flexibility, in case event handlers come and go as the
+application runs, or as features are added to the application. It also keeps the
+implementations clean of everything but the essential details of the
+communication pipe; this example communication pipeline involves only mouse
+click events, with no mention of windows or canvases.
+
+The design pattern behind this is called the Listener pattern. Any
+implementation of this pattern requires that event handlers register themselves
+with an event source. The implementation must keep a registrar of the subscribed
+listeners.
+
+This pattern is elegant, but highly prone to memory leaks. The Java Swing
+implementation of \class{JComponent} stores an \class{EventListenerList}
+instance, which has an array of strong references to the callback handlers.
+Because the registrar maintains \emph{strong} references, this approach requires
+that you maintain and debug code that explicitly deregisters the callback hook
+from the listener queue.
+
+
+% forgetting to unsubscribe on exception, or forget to call dispose on a larger
+% object (window) or window.dispose forgets to unregister itself
+
+\begin{wrapfigure}{l}{0.3\textwidth}
+\centering
+\includegraphics[width=0.3\textwidth]{part2/Figures/correlated/listeners}
+\caption{If possible, registrars should weakly reference event handlers.}
+\end{wrapfigure}
+To avoid this source of bugs altogether, you should consider implementing all
+registrars to maintain weak references to the event handlers. With this
+referencing structure, there may be no need to explicit deregister event
+handlers. Whether or not handlers need to deregister themselves explicit depends
+upon the internal structure of the registrar. If the registrar is implemented as
+an array-based list, then explicit deregistration is not necessary. When the
+handler is reclaimed, the entry in the array will become \code{null}. As long as
+you implement the registrar to handle this scenario, everything will work just
+fine, without explicit deregistration. If the registar has a more complex,
+link-based, structure (such as a \class{LinkedList}), some code must
+periodically cull the stale link entries. This is doable, but more difficult
+to get right. You may feel safer with explicit deregistration, in this case.
+
+%you must follow the single strong owner principle.
+%You must choose which of the listener list or some other collection is the home
+%base for the callbacks. For example, if you already have a place to store the
+%callbacks, then the listener list can be created by a call to that home base
+%factory: {ListenerList list = factory.newList()}.  
+
 \subsection{Sharing Immutable Data Without Exhausting Memory}
 \label{sec:sharing-pools-safety}
 
@@ -684,57 +736,6 @@ semantics and is not easy to use. Weak referencing is a lifetime management
 facility, and is discussed in greater detail in Chapter~\ref{??} .
 
 
-\subsection{Registrars and Listeners}
-
-Applications that process asynchronous events need a way to decouple event
-generation and event handling. For example, it is nice to separate the event
-generators, such as windows that generate mouse click events, from the drawing
-canvas that will paint the appropriate elements on the screen. This separation
-allows for greater flexibility, in case event handlers come and go as the
-application runs, or as features are added to the application. It also keeps the
-implementations clean of everything but the essential details of the
-communication pipe; this example communication pipeline involves only mouse
-click events, with no mention of windows or canvases.
-
-The design pattern behind this is called the Listener pattern. Any
-implementation of this pattern requires that event handlers register themselves
-with an event source. The implementation must keep a registrar of the subscribed
-listeners.
-
-This pattern is elegant, but highly prone to memory leaks. The Java Swing
-implementation of \class{JComponent} stores an \class{EventListenerList}
-instance, which has an array of strong references to the callback handlers.
-Because the registrar maintains \emph{strong} references, this approach requires
-that you maintain and debug code that explicitly deregisters the callback hook
-from the listener queue.
-
-
-% forgetting to unsubscribe on exception, or forget to call dispose on a larger
-% object (window) or window.dispose forgets to unregister itself
-
-\begin{wrapfigure}{l}{0.3\textwidth}
-\centering
-\includegraphics[width=0.3\textwidth]{part2/Figures/correlated/listeners}
-\caption{If possible, registrars should weakly reference event handlers.}
-\end{wrapfigure}
-To avoid this source of bugs altogether, you should consider implementing all
-registrars to maintain weak references to the event handlers. With this
-referencing structure, there may be no need to explicit deregister event
-handlers. Whether or not handlers need to deregister themselves explicit depends
-upon the internal structure of the registrar. If the registrar is implemented as
-an array-based list, then explicit deregistration is not necessary. When the
-handler is reclaimed, the entry in the array will become \code{null}. As long as
-you implement the registrar to handle this scenario, everything will work just
-fine, without explicit deregistration. If the registar has a more complex,
-link-based, structure (such as a \class{LinkedList}), some code must
-periodically cull the stale link entries. This is doable, but more difficult
-to get right. You may feel safer with explicit deregistration, in this case.
-
-%you must follow the single strong owner principle.
-%You must choose which of the listener list or some other collection is the home
-%base for the callbacks. For example, if you already have a place to store the
-%callbacks, then the listener list can be created by a call to that home base
-%factory: {ListenerList list = factory.newList()}.  
 
 \subsection{Phase/Request-Scoped Objects}
 
