@@ -381,27 +381,27 @@ you would use the code in \autoref{fig:mapmaker}.
 \paragraph{More Weak Reference Gotchas: The Danger of Diamonds}
 \label{sec:strongweakdiamonds}
 
-\begin{wrapfigure}[19]{r}{0.47\textwidth}
+\begin{wrapfigure}[19]{r}{0.42\textwidth}
 \centering
 \vspace{-5mm}
 \begin{framedlisting}
+class Key {
+  protected void finalize() {
+    println("Good");
+  }
+}
 class Value {
   Object key;
 }
-void add(WeakHashMap map, Value value, boolean formDiamond) {
-
-  Object key = new Object() {
-    protected void finalize() {
-      System.out.println("Good");
-    }
-  };
-  if (formDiamond)
+void add(WeakHashMap map, Value value, boolean diamond) {
+  Key key = new Key();
+  if (diamond)
     value.key = key;
 
   map.put(key, value);
 }
 \end{framedlisting}
-\caption{If \code{formDiamond} is true, then the \code{Good}
+\caption{If \code{diamond} is true, then the \code{Good}
 message will never appear.}
 \end{wrapfigure}
 Using a construct such as \class{WeakHashMap} or \class{MapMaker} is not a
@@ -435,8 +435,9 @@ never being reclaimed.
 
 \subsection{Annotations}
 
-\begin{wrapfigure}[8]{r}{0.43\textwidth}
+\begin{wrapfigure}{r}{0.43\textwidth}
 \centering
+\vspace{-3mm}
 \begin{framedlisting}
 class AnnotationMap<T,A> extends WeakHashMap<T,A> {
   void annotate(T t, A a) {
@@ -444,6 +445,8 @@ class AnnotationMap<T,A> extends WeakHashMap<T,A> {
   }
 }
 \end{framedlisting}
+\caption{Annotations can make direct use of the \class{WeakHashMap}.}
+\label{fig:annotation-map}
 \end{wrapfigure}
 Normally, to associate information with an object, you would add fields to its
 class definition. If you don't have the luxury to change a class definition, but
@@ -468,13 +471,14 @@ class TimeAnnotation<T> {
 \end{wrapfigure}
 To ensure that the lifetime of the annotation is correlated with the lifetime of
 the annotated object, you can use a \class{WeakHashMap}. For the most part, you
-can use it pretty much in its unadulterated form, as shown on the right. Soon
-after an annotated \class{T} instance is reclaimed, the \class{WeakHashMap} will
-automatically take care of removing the annotation entry from the map. If your
-code updates the annotation map concurrently with other uses of the map, then
-you either need to use a \code{Collections.synchronizedMap} wrapper, from the
-standard library, or use the Guava \code{MapMaker} factory (see
-\autoref{fig:mapmaker}). Even then, you may suffer some concurrency issues.
+can use it pretty much in its unadulterated form, as shown in
+\autoref{fig:annotation-map}. Soon after an annotated \class{T} instance is
+reclaimed, the \class{WeakHashMap} will automatically take care of removing the
+annotation entry from the map. If your code updates the annotation map
+concurrently with other uses of the map, then you either need to use a
+\code{Collections.synchronizedMap} wrapper, from the standard library, or use
+the Guava \code{MapMaker} factory (see \autoref{fig:mapmaker}). Even then, you
+may suffer some concurrency issues.
 \autoref{sec:lifetime-management-concurrency-issues} discusses this issue in
 more detail.
 
@@ -593,23 +597,52 @@ reference, otherwise the annotation map will leak memory.
 %shines.
 %%%%%%%%%
 
-\subsection{Sharing Immutable Data Safely}
-% safely: meaning no leaks1	
-\paragraph{Review of Sharing Pools}
-\paragraph{A Leak-free Sharing Pool}
-\paragraph{A Trickier Example: An Annotation Pool}
-For the second requirement, Java provides some support for releasing unused
-items from collections, namely, \class{WeakReference}s and \class{WeakHashMap}s. 
-A \class{WeakReference} is an object wrapper. An object that is referenced by
-a \class{WeakReference} can be reclaimed by the garbage
-collector if there are no other strong references to it. A \class{WeakHashMap}
-is a hashmap that stores keys as \class{WeakReferences}. That is, when there are no
-strong references to a key, the entire entry is freed for garbage collection. 
- For example, we want an \class{Annotation} to
-go away when its associated \class{Node}s are no longer used.
-This can be implemented by a \class{WeakHashMap}:
+\subsection{Sharing Immutable Data Without Exhausting Memory}
+\label{sec:sharing-pools-safety}
+
+Storing multiple copies of long-lived data in your heap is wasteful, but
+thankfully a relatively straightforward problem to solve.
+\autoref{chapter:sharing-immutable-data} introduced the topic of sharing
+immutable data. That earlier chapter discussed how to eliminate duplicate data
+structures, such as strings, through the use of sharing pools. By pooling the
+underlying data, you store only one canonical copy, and reference it as needed.
+
+Once you have eliminated duplicate data in your heap, the biggest remaining
+concern is that the pools may contain stale data, or even grow in size without
+bound. A pool can suffer from memory \emph{drag} (see \autoref{drag}) if a
+pooled data item persists beyond any point in the code that will use it.
+
+Sharing pools may even suffer from memory leaks (see
+\autoref{sec:memory-leaks}). In general, if a pool leaks memory, this is likely
+to be a sign that your code is misusing the pools. A pool should contain a
+bounded number of canonical data items. If it grows without bound, then either:
+you were wrong in your assumption that the set of data items was bounded; or,
+your lookup mechanism is flawed, and incorrecty indicates that the pool does not
+contain a given data item.
+
+\paragraph{Keeping Sharing Pools Fresh}
+You can design pools so that they are impervious to memory drag or memory leaks.
+
+\paragraph{Safety Valves for Sharing Pools}
+
+
+\paragraph{Example: Annotation Pools}
+% For the second requirement, Java provides some support for releasing unused
+% items from collections, namely, \class{WeakReference}s and
+% \class{WeakHashMap}s. A \class{WeakReference} is an object wrapper. An object
+% that is referenced by a \class{WeakReference} can be reclaimed by the garbage
+% collector if there are no other strong references to it. A \class{WeakHashMap}
+% is a hashmap that stores keys as \class{WeakReferences}. That is, when there
+% are no strong references to a key, the entire entry is freed for garbage
+% collection.
+\autoref{sec:canonicalizing-maps} introduced the canonicalizing map construct.
+When you need to share objects, so that only the 
+
+For example, say you have as an \class{Annotation} to go away when its
+associated \class{Node}s are no longer used. This can be implemented by a
+\class{WeakHashMap}:
 \begin{shortlisting}
-   WeakHashMap<Node><Annotation> nodeAnnotations;        (2)
+  WeakHashMap<Node,Annotation> nodeAnnotations;
 \end{shortlisting}
 
 This looks close to what we need. So let's modify (1) to be a
@@ -617,7 +650,7 @@ This looks close to what we need. So let's modify (1) to be a
  its sharing pool entry is freed for
 garbage collection:
 \begin{shortlisting}
-   WeakHashMap<Annotation><Annotation> sharingPool;     
+   WeakHashMap<Annotation,Annotation> sharingPool;     
 \end{shortlisting}
 This should do it. Wrong! Both the key and the value of the sharingPool
  reference the same \class{Annotation} object. The key is a
@@ -651,27 +684,57 @@ semantics and is not easy to use. Weak referencing is a lifetime management
 facility, and is discussed in greater detail in Chapter~\ref{??} .
 
 
-\subsection{Cleaning Up: Listeners}
+\subsection{Registrars and Listeners}
+
+Applications that process asynchronous events need a way to decouple event
+generation and event handling. For example, it is nice to separate the event
+generators, such as windows that generate mouse click events, from the drawing
+canvas that will paint the appropriate elements on the screen. This separation
+allows for greater flexibility, in case event handlers come and go as the
+application runs, or as features are added to the application. It also keeps the
+implementations clean of everything but the essential details of the
+communication pipe; this example communication pipeline involves only mouse
+click events, with no mention of windows or canvases.
+
+The design pattern behind this is called the Listener pattern. Any
+implementation of this pattern requires that event handlers register themselves
+with an event source. The implementation must keep a registrar of the subscribed
+listeners.
+
+This pattern is elegant, but highly prone to memory leaks. The Java Swing
+implementation of \class{JComponent} stores an \class{EventListenerList}
+instance, which has an array of strong references to the callback handlers.
+Because the registrar maintains \emph{strong} references, this approach requires
+that you maintain and debug code that explicitly deregisters the callback hook
+from the listener queue.
+
 
 % forgetting to unsubscribe on exception, or forget to call dispose on a larger
 % object (window) or window.dispose forgets to unregister itself
 
-Another common instance of the correlated lifetime pattern that is easy to mess
-up is the listener pattern. A common implementation strategy is to have the list
-of listeners be a list of strong references to the callback functions. The Java
-Swing implementation of \class{JComponent} stores an \class{EventListenerList}
-instance, which has an array of strong references to the callback handlers. This
-implementation strategy has the benefit of being uniform: independent of whether
-the listener list, or some other collection, is the home base for the callbacks,
-you follow the same approach. Unfortunately, this approach requires that you
-maintain and debug code that explicitly deregisters the callback hook from the
-listener queue.
+\begin{wrapfigure}{l}{0.3\textwidth}
+\centering
+\includegraphics[width=0.3\textwidth]{part2/Figures/correlated/listeners}
+\caption{If possible, registrars should weakly reference event handlers.}
+\end{wrapfigure}
+To avoid this source of bugs altogether, you should consider implementing all
+registrars to maintain weak references to the event handlers. With this
+referencing structure, there may be no need to explicit deregister event
+handlers. Whether or not handlers need to deregister themselves explicit depends
+upon the internal structure of the registrar. If the registrar is implemented as
+an array-based list, then explicit deregistration is not necessary. When the
+handler is reclaimed, the entry in the array will become \code{null}. As long as
+you implement the registrar to handle this scenario, everything will work just
+fine, without explicit deregistration. If the registar has a more complex,
+link-based, structure (such as a \class{LinkedList}), some code must
+periodically cull the stale link entries. This is doable, but more difficult
+to get right. You may feel safer with explicit deregistration, in this case.
 
-To avoid this source of bugs, you must follow the single strong owner principle.
-You must choose which of the listener list or some other collection is the home
-base for the callbacks. For example, if you already have a place to store the
-callbacks, then the listener list can be created by a call to that home base
-factory: {ListenerList list = factory.newList()}.  
+%you must follow the single strong owner principle.
+%You must choose which of the listener list or some other collection is the home
+%base for the callbacks. For example, if you already have a place to store the
+%callbacks, then the listener list can be created by a call to that home base
+%factory: {ListenerList list = factory.newList()}.  
 
 \subsection{Phase/Request-Scoped Objects}
 
@@ -906,8 +969,10 @@ management strategy. If you can establish a correlated lifetime pattern, such as
 that the external storage should be reclaimed when an event occurs, or when a
 method returns, then you should do so.
 
-\section{Cleaning Up External Resources}
+\subsection{Cleaning Up External Resources}
 \label{sec:external-resources-details}
+
+\subsection{Safety Valves}
 
 
 \section{Summary}
