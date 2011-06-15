@@ -721,7 +721,7 @@ key is a weak reference, but the value is a strong reference, which prevents an
 \class{WeakReference}. Here is the correct implementation of a sharing pool for
 \class{Annnotation}s:
 
-\begin{framedlisting}
+\begin{figurelisting}
 class AnnotationFactory {
    WeakHashMap<Annotation, WeakReference<Annotation>> sharingPool = new WeakHashMap<Annotation, WeakReference<Annotation>>();
     
@@ -737,7 +737,7 @@ class AnnotationFactory {
         return annotation;
     }
 }
-\end{framedlisting}
+\end{figurelisting}
 
 As this example shows,  Java's weak referencing capability has subtle
 semantics and is not easy to use.
