@@ -774,7 +774,6 @@ will then need to update the node-to-annotation map to detect this case, and
 recreate the mapping on demand. \autoref{chapter:trading-space-for-time} goes
 into more detail on the use of soft references.
 
-
 \subsection{Phase/Request-Scoped Objects}
 
 Many objects are created within a phase or request and are (or should be)
@@ -872,6 +871,15 @@ request is an observable event; in Java, you can manifest this as an instance of
 an observer of these events, and so should implement the \class{Observer}
 interface. 
 
+In either case, you should make sure that either thread-local storage, or the
+\class{Observer}s have the only strong references to the request-scoped objects.
+Due to some programming necessity, you may find that there are other structures
+in which you need to store phase- or request-scoped objects. If this is the
+case, then you should ensure that these other structures only weakly reference
+these scoped objects. If you structure things this way, then you can allow a
+more relaxed structure, where phase/request-scoped objects can be stored
+anywhere they need to be, while maintaining the lifetime pattern you desire.
+ 
 %Also, if your request spans multiple threads, then the above implementation
 %simply won't work, because it relies on \tls. Support for
 %multiple threads per request that is along the same lines would require
