@@ -777,81 +777,100 @@ into more detail on the use of soft references.
 
 \subsection{Phase/Request-Scoped Objects}
 
-It is a huge challenge to ensure that an object created within a phase or request
-dies soon after the phase or request completes. If the object is created at the
-top level of the request method, and is never stashed into any static fields or
-fields of objects which are bound to enclosing method scopes, then the normal
-local variable scoping rules (see \autoref{sec:lifetime-of-locals}) would apply,
-and life would be pretty easy:
-\begin{shortlisting}
+Many objects are created within a phase or request and are (or should be)
+reclaimable when the phase or request completes. For many such objects, this
+expected flow of creation and reclamation proceeds naturally. This is especially
+true for objects that are created in a method and do not escape that invocation.
+For example, if an object is created at the top level of the request method, and
+is never stashed into any static fields or fields of objects which are bound to
+enclosing method scopes, then the normal local variable scoping rules (see
+\autoref{sec:lifetime-of-locals}) would apply.
+\begin{figurelisting}
+    void doLogin() {
+      Object obj = new Object();
+      restOfWork(obj); // if obj does not escape ...
+    } // ... then lifetime of obj automatically ends here
+\end{figurelisting}
+If, during the execution of the \code{restOfWork} method, \code{obj} does not
+escape into some other scope outside of \code{doLogin}, then its lifetime ends
+when the \code{doLogin} method returns. In this example, the lifetime of the object \code{obj} will be
+correlated with the \code{doLogin} request, by the natural local variable
+scoping rules.
+
+Unfortunately, the lifetime requirement, that the lifetime of \code{obj} be
+correlated with the \code{doLogin} request, is not guaranteed by the code. In
+Java, this is pretty hard to do. Nothing in that \code{doLogin} method forces
+this non-escaping property that is necessary in order for the correlated
+lifetime pattern to play out properly. 
+
+\begin{wrapfigure}{r}{0.42\textwidth}
+\centering
+\begin{framedlisting}
+static ConcurrentMap requestState;
+void restOfWork(Object key) {
+  requestState.put(key, ...);
+}
+\end{framedlisting}
+\caption{It is convenient to pass around request variables in a global map,
+rather than via method parameters. You just have to make sure to clean up the
+map when the request is finished.}
+\label{fig:phase-global-map}
+\end{wrapfigure}
+It is easy to write code that alters the lifetime of \code{obj} in unexpected
+ways. Rather than pass \code{obj} around everywhere, as a parameter, it is
+convenient to stash it in a global variable, or a map that is shared by
+disparate bits of code, such as is shown in \autoref{fig:phase-global-map}.
+When stored in this global map, \code{obj} will survive
+for an indefinite period of time. If some exception path does not properly clean
+up this map, then \code{obj} will leak.\index{Memory Leak}
+%There is no way to be sure of how long these keys will last, because it
+%depends on whether any of the \code{obj} instances are equal. If two calls to
+%\code{restOfWork} are passed equal objects, then the first one will be
+%reclaimable shortly after its entry in the map is replaced with the new one. 
+
+% It is also pretty easy to introduce a memory leak.\index{Memory Leak}
+If you stash the object into a map, in this case as a key, you must plan out a
+way to remove it when the \code{doLogin} request is done. If the request-scoped
+objects are also created and used by a single thread, there are some
+straightforward solutions to this problem.
+
+\paragraph{The \TLS Trick}
+Since these objects are confined to one thread, you can use thread-local
+storage. The Java thread-local storage mechanism (see
+\autoref{sec:thread-local-storage}) gives you a way to store and access data in
+a way that is confined to a thread. If you create a thread-local variable
+\code{ThreadLocal<String>}, then each thread has its own copy of that string.
+Normally, thread-local storage is used to avoid lock contention. This is an
+interesting use of thread-local storage, because you won't be using it to reduce
+contention, but rather to avoid a potential memory leak.
+
+
+\begin{wrapfigure}{l}{0.465\textwidth}
+\centering
+\begin{framedlisting}
+ThreadLocal<RequestState> state;
+
 void doLogin() {
-   Object obj = new Object();
-   restOfWork(obj); // if obj does not escape ...
-} // ... then lifetime of obj automatically ends here
-\end{shortlisting}
-If, during the execution of the \code{restOfWork} method,  \code{obj} does not
-escape into some other scope, then its lifetime ends when the \code{doLogin}
-method returns; and, possibly, somewhat before that, as discussed in
-\autoref{sec:lifetime-of-locals}. The lifetime of the
-object \code{obj} will be correlated with the \code{doLogin} request, by the
-natural local variable scoping rules. However, it is very easy to write code that
-alters the lifetime of \code{obj}. This is especially true if you have a
-distributed team that are collaborating to implement the functionality of
-\code{restOfWork}. Since the requirement, that the lifetime of \code{obj} be
-correlated with the \code{doLogin} request is not specified in the code itself,
-and likely not even in comments or documentation, the team does not know to
-maintain this lifetime property. For example, a developer may choose to use
-\code{obj} as the key into a longer-lived map. This is a common scenario, such
-as when \code{obj} is a session identifier that is unique to the user's session
-or to the specific request being processed. For example, if you are producing a
-page composed of many parts, each part generated by independently written pieces
-of code, you can glue them together via a \code{requestState} map:
-\begin{shortlisting}
-static Map requestState = new HashMap();
-void restOfWork(Object requestKey) {
-   requestState.put(requestKey, ...);
+  state.set(new RequestState());
+  restOfWork();
 }
-\end{shortlisting}
-Now, these instances of \code{obj} will survive for an indefinite period of
-time. There is no way to be sure of how long these keys will last, because it
-ends on whether any of the \code{obj} intances are equal. If two calls to
-\code{restOfWork} are passed equal objects, then the first one will be
-reclaimable shortly after its entry in the map is replaced with the new one. 
+\end{framedlisting}
+\caption{This implemenation avoids unbounded leakage of \class{RequestState}
+objects, since each request overwrites the state from the previous request.}
+\end{wrapfigure}
+Let's say that you need to store a data structure of request-scoped objects,
+and that the class \class{RequestState} manages the state of the current
+request being processed. If you store this in \tls, then there is no way for the
+request state to leak, occupying more and more memory over time. This is because
+the next request service by that thread will overwrite the thread-local entry of
+request state from the previous request.
 
-It is also pretty easy to introduce a memory leak.\index{Memory Leak} If you
-stash the object, in this case as a key, into a map, you must plan out a way to
-remove it when the \code{doLogin} request is done. One solution is to associate a
-cleanup hook with every data structure that should be correlated with a request,
-and invoke these at the end of a request. You could use the Listener lifetime
-pattern to do this. Each data structure that possibly contains request-scoped
-objects must register as a listener. Then, assuming that the request is processed
-by a single thread, you could combine the Listener lifetime pattern with a use of
-\tls:
-\begin{shortlisting}
-/* the cleanup API */
-interface CleanupHook { ... };
-
-/* every thread keeps a registry of cleanup hooks */
-static ThreadLocal<ListenerRegistry<CleanupHook>> requestLocals = new ThreadLocal<ListenerRegistry<CleanupHook>>() {
-   public ListenerRegistry<CleanupHook> initialValue() {
-      return new ListenerRegistry<CleanupHook>();
-   }
-}
-void doLogin() {
-   Object obj = new Object();
-   restOfWork(obj); // obj might escape!
-   requestLocals.get().notifyAll();
-}
-\end{shortlisting}
-
-In some cases, this strategy can be made to work. Mostly, though, and even in the
-current example, it is not a good approach. The \code{requestState} map is
-global, used across all requests. How can you implement a \code{CleanupHook} that
-knows which map entries to remove? In general, every data structure in which some
-request-scoped objects are stored may have this problem. Each may have a
-different requirement for extracting the correct objects, those for the request
-that just completed, from the tangle that comes from many other concurrent
-requests.
+There are other possible solutions that involve more complex implementations. 
+For example, you may consider using the listener pattern. The end of each
+request is an observable event; in Java, you can manifest this as an instance of
+\class{Observable}. Each data structure that contains request-scoped objects is
+an observer of these events, and so should implement the \class{Observer}
+interface. 
 
 %Also, if your request spans multiple threads, then the above implementation
 %simply won't work, because it relies on \tls. Support for
@@ -859,6 +878,7 @@ requests.
 %keepoing track of those threads that participated. It would be pretty
 %complicated to get the details working correctly, and maintain them.
 
+\begin{comment}
 How can you design a foolproof strategy that is minimally invasive? It would be
 nice to piggyback on the automated reclamation that either local variable
 scoping, or weak references offer. A single strong owner factory pattern, where
@@ -888,6 +908,7 @@ it so that the \class{HomeBaseFactory} is a local variable of the
 top-level request method; then, you only need to change the constructors of the
 maps and sets that store request-scoped data. There are many minor variations of
 this base implementation. You can tailor them to your specific needs.
+\end{comment}
 
 \section{Patterns Based on Finalization or Phantom References}
 
