@@ -162,54 +162,30 @@ collections were only designed to be used at a certain scale.
 %the same collection
 %class will scale differently in different situations. 
 For example, a certain map class may work
-fine as an index over a large table, but can be prohibitively expensive when you
+well as an index over a large table, but can be prohibitively expensive when you
 have many instances of it nested inside a multilevel index. Collections have fixed and
 variable costs, as discussed in Section~\ref{sec:scalability}. 
 The fixed cost is the minimum space needed with or
 without any elements; the variable cost is the additional space needed to
 store each element. The way these costs add up
 depends on the context ---
-whether there are many small collections, a few large ones, or some
-combination. High fixed costs only matter when there are many
-collection instances. High variable costs add up when
-there are a lot of elements, regardless of whether the elements are spread across a lot of small collections
-or concentrated in a few large ones.
-Table~\ref{tab:collections-fixed-and-variable} shows the costs for some commonly
-used collections.  Collections with high fixed costs should only be used for
-large collections, so that the fixed cost will be amortized over a large number
-of elements. As a rule, \class{ArrayList} and other array-based collections have
-much lower variable costs than other collection classes.
+whether there are many small collections, or a few large ones. 
+High fixed costs take on more significance in smaller collections,
+especially when there are many instances of them. High variable costs matter
+when there are a lot of elements, regardless of whether the elements are spread across
+a lot of small collections or concentrated in a few large ones.
+We analyze the space needs of small collections a little differently
+from those of large collections. Table~\ref{tab:} in the next chapter shows the
+sizes of small (and empty) collection for some commonly used collection classes. 
+In the following chapter, Table~\ref{tab:} gives
+information for computing the costs of larger collections.
 
-\begin{table}
-\centering
-	\begin{tabular}{lll}
-	\toprule
-	  %&
-	   Collection & Fixed cost & Variable cost
-	\\ \cmidrule(r){1-1} \cmidrule(l){2-2}
-	   \cmidrule(l){3-3}
-	Object[] & 16 & 4
-	\\
-	ArrayList & 40 & 4
-	\\
-	LinkedList & 48 & 24
-	\\
-	HashSet &  & 
-	\\
-	HashMap & &
-	\\
-	TreeMap & 40 & 40
-	\\
-	WeakHashMap & 88 & 52
-	\\
-	ConcurrentHashMap &  &
-	\\
-	\bottomrule
-	\end{tabular}
-	\caption{Cost in bytes of commonly used collection classes. Minimum costs, not
-	including extra capacity for growth. Shows arrays for comparison.}
-	\label{tab:collections-fixed-and-variable}
-\end{table}
+
+
+%Collections with high fixed
+%costs should only be used for large collections, so that the fixed cost will
+%be amortized over a large number of elements.  
+
 
 %Some collection costs will be amortized as
 %more data is stored, others will only continue to grow. 
