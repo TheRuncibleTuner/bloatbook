@@ -59,7 +59,7 @@ must not depend on soft references for implementing your caches!
 \callout{soft-reference-rule}{Soft Reference Rule}{
 Soft references must always be over values, not keys. Otherwise, testing
 equality of keys will trigger a use of the reference. This will extend the
-lifetme of the value, even though the only use of the entry was in checking to
+lifetime of the value, even though the only use of the entry was in checking to
 see if its key matches another.	}
 
 \section{Caches}
