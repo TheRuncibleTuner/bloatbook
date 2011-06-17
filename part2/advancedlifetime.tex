@@ -1,6 +1,8 @@
 \chapter{Customization and Tuning: Advanced Lifetime Management Techniques}
 \label{chapter:advanced-lifetime-techniques}
 
+\begin{comment}
+
 \section{Understanding and Tuning the Garbage Collector}
 
 \paragraph{The Collection Schedule and Safe Points}
@@ -82,61 +84,9 @@ initialization, reclaiming objects that are short-lived can be very cheap. Some
 collectors allow you to specify a separate maxmum size for each, and some let you
 specify only the maximum nursery size and the total maximum heap consumption (via
 \code{-Xmx}.)
-
-\paragraph{The Permspace Heap}
-\index{Constant Pools}
-\index{Permspace}
-In addition to separating new and old objects, the \jre stores information about
-classes in memory areas that are separate from those for instances of classes.
-Some \jres create
-a distinct heap for this data, one that can be sized like the other heaps.
-Other \jres store this data in an undifferentiated part of the general native
-heap. The Sun \jre is in the former camp, while the IBM and JRockit \jres are in
-the latter camp.
-
-In either case, the \jre needs to allocate memory
- in which to store data that is very unlikely to ever become
-garbage. This includes the \jres metadata for your Java classes, along with the
-executable code for your methods. In addition, any strings that you have
-interned will be stored in this heap, along with any objects that the source
-code compiler has decided to store in the \emph{constant pool} for a class;
-these objects include any static strings, such as the one in this code snippet:
-
-\begin{figure}
-\centering
-\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
-\caption{The \jre also manages classes and compiled code, but in separate
-	heaps. With some \jres, this data is combined into a single heap, called the
-	\emph{Permspace} heap, which is sized via {\tt -XX:MaxPermSize}.}
-\label{fig:heaps_and_stacks_classes}
-\end{figure}
+\end{comment}
 
 
-\begin{shortlisting}
-System.out.println("aStaticString");
-\end{shortlisting} 
-
-The maximum size of Permspace, like the other heaps in Java, can often be
-specified on the command line. In some cases, you may find that your application
-requires a suspciously large maximum size for Permspace.
- 
-\begin{example}{Class Duplication and Excessive Permspace}
-A Java Enterprise Edition (JEE) server application is deployed as 100 separate
-applications, each in its own Web Application Archive (termed \code{war}) file.
-Each \code{war} file contains duplicate class files for logic common to some, or even all applications.
-The development team didn't think to worry about this, figuring that the
-\jre would notice and remove the duplication. They were wrong, due to
-requirements of the JEE specification, and suffered from excessive Permspace
-consumption.
-
-In JEE, each \code{war} file represents a distinct application, probably
-separately developed. Having been coded separately, the JEE model assumes the
-worst, that the applications will collide in their use of the static fields of
-classes. Therefore, each \code{war} is loaded into a separate classloader, with
-the result that the class duplication is not removed. The server application
-required 500 megabytes for its Permspace heap, despite having under 100 megabytes
-of distinct class data.
-\end{example}
 
 
 %% DO WE NEED THIS?
@@ -145,8 +95,9 @@ of distinct class data.
 %\index{Parallel GC}
 %\index{Real-time GC}
 
+\begin{comment}
 \section{Building Your Own Lifetime Mechanisms}
-\paragraph{The Reference Condundrum}
+\paragraph{The Reference Conundrum}
 
 If you choose to leverage weak and soft references, you are in for a treat of
 complex programming. There is a complex programming hassle that stems from
@@ -252,126 +203,5 @@ class A {
 \end{shortlisting}
 \autoref{sec:lifetime-management-concurrency-issues} discusses solutions to this
 concurrency problem.
-
-
-\section{Implementing a Concurrent Cache}
-\label{sec:lifetime-management-concurrency-issues}
-
-If your program operates with many concurrent threads, you have to program
-differently, because straightforward implementations of the above strategies will
-result in concurrency issues. One of the primary problems will be lock
-contention, as threads concurrently poll a reference queue. An important example
-of this problem shows up in the implementation of a cache that can support many
-concurrent users.\index{Caches, Concurrency Issues}
-
-A cache is a map, usually of bounded size, with an eviction strategy for
-maintaining that bound.\index{Caches} The Java standard library provides a
-concurrent map implementation, in the form of the \class{ConcurrentHashMap}
-class, but this is not a cache, because it has no eviction hooks with which one
-can bound its size.
-
-Following the soft reference rule, and using the basic guidelines for managing
-reference queues from \autoref{sec:reference-queue-basics}, leads to a first
-attempt at a \class{ConcurrentCache} implementation. You can extend the basic
-concurrent hashmap, wrapping the map's values with soft references:
-\begin{shortlisting}
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,SoftReference<V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
-   
-   protected void cleanupQueue() {
-      SoftReference<V> v;
-      while( (v = refQueue.poll()) != null) {
-         remove(???); // oops!
-      }
-   }
-}
-\end{shortlisting}
-Oops! This implementation provides no way to remove the key from the map, when
-cleaning up the evicted entries. To fix this, you'll need to stash a pointer to
-the key in the soft reference wrapper. It would be nice if the
-\class{ConcurrentHashMap} implementation let you extend
-its implementation so that its \class{\$Entry} class extended soft reference;
-the \class{\$Entry} would serve this role perfectly. Instead, you have to
-replicate this pointer structure, at a silly but unavoidable cost of memory
-bloat. You can do so in a \class{CacheSoftReference} wrapper:
-\begin{shortlisting}
-class CacheSoftReference<K, V> extends SoftReference<V> {
-   private final K k;
-   
-   public CacheSoftReference(K k, V v, ReferenceQueue<V> refQueue) {
-      super(v, refQueue);
-      this.k = k;
-   }
-}
-
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheSoftReference<K,V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
-   
-   protected void cleanupQueue() {
-      SoftReference<V> v;
-      // poll causes lock contention!
-      while( (v = refQueue.poll()) != null) {
-         remove(v.k);
-      }
-   }
-   
-   public V put(K key, V value) {
-      cleanupQueue();
-      return super.put(key, new CacheSoftReference<K,V>(key,value,refQueue));
-   }
-   
-   public V get(K key) {
-      cleanupQueue();
-      return super.get(key);
-   }
-}
-\end{shortlisting}
-This implementation still suffers from several critical problems. First, every
-call to \code{put} must check the reference queue for pending evictions in order
-to avoid unbounded growth of the eviction queue --- in the steady state,
-\code{put} calls are likely to cause evictions. Even though \code{get} calls
-won't cause evictions, in order to avoid pending evictions piling up as cached
-elements are discovered to be unused, every call to \code{get} must also poll for
-evictions. This can result in foiling the concurrency aspect of the
-\class{ConcurrentHashMap}. Second, if the cache as a whole goes unused for a long
-period of time, the pending evictions will pile up.
-
-The only way to fix the lock contention problem, at least as of \javasix, is to
-spawn a thread that periodically polls the reference queue for evicted entries.
-This will also fix the second problem. This spawned thread's \code{run} method
-will look just like the \code{cleanupQueue} method above, except that it should
-loop indefinitely, and call \code{refQueue.remove()} rather than \code{poll()};
-the former blocks until an eviction occurs (though you must still be careful to
-check the return value for \code{null}, despite what the Javadocs claim).
-
-At first sight, it would seem that you should be able to remove the calls to
-\code{cleanupQueue} from the \code{put} and \code{get} methods. This, after all,
-was the whole point of introducing the cleanup thread. However, this modified
-implementation, while an improvement, suffers from a new problem. Now, if you
-remove the \code{cleanupQueue} calls, when there is a large spike of \code{put}
-calls in a short period of time, you are at risk of running out of Java heap due
-to a large pileup of pending evictions.
-
-You must have a safety valve in place to prevent this situation. One possibility
-is to keep an approximate count of the number of \code{put} calls, and call
-\code{cleanupQueue} only periodically. In order to avoid lock contention in
-maintaining this count, you can do so in an unsynchronized way. There is still a
-pathologic possibility that every racey increment of the put counter won't
-actually increment the counter. If this worries you, you can use an
-\class{AtomicInteger}, at increased expense. Instead of calling
-\code{cleanupQueue} directly, the \code{put} method now calls a new
-\code{helpCleaner} method:
-\begin{shortlisting}
-   static private final int SAFETY_VALVE = 1000;
-   private void helpCleaner() {
-      if (putCount.incrementAndGet() >= SAFETY_VALVE) {
-         putCount.set(0);
-         cleanupQueue();
-      }
-   }
-\end{shortlisting}
-There is no reason for \code{get} calls to call this method. The only point of
-this safety valve is to avoid a sudden large influx of \code{put} calls. Indeed,
-in this final implementation, the \code{ConcurrentCache} class needn't override
-the \code{get} method of \code{ConcurrentHashMap}.
+\end{comment}
 

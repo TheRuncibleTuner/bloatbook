@@ -345,6 +345,52 @@ due to running out of Java heap, or running out of native resources?
 %Stack, size limit}. To configure the maximum depth of the native stacks to be 1
 %megabyte, you can add {\tt -ss=1M}\index{Command-line arguments: -ss}.
 
+\paragraph{The Permspace Heap}
+\index{Constant Pools}
+\index{Permspace}
+The \jre stores information about classes, including executable code and string
+constants, in memory areas that are separate from those for instances of
+classes. Some \jres create a distinct heap for this data, one that can be sized
+like the other heaps. Other \jres store this data in an undifferentiated part of
+the general native heap. The Sun \jre is in the former camp, while the IBM and
+JRockit \jres are in the latter camp. The Sun \jres call this heap the
+\emph{permspace} heap. This name came about because the heap contains objects
+and other data that are, at least for the most part, immortal. On Sun \jres, you
+can size the permspace heap via the command-line parameter {\tt
+-XX:MaxPermSize}.
+
+%\begin{figure}
+%\centering
+%\includegraphics[width=0.75\textwidth]{part2/Figures/lifetime/heaps_and_stacks_classes}
+%\caption{The \jre also manages classes and compiled code, but in separate
+	%heaps. With some \jres, this data is combined into a single heap, called the
+	%\emph{permspace} heap, which is sized via {\tt -XX:MaxPermSize}.}
+%\label{fig:heaps_and_stacks_classes}
+%\end{figure}
+
+%The maximum size of Permspace, like the other heaps in Java, can often be
+%specified on the command line. In some cases, you may find that your
+%application requires a suspciously large maximum size for Permspace.
+
+\begin{comment} 
+\begin{example}{Class Duplication and Excessive Permspace}
+A Java Enterprise Edition (JEE) server application is deployed as 100 separate
+applications, each in its own Web Application Archive (termed \code{war}) file.
+Each \code{war} file contains duplicate class files for logic common to some, or even all applications.
+The development team didn't think to worry about this, figuring that the
+\jre would notice and remove the duplication. They were wrong, due to
+requirements of the JEE specification, and suffered from excessive Permspace
+consumption.
+
+In JEE, each \code{war} file represents a distinct application, probably
+separately developed. Having been coded separately, the JEE model assumes the
+worst, that the applications will collide in their use of the static fields of
+classes. Therefore, each \code{war} is loaded into a separate classloader, with
+the result that the class duplication is not removed. The server application
+required 500 megabytes for its Permspace heap, despite having under 100 megabytes
+of distinct class data.
+\end{example}
+\end{comment}
 
 \paragraph{Physical Memory versus Address Space}
 \label{sec:address-space}
@@ -446,7 +492,20 @@ might possibly be used in the future.
 % \paragraph{What a Collection Collects: Reachability and Unique Ownership} %
 % TODO 20110525 maybe talk about conservative estimate is reachability?
 
-\paragraph{Reachability}
+\paragraph{When to Collect: GC Safe Points}
+The garbage collector typically only runs when it has decided that heap memory
+has become highly constrained. When this happens, it quite often needs to stop
+the application threads, so that it can look for objects to reclaim.\footnote{A
+\emph{concurrent} collector only performs part of the garbage collection work
+concurrently with the application threads. Most concurrent collectors still need
+to pause the threads in order to perform reclamation.\index{Concurrent Garbage
+Collection}} It requests that the threads stop, and then waits until each thread
+has reached a \emph{safe point} in the code. Safe points commonly include the
+beginning or end of method invocations, the end of each loop iteration, and
+points surrounding native method invocations. At this juncture, it begins to
+look for objects to reclaim.
+
+\paragraph{What to Collect: Reachability}
 The collector treats the heap as a graph of objects. The nodes are the objects
 themselves, and the edges are the non-null fields and non-null entries of
 arrays. \index{Heap, as a graph of objects} Liveness is a recursive concept: an
@@ -500,6 +559,20 @@ dominates itself, but isn't a root of the graph, then you know that it has
 \emph{shared ownership}. Otherwise, it is
 \emph{uniquely owned} by that dominating node.}
 
+
+
+\begin{figure}
+\centering
+	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
+	\caption{When your application suffers from a memory leak, you will likely
+	observe a trend of heap consumption that looks something like this. As memory
+	grows more constrained, garbage collections are run with increasing frequency.
+	Eventually, either the application will fail, or enter a period of
+	super-frequent collections. In this period of ``GC death'', your application
+	neither fails, nor makes any forward progress. }
+	\label{fig:memory-leak-trend}
+\end{figure}
+
 Most of the time, the garbage collector does what you'd expect, and you needn't
 worry about freeing up memory. Java applications are frequently plagued by
 memory leaks, and cases where memory allocations \emph{drag} out their lifetime,
@@ -512,15 +585,6 @@ of the how the managed runtime treats an object in various stages of its life.
 \index{Memory Exhaustion}
 \index{Memory Leaks}
 \label{sec:memory-leaks}
-
-\begin{figure}
-\centering
-	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
-	\caption{When your application suffers from a memory leak, you will likely
-	observe a trend of heap consumption that looks something like this.
-	}
-	\label{fig:memory-leak-trend}
-\end{figure}
 
 If your application seems to have periods where it runs very slowly, and then
 either magically recovers or dies, then it may be suffering from a memory leak.
@@ -1257,16 +1321,28 @@ soft or weak reference, and associate it with a reference queue, then something
 different happens when the reference is clipped. Instead of becoming
 collectable, when clipped, it is placed on the associated reference queue. It is
 your job to periodically \emph{poll} the reference queue in order to enquire as
-to whether any references have been clipped. If this somes tedious and error
-prone, it is! Subsequent chapters show how to get it right, depending on your
-lifetime use case.
+to whether any references have been clipped. If this sounds tedious and error
+prone, it is! For some use
+cases, the standard library provides mechanisms that hide some of these details.
+For example, \class{WeakHashMap} does a good job of completely hiding reference
+queues and weak references from you.
 
-Another point of caution: if you don't poll your reference queue at a rate that
-at least equals the worst case rate at which they will be queued, then the size
-of your reference queue will grow unboundedly. The worst case rate of objects
-queueing up is the rate at which they are created. Therefore, you should make
-sure to poll the queue in all code contexts that create any of the special kinds
-of references.
+If you do find a need to use reference queues directly, there are a few points
+of caution you should incorporate into your design. First,
+if you don't poll your reference queue at a rate that at least equals the worst
+case rate at which they will be queued, then the size of your reference queue
+will grow unboundedly. The worst case rate of objects queueing up is the rate at
+which they are created. Therefore, you should make sure to poll the queue in all
+code contexts that create any of the special kinds of references. 
+
+Second, since you need to poll wherever a queueable item is created, you may run
+into a severe degree of lock contention. The \code{poll} method of
+\class{ReferenceQueue} does synchronize access to the queue, so you don't need
+to worry about race conditions, but this can result in a major impediment to
+multithreaded scalability. \autoref{sec:lifetime-management-concurrency-issues}
+gives an example of how to solve this problem, when implementing a concurrent
+cache.
+
 
 \paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
