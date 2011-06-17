@@ -1268,52 +1268,33 @@ queueing up is the rate at which they are created. Therefore, you should make
 sure to poll the queue in all code contexts that create any of the special kinds
 of references.
 
-\paragraph{Handling External Resources: Finalization and Phantom References}
+\paragraph{Finalization and Phantom References}
 \index{Finalization of objects}
 
 Weak references can help you to correlate the life of one object with that of
-another. Sometimes, it is necessary instead to correlate an \emph{action} with
-the reclamation of an object. This is helpful if there are non-Java resources
-associated with a Java object that need to be cleaned up along with that object.
-The JVM knows nothing about those resources, since they aren't Java objects;
-they may not even be memory, per se, or may be memory on an entirely different
-machine. For example, a Java \class{DatabaseConnection} object has implicit
-linkage to a whole slew of resources, scattered across several machines. There
-are operating resources on the local machine that are involved. The remote
-database machine has these, too, and the database process also has some
-internal state about that connection. All of this state needs to be cleaned up
-when the Java facade for it is reclaimed.
-
-As long as the resources your application uses fall within the \jress
-boundaries, then the automated mechanisms, such as garbage collection and class
-loading, work without much intervention on your part. For the more complex cases
-involving external resources, such as a database connection, the nicely
-automated world starts to fall apart a bit. The \jre doesn't know about inherent
-limits on the capacity of external resources, nor the relationship between Java
-objects and them, and so cannot manage the complete picture. 
-
-One recourse is to fall back to the C style of resource management, for these
-cases of external resources. You can design the API specifications so as to
-require users of the API to adopt a convention that requires explicit closing,
-or freeing, of resources.
+another. Sometimes, it is necessary instead to correlate an cleanup action with
+the reclamation of an object. For example, this is helpful if there are non-Java
+resources associated with a Java object that need to be cleaned up along with
+that object. The JVM knows nothing about those resources, since they aren't Java
+objects; they may not even be memory, per se, or may be memory on an entirely
+different machine. For example, a Java \class{DatabaseConnection} object has
+implicit linkage to many resources, possibly scattered across several machines.
+There are operating system resources, for managing connections, on the local
+machine that are involved. The remote database machine has these, too, and the
+database process also has some internal state about that connection. All of this
+state needs to be cleaned up when the Java facade for it is reclaimed.
 
 Java provides \emph{finalization} and \emph{phantom references} as two ways
-around this problem.\index{Finalization}\index{References, Phantom}
-% Finalization is very much like the system of weak references, in that it is a
-% way to correlate an action with the death of an object.
-If you add a \code{finalize} method to a class, then, when an instance is
-reclaimed, this finalization method will be called. You can use this opportunity
-to release any external resources that are associated with that Java object. On
-paper, this looks like exactly what you need: when the Java object is reclaimed,
-then the external resources will be freed up by your finalization method. The
-reality usually isn't so pretty, and \autoref{sec:external-resources-details}
-delves into the gorey details. Phantom references provide an alternative that
-gives you somewhat greater flexibility. When you use phantom references rather
-than finalization, you can use separate queues for different groups of objects,
-and manage how often to poll the queues, rather than having a single queue and
-relying on the \jre to poll the queue when it feels like it. Both are filled
-with potential dangers, so please read \autoref{sec:external-resources-details}
-before committing a design to these mechanisms.
+around this problem.\index{Finalization}\index{References, Phantom} With the
+mechanisms, you can install cleanup hooks. Finalization lets you associate a
+cleanup hook with a class. Phantom references let you associate a cleanup hook
+at a finer granularity, on an object-by-object basis. Invocation of a
+finalization cleanup hooks is managed by the \jre, so your cleanup code operates
+at the whim of the \jres scheduling decisions. If it does not run the
+finalization cleanup hooks in a timely enough manner, there's pretty much
+nothing you can do. In contrast, you are in charge of invoking the phantom
+reference-based cleanup hooks, primarily via the reference queue mechanism.
+
 
 \paragraph{\TLS}
 \tlsindex % \index{\TLS} doesn't seem to work
