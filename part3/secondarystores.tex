@@ -278,6 +278,36 @@ so that it operates directly on data stored in a memory mapped form, or the
 users of that code must be modified to create temporary facade objects that
 implement the expected interfaces.
 
+\begin{wrapfigure}{r}{0.62\textwidth}
+\centering
+\begin{framedlisting}
+class WeightedEdges {
+ IntBuffer source, target, weight;
+  
+ WeightedEdges(String name) {
+   from = asInts(mapFile(name+"from"));
+   to = asInts(mapFile(name+"to"));
+   weight = asInts(mapFile(name+"weight"));
+ }
+
+ int source(int edge) {
+   return source.get(edge);
+ }
+  
+ int target(int edge) {
+   return target.get(edge);
+ }
+  
+ int weight(int edge) {
+   return weight.get(edge);
+ }
+}  
+\end{framedlisting}
+\caption{A memory-mapped implementation of an edge model with edge weights.}
+\label{fig:weighted-edges-memory-mapped}
+\end{wrapfigure}
+
+ 
 \paragraph{Memory Mapping Your Column-oriented Bulk Storage}
 If you've \emph{already} committed to a column-oriented bulk storage approach
 (see \autoref{sec:column-oriented}) to storing your data, then you are in for a
@@ -312,34 +342,6 @@ edge model can be stored in a file called ``edges''; the nodes' weight attribute
 can be stored in a file called ``nodeWeights''. You need only choose an
 appropriate directory in which to keep these files.
 
-
-\begin{wrapfigure}{r}{0.62\textwidth}
-\centering
-\begin{framedlisting}
-class WeightedEdges {
- IntBuffer source, target, weight;
-  
- WeightedEdges(String name) {
-   from = asInts(mapFile(name+"from"));
-   to = asInts(mapFile(name+"to"));
-   weight = asInts(mapFile(name+"weight"));
- }
-
- int source(int edge) {
-   return source.get(edge);
- }
-  
- int target(int edge) {
-   return target.get(edge);
- }
-  
- int weight(int edge) {
-   return weight.get(edge);
- }
-}  
-\end{framedlisting}
-\end{wrapfigure}
-
 If your application has multiple instances of graph models alive simultaneously,
 then the naming problem becomes more difficult. Now, the choice of directory
 becomes a critical one, so that you can avoid collisions of the edge and node
@@ -347,12 +349,12 @@ models. To solve this problem, you will need to give a \emph{name} to each graph
 model. For example, you may have two edge models, one that stores the department
 to employee relation, and one that stores the manager to employee relation. It
 should be easy to come up with distinctive names for these. The
- \class{WeightedEdges} example from
-\autoref{sec:bulk-storage-of-relationships}, shown on the right updated to use
-file-backed memory mapping, looks pretty similar to the original one that used
-Java arrays to store the data.
+\class{WeightedEdges} example from \autoref{sec:bulk-storage-of-relationships},
+shown in \autoref{fig:weighted-edges-memory-mapped}, here updated to use
+file-backed memory mapping, looks nicely very similar to the original one that
+used Java arrays to store the data --- using a memory mapped backing store
+needn't radically change the way you code.
 
- 
 %The update requi, from the previous
 %\class{EdgeModel} is easy, but requires a notion of a namespace for each edge
 %model. The namespace is necessary so that the model can be mapped in from disk:

@@ -136,7 +136,7 @@ tuning parameters at your disposal.
 
 \begin{figure}
 \centering
-\includegraphics[width=0.7\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
+\includegraphics[width=0.65\textwidth]{part2/Figures/lifetime/heaps_and_stacks_stack_frames}
 \caption{The compiler takes care managing the stack, by pushing and popping
 the storage (called \emph{stack frames}) that hold your local variables and
 method parameters.}
@@ -515,22 +515,6 @@ serving as monitors, objects on the stack of a method invocation in progress,
 and references from native code via the Java Native Interface (JNI). Every other
 object is ready for collection.
 
-\begin{figure}
-\centering
-	\subfigure[A live data
-	structure.]{\includegraphics[width=0.3\textwidth]{part2/Figures/lifetime/reachability1}}
-	\hspace{0.18\textwidth}
-	\subfigure[Then, the dominating reference is
-	clipped.]{\label{fig:reachability-b}\includegraphics[width=0.445\textwidth]{part2/Figures/lifetime/reachability2}}
-	\caption{The garbage collector uses the references between objects to
-	determine what objects are collectable. The data structure on the left is
-	filled entirely with live objects. The one on the right, after a link is
-	clipped, now contains some collectable objects; all objects reachable only by
-	traversing a \emph{dominating reference}, i.e. those \emph{dominated objects},
-	will be collectable, as well.}
-	\label{fig:reachability}
-\end{figure}
-
 This recursive aspect can also be expressed in terms of \emph{reachability}.
 \index{Reachability} The live objects are those objects reachable, by following a
 chain of references, from some root. \autoref{fig:reachability} illustrates a
@@ -547,6 +531,22 @@ region of \autoref{fig:reachability-b} have the property that each is reachable
 owner of the shaded objects. The clipped reference is said to dominate those
 objects that it uniquely owns.
 
+\begin{figure}
+\centering
+	\subfigure[A live data
+	structure.]{\includegraphics[width=0.3\textwidth]{part2/Figures/lifetime/reachability1}}
+	\hspace{0.18\textwidth}
+	\subfigure[Then, a reference is
+	clipped.]{\label{fig:reachability-b}\includegraphics[width=0.445\textwidth]{part2/Figures/lifetime/reachability2}}
+	\caption{The garbage collector uses the references between objects to
+	determine what objects are collectable. The data structure on the left is
+	filled entirely with live objects. The one on the right, after a link is
+	clipped, now contains some collectable objects; all objects reachable only by
+	traversing a \emph{dominating reference} will be collectable, as well.}
+	\label{fig:reachability}
+\end{figure}
+
+
 \callout{dominance}{Dominance (Unique Ownership)} {
 \index{Dominance}\label{sec:dominance} One node in a graph \emph{dominates}
 another if the only way to reach the latter is by traveling through zero or more
@@ -558,20 +558,6 @@ collectable when an object is reclaimed: those it dominates. If an object only
 dominates itself, but isn't a root of the graph, then you know that it has
 \emph{shared ownership}. Otherwise, it is
 \emph{uniquely owned} by that dominating node.}
-
-
-
-\begin{figure}
-\centering
-	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
-	\caption{When your application suffers from a memory leak, you will likely
-	observe a trend of heap consumption that looks something like this. As memory
-	grows more constrained, garbage collections are run with increasing frequency.
-	Eventually, either the application will fail, or enter a period of
-	super-frequent collections. In this period of ``GC death'', your application
-	neither fails, nor makes any forward progress. }
-	\label{fig:memory-leak-trend}
-\end{figure}
 
 Most of the time, the garbage collector does what you'd expect, and you needn't
 worry about freeing up memory. Java applications are frequently plagued by
@@ -599,6 +585,21 @@ load on your application over time. Nevertheless, the upwards climb is stll
 there. As heap memory becomes less and less available, garbage collections
 become increasingly frequent.
 
+
+
+\begin{figure}
+\centering
+	\includegraphics[width=\textwidth]{part2/Figures/fundamentals/leaktrend}
+	\caption{When your application suffers from a memory leak, you will likely
+	observe a trend of heap consumption that looks something like this. As memory
+	grows more constrained, garbage collections are run with increasing frequency.
+	Eventually, either the application will fail, or enter a period of
+	super-frequent collections. In this period of ``GC death'', your application
+	neither fails, nor makes any forward progress. }
+	\label{fig:memory-leak-trend}
+\end{figure}
+
+
 If your application exhausts the Java heap, you will observe an
 \class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
 Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
@@ -611,7 +612,7 @@ reclaiming memory.
 \callout{gc-death}{GC Death}{Sometimes, your application will appear to grind to
 a halt, without any exceptions appearing on the error console. If you observe
 this situation, then your application may be suffering from what is
-affectionately called \emph{GC death}. In this situation, the \jre is
+nicknamed \emph{GC death}. In this situation, the \jre is
 frantically, but ineffectually, trying to find free space. The situation becomes
 dire when the time it takes the garbage collector to perform one scan is large
 relative to the time before your application next runs out of space.}
