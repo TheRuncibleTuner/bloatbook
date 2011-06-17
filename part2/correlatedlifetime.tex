@@ -871,6 +871,7 @@ request is an observable event; in Java, you can manifest this as an instance of
 an observer of these events, and so should implement the \class{Observer}
 interface. 
 
+\paragraph{Make Sure Shared Owners Weakly Reference the Request-scoped Objects}
 In either case, you should make sure that either thread-local storage, or the
 \class{Observer}s have the only strong references to the request-scoped objects.
 Due to some programming necessity, you may find that there are other structures
@@ -919,92 +920,52 @@ this base implementation. You can tailor them to your specific needs.
 \end{comment}
 
 \section{Patterns Based on Finalization or Phantom References}
+\index{References, Phantom}
+\index{Finalization}
 
-\paragraph{Finalization Gotchas}
-
-Behind the scenes,
-the \jre allocates an extra object (of type
-\class{java.lang.ref.FinalReference}) and stores these in a reference queue
-(called the finalization queue). For the most part, these days, the
-\class{FinalReference} objects are allocated when the object is queued up for
-finalization Some older \jres allocate this object up front, when the object
-(that will eventually be queued for finalization) is initially allocated. In
-both cases, there is an extra memory overhead associated with using
-finalization. Phantom references are a minor variation of finalization that lets
-you manage the queues more flexibly: you can use separate queues for different
-groups of objects, and manage how often to poll the queues, rather than having a
-single queue and relying on the \jre to poll the queue when it feels like
-it.\index{References, Phantom}
-
-% 20110525 TODO maybe move to later chapter
-Now for the gotchas. First, you can't assume that the finalize method will be
-called immediately after the correlated objects death. The Java language
-specification does not dictate a timeliness criterion for invoking your
-\code{finalize} method. This can lead to dragging of the resources, exactly like
-the problem of memory drag described earlier. Second, using finalization
-increases memory bloat. For every instance of a class with a \class{finalize}
-method, the \jre, behind the scenes, allocates an extra object (of type
-\class{java.lang.ref.FinalReference}). This object consumes 28 bytes; the
-pointer from the finalization queue adds an extra pointer cost.
-\index{Overwhelming the Finalizer Thread}
-Third, it is possible to overwhelm the finalization thread. This can happen if
-your program creates instances of objects with \code{finalize} methods at a high
-rate.
-\begin{comment}
- Such is the
-case in the following loop:
-\begin{shortlisting}
-import java.awt.Font;
-for (int i = 0; i < N; i++) {
-   Font font = new Font("SansSerif", Font.BOLD, 12);
-   ... // some small amount of work
-   // font does not escape the loop
-}
-\end{shortlisting}
-Since each loop iteration's instance of \code{font} is not used beyond the
-execution of that iteration, it seems like one could run this program on a
-small heap, for any value of \code{N}. The heap need only fit what it
-takes to allocate the handful of objects that represent an instance of
-\code{java.awt.Font}. Try it out, for various values of \code{N} and of
-\code{-Xmx}! On Sun and IBM \javasix \jres, you will find that, as \code{N}
-increases, you will need to increase the maximum heap size allotted to the \jre.
-If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
-
-The problem, in this case, is that \class{Font} class has a \code{finalize}
-method. Therefore, as the loop iterates, instances of \class{Font} begin to pile
-up the finalization queue. Periodically, the background finalizer thread wakes
-up and cleans up the backlog. But, if this loop nest creates many \class{Font}s
-quickly, or there are a large number of threads doing so concurrently, 
-the finalizer background thread becomes overwhelmed. Try sticking in this code:
-\code{if (i \% 100000 == 0) System.runFinalization()}. Here, you are explicitly
-putting your application's thread to sleep in order to let the finalizer thread
-catch up. In this case, this change fixes the problem.
-\end{comment}
-
+%Any Java objects uniquely owned by this object will be reclaimed in the normal
+%course of garbage collection. It is those resources that are \emph{implicitly}
+%tied to a Java object, such as file descriptors, socket connections, and
+%database resources such as compiled queries, that require special attention.
 
 Java provides two other closely related cleanup hooks, in the form of
-finalization and phantom references. These hooks are called just after the
-garbage collector has discovered that the object is collectible, but before its
-memory is reclaimed. If you implement a \code{finalize()} method in a class, then
-every instance of that class will go through a finalization process. After being
+finalization and phantom references. Finalization and phantom references can
+give you an opportunity to release any external resources that are associated
+with that Java object. These hooks are called just after the garbage collector
+has discovered that the object is collectible, but before its memory is
+reclaimed. If you implement a \code{finalize} method in a class, then every
+instance of that class will go through a finalization process. After being
 discovered to be garbage, these instances will be enqueued on a special queue,
-usually termed the \emph{finalizer queue}. Most \jres spawn a single thread,
-termed the finalizer thread, that periodically scans the finalizer queue,
-invoking the \code{finalize} method on the enqueued objects.
+usually termed the \emph{finalizer queue}. This queue is completely outside of
+your control, and also not part of the normal Java heaps. Most \jres spawn a
+single thread, termed the finalizer thread, that periodically scans the
+finalizer queue, invoking the \code{finalize} method of the enqueued objects.
 
-Phantom references offer a somewhat more refined version of this pre-reclamation
-hook. First, with phantom references, you can associate a cleanup hook on a
-per-object basis, rather than, as is the case with finalization, on a per-class
-basis. Second, phantom references give you the option of having more than one
-cleanup queue and thread, in contrast to finalization where there is a single
-finalizer queue and (usually) a single finalizer thread.
+Phantom references offer a refined version of this pre-reclamation hook. First,
+with phantom references, you can associate a cleanup hook on a per-object basis,
+rather than, as is the case with finalization, on a per-class basis. Second, you
+can use separate queues for different groups of objects, and manage how often to
+poll the queues, rather than having a single queue and relying on the \jre to
+poll the queue when it feels like it.
+% Second, phantom references give you the option of having more than one cleanup
+% queue and thread, in contrast to finalization where there is a single
+% finalizer queue and (usually) a single finalizer thread.
 
-You can use the hooks offered by finalization or phantom references to free up
-resources that are implicitly associated with an object. Any Java objects
-uniquely owned by this object will be reclaimed in the normal course of garbage
-collection. It is those resources that are \emph{implicitly} tied to a Java
-object, such as file descriptors, socket connections, and database resources such
-as compiled queries, that require special attention.
+
+Both finalization and the use of phantom references are filled with potential
+dangers.
+
+
+%Behind the scenes, the \jre allocates an extra object (of type
+%\class{java.lang.ref.FinalReference}) and stores these in a reference queue
+%(called the finalization queue). For the most part, these days, the
+%\class{FinalReference} objects are allocated when the object is queued up for
+%finalization Some older \jres allocate this object up front, when the object
+%(that will eventually be queued for finalization) is initially allocated. In
+%both cases, there is an extra memory overhead associated with using
+%finalization.
+
+\paragraph{Finalization Gotchas}
 
 You must be very careful in relying on finalization or phantom references. The
 Java language specification provides no assurances of how often, or even whether,
@@ -1032,13 +993,95 @@ request to have the \jre run a garbage collection on exit. Hence, even for those
 objects which are actually ready to be finalized, the \jre won't do so on exit.
 It is for these reasons that the API has been deprecated.
 
+It is very important to keep in mind that neither of these is a viable way to
+manage external resources. The \jre doesn't know about inherent limits on the
+capacity of external resources. Even if it did, it also does not know anything
+about the relationship between Java objects and those resources. This is in
+stark contrast to the closed world of the Java heap: the \jre knows when the
+heap is exhausted, and can make educated guesses as to when it should increase
+or decrease the size of the heap. For external resources, you really have to
+take firm and complete control of the picture.
+
 Given these downsides, it is best for you to implement a more robust lifetime
 management strategy. If you can establish a correlated lifetime pattern, such as
 that the external storage should be reclaimed when an event occurs, or when a
 method returns, then you should do so.
 
+% As long as the resources your application uses fall within the \jress
+% boundaries, then the automated mechanisms, such as garbage collection and
+% class loading, work without much intervention on your part. For the more
+% complex cases involving external resources, such as a database connection, the
+% nicely automated world starts to fall apart a bit.
+
+One recourse is to fall back to the C style of resource management, for these
+cases of external resources. You can design the API specifications so as to
+require users of the API to adopt a convention that requires explicit closing,
+or freeing, of resources. Such APIs do indeed exist in the Java world, primarily
+because Java does not offer any viable alternatives.
+
+\paragraph{Overwhelming the Finalizer Thread}
+It is possible to overwhelm the finalization thread. This can happen if your
+program creates instances of objects with \code{finalize} methods at a high
+rate.
+Such is the case in the following loop:
+Since each loop iteration's instance of \code{font} is not used beyond the
+execution of that iteration, it seems like one could run this program on a
+small heap, for any value of \code{N}. The heap need only fit what it
+takes to allocate the handful of objects that represent an instance of
+\code{java.awt.Font}. Try it out, for various values of \code{N} and of
+\code{-Xmx}. On Sun and IBM \javasix \jres, you will find that, as \code{N}
+increases, you will need to increase the maximum heap size allotted to the \jre.
+If you don't, this code will fail with a \class{java.lang.OutOfMemoryError}.
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\begin{framedlisting}
+for (int i = 0; i < N; i++) {
+   Font font = new Font("SansSerif", Font.BOLD, 12);
+   // some small amount of work
+} // font does not escape the loop
+\end{framedlisting}
+\end{wrapfigure}
+The problem, in this case, is that \class{Font} class has a \code{finalize}
+method. Every instance of a font has an implicit linkage to some native
+resources. The Java object and the native resources need to be cleaned up in
+tandem. The developers of this class decided to implement this case of
+correlated lifetime by using finalization.
+
+Therefore, as the loop iterates, instances of \class{Font} begin to pile up the
+finalization queue. Periodically, the background finalizer thread wakes up and
+cleans up the backlog. Unfortunately, if this loop nest creates many
+\class{Font}s quickly, or there are a large number of threads doing so
+concurrently, the finalizer background thread becomes overwhelmed. You can put
+your application's threads to sleep in order to let the finalizer thread catch
+up. Try sticking in this code: \code{if (i \% 100000 == 0)
+System.runFinalization()}. In this case, this change fixes the problem.
+% \end{comment}
+
+% 20110525 TODO maybe move to later chapter
+%Now for the gotchas. First, you can't assume that the finalize method will be
+%called immediately after the correlated objects death. The Java language
+%specification does not dictate a timeliness criterion for invoking your
+%\code{finalize} method. This can lead to dragging of the resources, exactly
+%like the problem of memory drag described earlier. Second, using finalization
+%increases memory bloat. For every instance of a class with a \class{finalize}
+%method, the \jre, behind the scenes, allocates an extra object (of type
+%\class{java.lang.ref.FinalReference}). This object consumes 28 bytes; the
+%pointer from the finalization queue adds an extra pointer cost.
+
+
+
+
+
+
+
+
+
 \subsection{Cleaning Up External Resources}
 \label{sec:external-resources-details}
+
+You can use the hooks offered by finalization or phantom references to free up
+resources that are implicitly associated with an object.
 
 \subsection{Safety Valves}
 
