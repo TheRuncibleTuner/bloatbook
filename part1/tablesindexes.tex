@@ -1,4 +1,4 @@
-\chapter{Large Collection Structures}
+I\chapter{Large Collection Structures}
 %\chapter{Large Structures for Accessing Data}
 \label{chapter:tables-indexes}
 
@@ -76,11 +76,13 @@ then we are clearly much better off with \class{ArrayList}.
 
 In larger collections, the variable overhead --- the cost each
 element incurs --- determines the cost of the collection. That's because as a
-collection grows in size, its fixed overhead, such as wrapper objects or array headers, becomes insignificant.  For
-example, for an \class{ArrayList} with even 1000 elements, the fixed cost is
-just .1\% of the total.  Whereas with small collections we need to concern
-ourselves with both fixed and variable costs, for large collections we
-need only look at variable costs. The difference in size in the above example
+collection grows in size its fixed overhead, such as wrapper objects and array
+headers, becomes insignificant.  For example, for an \class{ArrayList} with just
+1000 elements, the fixed cost is just .1\% of the total.  
+%Whereas with small collections we need to concern
+%ourselves with both fixed and variable costs, for large collections we
+%need only look at variable costs. 
+The difference in size in the above example
 is pretty dramatic, more than 7:1. That reflects the difference in variable costs of the two collection classes. 
 As a general rule, the variable overhead of array-based collections, like
 \class{ArrayList} is much lower than that of entry-based collections, like \class{HashSet}, where a new entry
@@ -104,8 +106,9 @@ effect of excess capacity on the overall memory overhead.
 
 As a collection grows, the amount of spare capacity allocated is usually based
 on the number of elements in the collection. For example, \class{ArrayList} reallocates an array that is 50\% larger
-when it needs extra space, and \class{HashMap} doubles the number of buckets when the number of elements reaches a user-specified load factor. So for large collections, we can think of the spare capacity as an additional charge
-on each element of the collection, an addition to the variable cost.
+when it needs extra space, and \class{HashMap} doubles the number of buckets when the number of elements reaches
+a user-specified load factor. So for large collections, we can think of the spare capacity as an additional charge
+averaged over each element of the collection, an addition to the variable cost.
 Since collections grow in jumps, rather than in single steps, it makes sense to look at this cost
 on average across many elements, rather than as a cost on the last element we
 added. We'll use the term \emph{average variable cost} of a collection to mean the variable cost
@@ -133,9 +136,9 @@ likelihood of collisions, so it's important to leave headroom for this
 purpose. The default load factor is usually a pretty good guide. 
 
 
-
 \paragraph{Entry- vs. Array-based Maps and Sets}
 
+-- something about hashtables here
 There are two primary ways that hash tables are implemented. Most of the maps and sets
 in the standard libraries use a technique known as \emph{chaining} (also
 known as open hashing), Figure~\ref{} shows a typical
