@@ -149,7 +149,7 @@ first place.
 %in the previous chapter, where the initial 
 %capacity is so much larger than the number of elements stored.
 
-\paragraph{Entry- vs. Array-based Hash Maps and Hash Sets}
+\paragraph{Array-based Hash Maps and Hash Sets}
 
 There are two primary ways that hash tables are implemented. Most of the maps and sets
 in the standard libraries use a technique known as \emph{chaining} (also
@@ -195,20 +195,20 @@ hash map maintains only 9 bytes of data for each element, compared to the standa
 \class{HashMap}'s 28. When you add in the greater cost of excess capacity that
 difference is reduced to approximately 1:2.  <or example here instead, with absolute numbers>
 
-\paragraph{Sharing the Costs of Entries in Entry-based Collections}
+\paragraph{Sharing the Costs in Entry-based Collections}
 
-Some alternative frameworks provide a different approach to reducing space in
+Some alternative frameworks provide another approach to reducing space in
 entry-based collections. The idea is that your objects become
 the collection's entry objects, thus saving a delegation overhead. The downside
 is that they transfer some of the work of maintaining the collection to your code.
-On example is in the Apache Commons framework, which lets you subclass its map
+One example is in the Apache Commons framework, which lets you subclass its map
 and map entries. If you have a key with two fields, for example, you would
 normally have to wrap those fields into a key object. Now 
 you could include those fields in a custom map entry instead, and save a
 delegation cost. <figure here?>  This introduces a reliability and maintenance
 problem, however, since it relies on subclassing a fairly complex class. You must now make sure
-your code doesn't break anything in current and future versions of their hash
-map implementation.
+your code doesn't break anything in current and future versions of Commons's
+hash map implementation.
 
 A simpler approach is taken by Trove's linked list. If you have a class whose
 objects are to be stored in a linked list, your class can implement the
@@ -216,7 +216,9 @@ objects are to be stored in a linked list, your class can implement the
 again, save the cost of a separate entry object.  Some restrictions are
 necessary in order for this to work: no instance of your class can
 be a member of more than one linked list simultaneously, nor appear more than
-once in the same list.
+once in the same list. In addition, your class must now include
+pointer fields, which increase the cost of these instances when they are
+not stored in a list.
 
 \section{Identity Maps}
 The Java standard library does provide one hash map class that uses an open
