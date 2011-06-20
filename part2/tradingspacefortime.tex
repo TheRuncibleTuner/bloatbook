@@ -1,4 +1,5 @@
-\chapter{Trading Space for Time: Caches, Resource Pools and Thread-Local Stores}
+\chapter[Trading Space for Time]{Trading Space for Time: Caches, Resource Pools and Thread-Local
+Stores}
 \label{chapter:trading-space-for-time}
 
 There are three important cases of time-space tradeoffs. The first covers
@@ -7,7 +8,7 @@ choice. The next two cover situations where spending memory to extend the
 lifetime of certain objects saves sufficient time to be worthwhile: caches and
 resource pools.
 
-\section{Tools: Soft References}
+\section{Patterns Based on Soft References}
 \index{Soft References}
 
 The constructor for a \class{SoftReference} also takes an object as a parameter.
@@ -62,7 +63,11 @@ equality of keys will trigger a use of the reference. This will extend the
 lifetime of the value, even though the only use of the entry was in checking to
 see if its key matches another.	}
 
-\section{Caches}
+\subsection{Caching a Subset of a Full Data Set}
+
+\subsection{Caching the Output of an Expensive Operation}
+
+\subsection{Gating Access to a Constrained Resource}
 
 If the data stored in a data structure is frequently and expensively recomputed
 or refetched, and the data values are the same every time, then it is worthwhile
@@ -73,7 +78,7 @@ good cache defers the time that an object will be reclaimed, as long as there is
 sufficient space to handle the flux of temporary objects your application
 creates.
 
-\subsection{Implementing a Concurrent Cache}
+\subsection{Example: Implementing a Concurrent Cache}
 \label{sec:lifetime-management-concurrency-issues}
 
 If your program operates with many concurrent threads, you have to program
@@ -82,6 +87,28 @@ result in concurrency issues. One of the primary problems will be lock
 contention, as threads concurrently poll a reference queue. An important example
 of this problem shows up in the implementation of a cache that can support many
 concurrent users.\index{Caches, Concurrency Issues}
+
+\begin{wrapfigure}{r}{0.61\textwidth}
+\centering
+\begin{figurelisting}
+class Cache<K,V> extends ConcurrentHashMap<K,SoftReference<V>> {
+  ReferenceQueue<V> q;
+   
+  @Override
+  void put(K k, V v) {
+    cleanupQueue();
+    super.put(k, new SoftReference(v, q));
+  }
+  
+  void cleanupQueue() {
+    SoftReference<V> v;
+    while((v = q.poll()) != null) {
+       remove(???); // oops!
+    }
+  }
+}
+\end{figurelisting}
+\end{wrapfigure}
 
 A cache is a map, usually of bounded size, with an eviction strategy for
 maintaining that bound.\index{Caches} The Java standard library provides a
@@ -92,51 +119,47 @@ can bound its size.
 Following the soft reference rule, and using the basic guidelines for managing
 reference queues from \autoref{sec:reference-queue-basics}, leads to a first
 attempt at a \class{ConcurrentCache} implementation. You can extend the basic
-concurrent hashmap, wrapping the map's values with soft references:
-\begin{shortlisting}
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,SoftReference<V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
-   
-   protected void cleanupQueue() {
-      SoftReference<V> v;
-      while( (v = refQueue.poll()) != null) {
-         remove(???); // oops!
-      }
-   }
-}
-\end{shortlisting}
-Oops! This implementation provides no way to remove the key from the map, when
-cleaning up the evicted entries. To fix this, you'll need to stash a pointer to
-the key in the soft reference wrapper. It would be nice if the
-\class{ConcurrentHashMap} implementation let you extend
-its implementation so that its \class{\$Entry} class extended soft reference;
-the \class{\$Entry} would serve this role perfectly. Instead, you have to
-replicate this pointer structure, at a silly but unavoidable cost of memory
-bloat. You can do so in a \class{CacheSoftReference} wrapper:
-\begin{shortlisting}
-class CacheSoftReference<K, V> extends SoftReference<V> {
-   private final K k;
-   
-   public CacheSoftReference(K k, V v, ReferenceQueue<V> refQueue) {
-      super(v, refQueue);
-      this.k = k;
-   }
-}
+concurrent hashmap, wrapping the map's values with soft references.
 
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheSoftReference<K,V>> {
-   private final ReferenceQueue<V> refQueue = new ReferenceQueue<V>();
+\begin{wrapfigure}{r}{0.46\textwidth}
+\centering
+\begin{framedlisting}
+class CacheValue<K, V> extends SoftReference<V> {
+  K key;
+   
+  CacheValue(K k, V v, ReferenceQueue<V> q) {
+    super(v, q);
+    this.key = k;
+  }
+}
+\end{framedlisting}
+\caption{You will need a special value reference that keeps a reference to the
+key, to allow you to remove the entry when it is evicted from the cache.}
+\end{wrapfigure}
+
+Oops! The variable \code{v} references the value, not the key. Therefore, this
+implementation provides no way to remove evicted value from the map. To fix
+this, you'll need to stash, in the soft reference wrapper, a pointer to the key.
+You can do so in a new \class{CacheSoftReference} wrapper class:\footnote{It
+would be nice if the \class{ConcurrentHashMap} implementation let you extend its
+implementation so that its \class{\$Entry} class extended soft reference; the
+\class{\$Entry} would serve this role perfectly.}
+
+\begin{figurelisting}
+class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheValue<K,V>> {
+   ReferenceQueue<V> q;
    
    protected void cleanupQueue() {
-      SoftReference<V> v;
+      CacheSoftReference<V> v;
       // poll causes lock contention!
-      while( (v = refQueue.poll()) != null) {
+      while( (v = q.poll()) != null) {
          remove(v.k);
       }
    }
    
    public V put(K key, V value) {
       cleanupQueue();
-      return super.put(key, new CacheSoftReference<K,V>(key,value,refQueue));
+      return super.put(key, new CacheSoftReference<K,V>(key,value,q));
    }
    
    public V get(K key) {
@@ -144,7 +167,7 @@ class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheSoftReference<K,V>> 
       return super.get(key);
    }
 }
-\end{shortlisting}
+\end{figurelisting}
 This implementation still suffers from several critical problems. First, every
 call to \code{put} must check the reference queue for pending evictions in order
 to avoid unbounded growth of the eviction queue --- in the steady state,
@@ -159,7 +182,7 @@ The only way to fix the lock contention problem, at least as of \javasix, is to
 spawn a thread that periodically polls the reference queue for evicted entries.
 This will also fix the second problem. This spawned thread's \code{run} method
 will look just like the \code{cleanupQueue} method above, except that it should
-loop indefinitely, and call \code{refQueue.remove()} rather than \code{poll()};
+loop indefinitely, and call \code{q.remove()} rather than \code{poll()};
 the former blocks until an eviction occurs (though you must still be careful to
 check the return value for \code{null}, despite what the Javadocs claim).
 
@@ -240,19 +263,7 @@ your application uses. As with the connections, these involve setup cost, of the
 compilation itself, as well as the reservation of memory resources, that the
 database uses to cache certain information about the query.
 
-\section{Avoiding Leaks When Optimizing for Time}
-Sometimes a data structure can have multiple lifetime requirements. 
-Care is required to make sure that we satisfy all of the requirements.  In this
-section we look at two cases where we are balancing the need to save both space and recomputation
-time.
-
-\begin{example}{Session State}
-\end{example}
-
-\begin{example}{A Caching Sharing Pool}
-\end{example}
-
-\section{Avoiding Contention: Thread-local Stores}
+\section{Patterns Based on Thread-local Storage}
 % TODO 20110601 no reetrant safety given by thread-local storage
 % %ODO 20110601 stores or stoage? also in bulk storage/stores 
 
@@ -302,6 +313,19 @@ the storage associated with it, for all threads, will be reclaimed, too. In some
 implementations, this will not happen immediately, because these implementations
 do not use reference queues. They use an alternative approach that at least
 keeps the amount of memory spent on stale \tls bounded.
+
+\section{Avoiding Leaks When Optimizing for Time}
+Sometimes a data structure can have multiple lifetime requirements. 
+Care is required to make sure that we satisfy all of the requirements.  In this
+section we look at two cases where we are balancing the need to save both space and recomputation
+time.
+
+\begin{example}{Session State}
+\end{example}
+
+\begin{example}{A Caching Sharing Pool}
+\end{example}
+
 
 \section{Summary}
 
