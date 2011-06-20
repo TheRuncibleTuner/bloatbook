@@ -4,10 +4,10 @@ I\chapter{Large Collection Structures}
 
 In a relational database system, data is neatly organized for you into tables.
 While you may suggest a few fields to index, the structures that
-allow you to access your data are taken care of for you.   In object-oriented
+allow you to access your data are taken care of for you.  In object-oriented
 programming languages you have more freedom. You have a sea of interconnected
-objects, and you are responsible for designing structures are the entry points into various 
-groupings of these objects.
+objects, and you are responsible for designing the structures that are the entry
+points into various groupings of these objects.
 In this chapter we look at the memory considerations when
 designing large structures for accessing your
 data. We'll
@@ -72,17 +72,17 @@ the end of the day these orders are posted in bulk to a remote database. The ord
 contain their own timestamps, so we don't really care about maintaining the
 sequence in which they were received. Figure~\ref{} compares an implementation
 using \class{ArrayList} with one using \class{HashSet}. As with small
-collections, if we don't need the uniqueness checking or some of the other features of \class{HashSet}, 
-then we are clearly much better off with \class{ArrayList}.
+collections, if we don't need the uniqueness checking or some of the
+other features of \class{HashSet}, then we are clearly much better off with \class{ArrayList}.
 
-The difference in size in the above example
-is pretty dramatic, more than 7:1. That reflects the difference in variable
-costs of the two collection classes.In larger collections, the variable overhead --- the cost each
-element incurs --- determines the cost of the collection. That's because as a
-collection grows in size its fixed overhead, such as wrapper objects and array
-headers, becomes insignificant. For example, in an \class{ArrayList} with
-even 100 elements, the fixed cost is only 9\% of the total. With 1000
-elements, it falls to 0.1\%.
+In larger collections, the variable overhead --- the cost each element incurs
+--- determines the cost of the collection. That's because as a collection grows its fixed overhead,
+such as wrapper objects and array headers, becomes insignificant. For example,
+in an \class{ArrayList} with 100 elements, the fixed cost is only 9\% of the total. With 1000
+elements, it falls to 0.1\%.  The difference in size in the above example is
+pretty dramatic, more than 7:1.  That reflects the difference in the variable overheads of the two
+collection classes. Like much else in Java, variable overheads in large
+collections can take up a surprising amount of memory if you are not careful.
 %With small collections we need to concern
 %ourselves with both fixed and variable costs, for large collections we
 %need only look at variable costs. 
@@ -107,30 +107,27 @@ along with a sampling from open source libraries.
 
 As we saw in the previous chapter, many collection
 classes allocate excess capacity for performance reasons, mainly to accomodate
-growth. One difference between small and large collections is the
-effect of excess capacity on the overall memory overhead.  
+growth. One difference between small and large collections is the way
+excess capacity is computed.  In the very smallest collections, excess capacity
+comes from the initial capacity being too large. In contrast, as a collection
+grows larger, the amount of spare capacity allocated is proportional to the
+number of elements. For example, whenever an \class{ArrayList} needs
+more space, it allocates an array that is 50\% larger than its current
+size; \class{HashMap} doubles the number of buckets when the number
+of elements reaches a user-specified load factor. So for any collection that's
+grown beyond its initial size, you can 
+think of spare capacity as part of the variable cost.
+If an \class{ArrayList} is 1/3 spare capacity, then every
+element really costs 6 bytes, rather than the 4 bytes for the array slot that
+holds the pointer.
 
-When a collection grows, the amount of spare
-capacity allocated is a function of the number of elements in
-the collection. For example, \class{ArrayList} reallocates an array that is 50\%
-larger than its current size whenever it needs more space, and \class{HashMap}
-doubles the number of buckets when the number of elements reaches a
-user-specified load factor. So for larger collections, actually any collection
-that's grown at least once beyond its initial size, it makes
-sense to think of spare capacity as a charge spread over each element of the collection.  In
-other words, we can include spare capacity as a component of the variable cost.
-If an \class{ArrayList} is 1/3 spare capacity, then we can think of every
-element costing 50\% more (i.e. 1/3 free relative to 2/3 used), or 6 bytes
-rather than 4.
-
-Collections grow in jumps, rather than on every addition to the
-collection, which makes determining the size of a collection a little
-more complicated.  For that reason, in Table\ref{} we show
+Collections grow in jumps, which makes predicting the size of a collection a
+little tricky.  For that reason, Table\ref{} shows
 a range of variable costs for each collection.  You can use the minimum
-number if there is no spare capacity. The maximum number gives a worst case, if
-none of the spare is occupied. Slightly less than the midpoint of
-that range will give you an estimate of the variable cost if the most recently
-allocated spare capacity is half occupied.
+number if you expect no spare capacity. The maximum number gives you a worst
+case, if you added just that one extra element that caused the jump.
+Slightly less than the midpoint of the range will give you an estimate of the
+variable cost if the most recently allocated spare capacity is half occupied.
 
 Solutions for reducing excess capacity for larger collections are the same as
 for small collections. If you can estimate the number of elements in advance,
@@ -141,40 +138,44 @@ trim the size of the collection after the load phase is complete. In hash-based 
 likelihood of collisions, so it's important to leave headroom for this
 purpose. The default load factor is usually a pretty good guide. 
 
-Excess capacity isn't really much of an issue for collections like
+Excess capacity isn't much of an issue for collections like
 \class{HashMap} and \class{HashSet}, where the bulk of the overhead is from the entry objects.
-For large array-based collections the excess capacity can be a more significant part of the overhead, 
-though it's relative to a more efficient representation in the first place.
-Notice that the issue for large collections is not as serious as that for
-designs with many very small collections, as we saw
-in the previous chapter, where the excess capacity acts as a large fixed cost in each collection.
+For larger array-based collections, excess capacity can be a more significant
+part of the overhead, though it's relative to a more efficient representation in the
+first place. 
+
+%Notice that for large collections, the issue of excess capacity is not as
+%serious as that for designs with many tiny collections, like those we saw
+%in the previous chapter, where the initial 
+%capacity is so much larger than the number of elements stored.
 
 \paragraph{Entry- vs. Array-based Hash Maps and Hash Sets}
 
 There are two primary ways that hash tables are implemented. Most of the maps and sets
 in the standard libraries use a technique known as \emph{chaining} (also
-known as open hashing), Figure~\ref{} shows a typical
+known as open hashing). Figure~\ref{} in the previous chapter shows a typical
 implementation. There is a separate entry object for element in the collection.
-Each entry object points to a key and a value, and possibly contains
+Each entry object points to a key and a value, and may contain
 additional information such as a cached hash code. There is a linked list of
 entry objects for each hash bucket.
 
 The other main technique is known as \emph{open addressing} (for added
-confusion, also known as closed hashing).  In this technique,
-keys, values, and other information for each element are stored directly in
+confusion, it is also known as closed hashing).  In this technique,
+keys, values, and other information are stored directly in
 arrays. These are usually parallel arrays, though some implementations
-use a single array and interleave keys, values, and other information in
+use a single array and interleave different kinds of information in
 successive slots. Chains of entries that map to the same bucket are threaded through the arrays.
 Figure~\ref{} shows a typical implementation. There are many variations in
 practice.
 
 Generally speaking, for larger collections, open addressing hash tables use less
-memory --- at least in Java, where the cost of an entry object is so high. The
+memory --- at least in Java, where the cost of an entry object is so high. 
 fastutil and Trove are examples of open source frameworks that provide open
-addressing maps and sets that save space. The sets in these frameworks actually
-save even more space for a different reason: they are specialized for this
-purpose, rather than delegating to a more general map. So unlike in the Java
-standard libraries, you are paying only for a value, not a key and value, per entry.
+addressing maps and sets that save space. The sets in these frameworks
+save even more space for a different reason: they are specialized for the task,
+rather than delegating their work to a more general map. So unlike in the Java
+standard libraries, you are paying only for a value, not a key and value, per
+entry.
 
 Since open addressing hash tables usually use less memory, why do so many hash
 table libraries use chaining? Generally speaking, hash tables based
@@ -182,19 +183,54 @@ on chaining are much simpler to implement. More importantly, there
 are performance differences between the two approaches, though there is no easy
 rule about one always being faster than the other. For your
 own system, if performance of your collections is critical it can be worth doing
-some timings first.  Keep in mind, that in many systems, the amount of time
-spent in hash table lookups is a small fraction of the total execution time to begin with. 
+some timings first.  Keep in mind that in many systems, the amount of
+time spent in hash table lookups is a small fraction of the total execution time to begin with. 
 
 Another thing to be aware of in open addressing implementations is that the
-need for excess capacity can reduce the space savings to a greater
-extent than in open chaining implementations. So it's important to look at the whole
-picture, at the average variable cost, when making decisions on which framework
-to use (see Table ~\ref{}).
-
+need for excess capacity will reduce the space savings to a greater
+extent than in open chaining implementations. So it's important to look at the
+entire variable cost when making decisions on which framework to use (see Table
+~\ref{}).  For example, fastutil's object to object open addressing
+hash map maintains only 9 bytes of data for each element, compared to the standard
+\class{HashMap}'s 28. When you add in the greater cost of excess capacity that
+difference is reduced to approximately 1:2.  <or example here instead, with absolute numbers>
 
 \paragraph{Sharing the Costs of Entries in Entry-based Collections}
 
+Some alternative frameworks provide a different approach to reducing space in
+entry-based collections. The idea is that your objects become
+the collection's entry objects, thus saving a delegation overhead. The downside
+is that they transfer some of the work of maintaining the collection to your code.
+On example is in the Apache Commons framework, which lets you subclass its map
+and map entries. If you have a key with two fields, for example, you would
+normally have to wrap those fields into a key object. Now 
+you could include those fields in a custom map entry instead, and save a
+delegation cost. <figure here?>  This introduces a reliability and maintenance
+problem, however, since it relies on subclassing a fairly complex class. You must now make sure
+your code doesn't break anything in current and future versions of their hash
+map implementation.
+
+A simpler approach is taken by Trove's linked list. If you have a class whose
+objects are to be stored in a linked list, your class can implement the
+\class{TLinkable} interface. Your class would provide the chaining, and
+again, save the cost of a separate entry object.  Some restrictions are
+necessary in order for this to work: no instance of your class can
+be a member of more than one linked list simultaneously, nor appear more than
+once in the same list.
+
 \section{Identity Maps}
+The Java standard library does provide one hash map class that uses an open
+addressing implementation. The \class{IdentityMap} class can save you space
+if you have the need for a large map that fits its requirements.  The idea is that
+it uses the identity of the key object, 
+rather than its contents for comparisons. In
+other words, it uses \=\= against the key your provide, rather than the \class{.equals()} method.  
+This breaks the \class{Map} contract, but there are a number of applications where this doesn't matter.  
+
+Suppose I want to associate additional information with each product.  Using a
+standard map, I could map the product's unique key, say SKU, 
+
+
 
 \section{Maps with Scalar Keys or Values}
 
