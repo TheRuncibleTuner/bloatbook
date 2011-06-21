@@ -124,10 +124,16 @@ holds the pointer.
 Collections grow in jumps, which makes predicting the size of a collection a
 little tricky.  For that reason, Table\ref{} shows
 a range of variable costs for each collection.  You can use the minimum
-number if you expect no spare capacity. The maximum number gives you a worst
-case, if you added just that one extra element that caused the jump.
-Slightly less than the midpoint of the range will give you an estimate of the
+number if you expect no spare capacity, or in the case of hashtable-based maps
+and sets, no spare capacity beyond what is required for reasonable operation.
+The maximum number gives you a worst case, if you added just that one extra element that caused
+the jump. Slightly less than the midpoint of the range will give you an estimate of the
 variable cost if the most recently allocated spare capacity is half occupied.
+Again, the table only applies to collections once they have grown beyond their
+initial size.
+% For tiny
+%collections, the excess capacity can cost much more per element, as we saw in
+%the previous chapter.
 
 Solutions for reducing excess capacity for larger collections are the same as
 for small collections. If you can estimate the number of elements in advance,
@@ -227,7 +233,8 @@ if you have the need for a large map that fits its requirements.  The idea is th
 it uses the identity of the key object, 
 rather than its contents for comparisons. In
 other words, it uses \code{==} against the key your provide, rather than the
-\class{.equals()} method. This breaks the \class{Map} contract, but there are a number of applications where this doesn't matter.  
+\code{.equals()} method. This breaks the \class{Map} contract, but there are a
+number of applications where this doesn't matter.
 
 Suppose I want to associate additional information with each product.  Using a
 standard map, I could map the product's unique key, say SKU, 
