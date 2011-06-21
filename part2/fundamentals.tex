@@ -1195,6 +1195,7 @@ fields of objects or local variables,
 % softly reachable means 
 \index{Reference, Weak}
 \index{Reference, Soft}
+\label{sec:soft-references}
 % Programmers
 %very often confuse these mechanisms, and there is quite a bit of disinformation
 %on the Internet; there is especially confusion over the use of soft and weak
@@ -1218,10 +1219,16 @@ then the garbage collector is free to reclaim it whenever it wants.
 The Java language specification places no firm criteria upon \jre
 implementations as to when they should clip soft references. In practice, soft
 references won't be clipped at the random whim of the \jre. All \jres these days
-will attempt to clip soft references in a roughly LRU (least-recently used)
+make a partial effort to clip soft references in a least-recently used (LRU)
 fashion: soft references that haven't been traversed in a while will be clipped
 before those that are frequently used. This is why soft references can form the
-basis for cache implementations.
+basis for cache implementations. In reality, no contemporary \jre uses a true
+LRU policy for clipping soft references. For example, with Sun \jres, it is
+possible that all soft references that haven't been used in 6 minutes will be
+automatically cleared, even though the heap has 500MB of space free, out of a
+600MB heap. \autoref{sec:soft-reference-details} has more details on this
+subject. Soft references are still useful, despite this limitation, but you will
+need to design around this limitation.
 
 Weak references can help you implement a correlated lifetime pattern. If an
 object is referenced by both a strong and a weak reference, then of course the
