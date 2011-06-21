@@ -226,8 +226,8 @@ addressing implementation. The \class{IdentityMap} class can save you space
 if you have the need for a large map that fits its requirements.  The idea is that
 it uses the identity of the key object, 
 rather than its contents for comparisons. In
-other words, it uses \=\= against the key your provide, rather than the \class{.equals()} method.  
-This breaks the \class{Map} contract, but there are a number of applications where this doesn't matter.  
+other words, it uses \code{==} against the key your provide, rather than the
+\class{.equals()} method. This breaks the \class{Map} contract, but there are a number of applications where this doesn't matter.  
 
 Suppose I want to associate additional information with each product.  Using a
 standard map, I could map the product's unique key, say SKU, 
