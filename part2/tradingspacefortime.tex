@@ -2,11 +2,31 @@
 Stores}
 \label{chapter:trading-space-for-time}
 
-There are three important cases of time-space tradeoffs. The first covers
-the situation where recomputing attributes, rather than storing them, is a better
-choice. The next two cover situations where spending memory to extend the
-lifetime of certain objects saves sufficient time to be worthwhile: caches and
-resource pools.
+Sometimes, you need to consume more memory, not less, in order to make your
+application run well. There are three main reasons to trade off increased memory
+consumption for increased overall application performance: caching, resource
+pooling, and cloning. A cache stores the output of expensive operations. A
+resource pool is a cache whose elements are interchangeable. For example, a
+connection pool caches the outcome of establishing of a connection to a remote
+data source. A memory pool amortizes the costs associated with allocation and
+reclamation of memory. These certainly are caches, except that each connection
+to a particular machine, or each allocation of a particular size or type, is
+interchangeable with any other. Finally, cloning allows concurrent, rather than
+synchronized, access to data. All of these mechanisms trade space for time. They
+require extra memory, say, on top of establishing a new connection for every
+remote access. But this trade-off often pays off when the increase in
+performance is more important than increase in memory consumption.
+
+When you implement your own time-space trade-offs, you will leverage underlying
+mechanisms provided by Java. Soft references and \tls can help with caching,
+resource pooling, and cloning, but misuse of them can result in memory issues
+such as leaks and memory drag.
+
+%There are three important cases of time-space tradeoffs. The first covers
+%the situation where recomputing attributes, rather than storing them, is a
+%better choice. The next two cover situations where spending memory to extend
+%the lifetime of certain objects saves sufficient time to be worthwhile: caches
+%and resource pools.
 
 \section{Patterns Based on Soft References}
 \index{Soft References}
@@ -38,22 +58,27 @@ Sometimes, they measure this distance relative to the rate of object allocation;
 this modified heuristic will not clear soft references if your application isn't
 allocating objects at a high rate.
 
+\begin{wrapfigure}[8]{l}{0.395\textwidth}
+\centering
+\begin{framedlisting}
+<refs soft="27801" weak="3" phantom="0" ... />
+\end{framedlisting}
+\caption{Verbose garbage collection data from an IBM \jre tells you
+if a misuse of references is causing a pile-up of reference objects.}
+\label{fig:verbose-gc-output}
+\end{wrapfigure}
 For those \jres that use some sort of LRU heuristic, soft references can form the
 basis for implementing caches. You must be careful not to depend on this
 heuristic blindly. You should first run an experiment against the \jre to which
-you intend to deploy: implement a simple cache with soft references (see
-\autoref{chapter:time-space-tradeoffs}); enable verbose garbage collection, and
-observe the messages that indicate soft references being cleared. Making this
-observation is easier on an IBM than a Sun JVM. To do so on an IBM JVM, enable
-verbose garbage collection statistics (by adding \code{-verbose:gc} to the
-command line), and track lines of output of this form:
-\begin{shortlisting}
-<refs soft="27801" weak="3" phantom="0" dynamicSoftReferenceThreshold="19" maxSoftReferenceThreshold="32" />
-\end{shortlisting}
-It is the number of soft references you need to track. With an
-LRU-based soft reference clearing heuristic, you should observe that clearing
-occurs at a constant rate. If you observe lulls and spikes in clearing, then you
-must not depend on soft references for implementing your caches!
+you intend to deploy. On an IBM JVM, you can easily see whether soft references
+are piling up: enable verbose
+garbage collection (by adding \code{-verbose:gc} to the
+command line), and track lines of output of the form shown in
+\autoref{fig:verbose-gc-output}. With an LRU-based soft reference clearing
+heuristic, you should observe that the number of soft references lies
+within a relatively narrow range. If you
+observe a ragged sawtooth pattern, then you must not
+depend on soft references for implementing your caches!
 
 
 
@@ -63,11 +88,9 @@ equality of keys will trigger a use of the reference. This will extend the
 lifetime of the value, even though the only use of the entry was in checking to
 see if its key matches another.	}
 
-\subsection{Caching a Subset of a Full Data Set}
+\subsection{Caches: Amortizing the Cost of a Query or Method Call}
 
-\subsection{Caching the Output of an Expensive Operation}
-
-\subsection{Gating Access to a Constrained Resource}
+\subsection{Pools: Gating Access to a Constrained Resource}
 
 If the data stored in a data structure is frequently and expensively recomputed
 or refetched, and the data values are the same every time, then it is worthwhile
