@@ -1005,16 +1005,16 @@ field of a class object:
 The next section discusses the lifetime
 of static fields.
 
-\begin{wrapfigure}{r}{0.5\textwidth}
+\begin{wrapfigure}{r}{0.48\textwidth}
 \centering
 \begin{framedlisting}
-static public void main(String[] args) {
+void main(String[] args) {
   Object obj = new Object() {
     protected void finalize() {
        System.out.println("Yes");
     }
   };
-  for (int i = 0; i < 1000000; i++) {
+  for (int i=0; i<1000000; i++) {
      new HashSet().add(i);
   }
   System.out.println("End");
@@ -1216,6 +1216,12 @@ form the basis of caching\index{Caching}, or to implement safety
 valves\index{Safety Valves}. If an object is reachable by only a soft reference,
 then the garbage collector is free to reclaim it whenever it wants.
 
+\callout{softweak}{Softly and Weakly Reachable}{An object is \emph{softly
+reachable} if it is not strongly reachable, but there is at least one path that
+contains a \emph{soft reference}. An object is \emph{weakly reachable} if it is
+neither strong nor softly reachable, but there exists at least one path that
+contains a \emph{weak reference}.
+}
 The Java language specification places no firm criteria upon \jre
 implementations as to when they should clip soft references. In practice, soft
 references won't be clipped at the random whim of the \jre. All \jres these days
@@ -1252,19 +1258,11 @@ details.
 % TODO 20110525 mention guava?
 
 In real code, things will be a bit more complicated. It is possible that an
-object is referenced entirely by strong references, but that it is
+object is directly referenced ownly by strong references, but that it is
 \emph{reachable} only from a soft reference. In this case, everything dominated
 by that soft reference will become garbage collectable as soon as memory gets
 tight.
 
-\callout{softweak}{Softly and Weakly Reachable}{An object is \emph{softly
-reachable} if it is not strongly reachable, but there is at least one path that
-contains a \emph{soft reference}. An object is \emph{weakly reachable} if it is
-neither strong nor softly reachable, but there exists at least one path that
-contains a \emph{weak reference}.
-}
-
- 
 
 
 \begin{wrapfigure}{l}{0.5\textwidth}
@@ -1392,37 +1390,44 @@ When you reference an object from a static field of a class, the object will
 stay around pretty much for the life of the program. While this lets you
 implement a permanently resident lifetime pattern, it is not thread safe. In
 order to protect write access to static fields, you will need to guard these
-operations with locks. This is possible, but tedious and often results in poor
-performance due to contention of threads trying to acquire those locks: they
-need to sleep before they can enter the contended critical section.
+operations with locks. This is possible, but tedious, and often results in poor
+performance due to contention of threads trying to acquire those locks. The
+threads need to sleep or spin-lock before they can enter the contended
+critical section.\footnote{Spin-locking, optimistically assuming that the lock
+will be available in the near future, retries the lock acquisition a few times
+in a tight loop. This can help, in the case of limited lock contention, but can
+result in wasted CPU cycles in the case of severe contention.}
 
 Java provides an alternative way to implement a permanently resident pattern
-called \emph{\tls\/}. \tls provides a way to clone data so that each thread has
-its own copy. It is impossible for one thread to access another thread's local
-storage. When you store objects in a thread's local storage, the objects will
-live for as long as the thread does, unless you \code{null} them out or
-otherwise otherwrite the entries first.
+called \emph{\tls\/}. \Tls provides a easy way to store cloned data, so that
+each thread has its own copy. It is impossible for one thread to access another
+thread's local storage. When you store objects in a thread's local storage, the
+objects will live for as long as the thread does, unless you explicitly
+\code{null} them out or otherwise otherwrite the entries first.
 
+\begin{wrapfigure}{r}{0.55\textwidth}
+\centering
+\begin{framedlisting}
+class Formatter {
+  ThreadLocal<DateFormat> f = new ThreadLocal<DateFormat> {
+    @Override
+    DateFormat initialValue() {
+      return DateFormat.getInstance();
+    }
+  };
+   
+  String format(Date d) {
+    return f.get().format(d);
+  }
+}
+\end{framedlisting}
+\end{wrapfigure}
 To use \tls, you need to create a \emph{thread-local variable}. A thread-local
 variable represents a piece of data that you want to clone across threads. For
 example, if you'd like each thread to have it's own date formatter, because your
 date formatter isn't thread safe, then you would create a thread-local variable
-for it:
-\begin{shortlisting}
-class C {
-   static ThreadLocal<DateFormat> dateFormatter = new ThreadLocal<DateFormat> {
-      protected DateFormat initialValue() {
-         // called the first time a thread tries
-         // to access this thread-local variable
-         return new ...;
-      }
-   };
-   
-   String format(Date d) {
-      return dateFormatter.get().format(d);
-   }
-}
-\end{shortlisting}
+for it.
+
 The main thing you have to be cautious of is memory drag. If you store a large
 structure in the local storage of a thread that lasts for the duration of the
 program, but only use the structure early in your program's execution, then that
@@ -1437,9 +1442,13 @@ ThreadLocal<SoftReference<DateFormat>> dateFormatter;
 \end{shortlisting}
 Now, each thread's copy of the date formatter will be cleaned up by the garbage
 collector if it ever needs the space, and the formatter hasn't been used in a
-while. You need to take care to handle the case when the \jre does get around to
-clipping the soft reference, and you come back to format new dates. Still, this
-hybrid approach, of combining soft references and \tls, can be quite powerful.
+while. This does not clean up every last bit of memory associated with a
+thread's entry. Each thread-local variable is a map, from thread to the value,
+and so the per-entry objects of the map will stick around. Still, at least you
+will not be keeping around a potentially very large structure. You also need to
+take care to handle the case when the \jre does get around to clipping the soft
+reference, and you come back to format new dates. Still, this hybrid approach,
+of combining soft references and \tls, can be quite powerful.
 
 \section{Summary}
 
