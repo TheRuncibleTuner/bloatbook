@@ -1334,7 +1334,12 @@ if you don't poll your reference queue at a rate that at least equals the worst
 case rate at which they will be queued, then the size of your reference queue
 will grow unboundedly. The worst case rate of objects queueing up is the rate at
 which they are created. Therefore, you should make sure to poll the queue in all
-code contexts that create any of the special kinds of references. 
+code contexts that create any of the special kinds of references.
+
+\callout{reference-queue-rule}{Reference Queue Polling Rule}{
+A reference queue must be polled at least as often as \class{Reference} objects
+are created, that are destined for that queue. Otherwise the queue will leak
+memory, growing unboundedly.}
 
 Second, since you need to poll wherever a queueable item is created, you may run
 into a severe degree of lock contention. The \code{poll} method of
