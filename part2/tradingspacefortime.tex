@@ -81,47 +81,71 @@ creates.
 \subsection{Example: Implementing a Concurrent Cache}
 \label{sec:lifetime-management-concurrency-issues}
 
-If your program operates with many concurrent threads, you have to program
-differently, because straightforward implementations of the above strategies will
-result in concurrency issues. One of the primary problems will be lock
-contention, as threads concurrently poll a reference queue. An important example
-of this problem shows up in the implementation of a cache that can support many
-concurrent users.\index{Caches, Concurrency Issues}
-
-\begin{wrapfigure}{r}{0.61\textwidth}
-\centering
-\begin{figurelisting}
-class Cache<K,V> extends ConcurrentHashMap<K,SoftReference<V>> {
-  ReferenceQueue<V> q;
-   
-  @Override
-  void put(K k, V v) {
-    cleanupQueue();
-    super.put(k, new SoftReference(v, q));
-  }
-  
-  void cleanupQueue() {
-    SoftReference<V> v;
-    while((v = q.poll()) != null) {
-       remove(???); // oops!
-    }
-  }
-}
-\end{figurelisting}
-\end{wrapfigure}
-
 A cache is a map, usually of bounded size, with an eviction strategy for
 maintaining that bound.\index{Caches} The Java standard library provides a
 concurrent map implementation, in the form of the \class{ConcurrentHashMap}
 class, but this is not a cache, because it has no eviction hooks with which one
 can bound its size.
 
-Following the soft reference rule, and using the basic guidelines for managing
-reference queues from \autoref{sec:reference-queue-basics}, leads to a first
-attempt at a \class{ConcurrentCache} implementation. You can extend the basic
-concurrent hashmap, wrapping the map's values with soft references.
+\begin{wrapfigure}[9]{r}{0.34\textwidth}
+\centering
+\begin{framedlisting}
+new MapMaker().concurrencyLevel(4).softKeys().maximumSize(1000).createMap();
+\end{framedlisting}
+\caption{Using Google's Guava library to create a concurrent cache.}
+\label{fig:mapmaker-make-concurrent-cache}
+\end{wrapfigure}
+The Java standard library does not provide a concurrent cache implementation.
+Thankfully, there are other libraries at your disposal, such as \class{MapMaker}
+from the Google Guava libraries~\cite{google-guava}. With \class{MapMaker} you can create
+a concurrent cache by calling the sequence in
+\autoref{fig:mapmaker-make-concurrent-cache}. It is nonetheless useful to step
+through what it takes to make this work. In doing so, you will learn about
+managing soft references and reference queues.
+% One of the primary problems you
+%will run into is lock contention, as threads concurrently poll a reference
+%queue.
+\index{Concurrency}\index{Caches}
 
-\begin{wrapfigure}{r}{0.46\textwidth}
+\begin{wrapfigure}{r}{0.61\textwidth}
+\centering
+\begin{figurelisting}
+class Cache<K,V> {
+  ConcurrentHashMap<K,SoftReference<V>> m;
+  ReferenceQueue<V> q;
+   
+  void put(K k, V v) {
+    cleanupQueue();
+    m.put(k, new SoftReference(v, q));
+  }
+  
+  void cleanupQueue() {
+    Reference r;
+    while((r = q.poll()) != null)
+       m.remove(???); // oops!
+  }
+}
+\end{figurelisting}
+\caption{A first attempt at a concurrent cache.}
+\label{fig:concurrent-cache-first-attempt}
+\end{wrapfigure}
+
+\paragraph{Eviction Mechanisms}
+To implement the eviction aspect of a cache, you can leverage soft references.
+You need to follow the soft reference rule from earlier in this chapter: softly
+reference the values, never the keys. You can extend the basic
+\class{ConcurrentHashMap}, wrapping the map's values with soft references. You
+also need to follow the reference queue polling rule from
+\autoref{reference-queue-rule}: poll the queue at least as often as soft
+references are created --- in the steady state, \code{put} calls are likely to
+cause evictions. This leads to the first attempt at a concurrent cache
+implementation, shown in \autoref{fig:concurrent-cache-first-attempt}. The first
+thing you will discover is that your cache implementation cannot inherit from
+the concurrent hash map with softly reference values, because then the
+\code{put} and \code{get} methods would have to expose the soft references.
+Instead, your cache must delegate to the underlying map. 
+
+\begin{wrapfigure}{l}{0.43\textwidth}
 \centering
 \begin{framedlisting}
 class CacheValue<K, V> extends SoftReference<V> {
@@ -137,85 +161,97 @@ class CacheValue<K, V> extends SoftReference<V> {
 key, to allow you to remove the entry when it is evicted from the cache.}
 \end{wrapfigure}
 
-Oops! The variable \code{v} references the value, not the key. Therefore, this
-implementation provides no way to remove evicted value from the map. To fix
-this, you'll need to stash, in the soft reference wrapper, a pointer to the key.
-You can do so in a new \class{CacheSoftReference} wrapper class:\footnote{It
-would be nice if the \class{ConcurrentHashMap} implementation let you extend its
+Unfortunately, this doesn't quite work. The variable \code{v} references the
+value, not the key. Therefore, this first implementation provides no way to
+remove evicted value from the map. To fix this, you'll need to stash, in the a
+subclass of the soft reference wrapper, a pointer to the key.\footnote{It would
+be nice if the \class{ConcurrentHashMap} implementation let you extend its
 implementation so that its \class{\$Entry} class extended soft reference; the
-\class{\$Entry} would serve this role perfectly.}
+\class{\$Entry} would serve this role perfectly.} Then, you can update the
+\class{Cache} implementation to extend
+\class{ConcurrentHashMap<K, CacheValue<K,V>>}, as shown in
+\autoref{fig:concurrent-cache-second-attempt}.
 
+\begin{wrapfigure}{l}{0.61\textwidth}
+\centering
 \begin{figurelisting}
-class ConcurrentCache<K,V> extends ConcurrentHashMap<K,CacheValue<K,V>> {
-   ReferenceQueue<V> q;
+class Cache<K,V> {
+  ConcurrentHashMap<K,CacheValue<K,V>> m;
+  ReferenceQueue<V> q;
    
-   protected void cleanupQueue() {
-      CacheSoftReference<V> v;
-      // poll causes lock contention!
-      while( (v = q.poll()) != null) {
-         remove(v.k);
-      }
-   }
+  void cleanupQueue() {
+    Reference r;
+    while( (r = q.poll()) != null)
+       remove(((CacheValue)r).k);
+  }
    
-   public V put(K key, V value) {
-      cleanupQueue();
-      return super.put(key, new CacheSoftReference<K,V>(key,value,q));
-   }
-   
-   public V get(K key) {
-      cleanupQueue();
-      return super.get(key);
-   }
+  void put(K k, V v) {
+    cleanupQueue();
+    m.put(key,new CacheValue<K,V>(k,v,q));
+  }
 }
 \end{figurelisting}
-This implementation still suffers from several critical problems. First, every
-call to \code{put} must check the reference queue for pending evictions in order
-to avoid unbounded growth of the eviction queue --- in the steady state,
-\code{put} calls are likely to cause evictions. Even though \code{get} calls
-won't cause evictions, in order to avoid pending evictions piling up as cached
-elements are discovered to be unused, every call to \code{get} must also poll for
-evictions. This can result in foiling the concurrency aspect of the
-\class{ConcurrentHashMap}. Second, if the cache as a whole goes unused for a long
-period of time, the pending evictions will pile up.
+  %public V get(K k) {
+    %cleanupQueue();
+    %return super.get(k);
+%  }
+\caption{A second attempt at a concurrent cache.}
+\label{fig:concurrent-cache-second-attempt}
+\end{wrapfigure}
 
-The only way to fix the lock contention problem, at least as of \javasix, is to
-spawn a thread that periodically polls the reference queue for evicted entries.
-This will also fix the second problem. This spawned thread's \code{run} method
-will look just like the \code{cleanupQueue} method above, except that it should
-loop indefinitely, and call \code{q.remove()} rather than \code{poll()};
-the former blocks until an eviction occurs (though you must still be careful to
-check the return value for \code{null}, despite what the Javadocs claim).
+\paragraph{The Need for a Cleanup Thread}
+This updated implementation still suffers from two critical problems. First, the
+reference queue \code{poll} method is internally synchronized. Every call to
+\code{put} and \code{get} must poll the reference queue at least once, to avoid
+unbounded pile-up in the queue. This can result in severe lock contention, which
+pretty much foils the concurrency aspect of the \class{ConcurrentHashMap}.
+Also, if the cache as a whole goes unused for a long period of time, then the
+objects already queued up in the reference queue will suffer from memory drag
+(see \autoref{drag}). These queued up objects will never be polled, since
+neither \code{put} nor \code{get} will be called. The good news is that this
+won't result in a memory leak, where objects pile up without bound, but it is
+still a potential source of memory problems. You may find that you are wasting
+quite a bit of memory in the reference queues of quiescent caches.
 
+One way to fix the lock contention problem is to have a separate thread be
+responsible for polling the reference queue. This will also fix the second
+problem, as long as the polling thread is active for as long as the cache itself
+is around. This spawned thread's \code{run} method will look just like the
+\code{cleanupQueue} method above, except that it should loop indefinitely.
+
+\paragraph{Avoiding Spikes}
 At first sight, it would seem that you should be able to remove the calls to
-\code{cleanupQueue} from the \code{put} and \code{get} methods. This, after all,
-was the whole point of introducing the cleanup thread. However, this modified
-implementation, while an improvement, suffers from a new problem. Now, if you
-remove the \code{cleanupQueue} calls, when there is a large spike of \code{put}
-calls in a short period of time, you are at risk of running out of Java heap due
-to a large pileup of pending evictions.
+\code{cleanupQueue} from the \code{put} and \code{get} methods. The cleanup
+thread should take care of all necessary polling, right? However, when there is
+a large spike of \code{put} calls in a short period of time, you are at risk of
+running out of Java heap due to a large pileup of pending evictions.
 
+\begin{wrapfigure}{r}{0.4\textwidth}
+\centering
+\begin{framedlisting}
+AtomicInteger putCount;
+void cleanupQueueHelper() {
+  if (putCount.incrementAndGet() >= 1000) {
+    putCount.set(0);
+    cleanupQueue();
+  }
+}
+\end{framedlisting}
+\caption{To avoid spikes, \code{put} must call this method.}
+\label{fig:new-cleanup-queue}
+\end{wrapfigure}
 You must have a safety valve in place to prevent this situation. One possibility
 is to keep an approximate count of the number of \code{put} calls, and call
 \code{cleanupQueue} only periodically. In order to avoid lock contention in
 maintaining this count, you can do so in an unsynchronized way. There is still a
 pathologic possibility that every racey increment of the put counter won't
 actually increment the counter. If this worries you, you can use an
-\class{AtomicInteger}, at increased expense. Instead of calling
-\code{cleanupQueue} directly, the \code{put} method now calls a new
-\code{helpCleaner} method:
-\begin{shortlisting}
-   static private final int SAFETY_VALVE = 1000;
-   private void helpCleaner() {
-      if (putCount.incrementAndGet() >= SAFETY_VALVE) {
-         putCount.set(0);
-         cleanupQueue();
-      }
-   }
-\end{shortlisting}
-There is no reason for \code{get} calls to call this method. The only point of
-this safety valve is to avoid a sudden large influx of \code{put} calls. Indeed,
-in this final implementation, the \code{ConcurrentCache} class needn't override
-the \code{get} method of \code{ConcurrentHashMap}.
+\class{AtomicInteger}, at increased expense. A new \code{cleanupQueueHelper}
+method is shown in \autoref{fig:new-cleanup-queue}, and \code{poll} now calls
+this method. There is no reason for \code{get} calls to call this method. The
+only point of this safety valve is to avoid a sudden large influx of \code{put} calls.
+% Indeed, in this final implementation, the \code{ConcurrentCache} class needn't
+% override the \code{get} method of \code{ConcurrentHashMap}.
 
 
 
