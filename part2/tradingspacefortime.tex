@@ -195,13 +195,13 @@ managing soft references and reference queues.
 %queue.
 \index{Concurrency}\index{Caches}
 
-\begin{wrapfigure}{r}{0.61\textwidth}
+\begin{wrapfigure}{r}{0.605\textwidth}
 \centering
 \begin{figurelisting}
 class Cache<K,V> {
   ConcurrentHashMap<K,SoftReference<V>> m;
   ReferenceQueue<V> q;
-   
+
   void put(K k, V v) {
     cleanupQueue();
     m.put(k, new SoftReference(v, q));
@@ -233,22 +233,6 @@ the concurrent hash map with softly reference values, because then the
 \code{put} and \code{get} methods would have to expose the soft references.
 Instead, your cache must delegate to the underlying map. 
 
-\begin{wrapfigure}{l}{0.43\textwidth}
-\centering
-\begin{framedlisting}
-class CacheValue<K, V> extends SoftReference<V> {
-  K key;
-   
-  CacheValue(K k, V v, ReferenceQueue<V> q) {
-    super(v, q);
-    this.key = k;
-  }
-}
-\end{framedlisting}
-\caption{You will need a special value reference that keeps a reference to the
-key, to allow you to remove the entry when it is evicted from the cache.}
-\end{wrapfigure}
-
 Unfortunately, this doesn't quite work. The variable \code{v} references the
 value, not the key. Therefore, this first implementation provides no way to
 remove evicted value from the map. To fix this, you'll need to stash, in the a
@@ -260,7 +244,39 @@ implementation so that its \class{\$Entry} class extended soft reference; the
 \class{ConcurrentHashMap<K, CacheValue<K,V>>}, as shown in
 \autoref{fig:concurrent-cache-second-attempt}.
 
-\begin{wrapfigure}{l}{0.61\textwidth}
+
+\begin{wrapfigure}{r}{0.43\textwidth}
+\centering
+\begin{framedlisting}
+class CacheValue<K, V> extends SoftReference<V> {
+  K key;
+
+  CacheValue(K k, V v, ReferenceQueue<V> q) {
+    super(v, q);
+    this.key = k;
+  }
+}
+\end{framedlisting}
+\caption{You will need a special value reference that keeps a reference to the
+key, to allow you to remove the entry when it is evicted from the cache.}
+\end{wrapfigure}
+
+\paragraph{The Need for a Cleanup Thread}
+This updated implementation still suffers from two critical problems. First, the
+reference queue \code{poll} method is internally synchronized. Every call to
+\code{put} and \code{get} must poll the reference queue at least once, to avoid
+unbounded pile-up in the queue. This can result in severe lock contention, which
+pretty much foils the concurrency aspect of the \class{ConcurrentHashMap}.
+Also, if the cache as a whole goes unused for a long period of time, then the
+objects already queued up in the reference queue will suffer from memory drag
+(see \autoref{drag}). These queued up objects will never be polled, since
+neither \code{put} nor \code{get} will be called. The good news is that this
+won't result in a memory leak, where objects pile up without bound, but it is
+still a potential source of memory problems. You may find that you are wasting
+quite a bit of memory in the reference queues of quiescent caches.
+
+
+\begin{wrapfigure}[18]{l}{0.61\textwidth}
 \centering
 \begin{figurelisting}
 class Cache<K,V> {
@@ -286,20 +302,6 @@ class Cache<K,V> {
 \caption{A second attempt at a concurrent cache.}
 \label{fig:concurrent-cache-second-attempt}
 \end{wrapfigure}
-
-\paragraph{The Need for a Cleanup Thread}
-This updated implementation still suffers from two critical problems. First, the
-reference queue \code{poll} method is internally synchronized. Every call to
-\code{put} and \code{get} must poll the reference queue at least once, to avoid
-unbounded pile-up in the queue. This can result in severe lock contention, which
-pretty much foils the concurrency aspect of the \class{ConcurrentHashMap}.
-Also, if the cache as a whole goes unused for a long period of time, then the
-objects already queued up in the reference queue will suffer from memory drag
-(see \autoref{drag}). These queued up objects will never be polled, since
-neither \code{put} nor \code{get} will be called. The good news is that this
-won't result in a memory leak, where objects pile up without bound, but it is
-still a potential source of memory problems. You may find that you are wasting
-quite a bit of memory in the reference queues of quiescent caches.
 
 One way to fix the lock contention problem is to have a separate thread be
 responsible for polling the reference queue. This will also fix the second
