@@ -1405,50 +1405,11 @@ thread's local storage. When you store objects in a thread's local storage, the
 objects will live for as long as the thread does, unless you explicitly
 \code{null} them out or otherwise otherwrite the entries first.
 
-\begin{wrapfigure}{r}{0.55\textwidth}
-\centering
-\begin{framedlisting}
-class Formatter {
-  ThreadLocal<DateFormat> f = new ThreadLocal<DateFormat> {
-    @Override
-    DateFormat initialValue() {
-      return DateFormat.getInstance();
-    }
-  };
-   
-  String format(Date d) {
-    return f.get().format(d);
-  }
-}
-\end{framedlisting}
-\end{wrapfigure}
 To use \tls, you need to create a \emph{thread-local variable}. A thread-local
 variable represents a piece of data that you want to clone across threads. For
 example, if you'd like each thread to have it's own date formatter, because your
 date formatter isn't thread safe, then you would create a thread-local variable
-for it.
-
-The main thing you have to be cautious of is memory drag. If you store a large
-structure in the local storage of a thread that lasts for the duration of the
-program, but only use the structure early in your program's execution, then that
-structure will be needlessly consuming space. Your options are either to design
-things so that the thread terminates, rather than staying alive forever; or you
-can explicitly overwrite the entry, by calling {\tt dateFormatter.put(null)},
-but this must be done by the thread itself, since there is no way for one thread
-to access another thread's local storage; or, finally, you can have the
-thread-local variable store a soft reference to the data:
-\begin{shortlisting}
-ThreadLocal<SoftReference<DateFormat>> dateFormatter;
-\end{shortlisting}
-Now, each thread's copy of the date formatter will be cleaned up by the garbage
-collector if it ever needs the space, and the formatter hasn't been used in a
-while. This does not clean up every last bit of memory associated with a
-thread's entry. Each thread-local variable is a map, from thread to the value,
-and so the per-entry objects of the map will stick around. Still, at least you
-will not be keeping around a potentially very large structure. You also need to
-take care to handle the case when the \jre does get around to clipping the soft
-reference, and you come back to format new dates. Still, this hybrid approach,
-of combining soft references and \tls, can be quite powerful.
+for it: \code{ThreadLocal<DateFormat>}.
 
 \section{Summary}
 
