@@ -405,47 +405,106 @@ database uses to cache certain information about the query.
 \end{comment}
 
 \section{Patterns Based on Thread-local Storage}
-% TODO 20110601 no reetrant safety given by thread-local storage
 % %ODO 20110601 stores or stoage? also in bulk storage/stores 
 
-The last advanced memory management feature offered by Java is the ability to
-associate memory with a thread. \Tls provides a way to avoid
-synchronization costs, often at the expense of some degree of wasted memory. To
-avoid synchronization, you often need to replicate some data structures. This
-feature is, of course, only helpful if your program runs with multiple threads.
+To avoid synchronization, you often need to replicate data structures. \Tls is a
+built-in mechanism that Java provides to facilitate this kind of cloning across
+threads. 
 
-Consider an example of using the \class{SecureRandom} class. Instances of this
-class provide a stream of pseudo-random numbers, in a way that is
-cryptographically strong. If you have a singleton instance of this class, you may
-experience scalability problems due to lock contention; the contention is hidden
-within the \class{SecureRandom} implementation. You can use \tls
-to avoid this contention, at the (in this case, small) expense of having one
-instance per worker thread:
-\begin{shortlisting}
-class MyRandomNumberGenerator {
-   static ThreadLocal<SecureRandom> rng = new ThreadLocal<SecureRandom>() {
-      protected SecureRandom initialValue() {
-         SecureRandom random = new SecureRandom();
-         random.setSeed(/*some good seed*/);
-         return random;
-      }
-   }
+\begin{wrapfigure}{r}{0.68\textwidth}
+\centering
+\begin{framedlisting}
+class ThreadLocalRandom {
+  ThreadLocal<SecureRandom> rng = new ThreadLocal<SecureRandom>() {
+    SecureRandom initialValue() {
+      SecureRandom random = new SecureRandom();
+      random.setSeed(...);
+      return random;
+    }
+  }
    
-   public int next() {
-      return rng.get().next(32); // need 32 bits of data
-   }
+  public int next() {
+    // need 32 bits of data
+    return rng.get().next(32);
+  }
 }
-\end{shortlisting} 
-\javaseven adds a \class{ThreadLocalRandom} implementation to the standard
-library.
+\end{framedlisting}
+\end{wrapfigure}
+Consider an example of generating random numbers, using the \class{SecureRandom}
+class. Instances of this class provide a stream of pseudo-random numbers, in a way that is
+cryptographically strong. If you have a singleton instance of this class, you
+may experience scalability problems due to lock contention; the contention is
+hidden within the \class{SecureRandom} implementation. You can use \tls to avoid
+this contention, at the (in this case, small) expense of having one instance per
+worker thread. \javaseven adds a \class{ThreadLocalRandom} implementation to the
+standard library.
 
-Data stored in \tls will live as long as the thread. If you need
-the memory to be reclaimed before the thread terminates, you must explicitly set
-the storage to \code{null} via a call to \code{rng.set(null)}. If you are using
-the \class{java.util.concurrent} thread pool framework, then you can use its
-hooks that are called after a task, or after a thread, terminates. You can do so
-by extending the \class{ThreadPoolExecutor} and overriding the
+
+%class Formatter {
+  %ThreadLocal<DateFormat> f = new ThreadLocal<DateFormat> {
+    %@Override
+    %DateFormat initialValue() {
+      %return DateFormat.getInstance();
+    %}
+  %};
+%   
+  %String format(Date d) {
+    %return f.get().format(d);
+  %}
+%}
+
+\paragraph{\Tls: Reentrancy Gotchas}
+A thread-local variable allows you to store one copy of a data structure per
+thread. If your code is structured so that one method invokes another, and the
+both need to make use of the thread-local variable, you should be cautious of
+reentrancy problems. A reentrancy problem is like a race condition, but within
+one thread. If first one invocation begins to modify the thread-local variable,
+and, before it is done with its modifications, calls another method that begins
+its \emph{own} modifications, then you will see unexpected results.
+
+One way to protect against the potential for this problem is to adopt a
+\emph{fail-fast} approach. When you grab an entry from thread-local storage for
+modification, then assign the thread-local variable to \code{null} for the
+duration of the modifications. That way, any reentrancy problems will be exposed
+as quickly as possible, as a \code{NullPointerException}. Here, you will get an
+exception thrown at the very point of the bug, rather than further down the
+line, as is often the case with race and reentrancy bugs.
+
+\paragraph{\Tls: Memory Drag Gotchas}
+
+When using \tls, you need to be cautious of memory drag. Data stored in \tls
+will, unless you take some action, live as long as the thread. If you store a
+large structure in the local storage of a thread that lasts for the duration of
+the program, but only use the structure early in your program's execution, then
+that structure will be needlessly consuming space. 
+
+To avoid drag you can explicitly overwrite the entry, by calling {\tt
+rng.put(null)}. This must be done by the thread itself, since there is no way
+for one thread to access another thread's local storage. You can put this call
+at the end of a phase in your program, or when the program terminates. If you
+are using the \class{java.util.concurrent} thread pool framework, then you can
+use its hooks that are called after a task, or after a thread, terminates. You
+can do so by extending the \class{ThreadPoolExecutor} and overriding the
 \code{afterExecute} and \code{terminated} methods, respectively.
+
+Another option is to have your thread-local variable store a soft reference to
+the data. If you adopt this design, then each thread's copy of the random number
+generator will be cleaned up by the garbage collector if it ever needs the
+space, and the generator hasn't been used in a while.
+\begin{shortlisting}
+ThreadLocal<SoftReference<SecureRandom>> rng;
+\end{shortlisting}
+This design does not clean up every last bit of memory associated with a
+thread's entry. Each thread-local variable is a map, from thread to the value,
+and so the per-entry objects of the map will stick around. Still, at least you
+will not be keeping around a potentially very large structure. You also need to
+take care to handle the case when the \jre does get around to clipping the soft
+reference, and you come back to generate more random numbers. Still,
+this hybrid approach, of combining soft references and \tls, can be quite powerful.
+
+ 
+
+
 
 \Tls, like the \class{WeakHashMap}, is an example of the \jre hiding some of the
 complexity of managing weak references. Under the covers, the \tls implementation
@@ -455,6 +514,7 @@ implementations, this will not happen immediately, because these implementations
 do not use reference queues. They use an alternative approach that at least
 keeps the amount of memory spent on stale \tls bounded.
 
+\begin{comment}
 \section{}
 
 \subsection{Avoiding Leaks When Optimizing for Time}
@@ -468,11 +528,19 @@ time.
 
 \begin{example}{A Caching Sharing Pool}
 \end{example}
-
+\end{comment}
 
 \section{Summary}
 
-
+\begin{itemize}
+  \item Soft references can be a useful tool to bound the size of caches, but
+  you should not depend solely on it. Some \jres do not implement an LRU
+  heuristic at all. Others implement one that may give you unexpected
+  evictions, despite there being plenty of free Java heap.
+  \item Implementing a concurrent cache is surprisingly difficult!
+  \item Thread-local storage is an easy way to keep around clones of data, in
+  order to avoid lock contention.
+\end{itemize}
 
 
 
