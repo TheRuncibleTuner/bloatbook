@@ -3,19 +3,19 @@ Stores}
 \label{chapter:trading-space-for-time}
 
 Sometimes, you need to consume more memory, not less, in order to make your
-application run well. There are three main reasons to trade off increased memory
-consumption for increased overall application performance: caching, resource
-pooling, and cloning. A cache stores the output of expensive operations. A
-resource pool is a cache whose elements are interchangeable. For example, a
-connection pool caches the outcome of establishing of a connection to a remote
-data source. A memory pool amortizes the costs associated with allocation and
-reclamation of memory. These certainly are caches, except that each connection
-to a particular machine, or each allocation of a particular size or type, is
-interchangeable with any other. Finally, cloning allows concurrent, rather than
-synchronized, access to data. All of these mechanisms trade space for time. They
-require extra memory, say, on top of establishing a new connection for every
-remote access. But this trade-off often pays off when the increase in
-performance is more important than increase in memory consumption.
+application run well. There are two main reasons to trade off increased memory
+consumption for increased overall application performance: caching and cloning.
+A cache stores the output of expensive operations. A resource pool is a cache
+whose elements are interchangeable. For example, a connection pool caches the
+outcome of establishing of a connection to a remote data source. A memory pool
+amortizes the costs associated with allocation and reclamation of memory. These
+are caches, except that each connection to a particular machine, or each
+allocation of a particular size or type, is interchangeable with any other.
+Finally, cloning allows concurrent, rather than synchronized, access to data.
+All of these mechanisms trade space for time. They require extra memory, say, on
+top of establishing a new connection for every remote access. But this trade-off
+often pays off when the increase in performance is more important than increase
+in memory consumption.
 
 When you implement your own time-space trade-offs, you will leverage underlying
 mechanisms provided by Java. Soft references and \tls can help with caching,
@@ -55,10 +55,15 @@ specification is that the \jre must clear all soft references before it throws
 an \class{OutOfMemoryException}. In practice, most \jres also impose a freshness
 criterion on softly reachable objects. These \jres will first discard those
 softly reachable objects that have been least recently used. Most, if not all,
-\javafive and \javasix \jres use a more sophisticated least recently used (LRU)
-heuristic.\footnote{Early \jres tended to make poor decisions, when choosing how
-to clear soft references. One such \jre would wait until the heap was exhausted,
-at which point it would clear all soft references.}
+\javafive and \javasix \jres use a rough approximation a least recently used
+(LRU) eviction policy. Early \jres tended to make poor decisions, when choosing
+how to clear soft references. One such \jre would wait until the heap was
+exhausted, at which point it would clear all soft references. On early Sun
+\jres, a soft reference behaves like a weak reference, which means that such
+softly referenced objects will probably be collected in the very near future,
+independent of demand for memory, or how recently used the referenced objects
+are. \autoref{tab:soft-reference-by-jre} summarizes the treatment of soft
+references by various \jres.
 
 \begin{table}
 \centering
@@ -66,29 +71,44 @@ at which point it would clear all soft references.}
 \toprule
 soft reference clipping policy & \jre versions \\
 \cmidrule(r){1-1} \cmidrule(l){2-2} \\
-LRU-like & IBM 1.4 and higher, Sun 1.3.1 and higher \\
+LRU heuristic & IBM 1.4 and higher, Sun 1.3.1 and higher \\
 clip all when memory is tight & IBM prior to 1.4 \\
 treat as weak references & Sun prior to 1.3.1 \\
 \bottomrule
 \end{tabular}
 \caption{Depending on your \jre, you may not be able to employ soft references
-as a way to bound the size of caches. Only some \jres discard of soft references
-in an LRU-like fashion. On early Sun \jres, a soft reference behaves like a
-weak reference, which means that such softly referenced objects will probably
-be collected in the very near future, independent of demand for memory, or
-how recently used the referenced objects are.}
+as you might hope. Only some \jres discard
+of soft references in an LRU-like fashion.}
+\label{tab:soft-reference-by-jre}
 \end{table}
 
-To traverse a soft reference, and access the underlying object, you can invoke
-the soft reference's \code{get} method. To keep track of freshness, most \jres
-store the last time \code{get} was called in each \class{SoftReference}
-instance. Some \jres measure freshness relative to the rate of
-object allocation. For example, the Sun \jres, after version 1.3.1, 
+\paragraph{Be Cautious with Soft References}
+Most contemporary \jres measure freshness relative to the amount of free memory.
+For example, the Sun \jres, after version 1.3.1, the default behavior is to clip
+all soft references that haven't been used for 1 second, for each megabyte of
+free heap. This means that, if you have 500MB of free heap, any cache entries
+that haven't been used in 6 minutes will be evicted after the next garbage
+collection. This is true, even if the total size of your heap is 600MB: despite
+the heap being 83\% unoccupied, the \jre will begin to evict some cache entries.
+This value can be tweaked, at least on Sun \jres, via the command-line argument
+\code{-XX:SoftRefLRUPolicyMSPerMB}. This value is in milliseconds, so passing
+5000 would change the above eviction example from 6 minutes to 30 minutes (since
+the default is 1000 milliseconds per megabyte of heap).
 
- this modified heuristic will not clear soft references if
-your application isn't allocating objects at a high rate.
+This is a reasonable approximation to a true LRU eviction policy. For those
+\jres that use some a freshness heuristic, soft references can still form the
+basis for implementing caches. However, you must not depend on this heuristic
+blindly.
 
-\begin{wrapfigure}[8]{l}{0.395\textwidth}
+
+%To traverse a soft reference, and access the underlying object, you can invoke
+%the soft reference's \code{get} method. To keep track of freshness, most \jres
+%store the last time \code{get} was called in each \class{SoftReference}
+%instance.  
+
+
+
+\begin{wrapfigure}[7]{l}{0.395\textwidth}
 \centering
 \begin{framedlisting}
 <refs soft="27801" weak="3" phantom="0" ... />
@@ -97,39 +117,53 @@ your application isn't allocating objects at a high rate.
 if a misuse of references is causing a pile-up of reference objects.}
 \label{fig:verbose-gc-output}
 \end{wrapfigure}
-For those \jres that use some sort of LRU heuristic, soft references can form the
-basis for implementing caches. You must be careful not to depend on this
-heuristic blindly. You should first run an experiment against the \jre to which
-you intend to deploy. On an IBM JVM, you can easily see whether soft references
-are piling up: enable verbose
-garbage collection (by adding \code{-verbose:gc} to the
-command line), and track lines of output of the form shown in
-\autoref{fig:verbose-gc-output}. With an LRU-based soft reference clearing
-heuristic, you should observe that the number of soft references lies
-within a relatively narrow range. If you
-observe a ragged sawtooth pattern, then you must not
-depend on soft references for implementing your caches!
+You should monitor the behavior of soft references in your application. On an
+IBM JVM, you can see whether soft references are piling up: enable verbose
+garbage collection (by adding \code{-verbose:gc} to the command
+line\index{Verbose Garbage Collection}), and track the output of the form shown
+in \autoref{fig:verbose-gc-output}. If the LRU heuristic is not working well,
+then you will observe a ragged sawtooth pattern in the number of soft
+references. If so, then you must not depend on soft references for implementing
+your caches! On Sun \jres, you should also monitor the hit rate of you caches,
+relative to the value of the \code{-XX:SoftRefLRUPolicyMSPerMB} tuning
+parameter.
 
+\paragraph{Consider Establishing a Bound, Too}
+Because of the potential limitations of the LRU heuristic, you may want to treat
+soft references as more of a safety valve, rather than as the primary means for
+ensuring that the cache stays at a reasonable size. With soft references only,
+it is possible that your cache will be entirely cleaned up, if there is a lull
+of only a few minutes. With only a pre-established capacity bound on the data
+structure, you avoid this problem, but are subject to memory exhaustion. If you
+choose a bound of, say, 10,000 entries, you do have some assurance that this
+will indeed by the occupancy level, in the steady state. However, unless you do
+the careful analysis described in \autoref{part:1}, combined with the
+scalability analysis described in \autoref{part:3}, you have no way of knowing
+how many bytes those 10,000 entries consume. If the unit cost of each entry of
+the cache is 100 kilobytes, then you cache, in the steady state, will occupy 1
+gigabyte of heap. You may be left with excessive garbage collection, because you
+have left little room for temporary object creation. You may even suffer out of
+memory exceptions under certain conditions.
 
+Soft references can serve as a safety valve, to protect against these memory
+problems. With some careful experimentation, you should be able to combine
+capacity bounds with soft references to achieve the desired effect.
+
+\paragraph{What to Reference, Softly}
+If you do use soft references to help bound the size of a data structure, you
+need to be cautious about how you use soft references. If you reference the
+wrong objects, using soft references, you may foil the LRU heuristic of the
+\jre. For example, say you are using a \class{HashMap}, and decide to softly
+reference the keys. Whenever the map has hash collisions, then each call to
+\code{get} or \code{put} may update the last-used field of the soft reference
+for objects that are not \code{equal} to the given key, but that hash-collide
+with it.
 
 \callout{soft-reference-rule}{Soft Reference Rule}{
 Soft references must always be over values, not keys. Otherwise, testing
 equality of keys will trigger a use of the reference. This will extend the
 lifetime of the value, even though the only use of the entry was in checking to
 see if its key matches another.	}
-
-\subsection{Caches: Amortizing the Cost of a Query or Method Call}
-
-\subsection{Pools: Gating Access to a Constrained Resource}
-
-If the data stored in a data structure is frequently and expensively recomputed
-or refetched, and the data values are the same every time, then it is worthwhile
-to cache the computation or data fetch. The expense of re-fetching data from
-external data sources and recomputing the in-memory structure can often be
-amortized, at the expense of stretching the lifetime of these data structures. A
-good cache defers the time that an object will be reclaimed, as long as there is
-sufficient space to handle the flux of temporary objects your application
-creates.
 
 \subsection{Example: Implementing a Concurrent Cache}
 \label{sec:lifetime-management-concurrency-issues}
@@ -140,8 +174,9 @@ concurrent map implementation, in the form of the \class{ConcurrentHashMap}
 class, but this is not a cache, because it has no eviction hooks with which one
 can bound its size.
 
-\begin{wrapfigure}[9]{r}{0.34\textwidth}
+\begin{wrapfigure}[9]{l}{0.34\textwidth}
 \centering
+\vspace{-2mm}
 \begin{framedlisting}
 new MapMaker().concurrencyLevel(4).softKeys().maximumSize(1000).createMap();
 \end{framedlisting}
@@ -308,6 +343,20 @@ only point of this safety valve is to avoid a sudden large influx of \code{put} 
 
 
 
+\begin{comment}
+\subsection{Caches: Amortizing the Cost of a Query or Method Call}
+
+\subsection{Pools: Gating Access to a Constrained Resource}
+
+If the data stored in a data structure is frequently and expensively recomputed
+or refetched, and the data values are the same every time, then it is worthwhile
+to cache the computation or data fetch. The expense of re-fetching data from
+external data sources and recomputing the in-memory structure can often be
+amortized, at the expense of stretching the lifetime of these data structures. A
+good cache defers the time that an object will be reclaimed, as long as there is
+sufficient space to handle the flux of temporary objects your application
+creates.
+
 \section{Resource Pools}
 \label{sec:resource-pools}
 \index{Resource Pool}
@@ -351,6 +400,7 @@ resoures in the database process. Second are the precompiled SQL statements that
 your application uses. As with the connections, these involve setup cost, of the
 compilation itself, as well as the reservation of memory resources, that the
 database uses to cache certain information about the query.
+\end{comment}
 
 \section{Patterns Based on Thread-local Storage}
 % TODO 20110601 no reetrant safety given by thread-local storage
