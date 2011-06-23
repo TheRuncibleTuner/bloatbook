@@ -1,2 +1,111 @@
 \chapter{A Comparison of Sizings on \jres}
 \label{chapter:jre-comparison}
+
+The majority of the body of this book focuses on the Sun 32-bit \jre. This
+appendix provides supplementary material regarding the sizing criteria used by
+other \jres, and how various configuration choices affect these parameters.
+
+\section{Sizing Criteria}
+
+
+\begin{table}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Platform & \shortstack{Bytes per\\Reference} & \shortstack{Bytes per\\Header} & Alignment & \shortstack{Addressible\\Bytes} \\
+\cmidrule(r){1-1} \cmidrule(r){2-5}
+IBM zOS 31-bit &  4 & 12    & 8 & 1.3GB \\ 
+Windows 32-bit &  4 & 8--12 & 8 & 1.8GB \\
+AIX 32-bit     &  4 & 12    & 8 & 2.5-3.25GB\\ 
+Solaris 32-bit &  4 & 8     & 8 & 3.5GB \\ 
+\cmidrule(r){1-1} \cmidrule(r){2-5}
+Linux 64-bit   &  8 & 24    & 16 & 128TB \\
+AIX 64-bit     &  8 & 24    & 16 & $>$ 1PB \\
+compressed refs & 4 & 12 & 8 & 28-32GB \\
+extended compressed refs & 4 & 12 & 16 & 64GB \\
+\bottomrule
+\end{tabular}
+\caption{Sizing information for various platforms.}
+\label{tab:sizing-criteria}
+\end{table}
+
+\autoref{tab:sizing-criteria} summarizes the important sizes that \jres use.
+These include the number of bytes each reference consumes, the number of bytes
+each object header consumes, the boundary (in bytes) to which each object
+allocation is aligned, and the maximum number of bytes a Java application can
+address. These values vary fairly widely, from one \jre to another. 
+
+The value that varies most is the maximum heap size a Java application can use.
+If you aren't running on a 64-bit \jre, you should exercise extreme caution in
+setting the heap size too high. For example, on a 32-bit Windows platform, if
+you request a heap size of 1.8GB, then your application will only have a few
+hundred megabytes  of address space left over for native resources. All of your
+byte code, compiled code, and all of the \jres metadata about classes and the
+heap, need to fit into this small window. On AIX, if you request 3.25GB of Java
+heap, the story is similar.
+
+\begin{wraptable}{r}{0.5\textwidth}
+\centering
+\begin{tabular}{ll}
+\toprule
+Provider & Command-line Argument \\
+\cmidrule(r){1-1} \cmidrule(r){2-2}
+IBM & -Xcompressedrefs \\
+Sun & -XX:+UseCompressedOops \\
+JRockit & -XXcompressedrefs \\
+\bottomrule
+\end{tabular}
+\caption{Options for specifying that you wish the \jre to use compressed references. This is only relevant for 64-bit \jres.}
+\end{wraptable}
+
+\section{Compressed references}
+\index{Compressed References}
+
+One potential downside to switching to a 64-bit \jre is an increase in memory
+consumption. Each reference will consume 8 bytes, and each object header will
+consume as much as 24 bytes. Luckily, most \jres support \emph{compressed
+references}. When using compressed references, references and object headers
+consume as much as they would on a 32-bit platform, which is nice. There are two
+downsides. One is that the maximum heap size is far lower than it would be with
+full 64-bit pointers, though still higher than with a 32-bit \jre. For example,
+the Sun and IBM \javasix \jres support heap sizes of only up to 32GB; in some
+cases, the limit is 25 or 28GB. The other downside is a potential, though small,
+decrease in performance. THe hardware expects 64-bit pointers, but the heap only
+stores 32 bits. Therefore, each memory operation may require an extra shift
+operation. Some \jres are clever enough to avoid this expense, if the requested
+maximum heap size is less than 4GB.
+
+For some \jres, if you are willing to pay a higher memory overhead, then you can
+support up to 64GB of memory, while still using only 32-bit references. When
+\jres operate in this mode, each object is aligned to a 16 byte boundary. This
+may result in an increase alignment overhead, compared to the normal 8-byte
+alignment. For example, say a \class{Double} boxed scalar has 8 bytes of data
+and a 12-byte header. This adds up to 20 bytes. With 8-byte alignment, you will
+pay 4 bytes for alignment cost. With 16-byte alignment, the alignment overhead
+is 12 bytes. On the other hand, for a \class{String} or \class{Integer}, the
+alignment costs remain unchanged, whether the \jre aligns to 8- or 16-byte
+boundaries.
+
+Many \jres will automatically enable this support for compressed references. You
+should consult the documentation of your specific \jre provider to know whether
+this is the case.
+
+\section{Identity Hashcode in Object Headers}
+
+Depending on the \jre, the object header may actually be 4 bytes smaller than
+indicated in \autoref{tab:sizing-criteria}. Some \jres leave room for the
+identity hashcode in the header of every object. The identity hashcode is
+usually the address of the object. If the garbage collector decides to move the
+object to another address at some point, then it has to store the original
+address somewhere. This is necessary so that the \code{identityHashcode} method
+always returns the same value, for the lifetme of a given object. The values in
+the table assume that the \jre preallocates space for this identity hashcode,
+and so every object pays the expense, even if the object's identity hashcode is
+never used. Some \jres are clever enough to store the identity hashcode only
+when it is needed: if it is used, and, even then, only if the object is moved
+from its original location. The only way you can know whether this is the case
+is to write a small program that allocates a large number of \class{Integer}
+objects. You know how much space you expect the object to consume, based on the
+4 bytes of actual data, and the expected header size. Try it, and see how many
+you can fit, in a given size of heap.
+
