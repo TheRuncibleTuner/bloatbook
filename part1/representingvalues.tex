@@ -1,6 +1,29 @@
 \chapter{Representing Field Values}
+TOWRITE: Short intro paragraph.
+- Java gives you a number of different ways to represent common datatypes, such
+as Strings, numbers, dates, and bit flags.
+- Overhead costs are not obvious, and can be surprisingly high.
+- Overhead varies quite a bit with different representations.
+- in this chapter we look at the costs of different representations for the most 
+commmon datatypes.
+
+
 \section{Character Strings}
 \paragraph{Strings vs. Compiled Forms}
+TOWRITE:
+- It's very common to represent scalar data, such as int, boolean, or date, as
+strings. There are many reasons why it's preferable to represent these as
+scalars when you can. - give some reasons other than space (Effective Java makes
+a good argument for this), such as availability of operators, type checking, self-documenting.  - in
+addition, the overhead of a string representation is usually much higher than scalar forms. 
+Much higher than even the boxed form as well.  Much higher
+than in languages like C, as we saw in reference-chapter-on-datatypes.  Mention
+bloat factor from one or two examples from the little table below.
+
+- short table with 3 most common examples, comparing cost of scalar
+vs. boxed form vs. String form.  Examples: int (95\%), boolean (using ``Y''
+and ``N''), and enum. 
+
 \paragraph{StringBuffer vs. String}
 
 It is well-known that \class{StringBuffer} is more efficient than
@@ -21,6 +44,16 @@ building a \class{String} is fine, but they should be used only as temporaries.
 
 \section{Representing Bit Flags}
 \label{sec:bit-flags}
+TOWRITE:
+- Discuss/compare cost of three representations: a bunch of boolean fields, a
+byte with bit flags that you manage yourself, EnumSet.
 
 \section{Dates}
+TOWRITE:
+- Discuss/compare cost of three representations: Date vs. Calendar vs. time in
+millis.  Advice on when each is appropriate.
+
 \section{BigInteger and BigDecimal}
+TOWRITE:
+- Discuss need for these, and costs.  - Describe the number of objects in each
+(I don't think we need a diagram). - Compare to long/double.
