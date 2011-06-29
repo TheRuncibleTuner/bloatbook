@@ -11,10 +11,13 @@ integers, especially 0 and 1. At the other extreme, there may be many
 structures that have the same shape and data. 
 And, of course, duplicate strings are extremely common.
 This chapter describes various
-techniques for sharing data to avoid
+techniques for sharing read-only data to avoid
 duplication, including a few low-level mechanisms that Java provides.
+Section~\ref{sec:literals} looks at sharing literal data - values that
+are known at compile time. The rest of the chapter describes techniques for sharing more
+dynamic data.
 
-\section{String Literals}
+\section{String Literals and \code{enum} Types}
 \label{sec:literals}
 
 Duplicate strings are not only one of the
