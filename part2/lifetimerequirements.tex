@@ -48,9 +48,9 @@ describe the five common lifetime requirements: objects needed only transiently,
 objects needed for the duration of the run, objects whose lifetime ends along
 with a method invocation, objects whose lifetime is tied to some other object,
 and, most difficult of all, objects that live or die based on need.
-\autoref{tab:five-lifetimes} summarizes these five important requirements. We step
-you through each of the requirements, defining them and giving examples of how to
-know when you have an instance of each.
+\autoref{tab:five-lifetimes} summarizes these five important requirements,
+which are also visualized in \autoref{fig:five-lifetimes}. This chapter steps
+ through these requirements, defining them and giving examples each.
 
 \begin{table}
 \centering
@@ -126,28 +126,29 @@ To introduce the common requirements for object lifetime, we walk through severa
 scenarios found in most long-running server applications. These applications
 provide an interesting case study for lifetime management. Managing lifetime when
 the application runs forever is an especially complex issue. This is true for
-more than for servers alone. Desktop applications such as the Eclipse integrated
-development environment shares many of the same challenges. Improperly managing
+more than server applications. Desktop applications such as the Eclipse
+integrated development environment share many of the same challenges. Improperly managing
 the lifetimes of objects, for short-running applications, often does not result
-in critical failure. Indeed, the application often finishes its run before one
-would even notice a problem with memory consumption. Plus, you're probably don't
-run many instances of a short-running application simultaneously; and so
+in critical failure. Indeed, a short-running application often finishes its run
+before one would even notice a problem with memory consumption. Plus, you
+probably don't run many instances of a short-running application simultaneously; and so
 achieving the ultimate in scalability is not a primary concern. In contrast, if
 an application runs more or less forever, then mistakes pile up over time. In
 addition, caching plays a large role in these applications, since they often
 depend on data fetched from remote servers, or from disk, neither of which can
-support the necessary throughput and response time requirements. The ability for
-mistakes to pile up, and for misconfigured or poorly implemented caches to impede
-performance means that special care must be taken when implementing your server application.
+support the necessary throughput and response time requirements. The possibility
+for mistakes to pile up, and for misconfigured or poorly implemented caches to impede
+performance means that special care must be taken to manage object lifetimes
+correctly when implementing a server application.
 
-The heap consumption of this application will fluctuate over time. A timeline
-view of expected memory consumption helps to visualize these changes. It
-visualizes memory during the lulls and peaks of activity, as requests are
-processed and when sessions time out, and as the server starts up. We will use
-these over the next few pages, as we walk through the common cases of lifetime
-requirements.
-
-
+The heap consumption of a long-running application fluctuates over time,
+depending on the application phase. A timeline view of expected memory
+consumption, such as shown in \autoref{fig:timeline-base-session-temps}, 
+helps to visualize these phase fluctuations. It shows memory during the lulls
+and peaks of activity: when the server starts up, when requests are processed,
+and when sessions time out. We will use
+timeline views as we walk through the common cases of
+lifetime requirements.
 
 
 % \begin{example}{Lifetime in A Web Application Server}
@@ -175,10 +176,11 @@ garbage collector in relatively short order. The point at which an object is
 reclaimed depends on when the garbage collector notices that it is reclaimable.
 Normally, the garbage collector will wait until the heap is full, and then
 inspect the heap for the objects that are still possibly in use. In this way, the
-area under the \emph{temporaries} curve has a see-saw shape. As the temporaries
-pile up, waiting for the next garbage collection, they contribute more and more
-to memory footprint. Normally, once the \jre runs a garbage collection, these
-temporaries no longer in use will no longer contribute to heap consumption.
+area under the \emph{temporaries} curve in
+\autoref{fig:timeline-base-session-temps} has a see-saw shape. As the
+temporaries pile up, waiting for the next garbage collection, 
+they contribute more and more to memory footprint. Normally, once the \jre runs a garbage collection, the
+temporaries no longer in use will no longer be in the heap.
 
 In this way, temporary objects \emph{fill up the headroom} in the
 heap.\index{Heap Headroom} If there is a large amount of heap space unused by the
@@ -199,13 +201,13 @@ amount of space available for temporaries to pile up.
 
 \paragraph{Temporaries in Practice}
 If your application is like most Java applications, it creates a large number of
-these temporary objects. They hold data that will only be used for a very short
+temporary objects. They hold data that will only be used for a very short
 interval of time. It is often the case that the objects in these transient data
 structures are only ever reachable by local variables. For example, this is the
 case when you populate a \class{StringBuilder}, turn it into a \class{String},
-and then ultimately (and only) print the string to a log file. The point at
-which these objects, the string builder, string, and character arrays, are no
-longer used is only shortly after they are constructed:
+and then ultimately (and only) print the string to a log file. Shortly after
+they are constructed, the string builder, string, and character arrays, are no
+longer used:
 
 \begin{shortlisting}
 String makeLogString(String message, Throwable exception) {
@@ -222,7 +224,7 @@ void log(String message, Throwable exception) {
 A temporary object serves as a transient home for your data, as it makes its way
 through the frameworks and libraries you depend on. Temporaries are often
 necessary to bridge separately developed code and enable code reuse. The above
-example avoids code dupliation and ensures uniformity of the output data by
+example avoids code duplication and ensures uniformity of the output data by
 factoring out the logic of formatting messages into the \code{makeLogString}
 method.
 
@@ -238,7 +240,7 @@ than all objects, during its routine scan.
 
 There are two potential problems that you may encounter with temporary objects.
 The first is the runtime cost of initializing the state of the temporary
-objects' fields. Even if allocating an freeing up the memory for an object is
+objects' fields. Even if allocating and freeing up the memory for an object is
 free, there remains the work done in the constructor:
 
 \begin{shortlisting}
@@ -263,8 +265,8 @@ objects at a very high rate, it is possible to overwhelm either the garbage
 collector, or the physical limitations of your hardware. For example, at some
 point, the memory bandwidth necessary to initialize the temporary objects will
 exceed that provided by the hardware. Say your application fills up the temporary
-heap ever second. In this case, based on the common speeds of garbage collectors,
-your application could easily
+heap every second. In this case, based on the common speeds of garbage
+collectors, your application could easily
  spend over 20\% of its time collecting garbage. Is it difficult to fill up the
  temporary heap once per second? Typical temporary heap sizes run around 128
  megabytes. Say your application is a serves a peak of 1000 requests per second,
@@ -297,7 +299,7 @@ void doWork(String x, String y) {
 	doRemoteProcedureCall(parse(y));
 }
 Date parse(String string) {
-	return DataFormat.getInstance().parse(string, new ParsePosition(0));
+	return DateFormat.getInstance().parse(string, new ParsePosition(0));
 }
 void doRemoteProcedureCall(Date date) {
 	long timestamp = date.getTime();
@@ -323,35 +325,10 @@ temporary \class{ParsePosition} objects).
 \section{Correlated Lifetimes}
 \label{sec:correlated-lifetime-pattern}
 
-The catalog data should last forever, while the
-session data lives for some bounded period of time. It is possible that session
-state will live beyond the end of your session, but nonetheless it has a
-lifetime that is bounded. If, due to an bug, part of this session state is not
-reclaimed, the application will leak memory. Though it is supposed to have a bounded lifetime, it
-\marginpar{\textbf{Memory Leaks} are still possible, even with
-automatic garbage collection!} 
-accidentally lives forever. In this
-case, over time, the amount of heap required for the application to run will increase without bound.
-\index{Memory Leaks}
-\autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
-in the extreme case when all of session state leaks. Over time, the area under
-the curve steps higher and higher.
-
-\begin{figure}[h]  % NMM added [h] just to make formatting look good on 201007014, not necessary
-	\centering
-	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-leak}
-	\caption{If session state is not cleaned up
-	properly, a memory leak is the result. This means more frequent garbage
-	collections, and ever increasing heap size.}
-	\label{fig:timeline-base-session-temps-with-leak}
-\end{figure}
-
 %As you scan the timeline from left to right, memory consumption 
 %it fetches catalog data from its database, and stores them in the Java heap. 
 
-\paragraph{Correlated Lifetime in Practice}
-
-Many objects are needed for a bounded interval of time. In some cases, this
+Often objects are needed for a bounded interval of time. In some cases, this
 interval is bounded by the lifetime of another object. In a second important
 scenario, the lifetime of an object is bounded by the duration of a method call.
 Once that other object is not needed, or once that method returns, then these
@@ -361,13 +338,13 @@ cases of objects with correlated lifetime.
 \paragraph{Objects that Live and Die Together}
 \label{sec:correlated-lifetime-1}
 
-If you needed to augment the state stored in instances of a class that you are
-responsible for, you would modify the source code of that class. For example, to
+If you need to augment the state stored in instances of a class that you are
+responsible for, you could modify the source code of that class. For example, to
 add a secondary mailing address to a \class{Person} model, you add a field to
 that class and update the initialization and marshalling logic accordingly. This
 works fine for classes that you own, and when most \class{Person} instances have
-a secondary mailing address. Sometimes, you will find it necessary to associate
-information with an object that is, for one reason or the other, locked down, or
+a secondary mailing address. However, sometimes you will find it necessary to
+associate information with an object that is, for one reason or the other, locked down, or
 where the attributes are only sparsely associated with the related objects.
 
 \begin{example}{Annotations}
@@ -389,10 +366,10 @@ should, too.
 
 Similar to the way the lifetime of an object can be correlated with another
 object, lifetimes are often correlated with method invocations. When a method
-returns, objects correlated with it should go away. For temporary objects, this
-is usually easy to ensure, since they are usually only reachable from stack
-locations. For the medium-to-long running methods that implement the
-core functionalities of the program, this correlation is harder to get right.
+returns, objects correlated with it should go away. For
+short-running methods, you don't have to think about it, since local
+stack-allocated temporaries go away automatically when the method exits. For the
+medium-to-long running methods that implement the core functionalities of the program, this correlation is harder to get right.
 
 For example, if your application loads a log file from disk,
 parses it, and then displays the results to the user, it has roughly three
@@ -406,7 +383,7 @@ example program. If they don't, because the machinery you have set up to
 govern their lifetimes has bugs, then your application has a memory
 leak\index{Memory Leaks}.
 
-This lifetime scenario is also common if your application is an
+This lifetime scenario is also common if your application is a
 server that handles web requests.
 
 \begin{example}{Memory Leaks in an Application Server}
@@ -443,7 +420,7 @@ are some common ways that this happens.
   overwritten mid-request. This can happen if the namespace of keys isn't
   canonical and two development groups use keys that collide. It can also
   happen if there is a mistaken notion, between two development groups, of who
-  owns respnsibility of populating this registrar.
+  owns responsibility of populating this registrar.
   \item Misimplemented hashcode or equals, which foils the retrieval of an
   object from a hash-based collection. If developers checked the return value of
   the \code{remove} method, which for the standard collections would indicate a failure to remove, then
@@ -467,57 +444,32 @@ maintains some state, to remember aspects of what you have done so far. For
 example, the server stores the incremental state of multi-step transactions,
 those that span multiple page views. This session state, at least the part of it
 stored in the Java heap, will go away soon after your browsing session is
-complete. In the timeline figure, this portion of memory is labeled
+complete. In the timeline figures, this portion of memory is labeled
 \emph{sessions}. It ramps up while a session is in progress, and then, in the
 example illustrated here, soon all of that session memory should be reclaimed.
 
-These session state objects need to be kept around for operations that span
+Session state objects need to be kept around for operations that span
 several independent operations, and are possibly used across multiple threads.
 They are used beyond the scope of a phase, are not correlated with another
 object, but don't live forever.
-
-\section{Time-space Tradeoffs}
-\label{sec:time-space-tradeoffs-pattern}
-\index{Time-Space Tradeoffs}
+Like objects associated with requests, objects associated with sessions may
+accidentally live forever because of a bug, causing a memory leak.
+possible that session state will live beyond the end of the session.  In this
+case, over time, the amount of heap required for the application to run will increase without bound.
+\index{Memory Leaks}
+\autoref{fig:timeline-base-session-temps-with-leak} illustrates this situation,
+in the extreme case when all of session state leaks. Over time, the area under
+the curve steps higher and higher.
 
 \begin{figure}[h]  % NMM added [h] just to make formatting look good on 201007014, not necessary
 	\centering
-	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-cache}
-	\caption{When a cache is in use, this leaves less headroom for temporary
-	object allocation, often resulting in more frequent garbage collections.}
-	\label{fig:timeline-base-session-temps-with-cache}
+	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-leak}
+	\caption{If session state is not cleaned up
+	properly, a memory leak is the result. This means more frequent garbage
+	collections, and ever increasing heap size.}
+	\label{fig:timeline-base-session-temps-with-leak}
 \end{figure}
 
-Sometimes it is beneficial to extend, or shorten, the lifetime of an object. For
-example, if every request creates an object of the same type, with the same, or
-very similar, fields, then you should consider caching or pooling a single
-instance of this object. There are four important cases of time-space tradeoffs.
-The first covers the situation where recomputing attributes, rather than storing
-them, is a better choice. The next three cover situations where spending memory
-to extend the lifetime of certain objects saves sufficient time to be worthwhile:
-caches, sharing pools, and resource pools.
-\autoref{chapter:lifetime-implementation-strategies} discusses implementation
-strategies for these situations.
-
-The example server caches data from an expensive third-party data source. Caching
-external data in the Java heap complicates your programming and management tasks.
-The cache must be configured properly so that its contents live long enough to be
-amortize their costs of fetching, while not occupying too much of the heap. If
-caches are sized too large, this would leave little space for the temporaries
-that your application creates.
-\autoref{fig:timeline-base-session-temps-with-cache} shows an example where the
-cache has probably been configured to occupy too much heap space. Observe how,
-compared to the other timeline figures, there is little headroom for temporary
-objects. The result is more frequent garbage collections. If the cache were sized
-to occupy an even greater amount of heap space, it is possible that there would
-no longer be room to fit session data. The result in this case would be failures
-in client requests.
-
-Sizing caches is important, but tricky to get right. If the data to be cached is
-stored on a local disk, then another strategy to caching is to use \emph{memory
-mapping}. \autoref{sec:memory-mapping} describes how to utilize built-in Java
-functionality that lets you take advantage of the underlying operating system's
-demand paging functionality to take care of caching for you.
 
 \section{Permanently Resident}
 \label{sec:forever-lifetime}
@@ -541,8 +493,8 @@ on a plateau for the remainder of the run.
 
 \paragraph{Permanently Resident Objects in Practice}
 
-In the above example, a \class{DateFormat} object was created in every loop
-iteration and used only once. We can improve this situation by creating and using
+In the above data parsing example, a \class{DateFormat} object was
+created in every loop iteration and used only once. We can improve this situation by creating and using
 a single formatter for the duration of the run. The Java API documentation, in
 writing at least, encourages this behavior, but leaves the burden of doing so on
 you. You must be careful to remember that it is not safe to do so in multiple
@@ -572,6 +524,51 @@ Sometimes, despite your best efforts at tuning these long-lived data structures,
 the structures still don't fit within your given Java heap constraints.
 \autoref{chapter:large-long-lived} discusses strategies for coping with this
 situation.
+
+\section{Time-space Tradeoffs}
+\label{sec:time-space-tradeoffs-pattern}
+\index{Time-Space Tradeoffs}
+
+\begin{figure}[h]  % NMM added [h] just to make formatting look good on 201007014, not necessary
+	\centering
+	\includegraphics[width=\textwidth]{part2/Figures/lifetime/timeline-base-session-temps-with-cache}
+	\caption{When a cache is in use, there is less headroom for temporary
+	object allocation, often resulting in more frequent garbage collections.}
+	\label{fig:timeline-base-session-temps-with-cache}
+\end{figure}
+
+It is sometimes beneficial to extend, or shorten, the
+lifetime of an object, depending on whether you need to optimize for time or space. For example, if
+every request creates an object of the same type, with the same, or very similar, fields, 
+then you should consider caching or pooling a single
+instance of this object. There are four important cases of time-space tradeoffs.
+The first covers the situation where recomputing attributes, rather than storing
+them, is a better choice. The next three cover situations where spending memory
+to extend the lifetime of certain objects saves sufficient time to be worthwhile:
+caches, sharing pools, and resource pools.
+\autoref{chapter:lifetime-implementation-strategies} discusses implementation
+strategies for these situations.
+
+Our example server application caches data from an expensive third-party data
+source. Caching external data in the Java heap complicates programming and management tasks.
+The cache must be configured properly so that its contents live long enough to 
+amortize their costs of fetching, while not occupying too much of the heap. If
+caches are sized too large, this would leave little space for the temporaries
+that your application creates.
+\autoref{fig:timeline-base-session-temps-with-cache} shows an example where the
+cache has probably been configured to occupy too much heap space. Observe how,
+compared to the other timeline figures, there is little headroom for temporary
+objects. The result is more frequent garbage collections. If the cache were sized
+to occupy an even greater amount of heap space, it is possible that there would
+no longer be room to fit session data. The result in this case would be failures
+in client requests.
+
+Sizing caches is important, but tricky to get right. If the data to be cached is
+stored on a local disk, then another strategy to caching is to use \emph{memory
+mapping}. \autoref{sec:memory-mapping} describes how to utilize built-in Java
+functionality that lets you take advantage of the underlying operating system's
+demand paging functionality to take care of caching for you.
+
 
 \section{Summary}
 
