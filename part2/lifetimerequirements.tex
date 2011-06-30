@@ -171,7 +171,7 @@ to stick around for a while. In the course of preloading the cache and respondin
 to client requests, the server application will create a number of objects that
 are only used for a very short period of time.
 They help to faciliate the main
-operations of the server. These temporary objects will be reclaimed by the \jres
+operations of the server. These temporary objects will be reclaimed by the \jre
 garbage collector in relatively short order. The point at which an object is
 reclaimed depends on when the garbage collector notices that it is reclaimable.
 Normally, the garbage collector will wait until the heap is full, and then
@@ -479,7 +479,7 @@ the curve steps higher and higher.
 consumption of our example server 
 during and shortly after its initial startup.
 During the startup interval, the server preloads catalog data into
-the Java heap. Then, the server is warmed with with two test requests.
+the Java heap. Then, the server is warmed with two test requests.
 The total height of the area
 under the curves represents the memory consumption at that point in time. 
 The preloaded catalog
@@ -572,8 +572,32 @@ demand paging functionality to take care of caching for you.
 
 \section{Summary}
 
-
-
+This chapter sets the stage for Part 2 of the book about object lifetimes by
+defining five types of object lifetime requirements that progammers need to be aware of, 
+especially for long-lived applications like servers. If
+you make the effort to identify the lifetime requirements for the objects in
+your application, you can avoid common mistakes that result in memory leaks.
+Here is a high level summarization of the different kinds of lifetime
+requirments.
+\begin{itemize}
+  \item At one extreme are short-lived temporary objects that are managed
+  by the \jre garbage collector. You don't have to worry too much about temporaries, except that
+  creating too many of them can cause a performance problem.
+  \item Many objects have a lifetime requirement that is correlated with 
+   something else, such as the lifetime of another object, an execution phase,
+   or an external event. Often, these correlated objects must be explicitly freed based on
+    another object going away, a phase ending, or an event
+   notification. Managing correlated lifetimes can be tricky and
+   error-prone. Since Java does not have an explicit free
+   capability.
+   \autoref{chapter:lifetime-implementation-strategies}
+   describes a variety of techniques for implicitly freeing
+   correlated objects. 
+   \item At the other extreme, many objects are needed throughout
+   the execution, and so they must be permanently resident in the heap.
+\end{itemize}
+ The moral is that even though Java has a garbage collector, you still have to
+ understand and implement object lifetime requirements.
 % introduced by example in this chapter, and
 %Many objects are either temporaries or needed for
 %the entire run of your application. Sometimes you create objects whose lifetime
