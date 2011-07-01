@@ -572,9 +572,9 @@ demand paging functionality to take care of caching for you.
 
 \section{Summary}
 
-This chapter sets the stage for Part 2 of the book about object lifetimes by
-defining five types of object lifetime requirements that progammers need to be aware of, 
-especially for long-lived applications like servers. If
+This chapter sets the stage for Part 2 of this book by
+defining five types of object lifetime requirements that programmers need to be
+aware of, especially for long-lived applications like servers. If
 you make the effort to identify the lifetime requirements for the objects in
 your application, you can avoid common mistakes that result in memory leaks.
 Here is a high level summarization of the different kinds of lifetime
@@ -583,18 +583,18 @@ requirments.
   \item At one extreme are short-lived temporary objects that are managed
   by the \jre garbage collector. You don't have to worry too much about temporaries, except that
   creating too many of them can cause a performance problem.
-  \item Many objects have a lifetime requirement that is correlated with 
+  \item Some objects have a lifetime requirement that is correlated with 
    something else, such as the lifetime of another object, an execution phase,
    or an external event. Often, these correlated objects must be explicitly freed based on
     another object going away, a phase ending, or an event
    notification. Managing correlated lifetimes can be tricky and
-   error-prone. Since Java does not have an explicit free
-   capability.
+   error-prone. There is, or course, no way to explicitly free
+   objects in Java, so
    \autoref{chapter:lifetime-implementation-strategies}
    describes a variety of techniques for implicitly freeing
    correlated objects. 
    \item At the other extreme, many objects are needed throughout
-   the execution, and so they must be permanently resident in the heap.
+   the execution, and must be permanently resident in the heap.
 \end{itemize}
  The moral is that even though Java has a garbage collector, you still have to
  understand and implement object lifetime requirements.
