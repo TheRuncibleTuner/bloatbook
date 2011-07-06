@@ -1,6 +1,24 @@
 \chapter{A Comparison of Sizings on \jres}
 \label{chapter:jre-comparison}
 
+TODO:  Let's make a clear separation of information readers need to estimate the
+size of their applications vs. the maximum address space issues.  Otherwise the
+tables will be too large. That will also make the text more
+problem-oriented.  We need three tables:
+\begin{itemize}
+\item Object-level overheads: (32 vs. 64 vs. compressed) x (Sun vs. IBM),
+showing (object header size, array header size, object alignment size, bytes per
+reference) 
+\item Field-level overheads, in two parts.
+\begin{itemize}
+  \item a. (type) x (arch) show field alignment
+  \item b. Show the field-packing rules for each each JRE (may be a bullet list
+rather than a table)
+\end{itemize}
+\item Addressable bytes: (Sun vs. IBM) x (OS), showing bytes.  Some slots will
+be blank.
+\end{itemize}
+
 The majority of the body of this book focuses on the Sun 32-bit \jre. This
 appendix provides supplementary material regarding the sizing criteria used by
 other \jres, and how various configuration choices affect these parameters.
@@ -61,8 +79,13 @@ JRockit & -XXcompressedrefs \\
 \section{Compressed references}
 \index{Compressed References}
 
-One potential downside to switching to a 64-bit \jre is an increase in memory
-consumption. Each reference will consume 8 bytes, and each object header will
+TODO: This duplicates discussion we have in the Objects and Delagation Chapter.
+- let's move info that we really need to that chapter, unless it's very
+detailed.  Let's keep the Appendix mainly for reference details.
+
+
+ One potential downside to switching to a 64-bit \jre is an increase
+in memory consumption. Each reference will consume 8 bytes, and each object header will
 consume as much as 24 bytes. Luckily, most \jres support \emph{compressed
 references}. When using compressed references, references and object headers
 consume as much as they would on a 32-bit platform, which is nice. There are two
@@ -88,7 +111,15 @@ boundaries.
 
 Many \jres will automatically enable this support for compressed references. You
 should consult the documentation of your specific \jre provider to know whether
-this is the case.
+this is the case.\footnote{On \javaseven, 64-bit
+Sun \jres have this enabled by default, as long as your heap size is smaller
+than 32 gigabytes.}
+
+%Address compression is available in the Sun \javasix (Update 14) release,
+%enabled with the option -XX:+UseCompressedOops.
+
+%It is available in IBM \javasix (Service Release 4) with the
+%option -Xcompressedrefs.
 
 \section{Identity Hashcode in Object Headers}
 

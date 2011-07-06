@@ -1,4 +1,4 @@
-\chapter{Delegation}
+\chapter{Objects and Delegation}
 \label{chapter:delegation}
 
 An important design decision when modeling data is how many Java classes to use to represent a logical concept. The choices made at this design stage can impact memory costs significantly. At one extreme, a single class may store all attributes. At the other extreme, a main class may delegate many of its attributes to other classes, resulting in a fine-grained design. Delegation is a very popular pattern because of the flexibility it provides. It is also one of the few ways Java allows you to reuse existing classes. Yet, overly fine-grained data models can result in poor memory health. This chapter explains how to evaluate the granularity of a design from a memory perspective. It begins with the costs of basic objects, and moves on to examples from real applications.
@@ -31,8 +31,8 @@ its own storage policy. However, knowing the sizes of objects is necessary for u
   \label{tab:primitive-sizes}
 \end{table}
 
-Objects are bigger than the sum of their fields, and their size depends on the
-specific \jre implementation. The \jre allocates a header with each object that
+\paragraph{Object-level overhead} Objects are bigger than the sum of their
+fields, and their size depends on the specific \jre implementation. The \jre allocates a header with each object that
 stores information such as the object's class, an identity hashcode, a monitor
 used for locking, and various flags. For array objects, the header has an
 additional integer to store the number of array elements. Additionally,  the
@@ -40,7 +40,10 @@ additional integer to store the number of array elements. Additionally,  the
 addresses that are multiples of 8. To show how implementations differ,
 Table~\ref{tab:object-overhead} gives object header and alignment costs imposed
 by two \jres, Sun \javasix (Update 14) and IBM \javasix (Service Release 4),
-both for 32-bit architectures.
+both for 32-bit architectures. \footnote{Unless otherwise noted, all of the
+numbers throughout the book are based on the Sun \jre for 32-bit architectures.
+Appendix~\ref{chapter:jre-comparison} gives information needed to estimate
+sizes in various environments.}
 \begin{table}
   \centering
  %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
@@ -98,11 +101,13 @@ scalars.
     	Double & \\
 		\bottomrule
 	\end{tabular}
-  \caption{The sizes of boxed scalar objects, in bytes.}
+  \caption{The sizes of boxed scalar objects, in bytes, for 32-bit
+  architectures.}
   \label{tab:boxed-scalar-sizes}
 \end{table}
  
-Estimating the size of an object with more than one field is a bit more complicated, since the hardware imposes additional alignment requirements on specific data types. For example, integer fields are usually aligned on 4 byte boundaries. This field alignment potentially introduces more padding.
+\paragraph{Field-level overhead} Estimating the size of an object with more
+than one field is a bit more complicated, since the hardware imposes additional alignment requirements on specific data types. For example, integer fields are usually aligned on 4 byte boundaries. This field alignment potentially introduces more padding.
 
 %\begin{example}{Simple Employee Class.}
 For example, consider a class \class{SimpleEmployee}, which has all primitive fields. The comments show the number of bytes needed to store the primitive data.
@@ -144,8 +149,8 @@ The size of a \class{SimpleEmployee} is 40 bytes:
 12 + (4+4+8+4+4) = 36, rounds up to 40 bytes
 \end{shortlisting}
 
-For arrays, the data is always packed with no spaces. For example, here is a
-formula that estimates the size of an array of 100 \code{chars}:
+\paragraph{Arrays} For arrays, the data is always packed with no spaces. For
+example, here is a formula that estimates the size of an array of 100 \code{chars}:
 \begin{shortlisting}
 header + 100*2, round up to a multiple of the alignment
 \end{shortlisting}
@@ -220,7 +225,12 @@ a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
 
 A comparion of a \class{EmployeeWithDelegation} object with a
 \class{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that
-the size has increased from 32 to 144 bytes, and the bloat factor has increased from 46\% to 65\%. There is more information stored in the new version, so it is no surprise that it is bigger. The increase in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional object headers, a pointer for each delegated object, and empty pointer slots for uninitialized object fields. Delegation may also force additional alignment costs, since each new delegated object has to be aligned to an 8-byte boundary.
+the size has increased from 32 to 144 bytes, and the bloat factor has increased from 46\% to 65\%. 
+There is more information stored in the new version, so it is no surprise that it is bigger. The increase
+in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional
+object headers, a pointer for each delegated object, including empty
+pointer slots for uninitialized object fields. Delegation may also force additional alignment costs, since
+each new delegated object has to be aligned to an 8-byte boundary.
 
 In the spirit of keeping things simple, Java does not allow you to nest objects
 inside other objects, to build a single object out of other objects. You cannot
@@ -231,7 +241,7 @@ in Java programs, and it is difficult to avoid a high level of delegation
 overhead. Single inheritance is the only language feature that can be used
 instead of delegation to compose two object, but single inheritance has limited
 flexibility.  In contrast, C++ has many different ways to compose objects. C++
-has single and multiple inheritance, union types, and variation. C++ allows you
+has single and multiple inheritance and union types. C++ allows you
 to have \code{struct} fields, you can put arrays inside of structs, and you can
 also have an array of structs.
 
@@ -346,8 +356,11 @@ Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these chang
 
 When many objects are used to represent one logical concept, this is an indication that the data model may be using too much delegation. Delegation is good, but it is possible to overuse a good thing.  A design with fewer, bigger objects has less overhead and is more scalable. Whenever you use delegation, there should be a good reason. This is especially true for the important data entities in an application, those that will determine the scalability of the program.  
  
+
 \section{Large Base Classes}
 \index{Base Class Baggage}
+
+TODO: Move this entire section to the next chapter on fields. 
 
 As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
 
@@ -402,12 +415,16 @@ problem, it may not be possible to be this casual with memory. Also, an alternat
 \section{64-bit Architectures}
 \index{64-bit}
 
-If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are 8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\% going from a 32-bit to a 64-bit address space for the same Java program.
+If your application does not fit into memory, perhaps moving to a 64-bit architecture will save you. 
+However, to support a 64-bit address space, more memory is required. Object header sizes double, and pointers are
+8 bytes instead of 4. Some studies~\cite{compressedAddress} show that memory consumption can increase by 40\%-50\%
+going from a 32-bit to a 64-bit address space for the same Java program.
 
 %\begin{example}{8-character string} 
 Consider what happens to the 8-character string from
 Section~\ref{sec:bloat-def} in a 64-bit \jre. The memory layout is shown in
-Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the additional cost is overhead.
+Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the
+additional cost is overhead.
 %\end{example}
  
  \begin{figure}
@@ -420,13 +437,12 @@ Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the
 \end{figure}
 
 In reality, things are not so bad. Both the Sun and the IBM \jres have
-implemented a scheme for compressing addresses that avoids this code size blowup, provided that the heap is less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers. During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa.
+implemented a scheme for compressing addresses that avoids this blowup, provided that the heap is
+less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers.
+During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa.
+See Appendix~\ref{chapter:jre-comparison} for the specifics of using this
+feature.
 
-Address compression is available in the Sun \javasix (Update 14) release,
-enabled with the option -XX:+UseCompressedOops.\footnote{On \javaseven, 64-bit
-Sun \jres have this enabled by default, as long as your heap size is smaller
-than 32 gigabytes.} It is available in IBM \javasix (Service Release 4) with the
-option -Xcompressedrefs.
 
 \section{Summary}
 
