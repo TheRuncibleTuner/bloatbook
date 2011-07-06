@@ -1,15 +1,19 @@
 \chapter{Representing Field Values}
-TOWRITE: Short intro paragraph.
-- Java gives you a number of different ways to represent common datatypes, such
-as Strings, numbers, dates, and bit flags.
-- Overhead costs are not obvious, and can be surprisingly high.
-- Overhead varies quite a bit with different representations.
-- in this chapter we look at the costs of different representations for the most 
+
+So far, we have been concerned with the wasteful overhead that results from
+data representation. But what about the data itself?
+Java gives you a number of different ways to represent common datatypes, such
+as strings, numbers, dates, and bit flags. Depending on which
+representation you choose, the overhead costs can vary quite a bit. 
+These costs, hidden in the implementation, are not obvious, and can be
+surprisingly high.
+In this chapter, we look at the costs of different representations for the most 
 commmon datatypes.
 
-
 \section{Character Strings}
-\paragraph{Strings vs. Compiled Forms}
+Strings are the most common non-trivial datatype found in Java programs. We
+discuss when to represent data as a Java \class{String}, and when not to.
+\paragraph{External vs. Internal Datatype forms Forms}
 TOWRITE:
 - It's very common to represent scalar data, such as int, boolean, or date, as
 strings. There are many reasons why it's preferable to represent these as
