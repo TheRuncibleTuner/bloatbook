@@ -12,8 +12,8 @@ And, of course, duplicate strings are extremely common.
 This chapter describes various
 techniques for sharing read-only data to avoid
 duplication, including a few low-level mechanisms that Java provides.
-Section~\ref{sec:literals} looks at sharing literal data - values that
-are known at compile time. The rest of the chapter describes techniques for sharing more
+Section~\ref{sec:literals} looks at sharing literal data, known at compile time. 
+The rest of the chapter describes techniques for sharing more
 dynamic data.
 
 \section{String Literals and \code{enum} Types}
@@ -54,8 +54,8 @@ define them once as \class{String} literals, which can be shared among the
 entries of \code{propertyMap}.
 \begin{shortlisting}
 class PropertyNames {
-	public static String numberOfUnits = ``NUM_UNITS'';
-	public static String minWidgets = ``MIN_WIDGETS'';
+	final public static String numberOfUnits = ``NUM_UNITS'';
+	final public static String minWidgets = ``MIN_WIDGETS'';
 	..
 }
 
@@ -77,9 +77,9 @@ A common
  which is usually completely unnecessary:
 \begin{shortlisting}
 class PropertyNames {
-	public static String numberOfUnits = 
+	final public static String numberOfUnits = 
 	                           new String(``NUM_UNITS'');
-	public static String minWidgets = 
+	final public static String minWidgets = 
 	                           new String(``MIN_WIDGETS'');
 	..
 }
@@ -100,11 +100,35 @@ eliminate duplication.
 
 Suppose an application generates a lot of duplicated data and the values
 are unknown before execution. 
-You can eliminate data duplication by using a \emph{sharing pool}, as shown
-in Figure~\ref{fig:sharing-pool}. In Figure~\ref{fig:sharing-pool}(a), objects
-A and B point to identical data structures.
-Figure~\ref{fig:sharing-pool}(b) shows objects A and B sharing the same data
-structure, which is stored in a sharing pool.
+You can eliminate data duplication by using a \emph{sharing pool}, also known
+as a \emph{canonicalizing map}. Java data structures often employ 
+some delegation in their designs, and duplicate data is no exception.  Duplicate
+data will often mean multiple levels of identical objects.  A sharing pool will
+eliminate duplicate data and its associated overhead, leading to an even larger
+savings.
+
+An example is shown in Figure~\ref{fig:sharing-pool}. The system is a
+text-processing system, where each word has a role associated with it. 
+There are a small number of roles, each identified by a \class{String}
+role name. The complete set is only known at run time, so an \code{enum}
+type cannot be used.  In Figure~\ref{fig:sharing-pool}(a), objects A and B are
+words that have been classifed as having the same role. 
+Figure~\ref{fig:sharing-pool}(b) shows objects A and B sharing the role
+structure, which is stored in a sharing pool. In this example, each use of a
+shared structure saves three objects.
+
+\begin{shortlisting}
+public class Word {
+	private Role role;
+}
+
+public class Role {
+	final private String roleName;
+}
+\end{shortlisting}
+
+TODO: Redraw sharing pool figure, making it a concrete example, and being more
+careful about what A and B are.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/modelingdatatypes/sharing-pool.pdf}
@@ -115,32 +139,39 @@ structure, which is stored in a sharing pool.
 
 \callout{callout:sharing-pool}{Sharing Pool}{
 A \emph{sharing pool} is a centralized structure that stores 
-canonical data values that would otherwise be replicated in many objects.
-A sharing pool itself is usually some sort of hash table, although it
+canonical, read-only data that would otherwise be replicated in many
+instances. A sharing pool itself is usually some sort of hash table, although it
 could be implemented in other ways.
 }
+
+
 
 There are several issues that you need to be aware of before using a sharing
 pool.
 \paragraph{Shared objects must be immutable.} Changing shared data can
 have unintended side effects. For example, 
-changing A in Figure~\ref{fig:sharing-pool}(b), 
-also changes the value of B.
+changing the role data structure that A points to in
+Figure~\ref{fig:sharing-pool}(b), would also change the role of B.
 
-\paragraph{The result of equality testing should be the same, whether or
-not objects are shared.}
+\paragraph{The result of equality (\code{.equals()}) testing should be the same,
+whether or not objects are shared.}
  In particular, you should never use \code{==} on shared objects.
-In Figure~\ref{fig:sharing-pool}, \code{A == B} is false in
+In Figure~\ref{fig:sharing-pool}, \code{A.role == B.role} is false in
 Figure~\ref{fig:sharing-pool}(a) and true in Figure~\ref{fig:sharing-pool}(b),
- which can lead to very subtle bugs. It is dangerous to use \code{==} in any
- case, unless exact object identity is really required.
+ which can lead to very subtle bugs. Using \code{.equals()} also allows you to
+ safely change your design, should you later decide not to share your objects,
+ or to share only some of them.  Another argument occassionally heard is that
+ sharing allows for speedier comparisons by enabling the use of \code{==}.  In
+fact, most \code{.equals()} methods already perform this
+optimization, making the performance virtually identical.
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself adds
 memory costs, including additional per-entry costs. If there is not
 much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
-extra cost, and memory will be wasted instead of saved.
+extra cost, and memory will be wasted instead of saved.  In Section~\ref{} is
+a sample analysis of when it's worth sharing Strings.
 
 % NMM 20110614 i thought this was a good idea, but in Java, a reference will
 % always be cheaper than an object, because of the header!
@@ -149,15 +180,20 @@ extra cost, and memory will be wasted instead of saved.
 %when using a pool, you still need to pay at least one reference cost for
 %each use of the pooled items. 
 
-\paragraph{Shared objects should be garbage collected.}
-In Figure~\ref{fig:sharing-pool}(b), the sharing pool stores an object
+\paragraph{Sharing pools should either be stable or garbage
+collected.} In Figure~\ref{fig:sharing-pool}(b), the sharing pool stores an object
 that no other object is pointing to. Over time, the sharing pool can fill up
 with garbage, that is, items that were once needed but not any more. If the
 sharing pool is not purged of these unused items, there is a memory
-leak that can eventually use up all of memory.
+leak that can eventually use up all of memory. 
+If a sharing pool has an unchanging or very small set of shared
+instances that are used for the lifetime of the pool, then
+garbage collection doesn't need to be a concern. 
+
+TODO: something on performance and contention
 
 Fortunately, Java provides a few built in mechanisms that take care of some of
-these concerns.
+these concerns for the most data types.
 
 \section{String Interning}
 \label{sec:sharing-strings}
@@ -178,6 +214,10 @@ these concerns.
  method \code{intern} on it, and everything is taken care of automatically.
 Since \class{String}s are immutable, sharing is safe. However, the rule about
 not using \code{==} still holds on shared \class{String}s.
+
+TODO: fix the above paragraph.  It's not automatic in various senses - let's
+spell out how it works.  You decide which specific Strings to intern.  You have
+to use the API right - the pointers are no automatically shared.
   
 In the example from section~\ref{literals},
 \class{ConfigurationWithStaticProperties} eliminates property
