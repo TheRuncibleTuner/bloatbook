@@ -95,7 +95,7 @@ sharing dynamic data. Section~\ref{sec:sharing-strings} describes the Java
 string interning mechanism, which uses a built-in string sharing pool to
 eliminate duplication.
 
-\section{Sharing Pools}
+\section{The Sharing Pool Concept}
 \label{sec:sharing-pools}
 
 Suppose an application generates a lot of duplicated data and the values
@@ -190,7 +190,7 @@ If a sharing pool has an unchanging or very small set of shared
 instances that are used for the lifetime of the pool, then
 garbage collection doesn't need to be a concern. 
 
-TODO: something on performance and contention
+TODO: Add something on performance/contention costs.  Here or elsewhere.
 
 Fortunately, Java provides a few built in mechanisms that take care of some of
 these concerns for the most common data types.
@@ -208,17 +208,17 @@ these concerns for the most common data types.
 %structure itself has overhead. So you need to have a good idea
 %which strings are likely to have duplicate values.
 
- Since \class{String} duplication is so common, Java provides a built-in string
- pool for sharing \class{String}s, implemented by the native JVM and maintained in
- its internal \emph{perm space}. To share a \class{String}, you simply call the
- method \code{intern} on it, and everything is taken care of automatically.
-Since \class{String}s are immutable, sharing is safe. However, the rule about
-not using \code{==} still holds on shared \class{String}s.
+Since \class{String} duplication is so common, Java provides a built-in string
+pool for sharing \class{String}s, implemented by the JRE. To share a
+\class{String}, you simply call the method \code{intern} on it.  If an equivalent \class{String} is not found, your
+\class{String} will be added to the pool. In either case, you will be returned a
+pointer to the new or existing \class{String}. 
+Since \class{String}s are immutable, sharing is safe. However,
+the rule about not using \code{==} still holds on shared
+\class{String}s.  Remember that only some
+\class{Strings} will be shared in any application, namely those specific
+instances that you choose to intern.
 
-TODO: fix the above paragraph.  It's not automatic in various senses - let's
-spell out how it works.  You decide which specific Strings to intern.  You have
-to use the API right - the pointers are no automatically shared.
-  
 In the example from section~\ref{literals},
 \class{ConfigurationWithStaticProperties} eliminates property
 name duplication but not
@@ -242,19 +242,21 @@ pool if it isn't there already, and return a pointer to it. Otherwise, the
 new \class{String} is a duplicate, and a previously saved \class{String} is
 returned.
 
-Even though interned \class{String} are not stored in the heap, they do incur
-native memory overhead, and native memory is not free.
- Interning \class{String}s indiscriminately wastes memory and can result in an
- exception: \code{java.lang.OutOfMemoryError:PermGen Space}. 
-There are JVM parameters to adjust the perm space size:
-\code{-XX:PermSize=128m} sets perm size to 128 megabytes, and
-\code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes.
+Interned \class{String}s are stored in a separate Java heap known as the
+\emph{perm space}.
+Interning \class{String}s indiscriminately will waste memory, and can
+exceed the size of the perm space, resulting in an exception: \code{java.lang.OutOfMemoryError:PermGen Space}.
+There are JVM parameters to adjust the perm space size: \code{-XX:PermSize=128m}
+sets perm size to 128 megabytes, and \code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes. 
+Fortunately, the JVM performs garbage collection on the
+internal string pool, so there is no danger of a memory leak.
 \index{Permspace Heap}
-Fortunately, the JVM performs garbage collection on the internal string pool, so there is no danger of a memory leak.
 
-TODO: shorten this to a quick forward reference. There is an
-important variant of a sharing pool called the Bulk Sharing Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the
-memor costs of storing data. However, rather than mitigate the costs of data
+TODO: footnote on IBM permspace/limits.
+
+TODO: shorten this to a quick forward reference, and move to the end of the
+chapter. There is an important variant of a sharing pool called the Bulk Sharing
+Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the memor costs of storing data. However, rather than mitigate the costs of data
 duplication, a bulk sharing pool aims to amortize the costs of Java object
 headers across the elements in a pool. This is a topic that stretches notions of
 how to store data beyond the normal Java box, and so will be discussed, along
@@ -273,8 +275,8 @@ with many similar matters, in \autoref{chapter:large-long-lived}.
 As of \javafive, the Java library provides a sharing pool for \class{Integer}s.
 Unlike the string pool, the \class{Integer} pool is initialized at class load
 time to store all \class{Integer}s in a fixed range, from -128 to 127 by
-default. The method \code{Integer.valueOf(int value)} returns a pointer to an
-\class{Integer} in the pool, provided \code{value} is in range.
+default. The method \code{Integer.valueOf(int value)} returns a
+pointer to an \class{Integer} in the pool, provided \code{value} is in range.
 
 \begin{wrapfigure}{r}{0.4\textwidth}
 \centering
@@ -306,7 +308,10 @@ There is a JVM parameter to change the size of the \class{Integer} sharing pool.
 By adding \code{-XX:AutoBoxCacheMax=100} to your applicaiton's command line, the
 pooled integers will range over the values 0 to 100.
 
-\section{Canonicalizing Maps: Sharing General Objects}
+TODO: mention that this is a general mechanism for boxed scalars, not just
+Integers.
+
+\section{Sharing Your Own Structures}
 \label{sec:canonicalizing-maps}
 
 Beyond strings and boxed \class{Integer}s, there are often other kinds of
