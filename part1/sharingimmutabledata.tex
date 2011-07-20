@@ -101,19 +101,19 @@ eliminate duplication.
 Suppose an application generates a lot of duplicated data and the values
 are unknown before execution. 
 You can eliminate data duplication by using a \emph{sharing pool}, also known
-as a \emph{canonicalizing map}. Java data structures often employ 
-some delegation in their designs, and duplicate data is no exception.  Duplicate
-data will often mean multiple levels of identical objects.  A sharing pool will
-eliminate duplicate data and its associated overhead, leading to an even larger
-savings.
+as a \emph{canonicalizing map}. Since many Java data structures employ 
+some delegation in their designs, duplicate data can mean
+multiple levels of identical objects.
+A sharing pool will eliminate not just duplicate data, 
+but all of its associated overhead.
 
-An example is shown in Figure~\ref{fig:sharing-pool}. The system is a
-text-processing system, where each word has a role associated with it. 
-There are a small number of roles, each identified by a \class{String}
-role name. The complete set is only known at run time, so an \code{enum}
-type cannot be used.  In Figure~\ref{fig:sharing-pool}(a), objects A and B are
+An example is shown in Figure~\ref{fig:sharing-pool}. The example is from a
+text processing system, which associates a role with each word of a document.
+There are a small number of roles, each identified by a \class{String} role name. The complete set
+is only known at run time, so an \code{enum}
+type cannot be used.  In Figure~\ref{fig:sharing-pool-a}, objects A and B are
 words that have been classifed as having the same role. 
-Figure~\ref{fig:sharing-pool}(b) shows objects A and B sharing the role
+Figure~\ref{fig:sharing-pool-b} shows objects A and B sharing the role
 structure, which is stored in a sharing pool. In this example, each use of a
 shared structure saves three objects.
 
@@ -127,14 +127,16 @@ public class Role {
 }
 \end{shortlisting}
 
-TODO: Redraw sharing pool figure, making it a concrete example, and being more
-careful about what A and B are.
- \begin{figure}
-  \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/modelingdatatypes/sharing-pool.pdf}
-  \caption{(a) Objects A and B point to duplicate data. (b) Objects A and B
+TODO: Redraw sharing pool figure, making it a concrete example.
+
+\begin{figure}
+\centering
+	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.3\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
+	\hspace{0.18\textwidth}
+	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
+	\caption{(a) Objects A and B point to duplicate data. (b) Objects A and B
   share the same data, stored in a sharing pool.}
-  \label{fig:sharing-pool}
+	\label{fig:sharing-pool}
 \end{figure}
 
 \callout{callout:sharing-pool}{Sharing Pool}{
@@ -151,19 +153,19 @@ pool.
 \paragraph{Shared objects must be immutable.} Changing shared data can
 have unintended side effects. For example, 
 changing the role data structure that A points to in
-Figure~\ref{fig:sharing-pool}(b), would also change the role of B.
+Figure~\ref{fig:sharing-pool-b}, would also change the role of B.
 
-\paragraph{The result of equality (\code{.equals()}) testing should be the same,
+\paragraph{The result of \code{.equals} testing should be the same,
 whether or not objects are shared.}
- In particular, you should never use \code{==} on shared objects.
+In particular, you should never use \code{==} on shared objects.
 In Figure~\ref{fig:sharing-pool}, \code{A.role == B.role} is false in
-Figure~\ref{fig:sharing-pool}(a) and true in Figure~\ref{fig:sharing-pool}(b),
+Figure~\ref{fig:sharing-pool-a} and true in Figure~\ref{fig:sharing-pool-b},
  which can lead to very subtle bugs. Using \code{.equals()} also allows you to
- safely change your design, should you later decide not to share your objects,
- or to share only some of them.  Another argument occassionally heard is that
- sharing allows for speedier comparisons by enabling the use of \code{==}.  In
-fact, most \code{.equals()} methods already perform this
-optimization, making the performance virtually identical.
+ safely change your design, should you later decide to share a different set of
+ instances, or to not share data at all. \footnote{An argument sometimes heard for sharing data is that it
+ allows for speedier comparisons, using \code{==} rather than \code{.equals()}.
+ In fact, most
+ \code{.equals()} methods already perform this optimization, making the performance virtually identical.}
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself adds
@@ -181,19 +183,19 @@ a sample analysis of when it's worth sharing Strings.
 %each use of the pooled items. 
 
 \paragraph{Sharing pools should either be stable or garbage
-collected.} In Figure~\ref{fig:sharing-pool}(b), the sharing pool stores an object
-that no other object is pointing to. Over time, the sharing pool can fill up
+collected.} In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an
+object that no other object is pointing to. Over time, the sharing pool can fill up
 with garbage, that is, items that were once needed but not any more. If the
 sharing pool is not purged of these unused items, there is a memory
 leak that can eventually use up all of memory. 
-If a sharing pool has an unchanging or very small set of shared
-instances that are used for the lifetime of the pool, then
+On the other hand, if a sharing pool has an unchanging or very small set of
+shared instances that are used for the lifetime of the pool, then
 garbage collection doesn't need to be a concern. 
 
 TODO: Add something on performance/contention costs.  Here or elsewhere.
 
-Fortunately, Java provides a few built in mechanisms that take care of some of
-these concerns for the most common data types.
+Fortunately, Java provides a few built-in mechanisms that take care of
+some of these concerns.
 
 \section{String Interning}
 \label{sec:sharing-strings}
@@ -209,17 +211,17 @@ these concerns for the most common data types.
 %which strings are likely to have duplicate values.
 
 Since \class{String} duplication is so common, Java provides a built-in string
-pool for sharing \class{String}s, implemented by the JRE. To share a
+pool for sharing \class{String}s, implemented by the \JRE. To share a
 \class{String}, you simply call the method \code{intern} on it.  If an equivalent \class{String} is not found, your
 \class{String} will be added to the pool. In either case, you will be returned a
 pointer to the new or existing \class{String}. 
 Since \class{String}s are immutable, sharing is safe. However,
 the rule about not using \code{==} still holds on shared
 \class{String}s.  Remember that only some
-\class{Strings} will be shared in any application, namely those specific
+\class{String}s will be shared in any application, namely those specific
 instances that you choose to intern.
 
-In the example from section~\ref{literals},
+In the example from section~\ref{sec:literals},
 \class{ConfigurationWithStaticProperties} eliminates property
 name duplication but not
 property value duplication. Suppose you know that there are
@@ -242,13 +244,13 @@ pool if it isn't there already, and return a pointer to it. Otherwise, the
 new \class{String} is a duplicate, and a previously saved \class{String} is
 returned.
 
-Interned \class{String}s are stored in a separate Java heap known as the
+Interned \class{String}s are stored in a separate heap known as the
 \emph{perm space}.
 Interning \class{String}s indiscriminately will waste memory, and can
 exceed the size of the perm space, resulting in an exception: \code{java.lang.OutOfMemoryError:PermGen Space}.
-There are JVM parameters to adjust the perm space size: \code{-XX:PermSize=128m}
-sets perm size to 128 megabytes, and \code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes. 
-Fortunately, the JVM performs garbage collection on the
+\footnote{This is an issue only for the \oracle \jre. The \ibm \jre places no
+fixed limit on interned \code{String}s.} There are JVM parameters to adjust the perm
+space size: \code{-XX:PermSize=128m} sets perm size to 128 megabytes, and \code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes. Fortunately, the JVM performs garbage collection on the
 internal string pool, so there is no danger of a memory leak.
 \index{Permspace Heap}
 
