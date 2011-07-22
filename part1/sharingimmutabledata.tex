@@ -33,7 +33,7 @@ exist. \class{String} literals, on the other hand, are stored in a
 are loaded, where they are shared. Therefore, there is a big advantage to
 \class{String} literals.
 
- As an example, suppose an application
+As an example, suppose an application
 reads in property name-value pairs from files into tables:
 \begin{shortlisting}
 class ConfigurationProperties {
@@ -101,29 +101,29 @@ eliminate duplication.
 Suppose an application generates a lot of duplicated data and the values
 are unknown before execution. 
 You can eliminate data duplication by using a \emph{sharing pool}, also known
-as a \emph{canonicalizing map}. Since many Java data structures employ 
-some delegation in their designs, duplicate data can mean
-multiple levels of identical objects.
+as a \emph{canonicalizing map}. 
 A sharing pool will eliminate not just duplicate data, 
-but all of its associated overhead.
+but all of its associated overhead. Since many Java data structures employ 
+some delegation in their designs, sharing duplicate data can avoid
+multiple levels of identical objects.
 
 An example is shown in Figure~\ref{fig:sharing-pool}. The example is from a
-text processing system, which associates a role with each word of a document.
-There are a small number of roles, each identified by a \class{String} role name. The complete set
-is only known at run time, so an \code{enum}
+text processing system, which assigns a type to each word in a document.
+Each type is identified by a \class{String} type name.
+The complete set is only known at run time, so an \code{enum}
 type cannot be used.  In Figure~\ref{fig:sharing-pool-a}, objects A and B are
-words that have been classifed as having the same role. 
-Figure~\ref{fig:sharing-pool-b} shows objects A and B sharing the role
+words that have been classified as having the same type. 
+Figure~\ref{fig:sharing-pool-b} shows objects A and B sharing the type
 structure, which is stored in a sharing pool. In this example, each use of a
 shared structure saves three objects.
 
 \begin{shortlisting}
 public class Word {
-	private Role role;
+	private Type type;
 }
 
-public class Role {
-	final private String roleName;
+public class Type {
+	final private String typeName;
 }
 \end{shortlisting}
 
@@ -134,45 +134,43 @@ TODO: Redraw sharing pool figure, making it a concrete example.
 	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.3\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
 	\hspace{0.18\textwidth}
 	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
-	\caption{(a) Objects A and B point to duplicate data. (b) Objects A and B
-  share the same data, stored in a sharing pool.}
+    \caption{(a) Objects A and B point to duplicate data. (b) Objects A and B
+    share the same data, stored in a sharing pool.}
 	\label{fig:sharing-pool}
 \end{figure}
 
 \callout{callout:sharing-pool}{Sharing Pool}{
-A \emph{sharing pool} is a centralized structure that stores 
-canonical, read-only data that would otherwise be replicated in many
+A \emph{sharing pool} is a centralized structure
+that stores canonical, read-only data that would otherwise be replicated in many
 instances. A sharing pool itself is usually some sort of hash table, although it
 could be implemented in other ways.
 }
-
-
 
 There are several issues that you need to be aware of before using a sharing
 pool.
 \paragraph{Shared objects must be immutable.} Changing shared data can
 have unintended side effects. For example, 
-changing the role data structure that A points to in
-Figure~\ref{fig:sharing-pool-b}, would also change the role of B.
+changing the contents of the Type that A points to in
+\autoref{fig:sharing-pool-b}, would also change the type of B.
 
-\paragraph{The result of \code{.equals} testing should be the same,
+\paragraph{The result of \code{equals} testing should be the same,
 whether or not objects are shared.}
 In particular, you should never use \code{==} on shared objects.
-In Figure~\ref{fig:sharing-pool}, \code{A.role == B.role} is false in
-Figure~\ref{fig:sharing-pool-a} and true in Figure~\ref{fig:sharing-pool-b},
- which can lead to very subtle bugs. Using \code{.equals()} also allows you to
+In \autoref{fig:sharing-pool}, \code{A.type == B.type} is false in
+\autoref{fig:sharing-pool-a} and true in \autoref{fig:sharing-pool-b},
+ which can lead to very subtle bugs. Using \code{equals} also allows you to
  safely change your design, should you later decide to share a different set of
  instances, or to not share data at all. \footnote{An argument sometimes heard for sharing data is that it
- allows for speedier comparisons, using \code{==} rather than \code{.equals()}.
+ allows for speedier comparisons, using \code{==} rather than \code{equals}.
  In fact, most
- \code{.equals()} methods already perform this optimization, making the performance virtually identical.}
+ \code{equals} methods already perform this optimization, making the performance virtually identical.}
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself adds
 memory costs, including additional per-entry costs. If there is not
 much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
-extra cost, and memory will be wasted instead of saved.  In Section~\ref{} is
+extra cost, and memory will be wasted instead of saved.  In \autoref{sec:quantifying-sharing-savings} is
 a sample analysis of when it's worth sharing Strings.
 
 % NMM 20110614 i thought this was a good idea, but in Java, a reference will
@@ -181,6 +179,14 @@ a sample analysis of when it's worth sharing Strings.
 %each pooled data item must be large, relative to the cost of a reference ---
 %when using a pool, you still need to pay at least one reference cost for
 %each use of the pooled items. 
+
+\paragraph{Sharing pools can sometimes have performance costs.}
+Sharing pools can sometimes add a performance cost when creating new instances
+to be shared.  First, each new instance requires a lookup and possible
+addition to the sharing pool. Second, in a multithreaded
+environment, checking and adding to the sharing pool can introduce latency if the sharing pool is synchronized.
+The use of shared instances, however, does not incur any extra
+time costs.
 
 \paragraph{Sharing pools should either be stable or garbage
 collected.} In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an
@@ -192,12 +198,10 @@ On the other hand, if a sharing pool has an unchanging or very small set of
 shared instances that are used for the lifetime of the pool, then
 garbage collection doesn't need to be a concern. 
 
-TODO: Add something on performance/contention costs.  Here or elsewhere.
-
 Fortunately, Java provides a few built-in mechanisms that take care of
 some of these concerns.
 
-\section{String Interning}
+\section{Sharing Strings}
 \label{sec:sharing-strings}
 \index{Interning}
 
@@ -211,7 +215,7 @@ some of these concerns.
 %which strings are likely to have duplicate values.
 
 Since \class{String} duplication is so common, Java provides a built-in string
-pool for sharing \class{String}s, implemented by the \JRE. To share a
+pool for sharing \class{String}s, implemented by the \jre. To share a
 \class{String}, you simply call the method \code{intern} on it.  If an equivalent \class{String} is not found, your
 \class{String} will be added to the pool. In either case, you will be returned a
 pointer to the new or existing \class{String}. 
@@ -254,15 +258,10 @@ space size: \code{-XX:PermSize=128m} sets perm size to 128 megabytes, and \code{
 internal string pool, so there is no danger of a memory leak.
 \index{Permspace Heap}
 
-TODO: footnote on IBM permspace/limits.
-
-TODO: shorten this to a quick forward reference, and move to the end of the
-chapter. There is an important variant of a sharing pool called the Bulk Sharing
-Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to amortize the memor costs of storing data. However, rather than mitigate the costs of data
-duplication, a bulk sharing pool aims to amortize the costs of Java object
-headers across the elements in a pool. This is a topic that stretches notions of
-how to store data beyond the normal Java box, and so will be discussed, along
-with many similar matters, in \autoref{chapter:large-long-lived}.
+The built-in interning mechanism is synchronized, and can incur a latency cost
+in a multithreaded envinronment, when new \class{Strings} are interned.
+\cite{EffectiveJavaBook}, pp. xxx-yyy, gives an example of how to build a
+concurrent sharing mechanism for \class{String}s.
 
  %    * Literal strings within the same class in the same package represent
 %     references to the same String object. * Literal strings within different
@@ -272,18 +271,24 @@ with many similar matters, in \autoref{chapter:large-long-lived}.
  %    computed by constant expressions are computed at compile time and then
    %  treated as if they were literals. * Strings computed by concatenation at
     % run time are newly created and therefore distinct.
-\section{Integer Sharing Pool}
+\section{Sharing \class{Integer}s and Other Boxed Scalars}
 
-As of \javafive, the Java library provides a sharing pool for \class{Integer}s.
-Unlike the string pool, the \class{Integer} pool is initialized at class load
-time to store all \class{Integer}s in a fixed range, from -128 to 127 by
+As of \javafive, the Java library provides sharing pools for \class{Integer}s
+and some of the other boxed scalars. Unlike the string pool, the \class{Integer}
+pool is initialized at class load time to store all \class{Integer}s in a fixed range, from -128 to 127 by
 default. The method \code{Integer.valueOf(int value)} returns a
-pointer to an \class{Integer} in the pool, provided \code{value} is in range.
+pointer to an \class{Integer} in the pool, provided \code{value} is in
+range; otherwise it returns a new \class{Integer}. For example,
+the code in \autoref{fig:integer-sharing-pool} stores \class{Integer}s from 1 to
+500 in an array.
+\code{valueOf} returns an existing \class{Integer}
+for the first 127 numbers, and, for the rest of the numbers, \code{valueOf}
+returns a new \class{Integer} instance.
 
 \begin{wrapfigure}{r}{0.4\textwidth}
 \centering
 \begin{framedlisting}
-for (int i=1; i<=50; i++) {
+for (int i=1; i<=500; i++) {
  numbers[i] = Integer.valueOf(i);
 }
 \end{framedlisting}
@@ -291,101 +296,164 @@ for (int i=1; i<=50; i++) {
 library's integer sharing pool.}
 \label{fig:integer-sharing-pool}
 \end{wrapfigure}
+
 Because the \class{Integer} sharing pool is pre-initialized and fixed in size,
 it's always a good idea to call \code{Integer.valueOf} instead of the
-constructor to create a new \class{Integer}. For example, the code in
-\autoref{fig:integer-sharing-pool} stores \class{Integer}s from 1 to 50 in an
-array. Unless you tweak things from the command line,
-\code{valueOf} returns an existing \class{Integer}
-for the first 127 numbers, and, for the rest of the numbers, \code{valueOf}
-returns a new \class{Integer} instance. You should always make use of
-\class{Integer.valueOf}: the pooling aspect is very cheap, and you never have to
-worry about wasting memory. You do have to be careful, however, to avoid using
-\code{==} to compare potentially shared \class{Integer}s. The documentation for
-\class{Integer} does not specify anything about the default range of pooled
-values, and so you may be in for a surprise if you start assuming that
-\code{Integer.valueOf(100) == Integer.valueOf(100)}.
+constructor to create a new \class{Integer}. The pooling aspect is very cheap, and you never have to
+worry about garbage collection, wasting memory, or concurrency issues.
+You do have to be careful, however, to avoid using \code{==} to compare
+\class{Integer}s, since it's impossible to know with certainty which instances
+are actually shared.  As always, using \code{equals} is a better practice.
 
-There is a JVM parameter to change the size of the \class{Integer} sharing pool.
-By adding \code{-XX:AutoBoxCacheMax=100} to your applicaiton's command line, the
-pooled integers will range over the values 0 to 100.
+\comment{TODO: (GSS) verify AutoBoxCacheMax - this was mentioned in the text. I
+think this is for a different purpose.}
 
-TODO: mention that this is a general mechanism for boxed scalars, not just
-Integers.
+There is a JVM parameter to change the upper limit of the \class{Integer}
+sharing pool. By adding \code{-Djava.lang.Integer.IntegerCache.high=100} to your
+application's command line, the pooled integers will range over the values -128
+to 100.
+
+The \jre provides a similar \code{valueOf} method for sharing each of the boxed
+scalars. In some cases, such as \class{float}, there is no sharing actually implemented, at
+least as of \javasix. In the case of \class{Boolean}, one of the two shared
+values are always returned. In general, there is no penalty for always using
+\code{valueOf}.
+
 
 \section{Sharing Your Own Structures}
 \label{sec:canonicalizing-maps}
 
-Beyond strings and boxed \class{Integer}s, there are often other kinds of
-duplicated objects and data structures consuming large portions of the heap. 
-There is no built-in Java mechanism to share objects or data
-structures in general, so you have to implement a sharing pool for them from
-scratch. All of the sharing pool issues from Section~\ref{sec:sharing-pools} need to be
-addressed. The shared objects or structures must be immutable, they must not be
+Beyond strings and boxed scalars, there can be other kinds of
+duplicated data structures that consume large portions of the heap. 
+There is no built-in Java mechanism to share data
+in general, so you have to implement a sharing pool for them from
+scratch. All of the sharing pool issues from \autoref{sec:sharing-pools} need
+to be addressed. The shared objects or structures must be immutable, they must not be
 compared using \code{==}, there must be sufficient memory savings from sharing
-to justify the sharing pool, and the sharing pool must be not cause a memory leak. 
-Note that, unless overridden, \code{equals} is
-implemented as \code{==}, so sharing data structures typically requires writing
-a new \code{equals} method.
+to justify the sharing pool, and the sharing pool must not cause a memory leak. 
 
-To illustrate a user-written sharing pool, consider a graph where the nodes
-have annotations, many of which are duplicates. Both the graph and the
-annotations are modified dynamically. The two basic requirements are 1) the
-ability to find existing annotations quickly to share them, and 2) the ability
-to release annotations that are no longer associated with any node, so they can
-be garbage collected.  The second requirement prevents a memory leak. 
+There are two common styles of implementing your own sharing pools, depending on
+the complexity of the data being shared.  We illustrate both in this section. 
+For the purposes of this discussion we assume that the set of shared data is
+always needed throughout the run, so there is no need to worry about garbage collection. In
+\autoref{sec:sharing-pools-safety} we revisit these two examples, and show how
+to implement sharing pools with garbage collection.  We leave the addition of
+concurrent access as an exercise. 
+
+To illustrate one common style of user-written sharing pool, consider a graph
+where the nodes have annotations, many of which are duplicates. Each annotation is a single
+object, containing a few scalar fields, showing whether a node has been visited,
+and the reason for the visit.  Both the graph and the annotations are modified
+dynamically. Assume for now that the same universe of annotations is needed for
+the duration of the run. The main requirement is the ability to find and
+retrieve existing annotations quickly to share them.
 
 \begin{wrapfigure}{r}{0.5\textwidth}
 \centering
 \begin{framedlisting}
-HashMap<Annotation, Annotation> canoncalizingMap;
+HashMap<Annotation, Annotation> canonicalizingMap;
 \end{framedlisting}
 \end{wrapfigure}
-Interestingly, none of the common collection classes meet these requirements
-out-of-the-box. A \class{HashSet} can store \class{Annotation}s uniquely, but
+
+Interestingly, none of the common collection classes meet this requirement
+out of the box. A \class{HashSet} can store \class{Annotation}s uniquely, but
 retrieving an existing \class{Annotation} is not easy. The \class{HashSet}
-implementation can only speedily let you know whether an equivalent item already
-exists in the set, but can not return that existing item. To get the preexisting
-item, you would need to iterate over the entire set. Therefore, the first
-requirement is best implemented as a \class{HashMap} mapping an
-\class{Annotation}s to the canonical instance, as shown on the right. A common
-term for this structure is a \emph{canonicalizing map}.
+can only let you know whether an equivalent item already
+exists in the set, but can not return that item quickly. To get the
+preexisting item, you would need to iterate over the entire set. The
+most common approach is to use a
+\class{HashMap} that maps the \class{Annotation} to itself, as shown on the
+right. This design assumes that an \class{Annotation} can serve as its own key.
+In other words, that the \code{hashcode} and \code{equals} methods are
+defined on \class{Annotation} so that they ensure uniqueness. Note that, unless overridden, \code{equals} is
+implemented as \code{==}, so sharing data structures typically requires writing
+a new \code{equals} method.  
+
+Users of this map
+must create an instance of \class{Annotation} in order
+to find out whether it's already in the shared pool. This
+is similar to the pattern of using \code{String.intern}, where you create a new
+\code{String} in order to see if a matching shared \code{String} exists. Therefore, this type
+of canonicalizing map only makes sense when sharing relatively simple data
+that is inexpensive to create.
+
+Suppose now that we would like to share more complex data, such as the type
+information from Figure~\ref{fig:sharing-pool}. In this example, the type is
+uniquely by a \class{String} type name. Each shared structure consists of three
+objects. Rather than asking the programmer to create a new \class{Type} structure only to discover
+that it exists in the pool, we can instead use the type name as the key, as
+shown on the right. That way callers of the sharing pool only have to create a
+\code{String} in order to find or retrieve the \class{Type}. In this example we save the creation of
+one object for each new instance of the structure created.  For more complex structures the savings
+are even more. 
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+\centering
+\begin{framedlisting}
+HashMap<String, Type> canonicalizingMap;
+\end{framedlisting}
+\end{wrapfigure}
+
+
+%A common term for this structure is a \emph{canonicalizing map}.
+
 \index{Canonicalizing Map}
 
-A \class{HashMap} largely suits the role of a canonicalizing map. However, it is
-still possible to have memory issues, either because stale entries persist in
-the map, or because the map grows without bound.
-\autoref{sec:sharing-pools-safety} discusses how to avoid these issues, by using
-some more advanced features of Java.
+\section{Quantifying the Savings}
+\label{sec:quantifying-sharing-savings}
+
+Before implementing a sharing scheme, it can be worth estimating the
+space savings, to make sure it's worth the effort, and to make there isn't a
+net gain in memory usage.  Here is a sample analysis of sharing \class{String}s.
+This style of analysis can be applied to other types of shared data.
+
+TODO: Bring forward just the string sharing analysis from the chapter on bulk
+storage.
+
+The techniques described in this chapter for sharing immutable
+data can lead to substantial savings for many applications.  All of these
+techniques are within the bounds of standard, object-oriented programming
+practice. Later in the book, in \autoref{chapter:large-long-lived}, we look at
+bulk storage and sharing techniques that stretch beyond the normal Java box in
+order to achieve even greater space savings. 
+
+
+%There is an important variant of a sharing pool called the Bulk Sharing
+%Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to
+%amortize the memory costs of storing data. However, rather than mitigate the
+%costs of data duplication, a bulk sharing pool aims to amortize the costs of
+%Java object headers across the elements in a pool. This is a topic that
+%stretches notions of how to store data beyond the normal Java box, and so will
+%be discussed, along with many similar matters, in .
+
 
 \section{Summary} 
-
 Not only are Java heaps bloated from too much overhead, they
 are also bloated from duplicated data. If you know that your application
 generates many copies of the same data, then you should find a way to share the
 data. Java provides several built-in sharing mechanisms:
 
 \begin{itemize}
-  \item The JVM maintains a native sharing
-  pool for \class{Strings}. Use \class{String} interning to make use of this
+  \item The \jre maintains a sharing
+  pool for \class{String}s. Use \class{String} interning to make use of this
   sharing pool.
-  \item The standard library maintains a fixed size pool for
-   a fixed range of  \class{Integer}s. You should use \code{valueOf} to create
-   \class{Integer}s instead of a constructor.
+  \item The standard library maintains fixed-size pools for
+   a fixed range of \class{Integer}s, and other boxed scalars. You should use
+   \code{valueOf} to create boxed scalars, instead of a constructor.
 \end{itemize}
 Additionally, Java provides a weak referencing mechanism, which can be used to
 implement your own sharing pool.
 
-These mechanisms appear to be clumsy addons that were necessary to solve
-problems that came up in practice. But they are better than nothing, and
-without them, it would be much harder to share data. 
-Whether or not you use these mechanisms, you should remember these four rules:
+When sharing data, you should remember these four rules:
 \begin{itemize}
   \item Shared objects must be immutable.
-  \item The result of equality testing should be the same, whether or
-not objects are shared.  
+  \item The result of \code{equals()} testing should be the same, whether or
+not objects are shared.  Always use \code{equals()} rather than \code{==} to
+test equality.
   \item Sharing pools should not be used if there is limited sharing.
-  \item Shared objects should be garbage collected.
+  \item Unless the set of shared objects is small or is stable for
+  the lifetime of the run, shared objects must be garbage
+  collected.
 \end{itemize}
 
 

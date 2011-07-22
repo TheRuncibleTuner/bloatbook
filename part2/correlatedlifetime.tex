@@ -740,7 +740,13 @@ class AnnotationFactory {
 As this example shows,  Java's weak referencing capability has subtle
 semantics and is not easy to use.
 
+TODO: show (briefly) second style of canonicalizing map, and show how that would
+be implemented using a map with strong keys and weak values.
+
 \paragraph{Avoiding Unbounded Growth in Sharing Pools (Capacity Safety Valves)}
+
+TODO: (GSS) Can we move this to the next chapter? 
+
 If you already know that your sharing pool has the possibility of growing
 without bound, then you should engage the developers to find and fix the
 underlying problem. For example, perhaps there truly is not a finite number of
