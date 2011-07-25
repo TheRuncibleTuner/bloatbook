@@ -304,6 +304,14 @@ number of children of nodes in a graph, then caching
 this value for each node is a good idea. 
 \end{itemize}
 
+\section{Inner Classes}
+[TODO: short section explaining that 1. there's a hidden this pointer in
+non-static nested classes (i.e. in all three types of inner classes) and 2.
+advise the reader to use static nested classes unless they need one of the other kinds.  Can
+ reference Effective Java on the topic - he gives the same advice with
+ additional arguments other than space.  The extra this pointer can also cause
+ leaks/drag (example from Sun tutorial(?): a map entry nested class within a map.  
+ Entry class is erroneously declared to be non-static).]
 
 \section{Optimizing Framework Code}
 

@@ -242,8 +242,9 @@ overhead. Single inheritance is the only language feature that can be used
 instead of delegation to compose two object, but single inheritance has limited
 flexibility.  In contrast, C++ has many different ways to compose objects. C++
 has single and multiple inheritance and union types. C++ allows you
-to have \code{struct} fields, you can put arrays inside of structs, and you can
-also have an array of structs.
+to have fields that are \code{classes}, \code{structs}, or arrays, not just
+references to them.  Similarly, you can have arrays of \code{class} or
+\code{struct}.
 
 Because of the design of Java, there is a basic delegation cost that is hard to eliminate it. This is the cost of object-oriented programming in Java. While it is hard to avoid this basic delegation cost, it is important not to make things a lot worse, as discussed in the next section. 
 
