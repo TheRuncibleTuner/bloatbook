@@ -358,61 +358,6 @@ Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these chang
 When many objects are used to represent one logical concept, this is an indication that the data model may be using too much delegation. Delegation is good, but it is possible to overuse a good thing.  A design with fewer, bigger objects has less overhead and is more scalable. Whenever you use delegation, there should be a good reason. This is especially true for the important data entities in an application, those that will determine the scalability of the program.  
  
 
-\section{Large Base Classes}
-\index{Base Class Baggage}
-
-TODO: Move this entire section to the next chapter on fields. 
-
-As discussion in the last section, highly-delegated data models can result in too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling is combined with inheriting from large base classes, memory costs multiply and can become prohibitive. 
-
-%\begin{example}{Keeping track of updates} 
-A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
-\begin{shortlisting}
-class UpdateInfo {
-     Date createDate;
-     Party enteredBy;
-     Date updateDate;
-     Party updateBy;
-}
-\end{shortlisting}
-You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
-a \textit{cross-cutting feature}, since it can apply to any class in a data model.
-%\end{example}
-
-Returning to \class{EmployeeWithEmergencyContact} in Section~\ref{fine-grained-data-models}, suppose that
-updates to employee emergency contacts need to be tracked. You need to decide
-how precise the tracking should be. Should every update to every phone number
-and email address be tracked, or is it sufficient to track the fact that some
-contact information was changed for an emergency contact? If you decide to
-track changes to every contact phone number or email address, you can easily achieve this by extending the \class{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
-\begin{shortlisting}
-class ContactMethod extends UpdateInfo {
-     ContactPerson owner;
-}
-\end{shortlisting}
-Figure~\ref{fig:big-base-class} shows an instance of an contact person with
-update information associated with every \class{ContactMethod}. Not only is this
-a highly delegated structure with multiple \class{ContactMethod} objects, but
-each one has an additional 16 bytes. Furthermore, there are potentially four
-more objects of type \class{Date} and \class{Party} for each of the four
-\class{ContactMethod} objects. A far more scalable solution is to move up a
-level, and track changes to each \class{ContactPerson}. With this solution, you
-do not need such a fine-grained data model, and the update tracking functionality is 1/4 the cost.
-\begin{figure}
-  \centering
- \includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/big-base-class.pdf}
- % \includegraphics{eight-char-string}
-  \caption{The cost of associating \class{UndateInfo} with every
-  \class{ContactMethod}.}
-  \label{fig:big-base-class}
-\end{figure}
- 
-The solution in Figure~\ref{fig:big-base-class} provides a very fine
-granularity of functionality. An argument can be made in favor of this
-solution, since you lose functionality and flexibility if you only track
-updates to \class{ContactPerson}. However, if the program hits a scalabity
-problem, it may not be possible to be this casual with memory. Also, an alternate design may be available that gives the desired functionality in a more memory-efficient way. In this example, you could implement an update log instead of tracking updates in the objects themselves. Assuming updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely at the memory size of a superclass, especially if the inheritance chain is long.
-
 \section{64-bit Architectures}
 \index{64-bit}
 

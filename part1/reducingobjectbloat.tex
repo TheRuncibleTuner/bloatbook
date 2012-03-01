@@ -1,4 +1,5 @@
-\chapter{Reducing Object Bloat}
+\chapter{Fields}
+[TODO: revisit title so it's clear what's in Ch. 3 vs. 4 vs. 5]
 
 In many applications, the heap is filled mostly with instances of just a
 few important classes.  You can increase scalability significantly by making these
@@ -8,7 +9,7 @@ rarely needed, constant fields, and dependent fields. Simple refactoring of
 these kinds of fields can sometimes result in big wins.
  
 
-\section{Rarely Used Fields}
+\section{Rarely Used Fields: Using Side Objects}
 \label{sec:rarely-used}
 
 Chapter~\ref{chapter:delegation} presents examples where delegating fields
@@ -58,10 +59,11 @@ need
 a side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
 saved. In fact, if the fill rate is too high, memory is wasted.
 
-Figure~\ref{fig:fill-rate} shows the memory saved for different
-fill rates, assuming three fields (12 bytes) are delegated. The most memory that can
-be saved is 66\%, when the fill rate is
-0\%. When the fill rate is 10\%, 50\% of memory is saved. 
+Figure~\ref{fig:fill-rate} shows the average memory saved for different
+fill rates, assuming three fields (12 bytes) are delegated. The most memory that can be
+saved is 8 bytes, or 67\% of the bytes moved to the side object, when the fill
+rate is 0\%.
+When the fill rate is 10\%, 50\% of memory is saved.
 When the fill rate is over 40\%, the memory saved is
 negative, that is, memory is wasted. The lesson here is that if you aren't sure
 what the fill rate is, then using delegation to save memory may end up
@@ -77,65 +79,67 @@ backfiring.
 \end{figure}
 
 In addition to the fill rate, the memory savings also depends on the
-number of fields delegated. The more bytes delegated, the larger the memory
-savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
-saved for different fill rates and different delegated-field sizes. Each
+number of fields delegated and their sizes. The more bytes delegated,
+the larger the memory savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
+saved for different fill rates and sizes of delegated fields. Each
 line represents a different delegated-field size. The bottom-most line
 represents a delegated field size of 16 bytes, the next line represents 32 bytes, the next
 represents 48 bytes, and so on, up to 144 bytes. As the delegated object size
 increases, you can worry less about the fill rate. For example, if 32 bytes
 are delegated, there is almost 90\% savings with a low fill rate, and some
 memory savings with a fill rate up to 70\%. As the delegation size increases, 
-the lines start to converge, since the fixed delegation cost becomes relatively
+the lines start to converge, since the delegation cost becomes relatively
 less important.
 \begin{figure}
   \centering
  \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used.pdf}
  % \includegraphics{eight-char-string}
-  \caption{This plot shows how much memory is saved or wasted for different
-  delegated field sizes. The x-axis is the fill rate, and the y-axis is the
-  percent of memory saved. Each line represents a different delegated size,
-  starting from 16 bytes, going up to 144 bytes by increments of 16 bytes.}
+  \caption{The amount memory saved or wasted is dependent on the
+  size of the delegated fields and on the fill rate.
+  The x-axis is the fill rate as a percent; the y-axis is the percent of
+  memory saved on average, relative to the bytes delegated. Each line shows
+  a different delegated size, from 16 bytes to 144
+  bytes in increments of 16 bytes.}
   \label{fig:rarely-used}
 \end{figure}
 
-\callout{callout:rarely-used}{Delegation Cost Calculation}{
+\callout{callout:rarely-used}{Delegation Savings Calculation}{
 \index{Delegation Cost Calculation}
 Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
 bytes, and
 \begin{eqnarray} 
 B &=& the\ size\ in\ bytes\ of\ the\ delegated\ fields \nonumber \\
-F &=& the\ fill\ rate\  \nonumber
+F &=& the\ fill\ rate,\ between\ 0\ and\ 1 \nonumber
 \end{eqnarray}
-The memory cost per object with the delegated
-implementation is:
+Every main object pays for an extra pointer in this design, and F
+of them require a side object. The average savings across all of
+the objects is the savings in the main objects minus the cost of the side
+objects\footnote{This calculation does not take alignment costs into
+account. Depending upon the other fields in your object, this can
+increase the cost of delegating some fields to a side object.
+On a JRE where the header size is not a multiple of the object alignment
+(e.g.the IBM 32-bit JRE), the delegated design can also result in a smaller 
+expenditure on alignment costs in some cases.}:
 \begin{eqnarray}
-D &=& F(B+8)+4 \nonumber
+Average\ savings\ &=& B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
-Note that every object pays a 4 byte pointer cost, and only $F$ of
-the objects pay for the side object. The proportional improvement is:
+It is worth moving the fields to a side object when you have
+confidence that the savings will be positive, when:
 \begin{eqnarray}
-\frac{(B-D)}{B} &=& 1 - \frac{D}{B} \nonumber \\
-&=& 1 - \frac{(F(B+8)+4)}{B} \nonumber
+F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
-The following equation can be used to obtain the plots in
-Figures~\ref{fig:fill-rate} and~\ref{fig:rarely-used}, for different values of
-$B$:
-\begin{eqnarray}
-y &=& 100*(1 - \frac{\frac{x}{100}(B+8)+4}{B}) \nonumber
-\end{eqnarray}
-(Note that this calculation does not take alignment fill into account, which can
-add additional delegation overhead.) } 
-A common error is to delegate rarely-used fields to a side class, but forget to
-lazily allocate it, that is, always allocate a side object. 
+} 
+A common error is to put rarely-used fields in a side
+class with lazy allocation, and have some code paths that
+cause the side object to be allocated all the time.
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
 the cost of unused fields. 
 Lazy allocation
-can be error-prone, since it may require testing whether the object exists at
-every use. This complexity has to be weighed against potential memory
-savings.
+can be error-prone, since it may require testing whether the object
+exists at every use. In applications with concurrent access to the data, extra care is
+required. This complexity has to be weighed against potential memory savings.
 
-\section{Attribute Table}
+\section{Rarely-Used Fields: Using Attribute Tables}
 
 If a field is very rarely used, then it might make sense to delete it from
 its class altogether, and store it in a separate attribute table that maps objects to the attribute
@@ -304,6 +308,70 @@ number of children of nodes in a graph, then caching
 this value for each node is a good idea. 
 \end{itemize}
 
+\section{Large Base Classes and Fine-grained Designs}
+\index{Base Class Baggage}
+
+As discussed in the previous chapter, highly-delegated data models can result in
+too many small objects. Occasionally, you run across a highly-delegated data model where the delegated objects
+are large. This can happen when delegated classes inherit from a large base class. When fine grained data modeling
+is combined with inheriting from large base classes, memory costs multiply and can become prohibitive.
+
+%\begin{example}{Keeping track of updates} 
+A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
+\begin{shortlisting}
+class UpdateInfo {
+     Date creationDate;
+     Party enteredBy;
+     Date updateDate;
+     Party updatedBy;
+}
+\end{shortlisting}
+You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
+a \textit{cross-cutting feature}, since it can apply to any class in a data model.
+%\end{example}
+
+Returning to the original, unoptimized
+version of \class{EmployeeWithEmergencyContact} in
+Section~\ref{fine-grained-data-models}, suppose that updates to employee emergency contacts need to be tracked. 
+You need to decide how fine the tracking should be. Should every update to every
+phone number and email address be tracked, or is it sufficient to track the fact that some
+contact information was changed for an emergency contact? If you decide to
+track changes to every contact phone number or email address, you can easily achieve this by
+extending the \class{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
+\begin{shortlisting}
+class ContactMethod extends UpdateInfo {
+     ContactPerson owner;
+}
+\end{shortlisting}
+Figure~\ref{fig:big-base-class} shows an instance of a contact person with
+update information associated with every \class{ContactMethod}. Not only is this
+a highly delegated structure with multiple \class{ContactMethod} objects, but
+each one has an additional 16 bytes. Furthermore, there are potentially four
+more objects of type \class{Date} and \class{Party} for each of the four
+\class{ContactMethod} objects. A far more scalable solution is to move up a
+level, and track changes to each \class{ContactPerson}. With this solution, you
+do not need such a fine-grained data model, and the update tracking functionality is 1/4 the cost.
+\begin{figure}
+  \centering
+ \includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/big-base-class.pdf}
+ % \includegraphics{eight-char-string}
+  \caption{The cost of associating \class{UndateInfo} with every
+  \class{ContactMethod}.}
+  \label{fig:big-base-class}
+\end{figure}
+ 
+The solution in Figure~\ref{fig:big-base-class} provides a very fine
+granularity of functionality. An argument can be made in favor of this
+solution, since you lose functionality and flexibility if you only track
+updates to \class{ContactPerson}. However, if the program hits a scalabity
+problem, it may not be possible to be this casual with memory. Also, an alternate
+design may be available that gives the desired functionality in a more memory-efficient way. In this
+example, you could implement an update log instead of tracking updates in the objects themselves. Assuming
+updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely
+at the memory size of its superclasses, especially if the inheritance chain is
+long.
+
+
 \section{Inner Classes}
 [TODO: short section explaining that 1. there's a hidden this pointer in
 non-static nested classes (i.e. in all three types of inner classes) and 2.
@@ -313,7 +381,7 @@ advise the reader to use static nested classes unless they need one of the other
  leaks/drag (example from Sun tutorial(?): a map entry nested class within a map.  
  Entry class is erroneously declared to be non-static).]
 
-\section{Optimizing Framework Code}
+\section{Writing Efficient Framework Code}
 
 The storage optimizations described in this chapter assume that you are
 familiar with the entire application you are working on. You need to
