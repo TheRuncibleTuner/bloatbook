@@ -1,4 +1,4 @@
-\chapter{Fields}
+\chapter{Field Patterns for Frugal Objects}
 [TODO: revisit title so it's clear what's in Ch. 3 vs. 4 vs. 5]
 
 In many applications, the heap is filled mostly with instances of just a
@@ -9,11 +9,11 @@ rarely needed, constant fields, and dependent fields. Simple refactoring of
 these kinds of fields can sometimes result in big wins.
  
 
-\section{Rarely Used Fields: Using Side Objects}
+\section{Rarely Used Fields}
 \label{sec:rarely-used}
 
-Chapter~\ref{chapter:delegation} presents examples where delegating fields
-to another class increases memory cost. However, sometimes delegation can
+\paragraph{Side Objects}Chapter~\ref{chapter:delegation} presents examples
+where delegating fields to another class increases memory cost. However, sometimes delegation can
 actually save memory, if you don't have to allocate the delegated object all the
 time.
 
@@ -104,62 +104,71 @@ less important.
 \end{figure}
 
 \callout{callout:rarely-used}{Delegation Savings Calculation}{
-\index{Delegation Cost Calculation}
+\index{Delegation Savings Calculation}
 Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
 bytes, and
 \begin{eqnarray} 
 B &=& the\ size\ in\ bytes\ of\ the\ delegated\ fields \nonumber \\
 F &=& the\ fill\ rate,\ between\ 0\ and\ 1 \nonumber
 \end{eqnarray}
-Every main object pays for an extra pointer in this design, and F
-of them require a side object. The average savings across all of
-the objects is the savings in the main objects minus the cost of the side
-objects\footnote{This calculation does not take alignment costs into
-account. Depending upon the other fields in your object, this can
-increase the cost of delegating some fields to a side object.
-On a JRE where the header size is not a multiple of the object alignment
-(e.g.the IBM 32-bit JRE), the delegated design can also result in a smaller 
-expenditure on alignment costs in some cases.}:
+
+While every object pays a
+4-byte pointer cost, only F of them pay for a side object. The average
+savings per object is therefore:
 \begin{eqnarray}
-Average\ savings\ &=& B-4\ \ -\ \ F(B+8) \nonumber
+B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
-It is worth moving the fields to a side object when you have
-confidence that the savings will be positive, when:
+
+Using a side object will result in positive
+savings whenever\footnote{This calculation does not include alignment
+costs.
+Depending on the other fields in your object, a side object can
+introduce new alignment costs.
+In a JRE with a header size that is not a multiple of the object
+alignment (e.g.the IBM 32-bit JRE), a side object can
+sometimes decrease alignment costs}
+:
 \begin{eqnarray}
 F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
 } 
 A common error is to put rarely-used fields in a side
-class with lazy allocation, and have some code paths that
-cause the side object to be allocated all the time.
+class with lazy allocation, but then have code paths that
+always cause the side object to be allocated.
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
 the cost of unused fields. 
 Lazy allocation
-can be error-prone, since it may require testing whether the object
-exists at every use. In applications with concurrent access to the data, extra care is
-required. This complexity has to be weighed against potential memory savings.
+can be error-prone also because it may require testing whether the object
+exists at every use. Extra care is required if you
+need concurrent access to the data. This complexity has to be weighed against potential memory
+savings.
 
-\section{Rarely-Used Fields: Using Attribute Tables}
-
-If a field is very rarely used, then it might make sense to delete it from
-its class altogether, and store it in a separate attribute table that maps objects to the attribute
-values. For example, suppose that a few of the products have won major awards,
-and you want to record this information. Rather than maintaining a field
-\code{majorAward} in every product, you can define a table:
+\paragraph{Side Tables}If a field is very rarely used, then it
+might make sense to delete it from its class altogether, and store it in a separate table that maps
+objects to attribute values. For example, suppose that only a few of the
+products have won major awards, and you want to record this information. Rather than maintaining a field
+\code{majorAward} in every product, you can define a table that maps a product
+\code{sku} to an award.
 
 \begin{shortlisting}
 class Product {
-    static HashMap<String, String> majorAward = new HashMap();
+    static HashMap<String, String> majorAward = new HashMap<String, String>();
     ..
 }
 \end{shortlisting}
 
-Even though a \class{HashMap} has it's own high overhead, this design will come
-out ahead if there are a small number of major awards. 
-Whenever you add any kind of new table like this, however, you have to be
-careful you do not introduce a memory leak. If products are garbage collected, 
-the corresponding entries in the attribute table should be cleaned up. This
-topic is discussed at length in ???.
+Even though a \class{HashMap} has its own high overhead, this
+design can still come out ahead if there are a small number of major awards.
+You can do a similar analysis as you would for side objects to decide if this
+approach is worth it (see Section~\ref
+for the cost of a hash entry).
+A hash entry usually takes more memory than a side object.
+Therefore, a side table will start wasting memory
+at a lower fill rate when compared to a side object approach.
+Whenever you add a new table like this you also have to be careful not to
+introduce a memory leak. If products are no longer needed and are garbage
+collected, the corresponding entries in the table must be cleaned up.
+This topic is discussed at length in Section~\ref{}.
 
 \section{Constant Fields}
 \label{sec:constant}
