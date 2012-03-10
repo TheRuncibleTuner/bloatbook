@@ -1,4 +1,4 @@
-\chapter{Field Patterns for Frugal Objects}
+\chapter{Field Patterns for Efficient Objects}
 [TODO: revisit title so it's clear what's in Ch. 3 vs. 4 vs. 5]
 
 In many applications, the heap is filled mostly with instances of just a
@@ -52,7 +52,7 @@ class Supplier {
 \end{shortlisting}
 For products with no alternate supplier, eight bytes are saved per product,
 since three fields are replaced by one. Of course, products with an alternate
-supplier pay a delegation cost: an extra pointer and object header, totalling 12
+supplier pay a delegation cost: an extra pointer and object header, totaling 12
 bytes. An interesting question is how much total memory is actually saved? The
 answer depends on the percentage of products that have an alternate supplier and
 need
@@ -106,7 +106,7 @@ less important.
 \callout{callout:rarely-used}{Delegation Savings Calculation}{
 \index{Delegation Savings Calculation}
 Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
-bytes, and
+bytes.  Let:
 \begin{eqnarray} 
 B &=& the\ size\ in\ bytes\ of\ the\ delegated\ fields \nonumber \\
 F &=& the\ fill\ rate,\ between\ 0\ and\ 1 \nonumber
@@ -119,15 +119,12 @@ savings per object is therefore:
 B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
 
-Using a side object will result in a positive
-savings whenever\footnote{This calculation does not include alignment
-costs.
-Depending on the other fields in your object, a side object can
-introduce new alignment costs.
-In a JRE with a header size that is not a multiple of the object
-alignment (e.g.the IBM 32-bit JRE), using a side object can
-sometimes decrease alignment costs}
-:
+Using a side object will result in a savings whenever the
+above is positive, so whenever \footnote{These calculations don't
+include alignment costs. A side object can introduce new alignment costs,
+depending on the other fields in your object.
+If the JRE header size is not a multiple of the alignment (e.g. the IBM
+32-bit JRE), a side object can actually reduce alignment costs in some cases.}:
 \begin{eqnarray}
 F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
