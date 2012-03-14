@@ -1,5 +1,4 @@
 \chapter{Field Patterns for Efficient Objects}
-[TODO: revisit title so it's clear what's in Ch. 3 vs. 4 vs. 5]
 
 In many applications, the heap is filled mostly with instances of just a
 few important classes.  You can increase scalability significantly by making these
@@ -53,17 +52,17 @@ class Supplier {
 For products with no alternate supplier, eight bytes are saved per product,
 since three fields are replaced by one. Of course, products with an alternate
 supplier pay a delegation cost: an extra pointer and object header, totaling 12
-bytes. An interesting question is how much total memory is actually saved? The
-answer depends on the percentage of products that have an alternate supplier and
+bytes. An interesting question is how
+much total memory is actually saved? The answer depends on the percentage of products that have an alternate supplier and
 need
 a side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
 saved. In fact, if the fill rate is too high, memory is wasted.
 
-Figure~\ref{fig:fill-rate} shows the average memory saved for different
-fill rates, assuming three fields (12 bytes) are delegated. The most memory that can be
-saved is 8 bytes, or 67\% of the bytes moved to the side object, when the fill
-rate is 0\%.
-When the fill rate is 10\%, 50\% of memory is saved.
+Figure~\ref{fig:fill-rate} shows the memory saved for
+different fill rates, assuming three fields (12 bytes) are delegated. The most memory that can be
+saved is 8 bytes per object on average, or 67\% of the bytes that
+were delegated, when the fill rate is 0\%.
+When the fill rate is 10\%, only 50\% of the delegated field bytes are saved.
 When the fill rate is over 40\%, the memory saved is
 negative, that is, memory is wasted. The lesson here is that if you aren't sure
 what the fill rate is, then using delegation to save memory may end up
@@ -74,32 +73,35 @@ backfiring.
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted by delegating 12
   bytes of memory to a side object. The x-axis is the fill rate, and the
-  y-axis is the percent of memory saved.}
+  y-axis is the average memory saved as a percent of the bytes delegated.}
   \label{fig:fill-rate}
 \end{figure}
 
 In addition to the fill rate, the memory savings also depends on the
 number of fields delegated and their sizes. The more bytes
 delegated, the larger the memory savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
-saved (or wasted) for different fill rates and sizes of delegated fields. Each
-line represents a different delegated-field size. The bottom-most line
+saved or wasted for different fill rates and delegated-field sizes.
+Each line represents a different delegated-field size. The bottom-most line
 represents a delegated field size of 16 bytes, the next line represents 32 bytes, the next
 represents 48 bytes, and so on, up to 144 bytes. As the delegated object size
 increases, you can worry less about the fill rate. For example, if 32 bytes
 are delegated, there is almost 90\% savings with a low fill rate, and some
 memory savings with a fill rate up to 70\%. As the delegation size increases, 
 the lines start to converge, since the delegation cost becomes relatively
-less important.
+less important. At larger sizes there is less of a chance
+that a wrong guess about the fill rate will result in waste, and if
+it does, the memory loss will be relatively small.
+
 \begin{figure}
   \centering
  \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The amount memory saved or wasted is dependent on the
-  size of the delegated fields and on the fill rate.
-  The x-axis is the fill rate as a percent; the y-axis is the percent of
-  memory saved on average, relative to the bytes delegated. Each line shows
-  a different delegated size, from 16 bytes to 144
-  bytes in increments of 16 bytes.}
+  \caption{This plot shows how much memory is saved or wasted
+  depending on how many bytes are delegated to a side object.
+  The x-axis is the fill rate, and the y-axis is the average
+  memory saved as a percent of the bytes delegated. Each line represents
+  a different delegated-fields size, from 16 to 144 bytes, in increments of
+  16 bytes.}
   \label{fig:rarely-used}
 \end{figure}
 
@@ -113,31 +115,32 @@ F &=& the\ fill\ rate,\ between\ 0\ and\ 1 \nonumber
 \end{eqnarray}
 
 While every object pays a
-4-byte pointer cost, only F of them pay for a side object. The average
-savings per object is therefore:
+4-byte pointer cost, only F of them pay for a side object. Therefore, using 
+a side object will result in an average savings per object of:
 \begin{eqnarray}
 B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
 
-Using a side object will result in a savings whenever the
-above is positive, so whenever \footnote{These calculations don't
-include alignment costs. A side object can introduce new alignment costs,
-depending on the other fields in your object.
-If the JRE header size is not a multiple of the alignment (e.g. the IBM
-32-bit JRE), a side object can actually reduce alignment costs in some cases.}:
+For the savings to be positive, the following must be true
+\footnote{This calculation does not include alignment overhead, which may
+be increased by delegation, depending on the other fields in your object.
+If the header size is not a multiple of the alignment (e.g.
+on the IBM 32-bit JRE), delegation can sometimes reduce alignment costs.}:
 \begin{eqnarray}
 F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
+
 } 
 A common error is to put rarely-used fields in a side
 class with lazy allocation, but have code paths that
-always cause the side object to be allocated.
+cause the side object to be allocated all the time, even when it's not needed.
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
 the cost of unused fields. 
 Lazy allocation
 can also be error-prone because it may require testing whether the object
-exists at every use. If you need concurrent access to the data you have to take
-special care to code the checks correctly to avoid race conditions.
+exists at every use. If you need concurrent access to the data in the side
+object, you have to take special care to code the checks correctly to avoid race
+conditions.
 This complexity has to be weighed against potential memory savings.
 
 \paragraph{Side Tables}If a field is very rarely used, then it
@@ -157,9 +160,9 @@ class Product {
 Even though a \class{HashMap} has its own high overhead, this
 design can still come out ahead if there are a small number of major awards.
 You can do a similar analysis as you would for side objects to decide if this
-approach is worth it (see Section~\ref
+approach is worth it (see Section~\ref{sec:}
 for the cost of a hash entry).
-A hash entry usually takes more memory than a side object.
+A hash entry typically takes more memory than a side object.
 Therefore, a side table will start wasting memory
 at a lower fill rate when compared to a side object approach.
 Whenever you add a new table like this you also have to be careful not to
