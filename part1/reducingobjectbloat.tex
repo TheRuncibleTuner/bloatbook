@@ -60,10 +60,10 @@ saved. In fact, if the fill rate is too high, memory is wasted.
 
 Figure~\ref{fig:fill-rate} shows the memory saved for
 different fill rates, assuming three fields (12 bytes) are delegated. The most memory that can be
-saved is 8 bytes per object on average, or 67\% of the bytes that
-were delegated, when the fill rate is 0\%.
-When the fill rate is 10\%, only 50\% of the delegated field bytes are saved.
-When the fill rate is over 40\%, the memory saved is
+saved is 8 bytes per object on average, when the fill rate is 0\%. That's 67\%
+of the size of the fields that were delegated.
+When the fill rate is 10\%, only 50\% of the delegated field bytes are saved on
+average. When the fill rate is over 40\%, the memory saved is
 negative, that is, memory is wasted. The lesson here is that if you aren't sure
 what the fill rate is, then using delegation to save memory may end up
 backfiring.
@@ -77,6 +77,7 @@ backfiring.
   \label{fig:fill-rate}
 \end{figure}
 
+
 In addition to the fill rate, the memory savings also depends on the
 number of fields delegated and their sizes. The more bytes
 delegated, the larger the memory savings, assuming the same fill rate. Figure~\ref{fig:rarely-used} shows the memory
@@ -87,10 +88,10 @@ represents 48 bytes, and so on, up to 144 bytes. As the delegated object size
 increases, you can worry less about the fill rate. For example, if 32 bytes
 are delegated, there is almost 90\% savings with a low fill rate, and some
 memory savings with a fill rate up to 70\%. As the delegation size increases, 
-the lines start to converge, since the delegation cost becomes relatively
+the lines start to converge, since the delegation overhead becomes
 less important. At larger sizes there is less of a chance
-that a wrong guess about the fill rate will result in waste, and if
-it does, the memory loss will be relatively small.
+that underestimating the fill rate will cause you to waste memory, and if it
+does, the memory lost will be relatively small.
 
 \begin{figure}
   \centering
@@ -122,8 +123,9 @@ B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
 
 For the savings to be positive, the following must be true
-\footnote{This calculation does not include alignment overhead, which may
-be increased by delegation, depending on the other fields in your object.
+\footnote{This calculation does not include alignment overhead.
+Delegating fields to a side object may increase alignment costs,
+depending on the other fields in your object.
 If the header size is not a multiple of the alignment (e.g.
 on the IBM 32-bit JRE), delegation can sometimes reduce alignment costs.}:
 \begin{eqnarray}
@@ -152,19 +154,20 @@ products have won major awards, and you want to record this information. Rather 
 
 \begin{shortlisting}
 class Product {
-    static HashMap<String, String> majorAward = new HashMap<String, String>();
+    static HashMap<String, String> majorAward = 
+    	new HashMap<String, String>();
     ..
 }
 \end{shortlisting}
 
 Even though a \class{HashMap} has its own high overhead, this
-design can still come out ahead if there are a small number of major awards.
+design can come out ahead if there are a small number of major awards.
 You can do a similar analysis as you would for side objects to decide if this
-approach is worth it (see Section~\ref{sec:}
-for the cost of a hash entry).
-A hash entry typically takes more memory than a side object.
-Therefore, a side table will start wasting memory
-at a lower fill rate when compared to a side object approach.
+approach is worth it.
+A hash entry typically takes more memory than a side object (see
+Section~\ref{sec:}).
+Therefore, a side table will start wasting
+memory at a lower fill rate than would a side object approach.
 Whenever you add a new table like this you also have to be careful not to
 introduce a memory leak. If products are no longer needed and are garbage
 collected, the corresponding entries in the table must be cleaned up.
@@ -189,26 +192,37 @@ referencing a \class{Category} object, where a category may be
 books, music, clothes, toys, etc.
 Clearly, different products belong to different categories.
 However, suppose we define
-subclasses \class{Book}, \class{Music}, and \class{Clothing} of \class{Product}, 
-and all instances of a subclass belong to the same category.  
+subclasses \class{Book}, \class{Music}, and \class{Clothing} of the class
+\class{Product}, and all instances of a subclass belong to the same category.  
 Now the \code{category} field has the same value for products in each subclass,
 so it can be declared static:
 
 \begin{shortlisting} 
+[TODO: fix word wrap]
+class Product {
+	public abstract Category getCategory();
+	..
+}
+
 class Book extends Product {
-	static Category bookCategory; 	// points to the book category object  
+	static Category bookCategory; // Points to the book category object
+	public Category getCategory() {return bookCategory;}  
 	..
 }
 
 class Music extends Product {
-	static Category musicCategory;  // points to the music category object
+	static Category musicCategory;	// Points to the music category object
+	public Category getCategory() {return musicCategory;}  
 	..
 }
 
 class Clothing extends Product {
-	static Category clothingCategory;  // points to the clothing category object
+	static Category clothingCategory; // Points to the clothing category object
+	public Category getCategory() {return clothingCategory;}  
 	.. 
 }
+
+
 \end{shortlisting}
 
 Knowing the context of how objects are created and used, and how they relate to
