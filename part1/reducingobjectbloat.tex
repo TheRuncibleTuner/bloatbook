@@ -1,5 +1,7 @@
 \chapter{Field Patterns for Efficient Objects}
 
+[TODO: Fix word wrap in source listings]
+
 In many applications, the heap is filled mostly with instances of just a
 few important classes.  You can increase scalability significantly by making these
 objects as compact as possible. This chapter describes field usage
@@ -197,31 +199,33 @@ subclasses \class{Book}, \class{Music}, and \class{Clothing} of the class
 Now the \code{category} field has the same value for products in each subclass,
 so it can be declared static:
 
-\begin{shortlisting} 
-[TODO: fix word wrap]
-class Product {
+\begin{shortlisting}
+public abstract class Product {
 	public abstract Category getCategory();
 	..
 }
 
 class Book extends Product {
-	static Category bookCategory; // Points to the book category object
+	static Category bookCategory; // Points to the 
+                                  // book category object
 	public Category getCategory() {return bookCategory;}  
 	..
 }
 
 class Music extends Product {
-	static Category musicCategory;	// Points to the music category object
+	static Category musicCategory; // Points to the
+                                   // music category object
 	public Category getCategory() {return musicCategory;}  
 	..
 }
 
 class Clothing extends Product {
-	static Category clothingCategory; // Points to the clothing category object
+	static Category clothingCategory; // Points to the
+	                                  // clothing category
+                                      // object
 	public Category getCategory() {return clothingCategory;}  
 	.. 
 }
-
 
 \end{shortlisting}
 
@@ -234,11 +238,10 @@ other objects, is helpful in making these kinds of memory optimizations.
 
 Sometimes a class has fields that are never used at the same time, and therefore
 they can share the same space. Two mutually exclusive fields can be conflated
-into one field if they have the same type. 
-Unfortunately, Java does not have anything like
-a union type to combine fields of different types. However, if it makes sense,
-mutually exclusive field types can be broadened to a common base type to
-allow this optimization. 
+into one field if they have the same type. Unfortunately, Java does not have
+anything like a union type to combine fields of different types. However, if it
+makes sense, mutually exclusive field types can be broadened to a common base type
+to allow this optimization.
 
 For example, suppose that each women's clothing product has a size, and there
 are different kinds of sizes: xsmall-small-medium-large-xlarge,
@@ -246,9 +249,8 @@ numeric sizes, petite sizes, and large women's sizes. One way
 to implement this is to introduce a field for each kind of size:
 \begin{shortlisting}
 class WomensClothing extends Product {
-	static Category clothingCategory;  // points to the clothing category object
 	..
-	SMLSize     smlSize;
+	SMLSize      smlSize;
 	NumericSize  numSize;
 	PetiteSize   petiteSize;
 	WomensSize   womensSize; 
@@ -277,12 +279,6 @@ have both a petite size and a women's size, for example. Therefore, you can
 replace these fields by one field, provided that the four enum types are
 combined into one enum type:
 \begin{shortlisting}
-class Clothing extends Product {
-	static Category clothingCategory;  // points to the clothing category object
-	..
-	ClothingSize     size; 
-}
-
 enum ClothingSize {
 	XSMALL, SMALL, MEDIUM, LARGE, XLARGE, 
 	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN,
@@ -291,11 +287,33 @@ enum ClothingSize {
 	ONEX, TWOX, THREEX, FOURX;
 }
 
+class Clothing extends Product {
+	..
+	private ClothingSize     size; 
+	..
+	public SMLSize getSMLSize() {..}
+	public void setSMLSize(SMLSize smlSize) {..}
+
+	public NumericSize getNumericSize() {..}
+	public void setNumericSize(NumericSize numericSize) {..}
+
+	public PetiteSize getPetiteSize() {..}
+	public void setPetiteSize(PetiteSize PetiteSize) {..}
+
+	public void setNumericSize(WomensSize womensSize) {..}
+	public WomensSize getWomensSize() {..}
+	..
+} 
+
+
 \end{shortlisting}
 
-If the types of two mutually exclusive fields are different classes, then you
-generalize these types by defining a common superclass, if possible. As a last
-resort, you can always combine these fields into a single field of type
+You can easily write access and update methods that translate to and from our
+original types, so that the caller is insulated from this storage trick.
+
+If the mutually exclusive fields are of different classes,
+you can generalize their types by defining a common superclass, if possible.
+As a last resort, you can always combine these fields into a single field of type
 \class{Object}. Finally, if there are sets of fields that are mutually exclusive, then you can
 define a side class for each set of fields, where all side classes have
 a common superclass. In this case, you need to do the math to make sure that you
