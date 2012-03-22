@@ -1,4 +1,5 @@
 \chapter{Field Patterns for Efficient Objects}
+\label{chapter:field-patterns}
 
 [TODO: Fix word wrap in source listings]
 
@@ -327,8 +328,9 @@ information but in different forms, since the two fields are used for
 different purposes. For example, product IDs are
 more efficiently compared as \code{ints}, but more easily printed as
 \code{Strings}. Since it is possible to convert one representation into the
-other, storing both representations is not necessary, and only makes sense if
-there is a real cost penalty from performing the data conversion.
+other, storing both forms is not necessary, and only makes sense if
+there is a large performance penalty from performing the data
+conversion.
 In the more general case, a field may depend on many other values. For example,
 you could allocate a field to store the number of items in a shopping cart,
  or simply compute it by adding up all of the shopping cart items. 
@@ -340,14 +342,26 @@ the total memory cost? Comparing performance cost to memory cost is a bit like a
 but often it is clear which resource is most constrained. Here are several
 considerations to keep in mind:
 \begin{itemize}
-  \item Redundant \class{String} fields should be avoided, since
-strings have a very high overhead in Java, 
+  \item Computed \class{String} fields should be used only if there's a good
+  reason, since strings have a very high overhead in Java, 
 as we have seen.  
 \item Computed fields are very useful when storing partial values avoids 
-expensive quadratic computation. For example, if you need to support finding the
-number of children of nodes in a graph, then caching
+expensive quadratic computations. For example, if you need to support finding
+the number of children of nodes in a graph, then caching
 this value for each node is a good idea. 
 \end{itemize}
+
+If you do need to store a computed field, make sure that you are
+using the most efficient representation.  For example,
+\class{StringBuffer} is useful for building a character string, but is
+less space-efficient than \class{String} for storing the final result.
+Chapter~\ref{chapter:representing-values} compares different ways to represent some common
+datatypes.
+Another thing to watch for is storing many copies of the same computed
+value. Even something as simple as storing a large number of empty
+\class{String}s can really add up in Java.
+Chapter~\ref{chapter:sharing-immutable-data} looks at ways to share
+read-only data.
 
 \section{Large Base Classes and Fine-grained Designs}
 \index{Base Class Baggage}
@@ -448,7 +462,7 @@ practical.
 Frequently, decisions are made that trade space for time.
 There are many instances of this trade-off in the Java standard library. For
 example, let’s look at  \code{String}, which has three 
- bookkeeping fields, an offset,
+ bookkeeping fields: an offset,
 a length, and a hashcode. These 12 bytes of overhead consume 21\% of an eight
 character string. 
 The offset and length fields implement an optimization for substrings. 
@@ -458,18 +472,18 @@ Figure~\ref{fig:substring}. The offset and length fields in the substring
 \code{String} object specify the shared portion of the character array. 
 This scheme optimizes the time to create a substring, since there is no new
 character array and no copying. However, every string pays the price of the offset
-and length field, whether or not they are used.
-Across all Java applications, there are many more strings than substrings, so a
-lot of memory is wasted. Even when there are many substrings, if the original
-strings go away, you have a different footprint problem, namely,
+and length field, whether or not they are used. In practice, most Java applications
+have far more strings than substrings\cite{}, so a lot of memory is
+wasted. Even when there are many substrings,
+if the original strings go away, you have a different footprint problem, namely,
 saving character arrays which are too big.
 \begin{figure}
   \centering
  \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/substring.pdf}
  % \includegraphics{eight-char-string}
   \caption{A string and a substring share the same character array. The length
-  and offset fields are needed for the substring, but are redundant
-  in the original string object.}
+  and offset fields are needed only in substrings. In all other strings, the
+  offset is always 0 and the length is redundant.}
   \label{fig:substring}
 \end{figure}
 
@@ -486,16 +500,18 @@ compute it repeatedly. However, you have to be puzzled by the space-time
 trade-off, since 
 a string only needs its hashcode when it is stored in a \code{HashSet} or a
 \code{HashMap}. In both of these cases, the \code{HashSet} or \code{HashMap}
-entry already has a field for hashcode for each element.
-(As if this redundancy isn't enough, there are also four bytes reserved
-in every object header for the identity hashcode.) 
+entry already has a field for hashcode for each element. \footnote{There
+may be some benefit in saving the hashcode in a \class{String} that's used for
+looking up a map entry, but only when the same \class{String} object is used for
+lookup repeatedly.}
 
 This is a cautionary tale of premature optimization. Framework
-decisions can have a long-lived impact. For these \class{String}
-optimizations, it's not clear that there is any performance gain beyond 
-some unrealistic benchmarks. 
-But it's too late and expensive to change the implementation, 
-so all applications must pay the price in memory footprint.
+decisions can have a long-lived impact. For these \class{String} optimizations, it's not clear that
+there is any performance gain in real-world applications, as opposed to
+benchmarks. Since \class{String}s are usually the single largest consumer of
+memory .. ..   (It is difficult to test new frameworks in
+realistic settings, or to predict how code will be used in the future.) It's
+too late and expensive to change the implementation, so all applications must pay the price in memory footprint.
 
 \section{Summary}
 
