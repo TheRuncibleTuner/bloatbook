@@ -136,7 +136,7 @@ F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
 
 } 
-A common error is to put rarely-used fields in a side
+A common error is to put rarely used fields in a side
 class with lazy allocation, but have code paths that
 cause the side object to be allocated all the time, even when it's not needed.
 In this case, instead of saving memory, you pay the full cost of delegation as well as 
@@ -176,63 +176,18 @@ introduce a memory leak. If products are no longer needed and are garbage
 collected, the corresponding entries in the table must be cleaned up.
 This topic is discussed at length in Section~\ref{}.
 
-\section{Constant Fields}
-\label{sec:constant}
-
-Declaring a constant field \code{static} is a simple way to
-save memory. Programmers usually remember to make constants like \emph{pi} 
-static. There are other situations that are a bit more subtle, for example,
-when a field is constant because of how it is used in the context of an
-application.
-
-Returning to the product example, suppose that each product has a field
-\code{catalog} that points to a store catalog.
-If you know that there is always just one store catalog, then the field
-\code{catalog} can be turned into a static, saving 4 bytes per product.
-
-As a more elaborate example, suppose that a \class{Product} has a field
-referencing a \class{Category} object, where a category may be
-books, music, clothes, toys, etc.
-Clearly, different products belong to different categories.
-However, suppose we define
-subclasses \class{Book}, \class{Music}, and \class{Clothing} of the class
-\class{Product}, and all instances of a subclass belong to the same category.  
-Now the \code{category} field has the same value for products in each subclass,
-so it can be declared static:
-
-\begin{shortlisting}
-public abstract class Product {
-	public abstract Category getCategory();
-	..
-}
-
-class Book extends Product {
-	static Category bookCategory; // Points to the 
-                                  // book category object
-	public Category getCategory() {return bookCategory;}  
-	..
-}
-
-class Music extends Product {
-	static Category musicCategory; // Points to the
-                                   // music category object
-	public Category getCategory() {return musicCategory;}  
-	..
-}
-
-class Clothing extends Product {
-	static Category clothingCategory; // Points to the
-	                                  // clothing category
-                                      // object
-	public Category getCategory() {return clothingCategory;}  
-	.. 
-}
-
-\end{shortlisting}
-
-Knowing the context of how objects are created and used, and how they relate to
-other objects, is helpful in making these kinds of memory optimizations.
-
+\paragraph{Subclassing} The least expensive way to model rarely used fields
+is to move them to a subclass. Unlike the optimizations we've discussed,
+subclassing costs no extra space. It can have
+some disadvantages from a software engineering standpoint, though, when compared with
+delegation or a side table approach. It can make your code less flexible, making
+it more difficult to add or rearrange functionality later on. Since Java
+supports only single inheritance, defining a subclass for rarely used
+fields will prevent you from having subclasses for
+other purposes. Using delegation or a side table also allows your data to be more dynamic. 
+Rarely used fields can be added after an instance is
+created.
+ 
 
 \section{Mutually Exclusive Fields}
 \label{sec:mutually-exclusive}
@@ -309,7 +264,7 @@ class Clothing extends Product {
 
 \end{shortlisting}
 
-You can easily write access and update methods that translate to and from our
+You can easily write access and update methods that translate to and from the
 original types, so that the caller is insulated from this storage trick.
 
 If the mutually exclusive fields are of different classes,
@@ -319,6 +274,67 @@ As a last resort, you can always combine these fields into a single field of typ
 define a side class for each set of fields, where all side classes have
 a common superclass. In this case, you need to do the math to make sure that you
 actually save memory, given the extra cost of delegation.
+
+Just like rarely used fields, mutually
+exclusive fields can also be modeled using subclassing. Again, the space savings
+have to be weighed against other software engineering goals.
+
+\section{Constant Fields}
+\label{sec:constant}
+
+Declaring a constant field \code{static} is a simple way to
+save memory. Programmers usually remember to make constants like \emph{pi} 
+static. There are other situations that are a bit more subtle, for example,
+when a field is constant because of how it is used in the context of an
+application.
+
+Returning to the product example, suppose that each product has a field
+\code{catalog} that points to a store catalog.
+If you know that there is always just one store catalog, then the field
+\code{catalog} can be turned into a static, saving 4 bytes per product.
+
+As a more elaborate example, suppose that a \class{Product} has a field
+referencing a \class{Category} object, where a category may be
+books, music, clothes, toys, etc.
+Clearly, different products belong to different categories.
+However, suppose we define
+subclasses \class{Book}, \class{Music}, and \class{Clothing} of the class
+\class{Product}, and all instances of a subclass belong to the same category.  
+Now the \code{category} field has the same value for products in each subclass,
+so it can be declared static:
+
+\begin{shortlisting}
+public abstract class Product {
+	public abstract Category getCategory();
+	..
+}
+
+class Book extends Product {
+	static Category bookCategory; // Points to the 
+                                  // book category object
+	public Category getCategory() {return bookCategory;}  
+	..
+}
+
+class Music extends Product {
+	static Category musicCategory; // Points to the
+                                   // music category object
+	public Category getCategory() {return musicCategory;}  
+	..
+}
+
+class Clothing extends Product {
+	static Category clothingCategory; // Points to the
+	                                  // clothing category
+                                      // object
+	public Category getCategory() {return clothingCategory;}  
+	.. 
+}
+
+\end{shortlisting}
+
+Knowing the context of how objects are created and used, and how they relate to
+other objects, is helpful in making these kinds of memory optimizations.
 
 \section{Redundant Fields}
 
@@ -483,7 +499,7 @@ saving character arrays which are too big.
  % \includegraphics{eight-char-string}
   \caption{A string and a substring share the same character array. The length
   and offset fields are needed only in substrings. In all other strings, the
-  offset is always 0 and the length is redundant.}
+  offset is 0 and the length is redundant.}
   \label{fig:substring}
 \end{figure}
 
@@ -506,12 +522,11 @@ looking up a map entry, but only when the same \class{String} object is used for
 lookup repeatedly.}
 
 This is a cautionary tale of premature optimization. Framework
-decisions can have a long-lived impact. For these \class{String} optimizations, it's not clear that
-there is any performance gain in real-world applications, as opposed to
-benchmarks. Since \class{String}s are usually the single largest consumer of
-memory .. ..   (It is difficult to test new frameworks in
-realistic settings, or to predict how code will be used in the future.) It's
-too late and expensive to change the implementation, so all applications must pay the price in memory footprint.
+decisions can have a long-lived impact. At the same time, it is difficult to
+test new frameworks in realistic settings, or to even predict how they will be used.
+For these \class{String} optimizations, it's not clear that there is any performance gain
+in real-world applications, as opposed to benchmarks. Meanwhile all
+applications must pay the price in memory footprint.
 
 \section{Summary}
 
@@ -522,17 +537,31 @@ Optimization opportunities include:
 \begin{itemize}
   \item Rarely used fields can be delegated to a side object, or stored in a
   completely separate attribute table.
-  \item Fields that have the same value in all instances of a class can be
-  declared static.
   \item Mutually exclusive fields can share the same field, provided they have
   the same type.
+  \item Fields that have the same value in all instances of a class can be
+  declared static.
   \item Redundant fields whose value depends on the value of other fields can
   be eliminated, and recomputed each time they are used.
-  \item 
+  \item Inner classes which can be made static will avoid storing a
+  hidden \code{this} pointer. 
 \end{itemize}
 
 Every field eliminated saves around 4 bytes per object, which may seem small.
 However, often several optimizations can be applied to a class, and if the
-class has the most objects in the heap, then these small optimizations turn out
-to be significant. 
+class has a lot of instances, then these small
+optimizations turn out to be significant. They are especially useful in
+base classes, where their effect can be multiplied.
+
+Many of these optimizations do not come for free. They trade one kind of cost
+for another, and can easily make things worse, depending on the context.
+So it's important to look at how your data will be used, and to estimate
+and then measure the effect of any optimizations. It's also a good idea to
+design your APIs so that classes can be easily refactored
+later on, where:
+
+\begin{itemize}
+  \item Callers use interfaces rather than concrete classes.
+  \item Callers use factory methods rather than constructors.
+\end{itemize}
 
