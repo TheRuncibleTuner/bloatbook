@@ -336,6 +336,66 @@ class Clothing extends Product {
 Knowing the context of how objects are created and used, and how they relate to
 other objects, is helpful in making these kinds of memory optimizations.
 
+\section{Nonstatic Member Classes}
+Sometimes it is useful to define a class
+within a larger class or method. Java lets you create four kinds of
+nested classes, each for a different purpose. They are \emph{static member},
+\emph{nonstatic member}, \emph{local}, and \emph{anonymous} classes.
+Instances of the latter three are always created within the
+context of an instance of the enclosing class. Their methods can refer back to
+the enclosing instance. To accomplish this, these three kinds of nested classes 
+maintain an extra, hidden field, the \code{this} pointer of the enclosing
+instance. In contrast, instances of a static member class do not have this extra
+field. They are created independently of any instances of the enclosing class.
+
+A common error is to declare a nonstatic member class 
+when you don't really need to maintain a link with an
+enclosing instance. To illustrate, let's return to the example from Section~\ref{sec:rarely-used},
+where we moved some rarely used fields into a side class, \code{Supplier}. 
+Suppose we wanted to hide this decision, so that we would have the freedom to change our
+minds later if the optimization didn't work out. We could make \code{Supplier} a
+member class of Product, as follows:
+
+\begin{shortlisting}
+class Product {
+	class Supplier {
+		String supplierName;
+		String supplierAddress;
+		String sku;
+	}
+	
+	..
+	Supplier alternateSupplier;
+	..
+	public method void setAlternateSupplierName(String name) {
+		// Lazily allocate the alternate supplier object
+		if (alternateSupplier == null) {
+			alternateSupplier = new Supplier();
+		}
+		alternateSupplier.supplierName = name;
+	}
+	..
+}
+\end{shortlisting}
+
+Since we didn't declare \code{Supplier} to be static, every instance of
+\code{Supplier} will contain an extra pointer back to the product which created
+it. In cases like this, a static member class can work just as well, and save
+the 4-byte pointer field. The only code change is to add the keyword
+\code{static} to the declaration of \code{Supplier}.
+Notice how Java makes it easy to make this mistake, since the \code{new}
+statement that creates an instance of \code{Supplier} looks the same either way.
+In the nonstatic case, it hides the fact that it's passing in the enclosing
+\code{this} pointer.
+
+The book Effective Java \cite{EffectiveJavaBook} gives the same advice,
+to ``favor static member classes over nonstatic'' when you don't need to
+maintain a link to the outer instance. It lists more benefits in addition
+to the space savings.
+For example, the hidden pointer can lead to a memory leak, by
+inadvertently holding on to the enclosing instance longer than it's needed. 
+
+
 \section{Redundant Fields}
 
 A field is redundant if it can be computed on the fly from other fields, and, in
@@ -443,14 +503,6 @@ at the memory size of its superclasses, especially if the inheritance chain is
 long.
 
 
-\section{Inner Classes}
-[TODO: short section explaining that 1. there's a hidden this pointer in
-non-static nested classes (i.e. in all three types of inner classes) and 2.
-advise the reader to use static nested classes unless they need one of the other kinds.  Can
- reference Effective Java on the topic - he gives the same advice with
- additional arguments other than space.  The extra this pointer can also cause
- leaks/drag (example from Sun tutorial(?): a map entry nested class within a map.  
- Entry class is erroneously declared to be non-static).]
 
 \section{Writing Efficient Framework Code}
 
