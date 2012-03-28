@@ -367,7 +367,7 @@ class Product {
 	..
 	Supplier alternateSupplier;
 	..
-	public method void setAlternateSupplierName(String name) {
+	public void setAlternateSupplierName(String name) {
 		// Lazily allocate the alternate supplier object
 		if (alternateSupplier == null) {
 			alternateSupplier = new Supplier();
