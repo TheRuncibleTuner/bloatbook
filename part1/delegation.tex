@@ -1,7 +1,13 @@
 \chapter{Objects and Delegation}
 \label{chapter:delegation}
 
-An important design decision when modeling data is how many Java classes to use to represent a logical concept. The choices made at this design stage can impact memory costs significantly. At one extreme, a single class may store all attributes. At the other extreme, a main class may delegate many of its attributes to other classes, resulting in a fine-grained design. Delegation is a very popular pattern because of the flexibility it provides. It is also one of the few ways Java allows you to reuse existing classes. Yet, overly fine-grained data models can result in poor memory health. This chapter explains how to evaluate the granularity of a design from a memory perspective. It begins with the costs of basic objects, and moves on to examples from real applications.
+An important design decision when modeling data is how many Java classes to use to represent a logical concept.
+The choices made at this design stage can impact memory costs significantly. At one extreme, a single class may store
+all attributes. At the other extreme, a main class may delegate many of its attributes to other classes,
+resulting in a fine-grained design. Delegation is a very popular pattern because of the flexibility it provides.
+It is also one of the few ways Java allows you to reuse existing classes. Yet, overly fine-grained data models
+can result in poor memory health. This chapter explains how to evaluate the granularity of a design from a memory perspective.
+It begins with the costs of basic objects, and moves on to examples from real applications.
   
 \section{The Cost of Objects}
 \label{sec:CostOfObjects}
@@ -10,24 +16,29 @@ There is no Java library method that returns the size of an object. This is by
 design. Unlike systems languages like C, a Java programmer is not supposed to
 know either the size of an object or how it is laid out in memory. The \jre,
 not the programmer, manages storage, and the \jre has the freedom to implement
-its own storage policy. However, knowing the sizes of objects is necessary for understanding memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object, and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.  You need to know just a few basics, starting with the number of bytes needed to store primitive data types. These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
+its own storage policy. However, knowing the sizes of objects is necessary for understanding
+memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object,
+and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.
+You need to know just a few basics, starting with the number of bytes needed to store primitive data types.
+These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
+Fields can also be reference fields. Their size depends on the architecture of
+the \jre. They are 4 bytes on a 32-bit \jre.
 \begin{table}
   \centering
 %\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
 \begin{tabular}{lc} \toprule
-	Primitive data type & Number of bytes \\ \midrule
+	Data type & Number of bytes \\ \midrule
+	primitives \\ \midrule
 	boolean, byte & 1 \\
-%	byte & 1 \\ \midrule
 	char, short & 2 \\
-	%short & 2 \\ \midrule
 	int, float & 4 \\
-%	float & 4 \\ \midrule
-	long, double & 8 \\
-%	double & 8 \\
+	long, double & 8 \\ \midrule
+	reference (32-bit JRE) & 4 \\
 	\bottomrule
 \end{tabular}
  % \includegraphics{eight-char-string}
-  \caption{The number of bytes needed to store primitive data.}
+  \caption{The number of bytes needed to store primitive data and reference
+  fields.}
   \label{tab:primitive-sizes}
 \end{table}
 
@@ -53,6 +64,7 @@ sizes in various environments.}
  	Object Header size & 8 bytes & 12 bytes \\
  	Array Header size & 12 bytes & 16 bytes \\
  	Object alignment & 8 byte boundary & 8 byte boundary \\
+ 	Minimum field alignment & 1 byte boundary & 4 byte boundary \\
  	\bottomrule
  \end{tabular}
   \caption{Object overhead used by the Sun and IBM \jres for 32-bit architectures.}
@@ -62,8 +74,8 @@ sizes in various environments.}
    
 The simplest objects are the boxed scalars, which are objects with a single
 primitive data type field. Since both of these \jres align objects on
-8-byte boundaries and object headers are at least 8 bytes, a boxed scalar is at
-least 16 bytes. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed
+8-byte boundaries and object headers are at least 8 bytes, a boxed scalar takes
+at least 16 bytes. Table~\ref{tab:boxed-scalar-sizes} gives the sizes of boxed
 scalars.
 
 \begin{table}
@@ -107,13 +119,17 @@ scalars.
 \end{table}
  
 \paragraph{Field-level overhead} Estimating the size of an object with more
-than one field is a bit more complicated, since the hardware imposes additional alignment requirements on specific data types. For example, integer fields are usually aligned on 4 byte boundaries. This field alignment potentially introduces more padding.
+than one field is a bit more complicated, since the hardware imposes additional
+alignment requirements on specific data types. For example, integer fields are
+usually aligned on 4 byte boundaries. This field alignment potentially introduces more padding.
 
 %\begin{example}{Simple Employee Class.}
-For example, consider a class \class{SimpleEmployee}, which has all primitive fields. The comments show the number of bytes needed to store the primitive data.
+For example, consider a class \class{SimpleEmployee}, which has all primitive fields.
+The comments show the number of bytes needed to store the primitive data.
 
 \begin{shortlisting}
 class SimpleEmployee {
+    int id;               // 4 bytes
     int hoursPerWeek;     // 4 bytes       
     boolean exempt;       // 1 byte          
     double salary;        // 8 bytes          
@@ -123,13 +139,17 @@ class SimpleEmployee {
 \end{shortlisting}
 %\end{example}
 
-If the fields are laid out one after the other with no fill, then the field \class{salary} would have to begin on a 5-byte boundary, which is not allowed for \class{doubles}. To avoid adding 3 more bytes of padding, the \jre could rearrange the fields to take up the smallest amount of space. In fact, the Sun  \jre does a good job rearranging and packing fields, and the IBM \jre does not. This means that field sizes depend on the specific \jre also. 
+If the fields are laid out one after the other with no fill, then the
+field \class{salary} would have to begin on a 5-byte boundary, which is not allowed for
+\class{doubles}. To avoid adding 3 more bytes of padding, the \jre could rearrange the fields
+to take up the smallest amount of space. In fact, the Sun \jre does a good job rearranging and
+packing fields, and the IBM \jre does not. This means that field sizes depend on the specific \jre also. 
 
 Using the Sun \jre, you can assume each field is the size of its primitive data type because the fields are packed. The size of a
 \class{SimpleEmployee} object is 32 bytes:
 
 \begin{shortlisting}               
-8 + (4+1+8+2+4) = 27 bytes, rounds up to 32 bytes
+8 + (4+4+1+8+2+4) = 31 bytes, rounds up to 32 bytes
 \end{shortlisting} 
 
 In contrast, using the IBM \jre, all fields in non-array objects are either 4 or
@@ -137,6 +157,7 @@ In contrast, using the IBM \jre, all fields in non-array objects are either 4 or
 accordingly.
 \begin{shortlisting} 
 class SimpleEmployee {
+    int id;                  // 4 bytes
     int hoursPerWeek;        // 4 bytes
     boolean exempt;          // 4 byte
     double salary;           // 8 bytes
@@ -146,13 +167,13 @@ class SimpleEmployee {
 \end{shortlisting}
 The size of a \class{SimpleEmployee} is 40 bytes:
 \begin{shortlisting}
-12 + (4+4+8+4+4) = 36, rounds up to 40 bytes
+12 + (4+4+4+8+4+4) = 40 bytes, with no object alignment needed
 \end{shortlisting}
 
 \paragraph{Arrays} For arrays, the data is always packed with no spaces. For
 example, here is a formula that estimates the size of an array of 100 \code{chars}:
 \begin{shortlisting}
-header + 100*2, round up to a multiple of the alignment
+header + 100*2, round up to a multiple of the object alignment
 \end{shortlisting}
 
 \callout{callout:minimum-size-estimation-rule}{Estimating Object Sizes}{
@@ -168,30 +189,38 @@ possible size, or align fields on word boundaries. Array data is always packed. 
 
 For objects with only a small amount of primitive data, the overhead is relatively high. 
 But as the amount of primitive data increases, the bloat factor decreases. 
-The overhead cost consists of a fixed object header cost and a bounded alignment cost, which are amortized when the object is big.  For example, for the Sun \jre, the bloat factors for the boxed
+The overhead cost consists of a fixed object header cost and a bounded alignment cost,
+which are amortized when the object is big.  For example, for the Sun \jre, the bloat factors for the boxed
 scalars range from 94\% for a \class{Boolean} down to 50\% for a
-\class{Double}.  The bloat factor for a \class{SimpleEmployee} is 46\%.  The
-bloat factor for an array of 100 \code{char}s is insignificant. This is not the
-case for objects with other kinds of overhead, like references.
+\class{Double}.  The bloat factor for a \class{SimpleEmployee} is 28\%.  The
+bloat factor for an array of 100 \code{char}s is insignificant.  
+
+%This is not the case for objects with other kinds of overhead, like references.
+
+An exception to this rule is if you are on a JRE that doesn't pack fields
+tightly, and you have a lot of primitive fields that carry very little data, such as \code{boolean} or
+\code{byte} fields. In that case, the more fields you have, the more overhead.
+
 
 \section{The Cost of Delegation}
 \index{Delegation}
 
 The \class{SimpleEmployee} class is not very realistic, since it has only
 primitive fields. Usually, a class has some fields that are objects. In Java,
-a field of type \class{ObjectType} is implemented using \textit{delegation},
-that is, the field stores a reference to another object of type
-\class{ObjectType}. 
+this kind of field is implemented using
+\textit{delegation}, that is, by storing a reference to another object. 
+Unlike some other languages such as C++, Java does not let you embed
+one object inside another.
 
 %\begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An
-employee now has a name, which is a \class{String}, and a start date, which is a
-\class{Date}. The type of \class{salary} has been changed from \code{double}
-to \class{BigDecimal}. \class{BigDecimal} avoids potential roundoff errors.
+employee now has a name, which is a \class{String}, instead of an integer id. It
+also has a start date, which is a \class{Date}. The type of \class{salary} has
+been changed from \code{double} to \class{BigDecimal}. \class{BigDecimal} avoids potential roundoff errors.
 \begin{shortlisting} 
-class EmployeeWithDelegation {
-    int hoursPerWeek;           // 4 bytes
+class Employee {
     String name;                // 4 bytes
+    int hoursPerWeek;           // 4 bytes
     BigDecimal salary;          // 4 bytes
     Date startDate;             // 4 bytes
     boolean exempt;             // 1 byte
@@ -209,7 +238,7 @@ the size of an \c{EmployeeWithDelegation} object is 32 bytes:
 \end{shortlisting}
 %\end{example}
 
-While an instance of the \class{EmployeeWithDelegation} class is a single 32
+While an instance of the \class{Employee} class is a single 32
 byte object, an entire employee, including name, salary, and start date
 consists of five objects. Two of these objects are used to store the name.
 (Recall from Section~\ref{sec:bloat-def} that a string is represented by a
@@ -219,13 +248,15 @@ a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/modelingdatatypes/employee-status.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an employee ``John Doe".}
+  \caption{The memory layout for an employee, with some field data
+  delegated to additional objects.}
   \label{fig:employee-status}
 \end{figure}
 
-A comparion of a \class{EmployeeWithDelegation} object with a
+A comparion of a \class{Employee} object with a
 \class{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that
-the size has increased from 32 to 144 bytes, and the bloat factor has increased from 46\% to 65\%. 
+the size has increased from 32 to 144 bytes, and the bloat factor has increased
+from 28\% to 65\%.
 There is more information stored in the new version, so it is no surprise that it is bigger. The increase
 in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional
 object headers, a pointer for each delegated object, including empty
@@ -246,7 +277,9 @@ to have fields that are \code{classes}, \code{structs}, or arrays, not just
 references to them.  Similarly, you can have arrays of \code{class} or
 \code{struct}.
 
-Because of the design of Java, there is a basic delegation cost that is hard to eliminate it. This is the cost of object-oriented programming in Java. While it is hard to avoid this basic delegation cost, it is important not to make things a lot worse, as discussed in the next section. 
+Because of the design of Java, there is a basic delegation cost that is hard to eliminate.
+This is the cost of object-oriented programming in Java. While it is hard to avoid this basic
+delegation cost, it is important not to make things a lot worse, as discussed in the next section. 
 
 \section{Fine-Grained Data Models}
 \label{fine-grained-data-models}
