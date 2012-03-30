@@ -21,8 +21,8 @@ memory requirements and scalability. Fortunately, it is not hard to estimate the
 and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.
 You need to know just a few basics, starting with the number of bytes needed to store primitive data types.
 These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
-Fields can also be reference fields. Their size depends on the architecture of
-the \jre. They are 4 bytes on a 32-bit \jre.
+Fields can also be reference fields, pointing to other objects. Their size
+depends on the architecture of the \jre. They are 4 bytes on a 32-bit \jre.
 \begin{table}
   \centering
 %\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
@@ -33,7 +33,7 @@ the \jre. They are 4 bytes on a 32-bit \jre.
 	char, short & 2 \\
 	int, float & 4 \\
 	long, double & 8 \\ \midrule
-	reference (32-bit JRE) & 4 \\
+	reference (32-bit \jre) & 4 \\
 	\bottomrule
 \end{tabular}
  % \includegraphics{eight-char-string}
@@ -61,8 +61,8 @@ sizes in various environments.}
  % \includegraphics{eight-char-string}
  \begin{tabular}{lll} \toprule
  	& Sun \javasix (u14) & IBM \javasix (SR4) \\ \midrule
- 	Object Header size & 8 bytes & 12 bytes \\
- 	Array Header size & 12 bytes & 16 bytes \\
+ 	Object header size & 8 bytes & 12 bytes \\
+ 	Array header size & 12 bytes & 16 bytes \\
  	Object alignment & 8 byte boundary & 8 byte boundary \\
  	Minimum field alignment & 1 byte boundary & 4 byte boundary \\
  	\bottomrule
@@ -194,13 +194,10 @@ which are amortized when the object is big.  For example, for the Sun \jre, the 
 scalars range from 94\% for a \class{Boolean} down to 50\% for a
 \class{Double}.  The bloat factor for a \class{SimpleEmployee} is 28\%.  The
 bloat factor for an array of 100 \code{char}s is insignificant.  
-
-%This is not the case for objects with other kinds of overhead, like references.
-
-An exception to this rule is if you are on a JRE that doesn't pack fields
-tightly, and you have a lot of primitive fields that carry very little data, such as \code{boolean} or
-\code{byte} fields. In that case, the more fields you have, the more overhead.
-
+An exception to this rule is when objects
+have a lot of fields such as \code{boolean}s, that carry very little data. 
+These objects will have a high bloat factor, especially if the \jre doesn't pack
+fields tightly. In that case, the more fields, the more overhead.
 
 \section{The Cost of Delegation}
 \index{Delegation}
@@ -209,8 +206,8 @@ The \class{SimpleEmployee} class is not very realistic, since it has only
 primitive fields. Usually, a class has some fields that are objects. In Java,
 this kind of field is implemented using
 \textit{delegation}, that is, by storing a reference to another object. 
-Unlike some other languages such as C++, Java does not let you embed
-one object inside another.
+%Unlike C++ and some other languages, Java does not let you embed
+%one object inside another.
 
 %\begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An
@@ -229,12 +226,13 @@ class Employee {
 }
 \end{shortlisting}
 
-On 32-bit architectures, a pointer is 4 bytes. You can
-calculate the size of any object as described in in
-Section~\ref{sec:CostOfObjects}, plugging in 4 bytes for each reference field. Assuming the Sun \jre,
-the size of an \c{EmployeeWithDelegation} object is 32 bytes:
+On 32-bit architectures, a pointer is 4 bytes. 
+You can calculate the size of any object as described in
+Section~\ref{sec:CostOfObjects}.
+% plugging in 4 bytes for each reference field.
+Assuming the Sun \jre, the size of an \c{Employee} object is 32 bytes:
 \begin{shortlisting}
-(4+4+4+4+1+2+4) + 8 = 31, rounds up to 32 bytes
+8 + (4+4+4+4+1+2+4) = 31, rounds up to 32 bytes
 \end{shortlisting}
 %\end{example}
 
@@ -270,7 +268,7 @@ array.  You can only point to other objects. Even the basic data type
 \class{String} consists of two objects. This means that delegation is pervasive
 in Java programs, and it is difficult to avoid a high level of delegation
 overhead. Single inheritance is the only language feature that can be used
-instead of delegation to compose two object, but single inheritance has limited
+instead of delegation to compose two objects, but single inheritance has limited
 flexibility.  In contrast, C++ has many different ways to compose objects. C++
 has single and multiple inheritance and union types. C++ allows you
 to have fields that are \code{classes}, \code{structs}, or arrays, not just
@@ -284,12 +282,22 @@ delegation cost, it is important not to make things a lot worse, as discussed in
 \section{Fine-Grained Data Models}
 \label{fine-grained-data-models}
 
-The software engineering culture tends to promote delegation, and for good reasons. Delegation provides a loose coupling of objects, making refactoring and reuse easier. Replacing inheritance by delegation is often recommended, especially if the base class has extra fields and methods that the subclass does not need. In languages with single inheritance, once you have used up your inheritance slot, it becomes hard to refactor your code. Therefore, delegation can be more flexible than inheritance for implementing polymorphism. However, overly fine-grained data models can be expensive both in execution time and memory space. 
+The software engineering culture tends to promote delegation, and for good reasons. 
+Delegation provides a loose coupling of objects, making refactoring and reuse easier. 
+Replacing inheritance by delegation is often recommended, especially if the base class
+has extra fields and methods that the subclass does not need. In languages with single inheritance,
+once you have used up your inheritance slot, it becomes hard to refactor your code. Therefore,
+delegation can be more flexible than inheritance for implementing polymorphism. However, overly fine-grained
+data models can be expensive both in execution time and memory space. 
 
-There is no simple rule that can always be applied to decide when to use delegation. Each situation has to be evaluated in context, and there may be tradeoffs among different goals. To make an informed decision, it is important to know what the costs are.
+There is no simple rule that can always be applied to decide when to use delegation. Each situation has to be evaluated
+in context, and there may be tradeoffs among different goals. To make an informed decision, it is important to know what
+the costs are.
 
 %\begin{example}{Employee emergency contact} 
-Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
+Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method
+to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for
+the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 %\end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
 
