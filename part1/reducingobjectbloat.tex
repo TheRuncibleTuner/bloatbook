@@ -388,12 +388,10 @@ statement that creates an instance of \code{Supplier} looks the same either way.
 In the nonstatic case, it hides the fact that it's passing in the enclosing
 \code{this} pointer.
 
-The book Effective Java \cite{EffectiveJavaBook} gives the same advice,
-to ``favor static member classes over nonstatic'' when you don't need to
-maintain a link to the outer instance. It lists more benefits in addition
-to the space savings.
-For example, the hidden pointer can lead to a memory leak, by
-inadvertently holding on to the enclosing instance longer than it's needed. 
+The book Effective Java \cite{EffectiveJavaBook} gives more reasons to
+``favor static member classes over nonstatic'' when you don't need to
+maintain a link to the outer instance. For example, the hidden pointer can lead
+to a memory leak, by inadvertently holding on to the enclosing instance longer than it's needed. 
 
 
 \section{Redundant Fields}
@@ -470,8 +468,7 @@ contact information was changed for an emergency contact? If you decide to
 track changes to every contact phone number or email address, you can easily achieve this by
 extending the \class{ContactMethod} class defined in the fine-grained data model from Section~\ref{fine-grained-data-models}:
 \begin{shortlisting}
-class ContactMethod extends UpdateInfo {
-     ContactPerson owner;
+abstract class ContactMethod extends UpdateInfo {
 }
 \end{shortlisting}
 Figure~\ref{fig:big-base-class} shows an instance of a contact person with
@@ -486,7 +483,7 @@ do not need such a fine-grained data model, and the update tracking functionalit
   \centering
  \includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/big-base-class.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The cost of associating \class{UndateInfo} with every
+  \caption{The cost of associating \class{UpdateInfo} with every
   \class{ContactMethod}.}
   \label{fig:big-base-class}
 \end{figure}

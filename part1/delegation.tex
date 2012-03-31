@@ -295,8 +295,8 @@ in context, and there may be tradeoffs among different goals. To make an informe
 the costs are.
 
 %\begin{example}{Employee emergency contact} 
-Suppose an emergency contact is needed for each employee. An emergency contact is a person along with a preferred method
-to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for
+\paragraph{Example.} Suppose an emergency contact is needed for each employee.
+An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for
 the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 %\end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 
@@ -309,7 +309,7 @@ class EmployeeWithEmergencyContact {
 			
 class EmergencyContact {
     ContactPerson contact;
-    ContactMethod preferredContact;
+    ContactMethod preferredMethod;
 }
 			
 class ContactPerson {
@@ -321,8 +321,7 @@ class ContactPerson {
     PhoneNumber work;
 }
 			
-class ContactMethod {
-    ContactPerson owner;
+abstract class ContactMethod {
 }
 			
 class PhoneNumber extends ContactMethod {
@@ -337,15 +336,20 @@ class EmailAddress extends ContactMethod {
   \centering
  \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/employee-status-fine-grained.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an employee with an emergency contact.}
+  \caption{The memory layout for an employee with an emergency contact, using
+  a fine-grained design.}
   \label{fig:employee-status-fine-grained}
 \end{figure}
-The memory layout for a sample employee is shown in Figure~\ref{fig:employee-status-fine-grained}. There are 15 objects used to store emergency contact information, with a bloat factor of 77\%, which seems excessive. The objects are all small, containing only one or two meaningful fields, which is a symptom of an overly fine grained data model. Also, all of the data is at the bottom of object chains, 4 to 5 objects long. Refactoring can flatten this structure somewhat, undoing a few of the delegation.
+The memory layout for a sample employee is shown in Figure~\ref{fig:employee-status-fine-grained}. There
+are 15 objects used to store emergency contact information, with a bloat factor of 77\%, which seems excessive.
+The objects are all small, containing only one or two meaningful fields, which is a symptom of an overly fine
+grained data model. Also, all of the data is at the bottom of object chains, 4 to 5 objects long. Refactoring
+can flatten this structure somewhat.
 
-One object that looks superfluous is \class{EmergencyContact}, which
-encapsulates the contact person and the preferred contact method. Reversing
-this delegation involves inlining the fields of the \class{EmergencyContact}
-class into other classes, and eliminating the \class{EmergencyContact} class.
+\paragraph{Example, optimized.} One object that looks superfluous is
+\class{EmergencyContact}, which encapsulates the contact person and the
+preferred contact method. Removing this delegation involves moving the fields
+of \class{EmergencyContact} into other classes, and eliminating the \class{EmergencyContact} class.
 Here are the refactored classes:
 \begin{shortlisting}
 class EmployeeWithEmergencyContact {
@@ -360,7 +364,7 @@ class ContactPerson {
     PhoneNumber phone;
     PhoneNumber cell;
     PhoneNumber work;
-    ContactMethod preferredContact;
+    ContactMethod preferredMethod;
 }
 \end{shortlisting}
 This change eliminates an object from
@@ -371,14 +375,15 @@ classes into the \class{ContactPerson} class, which removes 64 bytes of
 overhead. In a system with many instances of employees stored in memory, this
 reduction is significant. In order to make this change, the preferred contact
 method must be encoded somehow in \class{ContactPerson}.  A simple way to
-achieve this is to use an enumeration type field, which has the same size as a reference field, to discriminate among the different contact methods:
+achieve this is to use an enumerated type field, which has the same size as a
+reference field, to discriminate among the different contact methods:
 \begin{shortlisting} 
 enum PreferredContactMethod {
     EMAIL, HOME_PHONE, CELL_PHONE, WORK_PHONE;
 }
       
 class ContactPerson {
-    PreferredContactMethod preferred;
+    PreferredContactMethod preferredMethod;
     String name;
     String relation;
     String email;
@@ -387,16 +392,22 @@ class ContactPerson {
     byte[] workPhone;
 }		
 \end{shortlisting}
-Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size and the bloat factor have been reduced.
+Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size
+and the bloat factor have been reduced. 
  \begin{figure}
   \centering
  \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/refactored-fine-grain.pdf}
  % \includegraphics{eight-char-string}
-  \caption{Memory layout for refactored emergency contact.}
+  \caption{The memory layout for an emergency contact, with a more streamlined
+  design.}
   \label{fig:refactored-fine-grain}
 \end{figure}
 
-When many objects are used to represent one logical concept, this is an indication that the data model may be using too much delegation. Delegation is good, but it is possible to overuse a good thing.  A design with fewer, bigger objects has less overhead and is more scalable. Whenever you use delegation, there should be a good reason. This is especially true for the important data entities in an application, those that will determine the scalability of the program.  
+When many objects are used to represent one logical concept, this is an indication that the
+data model may be using too much delegation. Delegation is good, but it is possible to overuse a good thing.
+A design with fewer, bigger objects has less overhead and is more scalable. Whenever you use delegation, there should
+be a good reason. This is especially true for the important data entities in an application, those that will determine
+the scalability of the program.  
  
 
 \section{64-bit Architectures}
@@ -410,8 +421,10 @@ going from a 32-bit to a 64-bit address space for the same Java program.
 %\begin{example}{8-character string} 
 Consider what happens to the 8-character string from
 Section~\ref{sec:bloat-def} in a 64-bit \jre. The memory layout is shown in
-Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 50\% bigger than the 32-bit string. All of the
-additional cost is overhead.
+Figure~\ref{fig:8-char-string-64-bit}. The 64-bit string is 43\% bigger than the
+32-bit string. All of the additional cost is overhead. Fine-grained designs
+and those with a lot of pointers will suffer the most when moving to 64-bit
+architectures.
 %\end{example}
  
  \begin{figure}
@@ -419,16 +432,17 @@ additional cost is overhead.
 
  \includegraphics[width=0.8\textwidth]{part1/Figures/modelingdatatypes/8-char-string-64-bit.pdf}
  % \includegraphics{eight-char-string}
-  \caption{The memory layout for an 8 character string by a 64-bit \jre.}
+  \caption{The memory layout for an 8-character string on a 64-bit \jre.}
   \label{fig:8-char-string-64-bit}
 \end{figure}
 
-In reality, things are not so bad. Both the Sun and the IBM \jres have
-implemented a scheme for compressing addresses that avoids this blowup, provided that the heap is
+Fortunately, in practice things are not always so bad. Both the Sun and the
+IBM \jres have implemented a scheme for compressing addresses that avoids this blowup, provided that the heap is
 less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers.
-During execution, 32-bit compressed addresses are converted into 64-bit native addresses, and vice-versa.
-See Appendix~\ref{chapter:jre-comparison} for the specifics of using this
-feature.
+Objects are laid out just like in a 32-bit
+address space. During execution, 32-bit compressed addresses are converted into
+64-bit native addresses, and vice-versa.  See Appendix~\ref{chapter:jre-comparison} for the
+specifics of using this feature.
 
 
 \section{Summary}
