@@ -28,11 +28,10 @@ depends on the architecture of the \jre. They are 4 bytes on a 32-bit \jre.
 %\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
 \begin{tabular}{lc} \toprule
 	Data type & Number of bytes \\ \midrule
-	primitives \\ \midrule
 	boolean, byte & 1 \\
 	char, short & 2 \\
 	int, float & 4 \\
-	long, double & 8 \\ \midrule
+	long, double & 8 \\
 	reference (32-bit \jre) & 4 \\
 	\bottomrule
 \end{tabular}
@@ -206,8 +205,30 @@ The \class{SimpleEmployee} class is not very realistic, since it has only
 primitive fields. Usually, a class has some fields that are objects. In Java,
 this kind of field is implemented using
 \textit{delegation}, that is, by storing a reference to another object. 
-%Unlike C++ and some other languages, Java does not let you embed
-%one object inside another.
+Some of the most common field types are modeled this way, requiring one or more
+separate objects. Table~\ref{tab:common-delegated-field-types} shows the space needs of a few common ones.
+
+
+\begin{table}
+  \centering
+%\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
+\begin{tabular}{lcc} \toprule
+	Class & Number of objects & Size in bytes \\ \midrule
+	String (8-character) & 2 & 56 \\
+	Date & 1 & 24 \\
+	BigDecimal & usually 1, up to 5 & 32, when 1 object \\
+	Enum & 0 & one shared object per enum constant \\
+	\bottomrule
+\end{tabular}
+ % \includegraphics{eight-char-string}
+  \caption{Memory requirements for the most common field types that are
+  implemented as separate objects. Sizes do not include a referring
+  pointer.
+  }
+  \label{tab:common-delegated-field-types}
+\end{table}
+
+
 
 %\begin{example}{Employee class with delegation}
 Here is a more realistic employee class with several reference fields. An
@@ -229,7 +250,6 @@ class Employee {
 On 32-bit architectures, a pointer is 4 bytes. 
 You can calculate the size of any object as described in
 Section~\ref{sec:CostOfObjects}.
-% plugging in 4 bytes for each reference field.
 Assuming the Sun \jre, the size of an \c{Employee} object is 32 bytes:
 \begin{shortlisting}
 8 + (4+4+4+4+1+2+4) = 31, rounds up to 32 bytes
@@ -238,10 +258,11 @@ Assuming the Sun \jre, the size of an \c{Employee} object is 32 bytes:
 
 While an instance of the \class{Employee} class is a single 32
 byte object, an entire employee, including name, salary, and start date
-consists of five objects. Two of these objects are used to store the name.
-(Recall from Section~\ref{sec:bloat-def} that a string is represented by a
-wrapper \class{String} object and a \class{char} array.) The memory layout for
-a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
+consists of at least five objects. Two of these objects
+are used to store the name. (Recall from Section~\ref{sec:bloat-def} that a string is represented by a
+wrapper \class{String} object and a \class{char} array.) \class{BigDecimal}
+usually requires 1 object but can take up to 5 depending on the usage.
+The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fig:employee-status}.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/modelingdatatypes/employee-status.pdf}
@@ -295,7 +316,7 @@ in context, and there may be tradeoffs among different goals. To make an informe
 the costs are.
 
 %\begin{example}{Employee emergency contact} 
-\paragraph{Example.} Suppose an emergency contact is needed for each employee.
+\paragraph{Example} Suppose an emergency contact is needed for each employee.
 An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for
 the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 %\end{example}
@@ -342,11 +363,12 @@ class EmailAddress extends ContactMethod {
 \end{figure}
 The memory layout for a sample employee is shown in Figure~\ref{fig:employee-status-fine-grained}. There
 are 15 objects used to store emergency contact information, with a bloat factor of 77\%, which seems excessive.
-The objects are all small, containing only one or two meaningful fields, which is a symptom of an overly fine
-grained data model. Also, all of the data is at the bottom of object chains, 4 to 5 objects long. Refactoring
+The objects are all small, containing only one or two meaningful fields, which
+is a symptom of an overly fine-grained
+data model. Also, all of the data is at the bottom of object chains, 4 to 5 objects long. Refactoring
 can flatten this structure somewhat.
 
-\paragraph{Example, optimized.} One object that looks superfluous is
+\paragraph{Example, optimized} One object that looks superfluous is
 \class{EmergencyContact}, which encapsulates the contact person and the
 preferred contact method. Removing this delegation involves moving the fields
 of \class{EmergencyContact} into other classes, and eliminating the \class{EmergencyContact} class.
@@ -372,9 +394,9 @@ Figure~\ref{fig:employee-status-fine-grained}, but it only recovers 8 bytes,
 since a 16 byte object is removed and \class{ContactPerson} is 8 bytes bigger.
 You can save considerably more space by inlining the four \class{ContactMethod}
 classes into the \class{ContactPerson} class, which removes 64 bytes of
-overhead. In a system with many instances of employees stored in memory, this
-reduction is significant. In order to make this change, the preferred contact
-method must be encoded somehow in \class{ContactPerson}.  A simple way to
+overhead. In a system with many instances of
+employees stored in memory, this reduction is significant. In order to make this change,
+the preferred contact method must be encoded somehow in \class{ContactPerson}.  A simple way to
 achieve this is to use an enumerated type field, which has the same size as a
 reference field, to discriminate among the different contact methods:
 \begin{shortlisting} 
@@ -393,7 +415,7 @@ class ContactPerson {
 }		
 \end{shortlisting}
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size
-and the bloat factor have been reduced. 
+and the bloat factor have been reduced.
  \begin{figure}
   \centering
  \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/refactored-fine-grain.pdf}
