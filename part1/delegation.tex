@@ -206,10 +206,11 @@ primitive fields. Usually, a class has some fields that are objects. In Java,
 this kind of field is implemented using
 \textit{delegation}, that is, by storing a reference to another object. 
 Some of the most common field types are modeled this way, requiring one or more
-separate objects. Table~\ref{tab:common-delegated-field-types} shows the space needs of a few common ones.
+separate objects. Table~\ref{tab:common-delegated-field-types} shows the space
+needs of the most common ones.
 
 
-\begin{table}
+\begin{table}[htbp]
   \centering
 %\includegraphics[width=.50\textwidth]{part1/Figures/modelingdatatypes/primitive-byte-sizes.pdf}
 \begin{tabular}{lcc} \toprule
@@ -217,13 +218,12 @@ separate objects. Table~\ref{tab:common-delegated-field-types} shows the space n
 	String (8-character) & 2 & 56 \\
 	Date & 1 & 24 \\
 	BigDecimal & usually 1, up to 5 & 32, when 1 object \\
-	Enum & 0 & one shared object per enum constant \\
+	Enum & 0, uses a shared object & 0 \\
 	\bottomrule
 \end{tabular}
  % \includegraphics{eight-char-string}
-  \caption{Memory requirements for the most common field types that are
-  implemented as separate objects. Sizes do not include a referring
-  pointer.
+  \caption{Memory requirements for some common field types that require one
+  or more separate objects. Sizes do not include a referring pointer.
   }
   \label{tab:common-delegated-field-types}
 \end{table}
@@ -279,22 +279,35 @@ from 28\% to 65\%.
 There is more information stored in the new version, so it is no surprise that it is bigger. The increase
 in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional
 object headers, a pointer for each delegated object, including empty
-pointer slots for uninitialized object fields. Delegation may also force additional alignment costs, since
-each new delegated object has to be aligned to an 8-byte boundary.
+pointer slots for uninitialized object fields. In this example, the
+4 new object headers and 7 pointer slots add up to 60 bytes, or
+42\% of the total memory of an \class{Employee} record. Delegation may also
+force additional alignment costs, since each new delegated object has to be aligned
+to an 8-byte boundary.
 
-In the spirit of keeping things simple, Java does not allow you to nest objects
-inside other objects, to build a single object out of other objects. You cannot
-nest an array inside an object, and you cannot store objects directly in an
-array.  You can only point to other objects. Even the basic data type
-\class{String} consists of two objects. This means that delegation is pervasive
+\paragraph{Modeling in Java} In the spirit of keeping things simple,
+Java does not allow you to embed one object in another. 
+% to build a single object out of other objects.
+You cannot nest an array inside an object, or store objects directly in an
+array. You can only point to other objects. Even the basic data type
+\class{String} consists of two objects. Single inheritance is the only language feature
+that can be used instead of delegation to compose two objects, but single
+inheritance has limited flexibility. This means that delegation is pervasive
 in Java programs, and it is difficult to avoid a high level of delegation
-overhead. Single inheritance is the only language feature that can be used
-instead of delegation to compose two objects, but single inheritance has limited
-flexibility.  In contrast, C++ has many different ways to compose objects. C++
-has single and multiple inheritance and union types. C++ allows you
-to have fields that are \code{classes}, \code{structs}, or arrays, not just
-references to them.  Similarly, you can have arrays of \code{class} or
-\code{struct}.
+overhead. In contrast, C++ gives you more options for composing data, allowing
+embedding, delegating, overlaying with unions, or subclassing with single
+or multiple inheritance.
+
+\callout{callout:estimating-string-cost}{Calculating the Cost of a
+\code{String}}{
+\index{Estimating String Cost}
+The size of a \code{String} can be computed by adding:
+\begin{itemize}
+\item The size of the \code{String} wrapper = 24 bytes
+\item The size of the \code{char[]} = 16 bytes + 2 * number of characters,
+then round up to a multiple of 8
+\end{itemize}
+This is for the Sun \jre on the 32-bit architecture.}
 
 Because of the design of Java, there is a basic delegation cost that is hard to eliminate.
 This is the cost of object-oriented programming in Java. While it is hard to avoid this basic
@@ -416,7 +429,7 @@ class ContactPerson {
 \end{shortlisting}
 Figure~\ref{fig:refactored-fine-grain} shows the memory layout after these changes. Both the size
 and the bloat factor have been reduced.
- \begin{figure}
+ \begin{figure}[htbp]
   \centering
  \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/refactored-fine-grain.pdf}
  % \includegraphics{eight-char-string}
@@ -431,7 +444,7 @@ A design with fewer, bigger objects has less overhead and is more scalable. When
 be a good reason. This is especially true for the important data entities in an application, those that will determine
 the scalability of the program.  
  
-
+ 
 \section{64-bit Architectures}
 \index{64-bit}
 
