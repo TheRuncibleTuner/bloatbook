@@ -272,31 +272,33 @@ The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fi
   \label{fig:employee-status}
 \end{figure}
 
-A comparion of a \class{Employee} object with a
+A comparion of an \class{Employee} object with a
 \class{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that
 the size has increased from 32 to 144 bytes, and the bloat factor has increased
 from 28\% to 65\%.
 There is more information stored in the new version, so it is no surprise that it is bigger. The increase
 in the bloat factor is more significant. Delegation increases memory bloat. Delegation introduces additional
-object headers, a pointer for each delegated object, including empty
+object headers, and a pointer for each delegated object, including empty
 pointer slots for uninitialized object fields. In this example, the
 4 new object headers and 7 pointer slots add up to 60 bytes, or
 42\% of the total memory of an \class{Employee} record. Delegation may also
 force additional alignment costs, since each new delegated object has to be aligned
 to an 8-byte boundary.
 
-\paragraph{Modeling in Java} In the spirit of keeping things simple,
+\paragraph{Java's Delegation Bias} In the spirit of keeping things simple,
 Java does not allow you to embed one object in another. 
 % to build a single object out of other objects.
-You cannot nest an array inside an object, or store objects directly in an
-array. You can only point to other objects. Even the basic data type
-\class{String} consists of two objects. Single inheritance is the only language feature
-that can be used instead of delegation to compose two objects, but single
+You also cannot nest an array inside an object, or store objects directly in an
+array. You can only point from one object to another. Even the basic
+data type \class{String} consists of two objects. Single inheritance is the only language feature
+that can be used instead of delegation to compose two types, but single
 inheritance has limited flexibility. This means that delegation is pervasive
-in Java programs, and it is difficult to avoid a high level of delegation
-overhead. In contrast, C++ gives you more options for composing data, allowing
-embedding, delegating, overlaying with unions, or subclassing with single
-or multiple inheritance.
+in Java programs. In contrast, C++ gives you many options: 
+you can embed one type within another, overlay types using unions, 
+employ subclasses with single or multiple inheritance, and point from
+one type to another.
+
+% and it is difficult to avoid a high level of delegation overhead.
 
 \callout{callout:estimating-string-cost}{Calculating the Cost of a
 \code{String}}{
@@ -482,8 +484,45 @@ specifics of using this feature.
 
 \section{Summary}
 
+The decisions you make about the \emph{granularity} of your design --- the
+number of objects you use to model each record --- will have a big impact on
+the memory needs of your system. 
+Good software engineering and Java's design
+both encourage designs with many small objects.
+Since each object in Java comes with a fixed memory overhead, it's easy to
+produce data models with very high overhead. Estimating your memory costs
+will let you weigh the importance of flexibility and other software
+engineering goals when you map your data into classes.
+
+To estimate the size of your data:
+\begin{itemize}
+  \item  The size of each object is the sum of the object header and the field
+  sizes, rounded up to an alignment boundary. These all depend on the
+  \jre (see \autoref{chapter:jre-comparison}).
+  \item Each time fields are \emph{delegated} to a separate object, it
+  introduces new object header and alignment overheads, along with
+  space for the pointer. While one level of indirection may not seem like much,
+  these overheads add up quickly in a fine-grained design, where there are
+  many small objects.
+  \item Common field types that require one or more separate objects, like
+  \class{String} and \class{Date}, can add a lot of overhead. To estimate the
+  cost of a data type, makes sure to include all of the objects directly
+  or indirectly hanging off of it.
+  \item Memory overhead will be \emph{much higher} when you switch to a 64-bit
+  architecture, unless you can take advantage of compressed addressing. 
+  That's especially true for fine-grained designs.
+\end{itemize}
+
+Since Java gives you so few modeling options compared to a language
+like C++, you are often forced to make tradeoffs between one expensive option
+and another. The next two chapters are a guide to the common 
+
+
+
 %An entity is modeled by a set of interrelated classes. This chapter describes how to estimate the size of an instantiated entity, using rules for estimating the size of basic objects. During the modeling process, programmers choose how many classes to define.
-The decision to delegate functionality to another object sometimes involves making a tradeoff between flexibility and memory cost. You need to decide how much flexibility is really needed, and you also need to be aware of the actual memory costs. This chapter provides the basic knowledge for estimating memory costs. 
+The decision to delegate functionality to another object sometimes involves making a tradeoff between flexibility and memory cost.
+You need to decide how much flexibility is really needed, and you also need to be aware of the actual memory costs.
+This chapter provides the basic knowledge for estimating memory costs. 
 \begin{itemize}
 \item An object size depends on the object header size, field alignment, object
 alignment, and pointer size. These can vary, depending on the \jre and the
