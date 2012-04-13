@@ -38,14 +38,14 @@ the overhead of scalars and even of boxed forms.
   \centering
 \begin{tabular}{llr} \toprule \toprule
 & Example & Size \\ \midrule \midrule
-INTEGER & int anint = 47 & 4 \\
+INTEGER & int anint = 47; & 4 \\
 \midrule
 & Integer anint = new Integer(47); & 4+16  \\
 \midrule
 & String anint = new String(``47''); & 4+48 \\
 \midrule
 \midrule
-BOOLEAN & boolean abool = 1 & 1\\
+BOOLEAN & boolean abool = true; & 1\\
 \midrule
 & Boolean abool = new Boolean(true): & 4+16 \\
 \midrule
@@ -57,24 +57,19 @@ ENUMERATION & enum Gender {MASCULINE, FEMININE, NEUTER}; &\\
 & String agender = new String(``masculine''); & 4+48 \\
 \bottomrule \bottomrule
 \end{tabular}
-
 \caption{The cost of different ways to represent an integer, a boolean, and an
 enumerated type. The size column shows both the field size and the cost of
 additional delegated objects.}
 \label{tab:data-sizes}
 \end{table}
 
-Table~\ref{tab:data-sizes}
-
-.  Mention
-bloat factor from one or two examples from the little table below.
-
-
-
-
-- short table with 3 most common examples, comparing cost of scalar
-vs. boxed form vs. String form.  Examples: int (95\%), boolean (using ``Y''
-and ``N''), and enum. 
+Table~\ref{tab:data-sizes} shows three examples of the cost of different
+representations of the same value. (See Chapter~\ref{chapter.delegation} for
+details on these costs.) In the first example, and integer 47 can be
+represented as a 4 byte field, a boxed object, or a Java \class{String}. 
+The \class{String} is by far the costliest representation, with a bloat factor of
+96\%.  Similarly for the other two examples, a boolean and an enumeration type.
+\class{String}s are simply a very expensive way to represent scalar values.
 
 \paragraph{StringBuffer vs. String}
 
