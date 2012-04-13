@@ -12,18 +12,58 @@ In this chapter, we look at the costs of different representations for the most
 commmon datatypes.
 
 \section{Character Strings}
-Strings are the most common non-trivial datatype found in Java programs. We
-discuss when to represent data as a Java \class{String}, and when not to.
-\paragraph{External vs. Internal Datatype forms Forms}
-TOWRITE:
-- It's very common to represent scalar data, such as int, boolean, or date, as
-strings. There are many reasons why it's preferable to represent these as
-scalars when you can. - give some reasons other than space (Effective Java makes
-a good argument for this), such as availability of operators, type checking, self-documenting.  - in
-addition, the overhead of a string representation is usually much higher than scalar forms. 
-Much higher than even the boxed form as well.  Much higher
-than in languages like C, as we saw in reference-chapter-on-datatypes.  Mention
+String is the most common non-trivial datatype found in Java programs. We
+discuss when to use a Java \class{String} to represent data, and when not to.
+\paragraph{External vs. Internal Datatype Forms}
+Character strings are the universal data type, in that all data can be
+represented in string form.  For example, I am now typing the integer 347 as a
+string of characters in this paragraph, and it is stored in a file as a sequence
+of characters. Similarly decimal numbers, dates, and boolean values can be
+represented as character strings.
+ 
+In Java programs, it's very common to see scalar data represented as instances
+of the Java \class{String} class. This representation makes some sense if the
+data is read in and/or written out as characters, since it avoids the
+cost of conversion. However, there are several good reasons why it's better
+to represent data as scalars whenever possible. First, if you need to perform
+any kind of operations on the data, you will need to convert it to use
+available datatype operators. If these conversions are performed
+repeatedly, then there may be lots of temporaries generated needlessly.  Second,
+representing data with specific data types leads to better type checking to avoid bugs. 
+Finally, specific data types provide a simple form of documentation.
+In addition, the overhead of a string representation is much higher than
+the overhead of scalars and even of boxed forms.
+
+\begin{table}
+  \centering
+\begin{tabular}{clr} \toprule
+Representation & Example & Size (field + objects) \\ \midrule
+scalar & int anint = 47 & 4  \\
+boxed & Integer anint = new Integer(47); & 4+16 \\
+String & String anint = new String(``47''); & 4+48 \\
+\midrule
+scalar & boolean abool = 1 & 1 \\
+boxed & Boolean abool = new Boolean(true): & 4+16 \\
+String & String abool - new String(``true''); & 4+48 \\
+\midrule
+scalar & enum Gender {MASCULINE, FEMININE, NEUTER}; Gender aGender = MASCULINE;
+& 4 \\
+String & String agender = new String(``masculine''); & 4+48 \\
+\bottomrule
+\end{tabular}
+
+\caption{The cost of different ways to represent an integer, a boolean, and an
+enumerated type.}
+\label{tab:data-sizes}
+\end{table}
+
+Table~\ref{tab:data-sizes}
+
+.  Mention
 bloat factor from one or two examples from the little table below.
+
+
+
 
 - short table with 3 most common examples, comparing cost of scalar
 vs. boxed form vs. String form.  Examples: int (95\%), boolean (using ``Y''
