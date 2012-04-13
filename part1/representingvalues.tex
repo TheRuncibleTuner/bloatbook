@@ -36,24 +36,31 @@ the overhead of scalars and even of boxed forms.
 
 \begin{table}
   \centering
-\begin{tabular}{clr} \toprule
-Representation & Example & Size (field + objects) \\ \midrule
-scalar & int anint = 47 & 4  \\
-boxed & Integer anint = new Integer(47); & 4+16 \\
-String & String anint = new String(``47''); & 4+48 \\
+\begin{tabular}{llr} \toprule \toprule
+& Example & Size \\ \midrule \midrule
+INTEGER & int anint = 47 & 4 \\
 \midrule
-scalar & boolean abool = 1 & 1 \\
-boxed & Boolean abool = new Boolean(true): & 4+16 \\
-String & String abool - new String(``true''); & 4+48 \\
+& Integer anint = new Integer(47); & 4+16  \\
 \midrule
-scalar & enum Gender {MASCULINE, FEMININE, NEUTER}; Gender aGender = MASCULINE;
-& 4 \\
-String & String agender = new String(``masculine''); & 4+48 \\
-\bottomrule
+& String anint = new String(``47''); & 4+48 \\
+\midrule
+\midrule
+BOOLEAN & boolean abool = 1 & 1\\
+\midrule
+& Boolean abool = new Boolean(true): & 4+16 \\
+\midrule
+& String abool = new String(``true''); & 4+48 \\
+\midrule \midrule
+ENUMERATION & enum Gender {MASCULINE, FEMININE, NEUTER}; &\\
+& Gender aGender = MASCULINE; & 4 \\
+\midrule
+& String agender = new String(``masculine''); & 4+48 \\
+\bottomrule \bottomrule
 \end{tabular}
 
 \caption{The cost of different ways to represent an integer, a boolean, and an
-enumerated type.}
+enumerated type. The size column shows both the field size and the cost of
+additional delegated objects.}
 \label{tab:data-sizes}
 \end{table}
 
