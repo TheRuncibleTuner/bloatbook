@@ -170,7 +170,8 @@ than \code{equals}. In fact, most
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself can add
-memory costs, most typically the cost of a map entry per shared instance.
+memory costs, typically the cost of a map entry for each instance stored in the
+sharing pool.
 If there is not much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
 extra cost, and memory will be wasted instead of saved.  In \autoref{sec:quantifying-sharing-savings} is
