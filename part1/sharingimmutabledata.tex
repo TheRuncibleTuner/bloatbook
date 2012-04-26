@@ -1,7 +1,7 @@
 \chapter{Sharing Immutable Data}
 \label{chapter:sharing-immutable-data}
 
- If you examine any Java
+If you examine any Java
 heap, you will find that a
 large amount of the data is duplicated. At one extreme, 
 there are often thousands of copies of the same boxed
@@ -112,8 +112,8 @@ multiple levels of identical objects.
 An example is shown in \autoref{fig:sharing-pool}. The example is from a
 text processing system, which assigns a type to each word in a document.
 Each type is identified by a \class{String} type name.
-The complete set is only known at run time, so an \code{enum}
-type cannot be used.  In \autoref{fig:sharing-pool-a}, objects A and B
+The complete set of word types is only known at run time, so an \code{enum}
+cannot be used.  In \autoref{fig:sharing-pool-a}, objects A and B
 are words that have been classified as having the same type. 
 \autoref{fig:sharing-pool-b} shows objects A and B sharing the type
 structure, which is stored in a sharing pool. In this example, each use of a
@@ -157,20 +157,21 @@ changing the contents of the Type that A points to in
 
 \paragraph{The result of \code{equals} testing should be the same,
 whether or not objects are shared.}
-In particular, you should never use \code{==} on shared objects.
-In \autoref{fig:sharing-pool}, \code{A.type == B.type} is false in
-\autoref{fig:sharing-pool-a} and true in \autoref{fig:sharing-pool-b},
- which can lead to very subtle bugs. Using \code{equals} also allows you to
- safely change your design, should you later decide to share a different set of
- instances, or to not share data at all. \footnote{An argument sometimes heard for sharing data is that it
- allows for speedier comparisons, using \code{==} rather than \code{equals}.
- In fact, most
+You should never rely on \code{==} to compare shared objects. It's better to use
+\code{equals}. In \autoref{fig:sharing-pool}, \code{A.type == B.type} is
+false in \autoref{fig:sharing-pool-a} and true in \autoref{fig:sharing-pool-b}, which can lead to very subtle bugs.
+Some sharing pool implementations do not guarantee that all
+duplicates will actually be shared. Using \code{equals} also allows
+you to safely change your design, should you later decide to share a different set of instances, or to not share data at all.
+\footnote{An argument sometimes heard for sharing data is that it will
+allow for speedier comparisons, by letting the application use \code{==} rather
+than \code{equals}. In fact, most
  \code{equals} methods already perform this optimization, making the performance virtually identical.}
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
-A sharing pool itself adds
-memory costs, including additional per-entry costs. If there is not
-much sharing, then the memory saved from
+A sharing pool itself can add
+memory costs, most typically the cost of a map entry per shared instance.
+If there is not much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
 extra cost, and memory will be wasted instead of saved.  In \autoref{sec:quantifying-sharing-savings} is
 a sample analysis of when it's worth sharing Strings.
@@ -190,12 +191,12 @@ environment, checking and adding to the sharing pool can introduce latency if th
 The use of shared instances, however, does not incur any extra
 time costs.
 
-\paragraph{Sharing pools should be either stable or garbage
-collected.} In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an
-object that no other object is pointing to. Over time, the sharing pool can fill up
-with garbage, that is, items that were once needed but not any more. If the
-sharing pool is not purged of these unused items, there is a memory
-leak that can eventually use up all of memory. 
+\paragraph{Sharing pools should be either stable or garbage collected.} 
+In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an object
+that no other object is pointing to. Over time, the sharing pool can fill up with garbage, that is,
+items that were once needed but not any more. If the
+sharing pool is not purged of these unused items, there will be a memory
+leak that will eventually use up more and more memory. 
 If a sharing pool, however, has only a small set of shared instances, or a set
 of shared instances that is unchanging for the lifetime of the pool, then
 garbage collection doesn't need to be a concern.
