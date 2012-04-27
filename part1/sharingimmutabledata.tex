@@ -97,7 +97,7 @@ sharing dynamic data. \autoref{sec:sharing-strings} describes the Java
 string interning mechanism, which uses a built-in string sharing pool to
 eliminate duplication.
 
-\section{The Sharing Pool Concept}
+\section{Sharing Pools}
 \label{sec:sharing-pools}
 
 Suppose an application generates a lot of duplicated data and the values
@@ -106,22 +106,23 @@ You can eliminate data duplication by using a \emph{sharing pool}, also known
 as a \emph{canonicalizing map}. 
 A sharing pool will eliminate not just duplicate data, 
 but all of its associated overhead. Since many Java data structures employ 
-some delegation in their designs, sharing duplicate data can avoid
+delegation in their designs, sharing duplicate data can avoid
 multiple levels of identical objects.
 
 An example is shown in \autoref{fig:sharing-pool}. The example is from a
 text processing system, which assigns a type to each word in a document.
 Each type is identified by a \class{String} type name.
-The complete set of word types is only known at run time, so an \code{enum}
-cannot be used.  In \autoref{fig:sharing-pool-a}, objects A and B
+The complete set of word types is known only at run time, so an \code{enum}
+type cannot be used.  In \autoref{fig:sharing-pool-a}, objects A and B
 are words that have been classified as having the same type. 
 \autoref{fig:sharing-pool-b} shows objects A and B sharing the type
 structure, which is stored in a sharing pool. In this example, each use of a
 shared structure saves three objects.
 
 \begin{shortlisting}
-public class Word {
-	private Type type;
+public class WordInContext {
+	private int  locationInDocument;
+	private Type type;  // The word's role in the sentence
 }
 
 public class Type {
@@ -136,7 +137,7 @@ public class Type {
 	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.3\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
 	\hspace{0.18\textwidth}
 	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
-    \caption{(a) Objects A and B point to duplicate data. (b) Objects A and B
+    \caption{(a) Words A and B point to duplicated data. (b) Words A and B
     share the same data, stored in a sharing pool.}
 	\label{fig:sharing-pool}
 \end{figure}
@@ -157,11 +158,12 @@ changing the contents of the Type that A points to in
 
 \paragraph{The result of \code{equals} testing should be the same,
 whether or not objects are shared.}
-You should never rely on \code{==} to compare shared objects. It's better to use
-\code{equals}. In \autoref{fig:sharing-pool}, \code{A.type == B.type} is
-false in \autoref{fig:sharing-pool-a} and true in \autoref{fig:sharing-pool-b}, which can lead to very subtle bugs.
+Always use \code{equals} to compare shared objects; never rely on \code{==}.
+In \autoref{fig:sharing-pool},
+\code{A.type == B.type} is false in \ref{fig:sharing-pool-a} and true in
+\ref{fig:sharing-pool-b}, which can lead to very subtle bugs.
 Some sharing pool implementations do not guarantee that all
-duplicates will actually be shared. Using \code{equals} also allows
+duplicates will actually be shared. Avoiding \code{==} also allows
 you to safely change your design, should you later decide to share a different set of instances, or to not share data at all.
 \footnote{An argument sometimes heard for sharing data is that it will
 allow for speedier comparisons, by letting the application use \code{==} rather
@@ -196,15 +198,14 @@ time costs.
 In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an object
 that no other object is pointing to. Over time, the sharing pool can fill up with garbage, that is,
 items that were once needed but not any more. If the
-sharing pool is not purged of these unused items, there will be a memory
+sharing pool is not purged of these unused items, there will be a
 leak that will eventually use up more and more memory. 
-If a sharing pool, however, has only a small set of shared instances, or a set
-of shared instances that is unchanging for the lifetime of the pool, then
-garbage collection doesn't need to be a concern.
+However, if there are only a small number of shared instances,
+or if the set of shared instances is unchanging for the lifetime of the pool,
+then garbage collection need not to be a concern.
 
-\paragraph{}
 Fortunately, Java provides a few built-in mechanisms that take care of
-some of these concerns.
+these concerns for some common cases.
 
 \section{Sharing Strings}
 \label{sec:sharing-strings}
@@ -219,13 +220,13 @@ some of these concerns.
 %structure itself has overhead. So you need to have a good idea
 %which strings are likely to have duplicate values.
 
-Since \class{String} duplication is so common, Java provides a built-in string
-pool for sharing \class{Strings}, implemented by the \jre. To share a
-\class{String}, you simply call the method \code{intern} on it.  If an equivalent \class{String} is not found, your
-\class{String} will be added to the pool. In either case, you will be returned a
-pointer to the new or existing \class{String}. 
-Since \class{Strings} are immutable, sharing is safe. However,
-the rule about not using \code{==} still holds on shared
+Since \class{String} duplication is so common, Java provides a built-in
+string pool for sharing \class{Strings}. To share a
+\class{String}, you simply call the method \code{intern} on it, and everything
+is taken care of automatically. \class{String} wrapper objects will be shared,
+along with their underlying \class{char[]}s. Since
+\class{Strings} are immutable, sharing is safe.
+However, the rule about not using \code{==} still holds on shared
 \class{Strings}.  Remember that only some
 \class{Strings} will be shared in any application, namely those specific
 instances that you choose to intern.
@@ -254,20 +255,21 @@ new \class{String} is a duplicate, and a previously saved \class{String} is
 returned.
 
 Interned \class{Strings} are stored in a separate heap known as the
-\emph{perm space}.
-Interning \class{Strings} indiscriminately will waste memory, and can
-exceed the size of the perm space, resulting in an exception: \code{java.lang.OutOfMemoryError:PermGen Space}.
+\emph{perm space}. There's a memory cost for each shared \class{String}, so
+interning \class{Strings} indiscriminately will waste memory. 
+Exceeding the size of the perm space will result in an exception:
+\code{java.lang.OutOfMemoryError:PermGen space}
 \footnote{This is an issue only for the \oracle \jre. The \ibm \jre places no
-fixed limit on interned \code{Strings}.} There are JVM parameters to adjust the perm
-space size: \code{-XX:PermSize=128m} sets perm size to 128 megabytes, and \code{-XX:MaxPermSize=512m} sets the
-maximum perm size to 512 megabytes. Fortunately, the JVM performs garbage collection on the
+fixed limit on interned \code{Strings}.}. There are parameters to adjust
+the perm space size. See \autoref{chapter:jre-options} for details. 
+ Fortunately, the \jre performs garbage collection on the
 internal string pool, so there is no danger of a memory leak.
 \index{Permspace Heap}
 
 The built-in interning mechanism is synchronized, and can incur a latency cost
 in a multithreaded environment, when new \class{Strings} are interned.
-\cite{EffectiveJavaBook}, pp. xxx-yyy, gives an example of how to build a
-concurrent sharing mechanism for \class{Strings}.
+The book Effective Java\cite{EffectiveJavaBook}, pp. xxx-yyy, gives an example
+of how to build a concurrent sharing mechanism for \class{Strings}.
 
  %    * Literal strings within the same class in the same package represent
 %     references to the same String object. * Literal strings within different
@@ -279,10 +281,14 @@ concurrent sharing mechanism for \class{Strings}.
     % run time are newly created and therefore distinct.
 \section{Sharing \class{Integers} and Other Boxed Scalars}
 
-As of \javafive, the Java library provides sharing pools for \class{Integers}
-and some of the other boxed scalars. Unlike the string pool, the \class{Integer}
-pool is initialized at class load time to store all \class{Integers} in a fixed range, from -128 to 127 by
-default. The method \code{Integer.valueOf(int value)} returns a
+As of \javafive, the Java library provides sharing pools for
+\class{Integers} and some of the other boxed scalars. These pools work
+differently from string interning, where you first create a \class{String} and
+then call its \code{intern} method.  To take advantage of \class{Integer}
+sharing, simply call the factory method \code{Integer.valueOf(int i)}
+whenever you want to create an new \code{Integer}. Unlike the string pool, the \class{Integer}
+pool is initialized to store all \class{Integers} in a fixed range, from -128 to 127 by
+default. The factory method returns a
 pointer to an \class{Integer} in the pool, provided \code{value} is in
 range; otherwise it returns a new \class{Integer}. For example,
 the code in \autoref{fig:integer-sharing-pool} stores \class{Integers} from 1 to
@@ -304,9 +310,9 @@ library's integer sharing pool.}
 \end{wrapfigure}
 
 Because the \class{Integer} sharing pool is pre-initialized and fixed in size,
-it's always a good idea to call \code{Integer.valueOf} instead of the
-constructor to create a new \class{Integer}. The pooling aspect is very cheap, and you never have to
-worry about garbage collection, wasting memory, or concurrency issues.
+it's always a good idea to call \code{Integer.valueOf}, instead of the
+constructor, to create a new \class{Integer}. The pooling aspect is very
+cheap, and you never have to worry about garbage collection, wasting memory, or concurrency issues.
 You do have to be careful, however, to avoid using \code{==} to compare
 \class{Integers}, since it's impossible to know with certainty which instances
 are actually shared.  As always, using \code{equals} is a better practice.
