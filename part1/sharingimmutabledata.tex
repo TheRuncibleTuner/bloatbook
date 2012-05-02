@@ -286,9 +286,9 @@ As of \javafive, the Java library provides sharing pools for
 differently from string interning, where you first create a \class{String} and
 then call its \code{intern} method.  To take advantage of \class{Integer}
 sharing, simply call the factory method \code{Integer.valueOf(int i)}
-whenever you want to create an new \code{Integer}. Unlike the string pool, the \class{Integer}
-pool is initialized to store all \class{Integers} in a fixed range, from -128 to 127 by
-default. The factory method returns a
+whenever you want to create a new \code{Integer}. Unlike the string pool, the
+integer pool is initialized to store all \class{Integers} in a fixed range, from
+-128 to 127 by default. The factory method returns a
 pointer to an \class{Integer} in the pool, provided \code{value} is in
 range; otherwise it returns a new \class{Integer}. For example,
 the code in \autoref{fig:integer-sharing-pool} stores \class{Integers} from 1 to
@@ -310,27 +310,36 @@ library's integer sharing pool.}
 \end{wrapfigure}
 
 Because the \class{Integer} sharing pool is pre-initialized and fixed in size,
-it's always a good idea to call \code{Integer.valueOf}, instead of the
-constructor, to create a new \class{Integer}. The pooling aspect is very
-cheap, and you never have to worry about garbage collection, wasting memory, or concurrency issues.
+it's usually a good idea to call \code{Integer.valueOf}, instead of
+the constructor, whenever you need a new \class{Integer}. The pooling aspect is
+very cheap, and you never have to worry about garbage collection, wasting memory, or concurrency issues.
 You do have to be careful, however, to avoid using \code{==} to compare
 \class{Integers}, since it's impossible to know with certainty which instances
-are actually shared.  As always, using \code{equals} is a better practice.
+are actually shared. As always, using \code{equals} is a better
+practice.
 
-[TODO: (GSS) verify AutoBoxCacheMax - this was mentioned in the text. I
-think this is for a different purpose.]
-
-There is a JVM parameter to change the upper limit of the \class{Integer}
-sharing pool. By adding \code{-Djava.lang.Integer.IntegerCache.high=100} to your
+[TODO: fix this to say it can only be increased  Move
+specifics of AutoBoxCacheMax to Appendix] [TODO: mention autoboxing here or in
+Appendix, along with JLS requirement].
+There is a JVM parameter to
+change the upper limit of the \class{Integer} sharing pool. By adding \code{-Djava.lang.Integer.IntegerCache.high=100} to your
 application's command line, the pooled integers will range over the values -128
 to 100.
 
-The \jre provides a similar \code{valueOf} method for sharing each of the boxed
-scalars. In some cases, such as \class{float}, there is no sharing actually implemented, at
-least as of \javasix. For \class{Boolean} and \class{Byte}, a
-shared constant is returned for every possible value. In
-general, there is no penalty for always using \code{valueOf}.
 
+The \jre provides a similar \code{valueOf} method for sharing each of the boxed
+scalars. TODO: char and short In
+some cases, such as \class{float}, there is no sharing actually implemented, at least as of \javasix. For \class{Boolean} and \class{Byte}, a
+shared constant is returned for every possible value. In general, there is
+no penalty for always using \code{valueOf}.
+
+The exception to this rule is if you expect to have
+boxed scalars such as \class{Integer}s with a large number of copies
+of values lying outside the range of the built-in pool. In
+this case you will not get the benefit of the built-in mechanism, and it
+may be worth implementing your own sharing instead.  When sharing something
+as small as a boxed scalar, however, there must be a very
+high degree of duplication to make the extra overhead of your sharing mechanism worthwhile.
 
 \section{Sharing Your Own Structures}
 \label{sec:canonicalizing-maps}
