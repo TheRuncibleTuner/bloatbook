@@ -282,64 +282,63 @@ of how to build a concurrent sharing mechanism for \class{Strings}.
 \section{Sharing \class{Integers} and Other Boxed Scalars}
 
 As of \javafive, the Java library provides sharing pools for
-\class{Integers} and some of the other boxed scalars. These pools work
-differently from string interning, where you first create a \class{String} and
-then call its \code{intern} method.  To take advantage of \class{Integer}
-sharing, simply call the factory method \code{Integer.valueOf(int i)}
-whenever you want to create a new \code{Integer}. Unlike the string pool, the
-integer pool is initialized to store all \class{Integers} in a fixed range, from
--128 to 127 by default. The factory method returns a
-pointer to an \class{Integer} in the pool, provided \code{value} is in
-range; otherwise it returns a new \class{Integer}. For example,
-the code in \autoref{fig:integer-sharing-pool} stores \class{Integers} from 1 to
-500 in an array.
-\code{valueOf} returns an existing \class{Integer}
-for the first 127 numbers, and, for the rest of the numbers, \code{valueOf}
-returns a new \class{Integer} instance.
+\class{Integers} and some of the other boxed scalars. These pools
+work differently from \class{String} interning, where you must create a
+new \class{String} and then call its \code{intern} method. To take
+advantage of the \class{Integer} pool, simply call the factory method
+\code{Integer.valueOf(int i)} whenever you need a new \code{Integer}.
+The \class{Integer} pool is initialized with all the \class{Integers} in a fixed
+range, from -128 to 127 by default. The factory method returns a
+pointer to an \class{Integer} in the pool, provided \code{i} is in
+range; otherwise it returns a new \class{Integer}. 
+The idea is  that the most commonly
+used integers (at least in many applications) will be shared. There is a
+parameter to change the upper limit of the range -- see
+\autoref{chapter:jre-options} for details. Note that
+behind the scenes, Java's autoboxing feature uses these same pools
+to share some of the instances it creates.
 
-\begin{wrapfigure}{r}{0.4\textwidth}
-\centering
-\begin{framedlisting}
-for (int i=1; i<=500; i++) {
- numbers[i] = Integer.valueOf(i);
-}
-\end{framedlisting}
-\caption{By using the \code{valueOf} method, you can leverage the standard
-library's integer sharing pool.}
-\label{fig:integer-sharing-pool}
-\end{wrapfigure}
+%For example,
+%the code in \autoref{fig:integer-sharing-pool} stores \class{Integers} from 1
+% to 500 in an array.
+%\code{valueOf} returns an existing \class{Integer}
+%for the first 127 numbers, and, for the rest of the numbers, \code{valueOf}
+%returns a new \class{Integer} instance.  
+
+%\begin{wrapfigure}{r}{0.4\textwidth}
+%\centering
+%\begin{framedlisting}
+%for (int i=1; i<=500; i++) {
+% numbers[i] = Integer.valueOf(i);
+%}
+%\end{framedlisting}
+%\caption{By using the \code{valueOf} method, you can leverage the standard
+%library's integer sharing pool.}
+%\label{fig:integer-sharing-pool}
+%\end{wrapfigure}
 
 Because the \class{Integer} sharing pool is pre-initialized and fixed in size,
-it's usually a good idea to call \code{Integer.valueOf}, instead of
+it's always a good idea to call \code{Integer.valueOf}, instead of
 the constructor, whenever you need a new \class{Integer}. The pooling aspect is
 very cheap, and you never have to worry about garbage collection, wasting memory, or concurrency issues.
 You do have to be careful, however, to avoid using \code{==} to compare
-\class{Integers}, since it's impossible to know with certainty which instances
-are actually shared. As always, using \code{equals} is a better
-practice.
+\class{Integers}, since only some instances are actually shared. 
+As always, using \code{equals} is a better practice.
 
-[TODO: fix this to say it can only be increased  Move
-specifics of AutoBoxCacheMax to Appendix] [TODO: mention autoboxing here or in
-Appendix, along with JLS requirement].
-There is a JVM parameter to
-change the upper limit of the \class{Integer} sharing pool. By adding \code{-Djava.lang.Integer.IntegerCache.high=100} to your
-application's command line, the pooled integers will range over the values -128
-to 100.
+The \jre provides a \code{valueOf} method for each of the boxed
+scalars. \code{Character} and \code{Short} pools work in a similar fashion
+to \code{Integer}, sharing only values within a range. For some types,
+such as \class{Float}, there is no sharing actually implemented. For
+\class{Boolean} and \class{Byte}, a shared constant is returned for every possible value. 
+In general, there is no penalty for always using \code{valueOf}.
 
-
-The \jre provides a similar \code{valueOf} method for sharing each of the boxed
-scalars. TODO: char and short In
-some cases, such as \class{float}, there is no sharing actually implemented, at least as of \javasix. For \class{Boolean} and \class{Byte}, a
-shared constant is returned for every possible value. In general, there is
-no penalty for always using \code{valueOf}.
-
-The exception to this rule is if you expect to have
-boxed scalars such as \class{Integer}s with a large number of copies
-of values lying outside the range of the built-in pool. In
-this case you will not get the benefit of the built-in mechanism, and it
-may be worth implementing your own sharing instead.  When sharing something
-as small as a boxed scalar, however, there must be a very
-high degree of duplication to make the extra overhead of your sharing mechanism worthwhile.
+The exception to this rule is if you expect to have many copies
+of values outside the range of what the built-in pool
+actually shares. In this case you will not get the benefit of the built-in
+mechanism, and it may be worth implementing your own sharing instead.  When
+sharing something as small as a boxed scalar, however, there must be a very
+high degree of duplication to make up for the overhead of your
+sharing mechanism.
 
 \section{Sharing Your Own Structures}
 \label{sec:canonicalizing-maps}
@@ -349,7 +348,7 @@ duplicated data structures that consume large portions of the heap.
 There is no built-in Java mechanism to share data
 in general, so you have to implement a sharing pool for them from
 scratch. All of the sharing pool issues from \autoref{sec:sharing-pools} need
-to be addressed. The shared objects or structures must be immutable, they must not be
+to be addressed. The shared structures must be immutable, they must not be
 compared using \code{==}, there must be sufficient memory savings from sharing
 to justify the sharing pool, and the sharing pool must not cause a memory leak. 
 
@@ -361,12 +360,15 @@ always needed throughout the run, so there is no need to worry about garbage col
 to implement sharing pools with garbage collection.  We leave the addition of
 concurrent access as an exercise. 
 
-To illustrate one common style of user-written sharing pool, consider a graph
-where the nodes have annotations, many of which are duplicates. Each annotation is a single
-object, containing a few scalar fields, recording whether a node has been
-visited, and the reason for the visit.  Both the graph and the annotations are modified
-dynamically. Assume for now that the same universe of annotations is needed for
-the duration of the run. The main requirement is the ability to find and
+\paragraph{Sharing simple data.} To illustrate one common style of
+user-written sharing pool, consider a graph where every node has an
+annotation, and many of these annotations are duplicates.
+Each annotation is a single, immutable 
+object, containing just a few scalar fields. The graph is modified
+dynamically, and a new annotation may be assigned to a node at any
+time. Assume for now that the same universe of annotations is needed for the
+duration of the run.
+The main requirement is the ability to find and
 retrieve existing annotations quickly to share them.
 
 \begin{wrapfigure}{r}{0.5\textwidth}
@@ -404,15 +406,15 @@ HashMap<String, Type> canonicalizingMap;
 \end{framedlisting}
 \end{wrapfigure}
 
-Suppose now that we would like to share more complex data, such as the type
-information from \autoref{fig:sharing-pool}. In this example, the type is
+\paragraph{Sharing more complex data.} Suppose now that we would like to
+share more complex data, such as the type information from \autoref{fig:sharing-pool}. In this example, the type is
 uniquely identified by a \class{String} type name. Each shared structure
 consists of three objects. Rather than asking the programmer to create a new \class{Type} structure only to discover
 that it exists in the pool, we can instead use the type name as the key, as
 shown on the right. That way callers of the sharing pool only have to create a
 \code{String} in order to find or retrieve the \class{Type}. In this example we save the creation of
-one object for each new instance of the structure created.  For more complex structures the savings
-are even more. 
+one object for each new instance of the structure created.  For more complex
+structures the savings can be much greater.
 
 
 %A common term for this structure is a \emph{canonicalizing map}.
@@ -448,34 +450,41 @@ order to achieve even greater space savings.
 
 
 \section{Summary} 
-Not only are Java heaps bloated from too much overhead, they
-are also bloated from duplicated data. If you know that your application
-generates many copies of the same data, then you should find a way to share the
-data. Java provides several built-in sharing mechanisms:
+Many Java heaps are filled with many copies of the same data, data that
+never changes once it's created. With the high overhead of Java data structures,
+bloat from duplication really adds up. Sharing immutable
+data can provide big memory savings with little downside. There are many
+techniques available:
 
 \begin{itemize}
-  \item you can use \class{String} literals or \code{enum} constants to share
-  data that is known at compile time.
+  \item To share a small number of values that are known at compile time, use
+  \class{String} literals, \code{enum} constants or \code{final static}s.
   \item The \jre maintains a sharing
   pool for \class{Strings}. Use \class{String} interning to make use of this
   sharing pool.
   \item The standard library maintains fixed-size pools for
-   a fixed range of \class{Integers}, and other boxed scalars. You should use
-   \code{valueOf} to create boxed scalars, instead of a constructor.
+   a range of \class{Integers} and some of the other boxed scalars. You
+   can take advantage of these by using \code{valueOf} factory methods, instead
+   of constructors, to create boxed scalars.
+   \item You can implement a sharing pool for your own datatypes using
+   \class{Map} classes. To keep down the cost of creating new instances, choose
+   the right pattern for the data: \code{Map<value, value>} for
+   simple data, and \code{Map<key, value>} for sharing larger structures.
 \end{itemize}
 
-You can implement your own sharing pool using \class{Map} classes.
 
-When sharing data, you should remember these four rules:
+When sharing data, remember these four rules:
 \begin{itemize}
-  \item Shared objects must be immutable.
-  \item The result of \code{equals()} testing should be the same, whether or
-not objects are shared.  Always use \code{equals()} rather than \code{==} to
-test equality.
-  \item Sharing pools should not be used if there is limited sharing.
-  \item Unless the set of shared objects is small or is stable for
-  the lifetime of the sharing pool, shared objects must be garbage
-  collected.
+  \item Shared structures must be immutable.
+  \item The result of \code{equals} testing should be the same, whether or
+not objects are shared. In application code, use \code{equals} rather than
+\code{==} to test for equality.
+  \item Sharing pools should not be used if there is limited sharing, and the
+  overhead of the pool will outweigh the benefit.
+  \item The pool must provide for garbage collection of shared objects
+  that are no longer needed, unless: 1. the set of shared objects is
+  small, or 2. the set of shared objects is stable for the lifetime of the
+  pool.
 \end{itemize}
 
 

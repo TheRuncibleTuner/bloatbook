@@ -5,4 +5,7 @@
 the perm space size. \code{-XX:PermSize=128m} sets perm size to 128 megabytes,
 and \code{-XX:MaxPermSize=512m} sets the maximum perm size to 512 megabytes.
 
-\paragraph{Sharing pool for boxed integers}. 
+\paragraph{Sharing pool for \class{Integers} (\oracle and \ibm \jres)}. You can
+change the upper range of the built-in \class{Integer} sharing pool by setting 
+\code{-XX:AutoBoxCacheMax=size}. You can only extend the range upward; the upper
+limit is always a minimum of 127.
