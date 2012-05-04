@@ -6,10 +6,9 @@ heap, you will find that a
 large amount of the data is duplicated. At one extreme, 
 there are often thousands of copies of the same boxed
 integers, especially 0 and 1. At the other extreme, there may be many
- small data
-structures that have the same shape and data. 
-And, of course, duplicate strings are extremely common.
-This chapter describes various
+small data structures that have the same shape and data, and are never modified
+once they are initialized. And, of course, duplicate strings are extremely common.
+This chapter describes
 techniques for sharing read-only data to avoid
 duplication, including a few low-level mechanisms that Java provides.
 \autoref{sec:literals} looks at sharing literal data, known at compile time. 
@@ -19,19 +18,21 @@ dynamic data.
 \section{String Literals and \code{enum} Types}
 \label{sec:literals}
 
-Duplicate strings are not only one of the
-most common sources of memory waste, they are also very expensive, since even
-small strings incur a large overhead. Fortunately, it is not
-hard to eliminate string duplication. 
+Duplicate strings are one of the
+most common sources of memory waste, since even
+small strings incur a large overhead. It is not uncommon to
+see heaps with thousands of copies of strings such as \code{"Y"} or
+\code{"N"}. At 48 bytes a piece, these quickly add up.
+Fortunately, it is not hard to eliminate string duplication.
 
- One technique is to represent strings as  
+One technique is to represent strings as  
 literals whenever possible. Duplication problems arise because dynamically
  created \class{Strings}
 are stored in the heap without checking whether they already
 exist. \class{String} literals, on the other hand, are stored in a
 \emph{string constant pool} when classes
-are loaded, where they are shared. Therefore, there is a big advantage to
-\class{String} literals.
+are loaded, where they are shared. Therefore,
+there is a big advantage to \class{String} literals.
 
 As an example, suppose an application
 reads in property name-value pairs from files into tables:
@@ -352,7 +353,7 @@ to be addressed. The shared structures must be immutable, they must not be
 compared using \code{==}, there must be sufficient memory savings from sharing
 to justify the sharing pool, and the sharing pool must not cause a memory leak. 
 
-There are two common styles of implementing your own sharing pools, depending on
+There are two common styles of implementing your own sharing pool, depending on
 the complexity of the data being shared.  We illustrate both in this section. 
 For the purposes of this discussion we assume that the set of shared data is
 always needed throughout the run, so there is no need to worry about garbage collection. In
