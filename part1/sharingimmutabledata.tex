@@ -425,35 +425,48 @@ structures the savings can be much greater.
 \section{Quantifying the Savings}
 \label{sec:quantifying-sharing-savings}
 
-Before implementing a sharing scheme, we can estimate the
-space savings, to make sure it's worth the effort, and to make there isn't a
-net gain in memory usage.  Here is a sample analysis of sharing \class{Strings}.
+Before implementing a sharing scheme, you can estimate the
+space savings, to make sure it's worth the effort, and to 
+make sure there won't be a net gain in memory usage. Here is a sample analysis
+of sharing \class{String}s.
 This style of analysis can be applied to other types of shared data.
 
-[TODO: Move just the string interning analysis from the chapter on
-bulk storage.]
+To estimate the savings, you need to estimate
+a few properties of the data set you are considering sharing, and the
+overhead of the sharing mechanism. For this example,
+we'll assume a set of one million \class{String}s, and make the simplifying
+assumption that they are all the same size, ten characters each.
+Without any sharing, this data would take 64 bytes per \class{String}, or 64
+Mbytes in total.
+We will use Java's built-in interning
+mechanism, which keeps a map of the shared data in native memory. Let's assume
+that the native map costs 20 bytes on average to store each distinct
+value\footnote{This is an approximation, for illustration purposes, of what a
+native implementation of a weak hash map might cost on a 32-byte \jre.}. 
 
-The techniques described in this chapter for sharing immutable
-data can lead to substantial savings for many applications.  All of these
-techniques are within the bounds of standard, object-oriented programming
-practice. Later in the book, in \autoref{chapter:large-long-lived}, we look at
-bulk storage and sharing techniques that stretch beyond the normal Java box in
-order to achieve even greater space savings. 
+Finally, we need to estimate how much duplication there is, to
+see if it's worth sharing. One useful approach is to estimate the
+ratio of distinct values to the total number of items in the data set. A lower
+fraction, closer to 0.0, means there are more duplicates, since
+there are fewer distinct values in the set. A higher value, closer to 1.0, means
+there are more distinct values, so less duplication. 
+
+\autoref{} shows how the cost of our shared strings
+in our example varies based on the degree of duplication. Each data point
+compares the non-sharing approach (the left bar) against using interning (the
+right bar). There is considerable savings when there is a lot of sharing.
+For example, when the fraction is .. xxxMbytes are saved.  When the fraction is
+above xxx\%, however, memory is wasted, since there isn't enough duplication to
+justify the overhead of sharing.
 
 
-%There is an important variant of a sharing pool called the Bulk Sharing
-%Pool. Like a normal sharing pool, the goal of a bulk sharing pool is to
-%amortize the memory costs of storing data. However, rather than mitigate the
-%costs of data duplication, a bulk sharing pool aims to amortize the costs of
-%Java object headers across the elements in a pool. This is a topic that
-%stretches notions of how to store data beyond the normal Java box, and so will
-%be discussed, along with many similar matters, in .
+In real applications, of course, there's much more variation, and you would look
+at the average length of the data, possibly weighting it 
 
 
 \section{Summary} 
-Many Java heaps are filled with many copies of the same data, data that
-never changes once it's created. With the high overhead of Java data structures,
-bloat from duplication really adds up. Sharing immutable
+Many Java heaps are not only filled with high-overhead data structures, but with
+identical copies of the same structures. Sharing copies of read-only
 data can provide big memory savings with little downside. There are many
 techniques available:
 
@@ -487,6 +500,14 @@ not objects are shared. In application code, use \code{equals} rather than
   small, or 2. the set of shared objects is stable for the lifetime of the
   pool.
 \end{itemize}
+
+The techniques described in this chapter for sharing immutable
+data can lead to substantial savings for many applications.  All of these
+techniques are within the bounds of standard, object-oriented programming
+practice. Later in the book, in \autoref{chapter:large-long-lived}, we look at
+bulk storage and sharing techniques that stretch beyond the normal Java box in
+order to achieve even greater space savings. 
+
 
 
 
