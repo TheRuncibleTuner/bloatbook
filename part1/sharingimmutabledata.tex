@@ -425,48 +425,89 @@ structures the savings can be much greater.
 \section{Quantifying the Savings}
 \label{sec:quantifying-sharing-savings}
 
-Before implementing a sharing scheme, you can estimate the
-space savings, to make sure it's worth the effort, and to 
-make sure there won't be a net gain in memory usage. Here is a sample analysis
-of sharing \class{String}s.
+Before implementing a sharing scheme we can estimate the
+space savings, to make sure it's worth
+the effort. We also want to be sure there won't be a net gain in memory
+usage. Here is a sample analysis of sharing \class{String}s.
 This style of analysis can be applied to other types of shared data.
 
-To estimate the savings, you need to estimate
-a few properties of the data set you are considering sharing, and the
-overhead of the sharing mechanism. For this example,
+First, we need to estimate
+a few properties of the data we are considering sharing. For this example,
 we'll assume a set of one million \class{String}s, and make the simplifying
 assumption that they are all the same size, ten characters each.
 Without any sharing, this data would take 64 bytes per \class{String}, or 64
-Mbytes in total.
-We will use Java's built-in interning
-mechanism, which keeps a map of the shared data in native memory. Let's assume
-that the native map costs 20 bytes on average to store each distinct
-value\footnote{This is an approximation, for illustration purposes, of what a
-native implementation of a weak hash map might cost on a 32-byte \jre.}. 
+Mbytes in total. Next, we'll estimate the overhead of the sharing
+mechanism, in this case Java's built-in string interning. The \jre
+stores its map of shared strings in native memory. We'll assume that the
+native map costs 20 bytes on average for each distinct value\footnote{This is
+an approximation, for illustration purposes, of what
+a native weak hash map might cost on a 32-byte \jre.}. 
 
-Finally, we need to estimate how much duplication there is, to
-see if it's worth sharing. One useful approach is to estimate the
-ratio of distinct values to the total number of items in the data set. A lower
-fraction, closer to 0.0, means there are more duplicates, since
+Finally, we need to estimate the degree of duplication in the data set, to see
+if it's worth the effort. One useful measure is the ratio of distinct values to the
+total number of items in the set. A lower fraction, closer to 0.0, means there are more duplicates, since
 there are fewer distinct values in the set. A higher value, closer to 1.0, means
 there are more distinct values, so less duplication. 
 
-\autoref{} shows how the cost of our shared strings
-in our example varies based on the degree of duplication. Each data point
-compares the non-sharing approach (the left bar) against using interning (the
-right bar). There is considerable savings when there is a lot of sharing.
-For example, when the fraction is .. xxxMbytes are saved.  When the fraction is
-above xxx\%, however, memory is wasted, since there isn't enough duplication to
-justify the overhead of sharing.
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/sharingpool_consumptionchart.pdf}
+	\caption{Comparing the memory consumed by regular storage vs. interning, for
+	one million strings, each ten characters long. The chart shows how the
+	savings or waste varies with the degree of distinctness of the data. 10\%
+	means that there are only 100,000 distinct strings.}
+	\label{fig:sharing-savings}
+\end{figure}
 
+\autoref{fig:sharing-savings} shows how the cost of sharing strings
+varies based on the degree of duplication. Each data point compares the non-sharing approach
+(the left bar) against
+interning (the right bar). There is considerable savings when there is a lot of
+sharing.  Even when distinct values are 50\% of the total number of
+\class{String}s, so on average 2 identical \class{String}s per value, 22
+Mbytes are saved. When the percent is above 76\%, however, memory is wasted,
+since there isn't enough duplication to justify the extra overhead.
 
-In real applications, of course, there's much more variation, and you would look
-at the average length of the data, possibly weighting it 
+\callout{callout:sharing-savings}{Estimating the Savings from Sharing}{
+\index{Sharing Savings Calculation}
+Let:
+\begin{eqnarray} 
+N &=& the\ number\ of\ items\ in\ the\ data\ set  \nonumber \\
+S &=& the\ average\ size\ in\ bytes\ of\ a\ data\ item \nonumber \\
+D &=& the\ ratio\ of\ distinct\ values\ to\ total\ number\ of\ items \nonumber
+\\
+E &=& the\ average\ per\ entry\ overhead\ of\ the\ sharing\ mechanism \nonumber
+\end{eqnarray}
+
+In a shared implementation, a fraction D of the total items incur the
+overhead of the sharing pool. The savings is the cost difference between
+the non-shared and shared versions:
+
+\begin{eqnarray}
+N \cdot S\ \ -\ N \cdot D \cdot (S+E) \nonumber
+\end{eqnarray}
+
+The savings will be positive whenever:
+\begin{eqnarray}
+D &<& \frac{S}{S+E} \nonumber
+\end{eqnarray}
+
+} 
+
+The callout shows a general formula for approximating the savings of sharing any
+kind of data.  In real applications, of course, there can be much more variation
+among the data items than in our simplified example, so we look at the
+average size of the data. If you are using a standard Java
+\class{Map} class as your sharing mechanism, the overhead is typically higher
+than a native implementation like interning. If the map has to handle garbage
+collection, the overhead can be much higher still.
+\autoref{sec:large-collections} provides a guide to estimating the cost of a
+map.
 
 
 \section{Summary} 
-Many Java heaps are not only filled with high-overhead data structures, but with
-identical copies of the same structures. Sharing copies of read-only
+Many Java heaps are filled not only with high-overhead data structures, but
+with identical copies of them. Sharing read-only
 data can provide big memory savings with little downside. There are many
 techniques available:
 
@@ -485,7 +526,6 @@ techniques available:
    the right pattern for the data: \code{Map<value, value>} for
    simple data, and \code{Map<key, value>} for sharing larger structures.
 \end{itemize}
-
 
 When sharing data, remember these four rules:
 \begin{itemize}
