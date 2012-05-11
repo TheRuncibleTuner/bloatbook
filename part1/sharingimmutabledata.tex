@@ -15,7 +15,7 @@ duplication, including a few low-level mechanisms that Java provides.
 The rest of the chapter describes techniques for sharing more
 dynamic data.
 
-\section{String Literals and \code{enum} Types}
+\section{Sharing Literals}
 \label{sec:literals}
 
 Duplicate strings are one of the
@@ -31,43 +31,114 @@ literals whenever possible. Duplication problems arise because dynamically
 are stored in the heap without checking whether they already
 exist. \class{String} literals, on the other hand, are stored in a
 \emph{string constant pool} when classes
-are loaded, where they are shared. Therefore,
-there is a big advantage to \class{String} literals.
+are loaded, where they are shared.
 
-As an example, suppose an application
-reads in property name-value pairs from files into tables:
+As an example, consider a document storage system that initializes each document
+object before reading in metadata about that document.  A common
+mistake is to create a new \code{String} from a \code{String} literal:
+
 \begin{shortlisting}
-class ConfigurationProperties {
-    ..
-	void handleNextEntry() {
-		String propertyName = getNextString();
-		String propertyValue = getNextString();
-		propertyMap.put(propertyName, propertyValue);
+	public Document() {
+		name = new String("unknown");
+		description = new String("unknown");
 	}
-}
 \end{shortlisting}
-The \class{Strings} stored in \code{propertyMap} are created dynamically. If 
-there are just a few distinct property names in all of the input pairs, these
-property names will be duplicated many times in the heap.
 
-However, if you know in advance what all of the property names are, then you can
-define them once as \class{String} literals, which can be shared among the
-entries of \code{propertyMap}.
+Even though the standard library is smart enough to share the
+underlying character array, 
+%this code will create two new \code{String}
+%objects for every document. 
+it has no way of sharing the
+\code{String}, either across documents or across the two fields.
+As a result, two new objects are created per document.
+Compare that to the following:
+
 \begin{shortlisting}
-class PropertyNames {
-	final public static String numberOfUnits = ``NUM_UNITS'';
-	final public static String minWidgets = ``MIN_WIDGETS'';
-	..
-}
+	public Document() {
+		name = "unknown";
+		description = "unknown";
+	}
+\end{shortlisting}
 
-class ConfigurationWithStaticProperties {
+The \jre shares the \code{String} literal wherever it appears in
+the code, even across classes. More important, in this example, is that all
+documents will share a single \code{String}. A more maintainable
+approach is to make the sharing explicit, by defining a \code{final
+static} constant:
+
+\begin{shortlisting}
+	public class Document{} {
+		public final static unknown = "unknown";
+		..
+		public Document() {
+			name = unknown;
+			description = unknown;
+		}
+	}
+\end{shortlisting}
+
+A more dynamic version of the problem can occur when data originates from 
+an external source. Extending our example, suppose the
+application reads in the metadata for each document as a set of property
+name-value pairs. The easiest approach is to build a map directly from the
+input \class{String}s. Assume in this example that on each
+call, \code{getNextString()} returns a new \class{String} with its result:
+
+\begin{shortlisting}
+	public class DocumentMetaData {
+		void handleNextEntry() {
+			String propertyName = getNextString();  
+			String propertyValue = getNextString();
+			propertyMap.put(propertyName, propertyValue);
+		}
+	}
+\end{shortlisting}
+
+In most applications of this kind, there is a lot of repetition of both property
+names and values, across the metadata for all of the documents. 
+For data that can be predicted at compile time, we can
+use literals to avoid creating so many copies.  One approach is to use \class{String} literals, and upon reading
+each property name, check against the set of known property names, and assign it to one of those. 
+
+TODO: Restate this so it's only for a small set of values that are fixed - use
+Edith's text. 
+TODO: No need to spell out this example in code, since it would be easier to
+code using String interning. Describe it briefly/hypothetically in the text,
+and then show the code for solving it with enums. Choose property names or
+values(for property names that means EnumMap, for values that means Map<String,
+Object>, where for some fields Object is an Enum).
+
+\begin{shortlisting}
+class DocumentMetadataWithStaticPropertyNames {
+	final public static String propertyNames[] = 
+		{"format", "comments", "creationDate", ..};
+	final static HashMap<String, String> propertyNameMap =
+		 new HashMap<String, String> {
+		    for (String name : names) {
+				put(name, name);
+			}
+		}
+		
+	public String getSharedName(String propertyName) {
+		return propertyNames.get(propertyName)
+	}
+
     void handleNextEntry() {
-       String propertyName = getNextPropertyName(); 
+       String propertyName = propertyNames.getSharedName(getNextPropertyName()); 
        String propertyValue = getNextString();
        propertyMap.put(propertyName, propertyValue);
     }
 }
 \end{shortlisting}
+The \class{String}s stored in
+\code{propertyMap} are created dynamically.
+If there are just a few distinct property names in all of the input pairs, these
+property names will be duplicated many times in the heap.
+
+However, if you know in advance what all of the property names are, then you can
+define them once as \class{String} literals, which can be shared among the
+entries of \code{propertyMap}.
+
 The \code{getNextPropertyName} method reads in a property name, and returns
 a pointer to a property name literal, stored in the JVM string
 constant pool. Alternatively, defining an enumeration
@@ -75,28 +146,10 @@ type to encode property names may be a better stylistic choice.  Like
 \class{String} literals, the \jre maintains just a single copy of each
 \code{enum} constant.
 
-A common
- mistake is to create a new \class{String}  from a \class{String} literal,
- which is usually completely unnecessary:
-\begin{shortlisting}
-class PropertyNames {
-	final public static String numberOfUnits = 
-	                           new String(``NUM_UNITS'');
-	final public static String minWidgets = 
-	                           new String(``MIN_WIDGETS'');
-	..
-}
-\end{shortlisting}
-Even though the standard library is smart enough to share
-character arrays in this case, this code still creates redundant \class{String}
-objects in the heap.
-
-Using \class{String} literals to avoid duplication is only possible when the
-\class{String} values are known in advance. 
+Using literals to avoid duplication is only possible when values are known in advance.
 \autoref{sec:sharing-pools} introduces the notion of a sharing pool for
-sharing dynamic data. \autoref{sec:sharing-strings} describes the Java
-string interning mechanism, which uses a built-in string sharing pool to
-eliminate duplication.
+sharing dynamic data. \autoref{sec:sharing-strings} describes
+string interning, Java's built-in way to share \code{String}s.
 
 \section{Sharing Pools}
 \label{sec:sharing-pools}
@@ -169,7 +222,9 @@ you to safely change your design, should you later decide to share a different s
 \footnote{An argument sometimes heard for sharing data is that it will
 allow for speedier comparisons, by letting the application use \code{==} rather
 than \code{equals}. In fact, most
- \code{equals} methods already perform this optimization, making the performance virtually identical.}
+ \code{equals} methods already perform this optimization, with virtually
+ identical performance to calling \code{==}
+ directly.}
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself can add
@@ -178,7 +233,7 @@ sharing pool.
 If there is not much sharing, then the memory saved from
 eliminating duplicates isn't enough to compensate for the
 extra cost, and memory will be wasted instead of saved.  In \autoref{sec:quantifying-sharing-savings} is
-a sample analysis of when it's worth sharing Strings.
+a sample analysis of when it's worth sharing strings.
 
 % NMM 20110614 i thought this was a good idea, but in Java, a reference will
 % always be cheaper than an object, because of the header!
@@ -197,13 +252,12 @@ time costs.
 
 \paragraph{Sharing pools should be either stable or garbage collected.} 
 In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an object
-that no other object is pointing to. Over time, the sharing pool can fill up with garbage, that is,
-items that were once needed but not any more. If the
-sharing pool is not purged of these unused items, there will be a
-leak that will eventually use up more and more memory. 
-However, if there are only a small number of shared instances,
-or if the set of shared instances is unchanging for the lifetime of the pool,
-then garbage collection need not to be a concern.
+that no other object is pointing to. Over time, a sharing pool can fill up with
+garbage, that is, items that were once needed but not any more. If the
+sharing pool is not purged of these unused items, there will be a leak, 
+eventually using up more and more memory. However, if there are only a small
+number of shared instances, or if the set of shared instances is unchanging for the lifetime of the pool,
+then garbage collection need not be a concern.
 
 Fortunately, Java provides a few built-in mechanisms that take care of
 these concerns for some common cases.
@@ -222,10 +276,10 @@ these concerns for some common cases.
 %which strings are likely to have duplicate values.
 
 Since \class{String} duplication is so common, Java provides a built-in
-string pool for sharing \class{Strings}. To share a
-\class{String}, you simply call the method \code{intern} on it, and everything
-is taken care of automatically. \class{String} wrapper objects will be shared,
-along with their underlying \class{char[]}s. Since
+pool for sharing \class{Strings}. To share a
+\class{String}, you simply call the method \code{intern} on it, and
+everything is taken care of automatically. The \class{String} wrapper object
+will be shared, along with its underlying \class{char[]}s. Since
 \class{Strings} are immutable, sharing is safe.
 However, the rule about not using \code{==} still holds on shared
 \class{Strings}.  Remember that only some
@@ -251,13 +305,14 @@ property values are perfect candidates for interning.
 
 The call to \code{intern} adds the new property value \class{String}
  to the internal string
-pool if it isn't there already, and return a pointer to it. Otherwise, the
+pool if it isn't there already, and returns a pointer to it. Otherwise, the
 new \class{String} is a duplicate, and a previously saved \class{String} is
 returned.
 
-Interned \class{Strings} are stored in a separate heap known as the
-\emph{perm space}. There's a memory cost for each shared \class{String}, so
+There's a memory overhead cost for each shared \class{String}, so
 interning \class{Strings} indiscriminately will waste memory. 
+The interned \class{Strings} themselves are stored in a separate heap known as
+the \emph{perm space}. 
 Exceeding the size of the perm space will result in an exception:
 \code{java.lang.OutOfMemoryError:PermGen space}
 \footnote{This is an issue only for the \oracle \jre. The \ibm \jre places no
@@ -284,8 +339,8 @@ of how to build a concurrent sharing mechanism for \class{Strings}.
 
 As of \javafive, the Java library provides sharing pools for
 \class{Integers} and some of the other boxed scalars. These pools
-work differently from \class{String} interning, where you must create a
-new \class{String} and then call its \code{intern} method. To take
+work differently from \class{String} interning, where you must always create a
+new \class{String} first and then call its \code{intern} method. To take
 advantage of the \class{Integer} pool, simply call the factory method
 \code{Integer.valueOf(int i)} whenever you need a new \code{Integer}.
 The \class{Integer} pool is initialized with all the \class{Integers} in a fixed
@@ -326,7 +381,7 @@ You do have to be careful, however, to avoid using \code{==} to compare
 \class{Integers}, since only some instances are actually shared. 
 As always, using \code{equals} is a better practice.
 
-The \jre provides a \code{valueOf} method for each of the boxed
+The Java library provides a \code{valueOf} method for each of the boxed
 scalars. \code{Character} and \code{Short} pools work in a similar fashion
 to \code{Integer}, sharing only values within a range. For some types,
 such as \class{Float}, there is no sharing actually implemented. For
@@ -347,7 +402,7 @@ sharing mechanism.
 Beyond strings and boxed scalars, there can be other kinds of
 duplicated data structures that consume large portions of the heap. 
 There is no built-in Java mechanism to share data
-in general, so you have to implement a sharing pool for them from
+in general, so you have to implement a sharing pool from
 scratch. All of the sharing pool issues from \autoref{sec:sharing-pools} need
 to be addressed. The shared structures must be immutable, they must not be
 compared using \code{==}, there must be sufficient memory savings from sharing
@@ -358,8 +413,8 @@ the complexity of the data being shared.  We illustrate both in this section.
 For the purposes of this discussion we assume that the set of shared data is
 always needed throughout the run, so there is no need to worry about garbage collection. In
 \autoref{sec:sharing-pools-safety} we revisit these two examples, and show how
-to implement sharing pools with garbage collection.  We leave the addition of
-concurrent access as an exercise. 
+to implement sharing pools with garbage collection.  
+We leave the addition of concurrent access as an exercise. 
 
 \paragraph{Sharing simple data.} To illustrate one common style of
 user-written sharing pool, consider a graph where every node has an
@@ -407,7 +462,7 @@ HashMap<String, Type> canonicalizingMap;
 \end{framedlisting}
 \end{wrapfigure}
 
-\paragraph{Sharing more complex data.} Suppose now that we would like to
+\paragraph{Sharing more complex data.} Suppose that we would like to
 share more complex data, such as the type information from \autoref{fig:sharing-pool}. In this example, the type is
 uniquely identified by a \class{String} type name. Each shared structure
 consists of three objects. Rather than asking the programmer to create a new \class{Type} structure only to discover
@@ -417,6 +472,9 @@ shown on the right. That way callers of the sharing pool only have to create a
 one object for each new instance of the structure created.  For more complex
 structures the savings can be much greater.
 
+\paragraph{} Whichever of these two approaches you use, it's a good idea to hide
+the use of the sharing pool behind a factory method. That will make it easier to make
+changes later, should you find that sharing is not worthwhile.
 
 %A common term for this structure is a \emph{canonicalizing map}.
 
@@ -426,7 +484,7 @@ structures the savings can be much greater.
 \label{sec:quantifying-sharing-savings}
 
 Before implementing a sharing scheme, we can estimate the
-space savings, to make sure it's worth
+space savings to make sure it's worth
 the effort, and to make sure it doesn't cause a net gain in
 memory usage. Here is a sample analysis of sharing \class{String}s.
 This style of analysis can be applied to other types of shared data.
