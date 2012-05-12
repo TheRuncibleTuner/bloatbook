@@ -27,9 +27,9 @@ Fortunately, it is not hard to eliminate string duplication.
 
 One technique is to represent strings as  
 literals whenever possible. Duplication problems arise because dynamically
- created \class{Strings}
+ created strings
 are stored in the heap without checking whether they already
-exist. \class{String} literals, on the other hand, are stored in a
+exist. String literals, on the other hand, are stored in a
 \emph{string constant pool} when classes
 are loaded, where they are shared.
 
@@ -46,11 +46,8 @@ mistake is to create a new \code{String} from a \code{String} literal:
 
 Even though the standard library is smart enough to share the
 underlying character array, 
-%this code will create two new \code{String}
-%objects for every document. 
-it has no way of sharing the
-\code{String}, either across documents or across the two fields.
-As a result, two new objects are created per document.
+this code will still create two new \code{String}
+objects for every document. 
 Compare that to the following:
 
 \begin{shortlisting}
@@ -61,32 +58,36 @@ Compare that to the following:
 \end{shortlisting}
 
 The \jre shares the \code{String} literal wherever it appears in
-the code, even across classes. More important, in this example, is that all
-documents will share a single \code{String}. A more maintainable
+the code, even across classes. More important, in this example, is that now all
+documents will share a single \code{String}. A similar, more maintainable
 approach is to make the sharing explicit, by defining a \code{final
 static} constant:
 
 \begin{shortlisting}
-	public class Document{} {
+	public class Document {
 		public final static unknown = "unknown";
 		..
 		public Document() {
 			name = unknown;
-			description = unknown;
+			author = unknown;
+			..
 		}
 	}
 \end{shortlisting}
 
-A more dynamic version of the problem can occur when data originates from 
+A more dynamic version of the problem often occurs when data originates from 
 an external source. Extending our example, suppose the
 application reads in the metadata for each document as a set of property
-name-value pairs. The easiest approach is to build a map directly from the
-input \class{String}s. Assume in this example that on each
-call, \code{getNextString()} returns a new \class{String} with its result:
+name-value pairs. The code below builds each map directly from the
+input. \code{getNextString()} returns a new
+\class{String} for each property name and value.
 
 \begin{shortlisting}
-	public class DocumentMetaData {
-		void handleNextEntry() {
+	public class DocumentProperties {
+		protected Map<String, String> propertyMap;
+		..
+		
+		public void handleNextEntry() {
 			String propertyName = getNextString();  
 			String propertyValue = getNextString();
 			propertyMap.put(propertyName, propertyValue);
@@ -94,62 +95,56 @@ call, \code{getNextString()} returns a new \class{String} with its result:
 	}
 \end{shortlisting}
 
-In most applications of this kind, there is a lot of repetition of both property
-names and values, across the metadata for all of the documents. 
-For data that can be predicted at compile time, we can
-use literals to avoid creating so many copies.  One approach is to use \class{String} literals, and upon reading
-each property name, check against the set of known property names, and assign it to one of those. 
-
-TODO: Restate this so it's only for a small set of values that are fixed - use
-Edith's text. 
-TODO: No need to spell out this example in code, since it would be easier to
-code using String interning. Describe it briefly/hypothetically in the text,
-and then show the code for solving it with enums. Choose property names or
-values(for property names that means EnumMap, for values that means Map<String,
-Object>, where for some fields Object is an Enum).
+The \class{String}s stored in each map are created dynamically.
+In applications of this kind, there is usually a lot of repetition of both
+property names and values. If there are just a few distinct property names in all of the input pairs, these
+property names will be duplicated many times in the heap.
+However, if we know in advance what all of the property names are,
+then we can define them once as \class{String} literals. For example:
 
 \begin{shortlisting}
-class DocumentMetadataWithStaticPropertyNames {
-	final public static String propertyNames[] = 
-		{"format", "comments", "creationDate", ..};
-	final static HashMap<String, String> propertyNameMap =
-		 new HashMap<String, String> {
-		    for (String name : names) {
-				put(name, name);
-			}
-		}
-		
-	public String getSharedName(String propertyName) {
-		return propertyNames.get(propertyName)
+	public class DocumentProperties {
+		// Property names
+		final public static String format = "format";
+		final public static String comments = "comments";
+		final public static String timestamp = "timestamp";
+		..
 	}
-
-    void handleNextEntry() {
-       String propertyName = propertyNames.getSharedName(getNextPropertyName()); 
-       String propertyValue = getNextString();
-       propertyMap.put(propertyName, propertyValue);
-    }
-}
 \end{shortlisting}
-The \class{String}s stored in
-\code{propertyMap} are created dynamically.
-If there are just a few distinct property names in all of the input pairs, these
-property names will be duplicated many times in the heap.
 
-However, if you know in advance what all of the property names are, then you can
-define them once as \class{String} literals, which can be shared among the
-entries of \code{propertyMap}.
+When reading in the property names, we could check against these
+literals, and share them as the keys in each map. 
+Alternatively, a better stylistic choice would be to encode them as an
+enumerated type. Like \class{String} literals, the \jre maintains a
+single copy of each \code{enum} constant. Unlike \class{String}s,
+you never have the option to allocate \code{enum} instances dynamically; they
+are always shared constants. 
 
-The \code{getNextPropertyName} method reads in a property name, and returns
-a pointer to a property name literal, stored in the JVM string
-constant pool. Alternatively, defining an enumeration
-type to encode property names may be a better stylistic choice.  Like
-\class{String} literals, the \jre maintains just a single copy of each
-\code{enum} constant.
+\begin{shortlisting}
+	public class DocumentWithStaticProperties {
+		public enum PropertyName = 
+			{format, comments, creationDate, ... };
+		..
+		protected Map<PropertyMap, String> properties; 
+		..
+		void handleNextEntry() {
+			PropertyName propertyName = 
+				PropertyName.valueOf(PropertyName.class, getNextString()); 
+			String propertyValue = getNextString(); 
+			properties.put(propertyName, propertyValue); }
+	}
+\end{shortlisting}
+
+The code reads in a property name, and returns a pointer to a shared \code{enum}
+constant. \code{enum} types automatically provide for
+efficient lookup by name, in addition to giving you type safety. In our
+example, using an \code{enum} type would also allow us to save even more memory,
+by switching from a \code{HashMap} to the smaller \code{EnumMap} to store each document's metadata.
 
 Using literals to avoid duplication is only possible when values are known in advance.
 \autoref{sec:sharing-pools} introduces the notion of a sharing pool for
 sharing dynamic data. \autoref{sec:sharing-strings} describes
-string interning, Java's built-in way to share \code{String}s.
+string interning, Java's built-in way to share strings.
 
 \section{Sharing Pools}
 \label{sec:sharing-pools}
@@ -184,7 +179,6 @@ public class Type {
 }
 \end{shortlisting}
 
-[TODO: Redraw sharing pool figure, making it a concrete example.]
 
 \begin{figure}
 \centering
@@ -276,10 +270,10 @@ these concerns for some common cases.
 %which strings are likely to have duplicate values.
 
 Since \class{String} duplication is so common, Java provides a built-in
-pool for sharing \class{Strings}. To share a
-\class{String}, you simply call the method \code{intern} on it, and
-everything is taken care of automatically. The \class{String} wrapper object
-will be shared, along with its underlying \class{char[]}s. Since
+pool for sharing \class{Strings}. To share a new
+\class{String}, you simply call the method \code{intern} on it, and 
+everything is taken care of automatically. Both the \class{String}
+object and its underlying character array are shared. Since
 \class{Strings} are immutable, sharing is safe.
 However, the rule about not using \code{==} still holds on shared
 \class{Strings}.  Remember that only some
@@ -287,38 +281,49 @@ However, the rule about not using \code{==} still holds on shared
 instances that you choose to intern.
 
 In the example from ~\autoref{sec:literals},
-\class{ConfigurationWithStaticProperties} eliminates property
-name duplication but not
-property value duplication. Suppose you know that there are
-not too many distinct values, but you don't know what they are. In this case,
-property values are perfect candidates for interning.
+\class{DocumentWithStaticProperties} eliminates property
+name duplication, but only if all the property names are known in advance.
+Suppose you know there are not many distinct property names overall, but you
+don't know what they are in advance. In this case, property names
+are perfect candidates for \class{String} interning.
 \begin{shortlisting}
  
- class ConfigurationPropertiesWithInterning {
+ class DocumentWithInternedProperties {
     void handleNextEntry() {
-       PropertyName propertyName = getNextPropertyName(); 
-       String propertyValue = getNextString().intern();
+       String propertyName = getNextString().intern(); 
+       String propertyValue = getNextString();
        propertyMap.put(propertyName, propertyValue);
     }
 }
 \end{shortlisting}
 
-The call to \code{intern} adds the new property value \class{String}
- to the internal string
+The call to \code{intern} adds the new property name \class{String}
+to the internal string
 pool if it isn't there already, and returns a pointer to it. Otherwise, the
 new \class{String} is a duplicate, and a previously saved \class{String} is
-returned.
+returned instead. 
 
-There's a memory overhead cost for each shared \class{String}, so
-interning \class{Strings} indiscriminately will waste memory. 
+There is a memory overhead cost for each shared
+\class{String}, so interning \class{Strings} indiscriminately will waste memory.
+In this example, there is probably a lot of duplication
+among the property values too. However, we might only want to
+add interning for those properties with the most duplication. For example, a property
+for the document format would have just a few distinct values, and is a good
+candidate for interning.
+On the other hand, a timestamp property would be a poor candidate. In this way
+we would get the maximum benefit from sharing, while keeping the overhead to a
+minimum. 
+
+The \jre maintains a map in native memory to keep track of the interned
+\class{String}s.
 The interned \class{Strings} themselves are stored in a separate heap known as
 the \emph{perm space}. 
 Exceeding the size of the perm space will result in an exception:
 \code{java.lang.OutOfMemoryError:PermGen space}
-\footnote{This is an issue only for the \oracle \jre. The \ibm \jre places no
-fixed limit on interned \code{Strings}.}. There are parameters to adjust
-the perm space size. See \autoref{chapter:jre-options} for details. 
- Fortunately, the \jre performs garbage collection on the
+\footnote{This is an issue only for the \oracle \jre. The \ibm \jre places no 
+fixed limit on interned \code{Strings}.}.
+There are parameters to adjust the perm space size. See \autoref{chapter:jre-options} for details. 
+Fortunately, the \jre performs garbage collection on the
 internal string pool, so there is no danger of a memory leak.
 \index{Permspace Heap}
 
