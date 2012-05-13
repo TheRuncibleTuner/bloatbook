@@ -159,19 +159,19 @@ delegation in their designs, sharing duplicate data can avoid
 multiple levels of identical objects.
 
 An example is shown in \autoref{fig:sharing-pool}. The example is from a
-text processing system, which assigns a type to each word in a document.
-Each type is identified by a \class{String} type name.
-The complete set of word types is known only at run time, so an \code{enum}
-type cannot be used.  In \autoref{fig:sharing-pool-a}, objects A and B
-are words that have been classified as having the same type. 
-\autoref{fig:sharing-pool-b} shows objects A and B sharing the type
+text analysis system, which assigns a type to each word as it appears in each
+document.  Each type is identified by a \class{String} type name.
+The complete set of word types is known only at run time, so an 
+\class{enum} type cannot be used.  In \autoref{fig:sharing-pool-a},
+A and B are words that have been classified as having the same type. 
+\autoref{fig:sharing-pool-b} shows A and B sharing the type
 structure, which is stored in a sharing pool. In this example, each use of a
 shared structure saves three objects.
 
 \begin{shortlisting}
-public class WordInContext {
+public class Word {
 	private int  locationInDocument;
-	private Type type;  // The word's role in the sentence
+	private Type type;  // The word's type in context
 }
 
 public class Type {
@@ -182,10 +182,10 @@ public class Type {
 
 \begin{figure}
 \centering
-	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.3\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
+	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
 	\hspace{0.18\textwidth}
 	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
-    \caption{(a) Words A and B point to duplicated data. (b) Words A and B
+	\caption{(a) Words A and B point to duplicated data. (b) Words A and B
     share the same data, stored in a sharing pool.}
 	\label{fig:sharing-pool}
 \end{figure}
@@ -207,18 +207,19 @@ changing the contents of the Type that A points to in
 \paragraph{The result of \code{equals} testing should be the same,
 whether or not objects are shared.}
 Always use \code{equals} to compare shared objects; never rely on \code{==}.
-In \autoref{fig:sharing-pool},
+Some sharing pool implementations do not guarantee that all
+duplicates will actually be shared, and the application may not be using the
+sharing pool for all instances of the type. In \autoref{fig:sharing-pool},
 \code{A.type == B.type} is false in \ref{fig:sharing-pool-a} and true in
 \ref{fig:sharing-pool-b}, which can lead to very subtle bugs.
-Some sharing pool implementations do not guarantee that all
-duplicates will actually be shared. Avoiding \code{==} also allows
-you to safely change your design, should you later decide to share a different set of instances, or to not share data at all.
+Avoiding \code{==} also allows
+you to safely change your design, should you later decide to share a different set of instances,
+or to not share data at all.
 \footnote{An argument sometimes heard for sharing data is that it will
 allow for speedier comparisons, by letting the application use \code{==} rather
 than \code{equals}. In fact, most
- \code{equals} methods already perform this optimization, with virtually
- identical performance to calling \code{==}
- directly.}
+\code{equals} methods already perform this optimization, with virtually
+identical performance to calling \code{==} directly.}
  
 \paragraph{Sharing pools should not be used if there is limited sharing.}
 A sharing pool itself can add
@@ -246,12 +247,13 @@ time costs.
 
 \paragraph{Sharing pools should be either stable or garbage collected.} 
 In Figure~\ref{fig:sharing-pool-b}, the sharing pool stores an object
-that no other object is pointing to. Over time, a sharing pool can fill up with
-garbage, that is, items that were once needed but not any more. If the
-sharing pool is not purged of these unused items, there will be a leak, 
-eventually using up more and more memory. However, if there are only a small
-number of shared instances, or if the set of shared instances is unchanging for the lifetime of the pool,
-then garbage collection need not be a concern.
+that no other object is pointing to. Because the sharing pool is holding
+onto the object, the garbage
+collector is unable to reclaim it, even though it is no longer needed.  
+If the sharing pool is not purged of these unused items, it will
+cause a memory leak, using up more and more memory over time. However, if there
+are only a small number of shared instances, or if the set of shared
+instances is unchanging for the lifetime of the pool, then garbage collection need not be a concern.
 
 Fortunately, Java provides a few built-in mechanisms that take care of
 these concerns for some common cases.
@@ -259,15 +261,6 @@ these concerns for some common cases.
 \section{Sharing Strings}
 \label{sec:sharing-strings}
 \index{Interning}
-
-%Before storing a 
-%To use a sharing pool, before storing a new
-%\class{String}, first check the pool to see if it is already there. If it is,
-%reuse it; otherwise, add the new string to the pool. 
-%One catch is that if you end up adding many strings to
-%the pool that are never reused, then you will waste memory, since the pool
-%structure itself has overhead. So you need to have a good idea
-%which strings are likely to have duplicate values.
 
 Since \class{String} duplication is so common, Java provides a built-in
 pool for sharing \class{Strings}. To share a new
@@ -304,12 +297,13 @@ new \class{String} is a duplicate, and a previously saved \class{String} is
 returned instead. 
 
 There is a memory overhead cost for each shared
-\class{String}, so interning \class{Strings} indiscriminately will waste memory.
-In this example, there is probably a lot of duplication
-among the property values too. However, we might only want to
-add interning for those properties with the most duplication. For example, a property
-for the document format would have just a few distinct values, and is a good
-candidate for interning.
+\class{String}, so interning \class{String}s indiscriminately will waste memory.
+In this example there is likely to be a lot of duplication
+among the property values. Rather than interning the value \class{String}s for
+all the properites, however, we could add interning for just those
+properties with the most duplication. For example, the document format
+property would be a good candidate for interning, since it would have only
+a few distinct values.
 On the other hand, a timestamp property would be a poor candidate. In this way
 we would get the maximum benefit from sharing, while keeping the overhead to a
 minimum. 
