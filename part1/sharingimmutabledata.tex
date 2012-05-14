@@ -176,15 +176,16 @@ public class Word {
 
 public class Type {
 	final private String typeName;
+	..
 }
 \end{shortlisting}
 
 
 \begin{figure}
 \centering
-	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
+	\subfigure[]{\label{fig:sharing-pool-a}\includegraphics[width=0.4\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-a.pdf}}
 	\hspace{0.18\textwidth}
-	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.445\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
+	\subfigure[]{\label{fig:sharing-pool-b}\includegraphics[width=0.4\textwidth]{part1/Figures/modelingdatatypes/sharing-pool-b.pdf}}
 	\caption{(a) Words A and B point to duplicated data. (b) Words A and B
     share the same data, stored in a sharing pool.}
 	\label{fig:sharing-pool}
@@ -255,8 +256,8 @@ cause a memory leak, using up more and more memory over time. However, if there
 are only a small number of shared instances, or if the set of shared
 instances is unchanging for the lifetime of the pool, then garbage collection need not be a concern.
 
-Fortunately, Java provides a few built-in mechanisms that take care of
-these concerns for some common cases.
+\paragraph{} Fortunately, Java provides a few built-in mechanisms that take care
+of these concerns for some common cases.
 
 \section{Sharing Strings}
 \label{sec:sharing-strings}
@@ -523,8 +524,8 @@ varies based on this ratio. Each data point compares not sharing
 (the left bar) against
 interning (the right bar). There is considerable savings with even
 a moderate amount of duplication. For example, when distinct values
-are 50\% of the total number of \class{String}s, so on average 2 identical \class{String}s per value, 22
-Mbytes are saved. When the
+are 50\% of the total number of \class{String}s, on average 2 identical
+\class{String}s per value, 22 Mbytes are saved. When the
 percent is above 76\%, however, memory is wasted, since there isn't enough duplication to justify the extra overhead.
 
 \callout{callout:sharing-savings}{Estimating the Savings from Sharing}{
@@ -593,7 +594,7 @@ techniques available:
 When sharing data, remember these four rules:
 \begin{itemize}
   \item Shared structures must be immutable.
-  \item The result of \code{equals} testing should be the same, whether or
+  \item The result of \code{equals} testing should be the same whether or
 not objects are shared. In application code, use \code{equals} rather than
 \code{==} to test for equality.
   \item Sharing pools should not be used if there is limited sharing, and the
