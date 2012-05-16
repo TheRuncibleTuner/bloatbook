@@ -393,7 +393,7 @@ headers and pointers, which is significant in this case. Secondly, an
 implemented using a wrapper object and an array of pointers. This is much more
 compact than the heavy-weight \code{TreeMap}.
 
-While this is a big improvement, 44\% overhead still seems high. Over half the
+While this is a big improvement, 44\% overhead still seems high. Almost half the
 memory is being wasted. How hard is it to get rid of this overhead completely?
 Eliminating overhead means eliminating objects altogether. This is not a
 recommended practice, unless memory is extremely tight, and there is no other
