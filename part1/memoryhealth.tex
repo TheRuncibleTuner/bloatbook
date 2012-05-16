@@ -446,7 +446,7 @@ structure design will scale much earlier.
   \label{fig:scalable-health-treemap}
 \end{figure}
 The basic question for predicting scalability is what happens to the bloat
-factor as a data structure grows. The \code{TreeMap} design has 74\% overhead
+factor as a data structure grows. The \code{TreeMap} design has 75\% overhead
 with 100 samples. With 100,000 samples, maybe the high overhead will be
 amortized away. Maybe this design will scale well, even if it is inefficient for
 small data sizes. The bar graph in Figure~\ref{fig:scalable-health-treemap}
@@ -470,7 +470,12 @@ initial fixed cost is quickly amortized away as samples are added.
 
 \callout{callout:fixed-and-per-entry-costs}{Fixed vs Per-Entry Overhead}{
 \index{Fixed Collection Overhead} \index{Per-Entry Collection Overhead}
-The memory overhead of a collection can be classified as either \textit{fixed} or \textit{per-entry}. Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as the collection grows. Per-entry overhead depends on the number of entries stored in the collection. Collections with a large per-entry overhead do not scale well, since per-entry costs cannot be amortized away as the collection grows. 
+The memory overhead of a collection can be classified as either \textit{fixed} or \textit{per-entry}. 
+Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections
+with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as
+the collection grows. Per-entry overhead depends on the number of entries stored in the collection.
+Collections with a large per-entry overhead do not scale well, since per-entry costs cannot be amortized
+away as the collection grows. 
 }
 
 \begin{figure}
@@ -484,7 +489,8 @@ Figure~\ref{fig:scalable-health-arraylist} shows similar data for the
 \code{ArrayList} design. Like the \code{TreeMap} design, there is a fixed
 overhead, which is significant when the \code{ArrayList} is small. As the
 \code{ArrayList} grows, the fixed overhead is amortized away, but there is still
-a per-entry cost of 56\%, that remains constant.
+a per-entry cost of 56\%, that remains constant. [TODO: fix this last sentence
+- per-entry isn't the right term here]
 
 For the last design that uses arrays, there is only fixed overhead, namely, the
 \code{Samples} object and JVM overhead for the arrays. There is no per-entry
