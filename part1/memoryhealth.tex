@@ -421,7 +421,7 @@ Figure~\ref{fig:content-schematic-arrays-doubles}. The overhead is only 3\%.
 
 For the three designs presented, there is a tradeoff between ease of programming
 and memory efficiency. More programming is needed as the design becomes more
-memory efficient. However, in many cases, memory efficient designs are just as
+memory efficient. However, in many cases, memory-efficient designs are just as
 easy to implement as inefficient designs. When there are two distinct execution
 phases, as in this example, the data structure can be trimmed after the first
 phase, to eliminate empty space reserved for growth. Another option is to use
@@ -452,9 +452,9 @@ amortized away. Maybe this design will scale well, even if it is inefficient for
 small data sizes. The bar graph in Figure~\ref{fig:scalable-health-treemap}
 shows how the \code{TreeMap} design scales as the number of samples increase.
 Each bar is split into two parts: the percentage of overhead and the percentage
-of data. For a single sample, the overhead is 98\%! As more samples are added,
-the bloat factor drops to 72\%. Unfortunately, with 200,000 samples, and 300,000
-samples, the bloat factor is still 72\%. The \code{TreeMap} design is not only
+of data. For a single sample, the overhead is 86\%! As more samples are added,
+the bloat factor drops to 75\%. Unfortunately, with 200,000 samples, and 300,000
+samples, the bloat factor is still 75\%. The \code{TreeMap} design is not only
 bloated, but it also does not scale. It is constantly bloated.
 
 To understand why this happens, recall that the infrastructure of \code{TreeMap}
@@ -462,7 +462,7 @@ is made up of nodes, with two 64-element arrays hanging off of each node. As
 samples are added, the infrastructure grows, since new nodes and arrays are
 being created. Also, each additional sample has its own overhead, namely the JVM
 overhead in each \code{Double} object. When the \code{TreeMap} becomes large
-enough, the \textit{per-entry overhead} dominates and hovers around 72\%. The
+enough, the \textit{per-entry overhead} dominates and hovers around 75\%. The
 bloat factor is larger when the \code{TreeMap} is small. In contrast, for small
 \code{TreeMap}s, the fixed cost of the initial \code{TreeMap} infrastructure is
 relatively big. The \code{TreeMap} wrapper object alone is 48 bytes. This
@@ -489,14 +489,13 @@ Figure~\ref{fig:scalable-health-arraylist} shows similar data for the
 \code{ArrayList} design. Like the \code{TreeMap} design, there is a fixed
 overhead, which is significant when the \code{ArrayList} is small. As the
 \code{ArrayList} grows, the fixed overhead is amortized away, but there is still
-a per-entry cost of 56\%, that remains constant. [TODO: fix this last sentence
-- per-entry isn't the right term here]
+a per-entry cost of 43\%, that remains constant.
 
 For the last design that uses arrays, there is only fixed overhead, namely, the
 \code{Samples} object and JVM overhead for the arrays. There is no per-entry
-overhead at all. Figure~\ref{fig:scalable-health-array} shows the initial 80\%
+overhead at all. Figure~\ref{fig:scalable-health-array} shows the initial 71\%
 fixed overhead is quickly amortized away. When more samples are added, the bloat
-factor becomes 0. The samples themselves are pure data.
+factor becomes 0\%. The samples themselves are pure data.
 
 \begin{figure}
   \centering
@@ -509,8 +508,8 @@ This analysis helps predict the memory requirements for large sample sizes.
 Suppose the monitoring system needs to process 10 million samples. The data
 alone takes up 160 million bytes (153MB).  The graphs shown in this section can
 be used to quickly calculate how much memory you will need. For the
-\code{TreeMap} design, the overhead cost is 72\%, so you will need 546MB to
-store the samples. For the \code{ArrayList} design, you will need 347MB. For the
+\code{TreeMap} design, the overhead cost is 75\%, so you will need 610MB to
+store the samples. For the \code{ArrayList} design, you will need 267MB. For the
 \code{array} design, you will need only 153MB. As these numbers show, the design
 choice can make a huge difference.
 
