@@ -452,7 +452,7 @@ amortized away. Maybe this design will scale well, even if it is inefficient for
 small data sizes. The bar graph in Figure~\ref{fig:scalable-health-treemap}
 shows how the \code{TreeMap} design scales as the number of samples increase.
 Each bar is split into two parts: the percentage of overhead and the percentage
-of data. For a single sample, the overhead is 86\%! As more samples are added,
+of data. For a single sample, the overhead is 86\%. As more samples are added,
 the bloat factor drops to 75\%. Unfortunately, with 200,000 samples, and 300,000
 samples, the bloat factor is still 75\%. The \code{TreeMap} design is not only
 bloated, but it also does not scale. It is constantly bloated.
@@ -538,9 +538,10 @@ requirements of larges applications.
 These are the basic tools used in the rest of this book. To estimate the cost of
 an entity, you will need to know how many bytes each primitive type needs, what
 is the pointer size, and what the JVM overhead is. You will learn how to
-estimate the cost of entities in Chapter 4. To estimate scalability, you will
-need to know what the fixed and per-entry costs are for the collection classes
-you are using. These are given in Chapter 7.
+estimate the cost of entities in \autoref{chapter:delegation}. To estimate scalability,
+you will need to know what the fixed and variable costs are for the collection classes
+you are using. These are covered in Chapters~\ref{chapter:brief-introduction-collections}
+through \ref{chapter:dynamic-records}.
 
 % Nevertheless, you should not throw out all the Java libraries and write
 % everything yourself.  It can also prevent unnecessary optimizations that gain
