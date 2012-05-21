@@ -215,9 +215,9 @@ uses a node to summarize the collections that implement a relation.
    A monitoring program collects samples from a distributed
    system. Each sample it collects consists of a unique timestamp and a
    value, each represented as a double. The samples arrive out of
-   order. The task is to display samples in chronological order, after
-   all of the data has been collected. The solution requires a data
-   structure to store the samples. 
+   order. The task is to display samples in chronological order, after all of
+   the data has been collected. The solution requires a data structure to store
+   the samples.
 \end{example}
 
 A map is a convenient way to store these timestamp-value pairs. A regular
@@ -251,7 +251,7 @@ only \code{Object}s as parameters, not scalars, forcing you to box your scalars
 before putting them in a collection. Even with Java's autoboxing, the compiler
 still generates a boxed scalar in order to store a value in a standard
 collection.  A single instance of a \code{Double} is 16 bytes, so 200
-\code{Doubles} occupy 3,200 bytes. Since the data is only 1,600 bytes,  50\% of
+\code{Doubles} occupy 3,200 bytes. Since the data is only 1,600 bytes, 50\% of
 the \code{Double} objects is actual data, and 50\% is overhead. This is a high
 price for a basic data type.
 
@@ -262,10 +262,10 @@ memory. All of this is overhead. What is taking up so much space?
 the collection functionality. Each type of collection in the standard library
 has a different kind of infrastructure: some are built from arrays, some from
 separate entry objects linked together, and some use a combination of both.
-Internally, \code{TreeMap} is a self-balancing search tree. The tree nodes
-maintains pointers to parents and siblings. Each node is represented as a
-separate object\footnote{There is some variation in the implementation among
-\jres.}.
+Internally, \code{TreeMap} is a self-balancing search tree. It has one
+node object for every value stored in the map. Nodes maintain pointers to
+parents and siblings, as well as to the keys and values\footnote{There is some
+variation among \jres.}.
 
 %[TODO: move to scalability section]
 %Every collection has \emph{fixed} as well as \emph{variable} overhead
@@ -347,13 +347,13 @@ advantage of these methods, the new \code{Sample} class has to implement the
 \end{shortlisting}
 
 Additionally, the \code{ArrayList} needs to be stored in a wrapper class that
-implements map operations. Here are two methods, \code{getValue} and
+implements the needed operations. Here are two methods, \code{getValue} and
 \code{sort}, of a wrapper class \code{Samples}.
 
 \begin{shortlisting}
     public class Samples {
     
-    	  public final static double NOT_FOUND = -1d;
+    	public final static double NOT_FOUND = -1d;
         private ArrayList<Sample> samples = new ArrayList<Sample>();
         ....
 		
@@ -361,7 +361,7 @@ implements map operations. Here are two methods, \code{getValue} and
             Sample sample = new Sample(timestamp, 0.0);
             int result = Collections.binarySearch(samples, sample);
             if (result < 0) {
-            	return NOT_FOUND;
+                return NOT_FOUND;
             }
             return samples.get(result).getValue();
         }
