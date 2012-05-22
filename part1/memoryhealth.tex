@@ -216,8 +216,9 @@ uses a node to summarize the collections that implement a relation.
    system. Each sample it collects consists of a unique timestamp and a
    value, each represented as a double. The samples arrive out of
    order. The task is to display samples in chronological order, after all of
-   the data has been collected. The solution requires a data structure to store
-   the samples.
+   the data has been collected. At that point the user may also perform an
+   occassional lookup of a sample by timestamp. The
+   solution requires a data structure to store the samples.
 \end{example}
 
 A map is a convenient way to store these timestamp-value pairs. A regular
@@ -266,18 +267,6 @@ Internally, \code{TreeMap} is a self-balancing search tree. It has one
 node object for every value stored in the map. Nodes maintain pointers to
 parents and siblings, as well as to the keys and values\footnote{There is some
 variation among \jres.}.
-
-%[TODO: move to scalability section]
-%Every collection has \emph{fixed} as well as \emph{variable} overhead
-%costs. The fixed overhead is the minimum space needed, no
-%matter how many entries are stored in the collection. For \code{TreeMap} it's
-%% 48 bytes, the size of the wrapper object. The \emph{variable
-%overhead} is the additional space needed to store each entry in
-%the collection. In this case it's 32
-%bytes, the size of each internal object representing a node in the tree.
-
-%These 32 bytes
-%include five pointer fields, in addition to other sources of overhead.
 
 Using a \code{TreeMap} is not \textit{a priori} a bad design. It depends on
 whether the overhead is buying something useful. \code{TreeMap} has a high
@@ -449,33 +438,48 @@ The basic question for predicting scalability is what happens to the bloat
 factor as a data structure grows. The \code{TreeMap} design has 75\% overhead
 with 100 samples. With 100,000 samples, maybe the high overhead will be
 amortized away. Maybe this design will scale well, even if it is inefficient for
-small data sizes. The bar graph in Figure~\ref{fig:scalable-health-treemap}
+small data sizes. The graph in Figure~\ref{fig:scalable-health-treemap}
 shows how the \code{TreeMap} design scales as the number of samples increase.
-Each bar is split into two parts: the percentage of overhead and the percentage
+The graph is split into two parts: the percentage of overhead and the percentage
 of data. For a single sample, the overhead is 86\%. As more samples are added,
 the bloat factor drops to 75\%. Unfortunately, with 200,000 samples, and 300,000
 samples, the bloat factor is still 75\%. The \code{TreeMap} design is not only
 bloated, but it also does not scale. It is constantly bloated.
 
+%[TODO: move to scalability section]
+%Every collection has \emph{fixed} as well as \emph{variable} overhead
+%costs. The fixed overhead is the minimum space needed, no
+%matter how many entries are stored in the collection. For \code{TreeMap} it's
+%% 48 bytes, the size of the wrapper object. The \emph{variable
+%overhead} is the additional space needed to store each entry in
+%the collection. In this case it's 32
+%bytes, the size of each internal object representing a node in the tree.
+
+%These 32 bytes
+%include five pointer fields, in addition to other sources of overhead.
+
 To understand why this happens, recall that the infrastructure of \code{TreeMap}
-is made up of nodes, with two 64-element arrays hanging off of each node. As
-samples are added, the infrastructure grows, since new nodes and arrays are
-being created. Also, each additional sample has its own overhead, namely the JVM
-overhead in each \code{Double} object. When the \code{TreeMap} becomes large
-enough, the \textit{per-entry overhead} dominates and hovers around 75\%. The
-bloat factor is larger when the \code{TreeMap} is small. In contrast, for small
-\code{TreeMap}s, the fixed cost of the initial \code{TreeMap} infrastructure is
+is a search tree made up of nodes. As
+samples are added, the infrastructure grows, with a new node object for every
+sample. Also, each additional sample has its own overhead, namely the JVM
+overhead in the two \code{Double} objects. When the map becomes large enough,
+the overhead for each entry --- from the \code{TreeMap} and the
+\code{Double}s --- dominates and hovers around 75\%.
+The bloat factor is larger when the \code{TreeMap} is small. That's because for
+small \code{TreeMap}s, the fixed cost of the initial \code{TreeMap} infrastructure is
 relatively big. The \code{TreeMap} wrapper object alone is 48 bytes. This
 initial fixed cost is quickly amortized away as samples are added.
 
-\callout{callout:fixed-and-per-entry-costs}{Fixed vs Per-Entry Overhead}{
+\callout{callout:fixed-and-per-entry-costs}{Fixed vs Variable Overhead}{
 \index{Fixed Collection Overhead} \index{Per-Entry Collection Overhead}
-The memory overhead of a collection can be classified as either \textit{fixed} or \textit{per-entry}. 
+The memory overhead of a collection can be classified as either \textit{fixed}
+or \textit{variable}.
 Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections
 with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as
-the collection grows. Per-entry overhead depends on the number of entries stored in the collection.
-Collections with a large per-entry overhead do not scale well, since per-entry costs cannot be amortized
-away as the collection grows. 
+the collection grows. Variable overhead depends on the number of entries stored
+in the collection. Collections with a large variable overhead do not scale
+well, since the overhead of the collection grows by that amount with each new
+entry.
 }
 
 \begin{figure}
@@ -531,7 +535,7 @@ these entities.  The \textsl{Entity-Collection (EC) Diagram} shows the costs
 associated with the different parts of a complex data structure. These diagrams
 help you to compare the memory efficiency of different representation choices.
 \item By classifying the overhead of a collection as either \textsl{fixed} or
-\textsl{per-entry}, you can predict how much memory you will need to store very
+\textsl{variable}, you can predict how much memory you will need to store very
 large collections. Being able to predict scalability is critical to meeting the
 requirements of larges applications.
 \end{itemize}
