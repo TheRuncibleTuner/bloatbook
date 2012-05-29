@@ -343,12 +343,14 @@ implements the needed operations. Here are two methods, \code{getValue} and
     public class Samples {
     
     	public final static double NOT_FOUND = -1d;
-        private ArrayList<Sample> samples = new ArrayList<Sample>();
+        private ArrayList<Sample> samples = 
+        	new ArrayList<Sample>();
         ....
 		
         public double getValue(double timestamp) {
             Sample sample = new Sample(timestamp, 0.0);
-            int result = Collections.binarySearch(samples, sample);
+            int result = 
+            	Collections.binarySearch(samples, sample);
             if (result < 0) {
                 return NOT_FOUND;
             }
@@ -446,7 +448,7 @@ the bloat factor drops to 75\%. Unfortunately, with 200,000 samples, and 300,000
 samples, the bloat factor is still 75\%. The \code{TreeMap} design is not only
 bloated, but it also does not scale. It is constantly bloated.
 
-%[TODO: move to scalability section]
+
 %Every collection has \emph{fixed} as well as \emph{variable} overhead
 %costs. The fixed overhead is the minimum space needed, no
 %matter how many entries are stored in the collection. For \code{TreeMap} it's
@@ -467,20 +469,26 @@ the total overhead for each entry --- from the \code{TreeMap} and the
 \code{Double}s --- dominates and hovers around 75\%.
 
 The bloat factor is larger when the \code{TreeMap} is small. That's because for
-small \code{TreeMap}s, the fixed cost of the initial \code{TreeMap} infrastructure is
-relatively big. The \code{TreeMap} wrapper object alone is 48 bytes. This
-initial fixed cost is quickly amortized away as samples are added.
+small \code{TreeMap}s, the fixed overhead of the initial \code{TreeMap} --- its
+48 byte wrapper object --- is relatively big. This initial fixed cost is quickly
+amortized as samples are added.
 
-\callout{callout:fixed-and-per-entry-costs}{Fixed vs Variable Overhead}{
+\callout{callout:fixed-and-per-entry-costs}{Fixed vs
+Variable Overhead of Collections}{
 \index{Fixed Collection Overhead} \index{Variable Collection Overhead}
-The memory overhead of a collection can be classified as either \textit{fixed}
-or \textit{variable}.
-Fixed overhead stays the same, no matter how many entries are stored in the collection. Small collections
-with a large fixed overhead have a high memory bloat factor, but the fixed overhead is amortized away as
-the collection grows. Variable overhead depends on the number of entries stored
-in the collection. Collections with a large variable overhead do not scale
-well, since the overhead of the collection grows by that amount with each new
-entry added.
+Every collection has two types of memory overhead: \textit{fixed}
+and \textit{variable}. These combine to determine the cost of the collection
+for a given number of entries.
+
+Fixed overhead stays the same, no
+matter how many entries are stored in the collection. Small collections with a large fixed
+overhead have a high memory bloat factor, but the fixed overhead is amortized away as
+the collection grows. 
+
+Variable overhead is the memory needed, on average, to
+store a new entry in the collection. Collections with a large variable
+overhead do not scale well, since the cost of the
+collection grows by the variable overhead with each new entry.
 }
 
 \begin{figure}
@@ -497,10 +505,12 @@ overhead, which is significant when the \code{ArrayList} is small. As the
 a per-entry cost of 43\%, that remains constant.
 
 For the last design that uses arrays, there is only fixed overhead, namely, the
-\code{Samples} object and JVM overhead for the arrays. There is no per-entry
-overhead at all. Figure~\ref{fig:scalable-health-array} shows the initial 71\%
-fixed overhead is quickly amortized away. When more samples are added, the bloat
-factor becomes 0\%. The samples themselves are pure data.
+\code{Samples} object plus the JVM overhead for the arrays. There is no
+additional overhead for each entry, since the variable overhead of a scalar
+array is 0, and the samples themselves are pure data.
+Figure~\ref{fig:scalable-health-array} shows how the initial 71\% fixed overhead is
+quickly amortized. When more samples are added, the bloat
+factor becomes 0\%.
 
 \begin{figure}
   \centering
