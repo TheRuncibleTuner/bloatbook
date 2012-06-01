@@ -96,7 +96,7 @@ implementation, it would need to be 80 characters long. As bad as this seems,
 this string representation does at least have the benefit that it amortizes away
 its overhead. The overhead cost is always 40 bytes, so overhead of a string
 approaches 0\% for larger and larger strings.  For some data structures it is
-not possible to amortize away overhead costs, as discussed in
+not possible to amortize overhead costs, as discussed in
 Section~\ref{sec:scalability}.
 
 Strings, in particular short strings, are pervasive. It is important to be aware
@@ -418,7 +418,7 @@ phases, as in this example, the data structure can be trimmed after the first
 phase, to eliminate empty space reserved for growth. Another option is to use
 one data structure in the first phase, and copy it into a second data structure
 for the second phase. This approach can sometimes be a good compromise between
-ease-of-programming and memory efficiency.
+ease of programming and memory efficiency.
  
 \section{Scalability}
 \label{sec:scalability}
@@ -460,30 +460,34 @@ bloated, but it also does not scale. It is constantly bloated.
 %These 32 bytes
 %include five pointer fields, in addition to other sources of overhead.
 
-To understand why this happens, recall that the infrastructure of \code{TreeMap}
-is a search tree made up of nodes. As
-samples are added, the infrastructure grows, with a new node object for every
-sample. Also, each additional sample has its own overhead, namely the JVM
-overhead in the two \code{Double} objects. When the map becomes large enough,
-the total overhead for each entry --- from the \code{TreeMap} and the
-\code{Double}s --- dominates and hovers around 75\%.
+To understand why this happens, recall that the infrastructure of
+\code{TreeMap} is a search tree made up of nodes. As samples are added, 
+the infrastructure grows, with a new node for every sample. This is
+the \emph{variable overhead} of the \code{TreeMap}, the additional
+space needed to store an entry. In this case it's 32 bytes,
+the cost of an internal node object. Each sample also adds its own overhead,
+namely the JVM overhead in the two \code{Double} objects. When the map becomes large enough,
+the per-entry overhead --- from the \code{TreeMap} and the
+\code{Double}s --- dominates, and hovers around 75\%.
 
 The bloat factor is larger when the \code{TreeMap} is small. That's because for
-small \code{TreeMap}s, the fixed overhead of the initial \code{TreeMap} --- its
-48 byte wrapper object --- is relatively big. This initial fixed cost is quickly
-amortized as samples are added.
+small \code{TreeMap}s, the \emph{fixed overhead}
+is a large component of the cost. A collection's fixed overhead is the base
+memory needed, independent of the number of entries stored. For
+\code{TreeMap}, it's the 48-byte \code{TreeMap} object.
+This fixed cost is quickly amortized as more samples are added.
 
-\callout{callout:fixed-and-per-entry-costs}{Fixed vs
-Variable Overhead of Collections}{
+\callout{callout:fixed-and-per-entry-costs}{Fixed vs.
+Variable Collection Overhead}{
 \index{Fixed Collection Overhead} \index{Variable Collection Overhead}
 Every collection has two types of memory overhead: \textit{fixed}
-and \textit{variable}. These combine to determine the cost of the collection
+and \textit{variable}. Together they determine the cost of the collection
 for a given number of entries.
 
-Fixed overhead stays the same, no
+Fixed overhead is the minimum space needed, no
 matter how many entries are stored in the collection. Small collections with a large fixed
-overhead have a high memory bloat factor, but the fixed overhead is amortized away as
-the collection grows. 
+overhead have a high memory bloat factor, but the fixed overhead is amortized
+as the collection grows. 
 
 Variable overhead is the memory needed, on average, to
 store a new entry in the collection. Collections with a large variable
@@ -500,14 +504,16 @@ collection grows by the variable overhead with each new entry.
 
 Figure~\ref{fig:scalable-health-arraylist} shows similar data for the
 \code{ArrayList} design. Like the \code{TreeMap} design, there is a fixed
-overhead, which is significant when the \code{ArrayList} is small. As the
-\code{ArrayList} grows, the fixed overhead is amortized away, but there is still
-a per-entry cost of 43\%, that remains constant.
+overhead which is significant when the \code{ArrayList} is small. As the
+\code{ArrayList} grows, the fixed overhead is amortized, but there is
+still a per-entry overhead of 43\% that remains constant. That's the combined effect of 
+the \code{ArrayList}'s variable overhead and the overhead of each \code{Sample}
+object.
 
 For the last design that uses arrays, there is only fixed overhead, namely, the
-\code{Samples} object plus the JVM overhead for the arrays. There is no
-additional overhead for each entry, since the variable overhead of a scalar
-array is 0, and the samples themselves are pure data.
+single \code{Samples} object plus the JVM overhead for the arrays. There is no
+additional overhead for each entry, since a scalar
+array has no variable overhead, and the samples themselves are pure data.
 Figure~\ref{fig:scalable-health-array} shows how the initial 71\% fixed overhead is
 quickly amortized. When more samples are added, the bloat
 factor becomes 0\%.
@@ -534,7 +540,7 @@ When you are developing a large application, closing your eyes to quantitative
 considerations and thinking everything is going to be fine is risky. Taking the
 time to measure the cost and health of your data design can pinpoint problems
 early on. This chapter described three conceptual tools to help evaluate the
-memory-efficiency of a design.
+memory efficiency of a design.
 \begin{itemize}
 \item The \textsl{memory bloat factor} measures how much of your the memory
 usage of your design is real data, and how much is an artifact of the way you
