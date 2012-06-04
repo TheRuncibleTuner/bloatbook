@@ -444,9 +444,9 @@ small data sizes. The graph in Figure~\ref{fig:scalable-health-treemap}
 shows how the \code{TreeMap} design scales as the number of samples increase.
 The graph is split into two parts: the percentage of overhead and the percentage
 of data. For a single sample, the overhead is 86\%. As more samples are added,
-the bloat factor drops to 75\%. Unfortunately, with 200,000 samples, and 300,000
-samples, the bloat factor is still 75\%. The \code{TreeMap} design is not only
-bloated, but it also does not scale. It is constantly bloated.
+the bloat factor drops to 75\%. Unfortunately, with 100,000 samples, and
+1,000,000 samples, the bloat factor is still 75\%. The \code{TreeMap} design is
+not only bloated, but it also does not scale. It is constantly bloated.
 
 
 %Every collection has \emph{fixed} as well as \emph{variable} overhead
@@ -460,11 +460,12 @@ bloated, but it also does not scale. It is constantly bloated.
 %These 32 bytes
 %include five pointer fields, in addition to other sources of overhead.
 
-To understand why this happens, recall that the infrastructure of
-\code{TreeMap} is a search tree made up of nodes. As samples are added, 
-the infrastructure grows, with a new node for every sample. This is
-the \emph{variable overhead} of the \code{TreeMap}, the additional
-space needed to store an entry. In this case it's 32 bytes,
+To understand why this happens, it helps to first distinguish between two
+kinds of overhead in collections. Recall that the infrastructure of
+\code{TreeMap} is a search tree made up of nodes. As samples are added, the infrastructure grows,
+with a new node for every sample. This is
+the \code{TreeMap}'s \emph{variable overhead}, the additional
+space needed to store each entry. In this case it's 32 bytes,
 the cost of an internal node object. Each sample also adds its own overhead,
 namely the JVM overhead in the two \code{Double} objects. When the map becomes large enough,
 the per-entry overhead --- from the \code{TreeMap} and the
@@ -474,8 +475,9 @@ The bloat factor is larger when the \code{TreeMap} is small. That's because for
 small \code{TreeMap}s, the \emph{fixed overhead}
 is a large component of the cost. A collection's fixed overhead is the base
 memory needed, independent of the number of entries stored. For
-\code{TreeMap}, it's the 48-byte \code{TreeMap} object.
-This fixed cost is quickly amortized as more samples are added.
+\code{TreeMap}, it's the 48-byte \code{TreeMap} wrapper object.
+As the collection grows, this fixed cost quickly becomes less significant, as
+the cost is spread over more and more samples.
 
 \callout{callout:fixed-and-per-entry-costs}{Fixed vs.
 Variable Collection Overhead}{
@@ -486,8 +488,8 @@ for a given number of entries.
 
 Fixed overhead is the minimum space needed, no
 matter how many entries are stored in the collection. Small collections with a large fixed
-overhead have a high memory bloat factor, but the fixed overhead is amortized
-as the collection grows. 
+overhead have a high memory bloat factor. The fixed overhead is amortized
+if the collection grows. 
 
 Variable overhead is the memory needed, on average, to
 store a new entry in the collection. Collections with a large variable
@@ -531,7 +533,7 @@ alone takes up 160 million bytes (153MB).  The graphs shown in this section can
 be used to quickly calculate how much memory you will need. For the
 \code{TreeMap} design, the overhead cost is 75\%, so you will need 610MB to
 store the samples. For the \code{ArrayList} design, you will need 267MB. For the
-\code{array} design, you will need only 153MB. As these numbers show, the design
+array design, you will need only 153MB. As these numbers show, the design
 choice can make a huge difference.
 
 \section{Summary}
