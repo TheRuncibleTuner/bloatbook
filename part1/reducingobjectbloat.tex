@@ -1,8 +1,6 @@
 \chapter{Field Patterns for Efficient Objects}
 \label{chapter:field-patterns}
 
-[TODO: Fix word wrap in source listings]
-
 In many applications, the heap is filled mostly with instances of just a
 few important classes.  You can increase scalability significantly by making these
 objects as compact as possible. This chapter describes field usage
@@ -70,17 +68,17 @@ average. When the fill rate is over 40\%, the memory saved is
 negative, that is, memory is wasted. The lesson here is that if you aren't sure
 what the fill rate is, then using delegation to save memory may end up
 backfiring.
+
 \begin{figure}
   \centering
- \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/12-byte-graph.pdf}
+ \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used-12-bytes.pdf}
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted by delegating 12
-  bytes of memory to a side object. The x-axis is the fill rate as a percent.
-  The y-axis is the average memory saved per instance, as a percent of the bytes
-  delegated.}
+  bytes of memory to a side object. The x-axis is the fill rate.
+  The y-axis is the average memory saved per instance, as a percentage of the
+  bytes delegated.}
   \label{fig:fill-rate}
 \end{figure}
-
 
 In addition to the fill rate, the memory savings also depends on the
 number of fields delegated and their sizes. The more bytes
@@ -99,13 +97,13 @@ does, the memory lost will be relatively small.
 
 \begin{figure}
   \centering
- \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used.pdf}
+ \includegraphics[width=.90\textwidth]{part1/Figures/modelingdatatypes/rarely-used-comparison.pdf}
  % \includegraphics{eight-char-string}
   \caption{This plot shows how much memory is saved or wasted
   depending on how many bytes are delegated to a side object.
-  The x-axis is the fill rate, and the y-axis is the average
-  memory saved as a percent of the bytes delegated. Each line represents
-  a different delegated-fields size, from 16 to 144 bytes, in increments of
+  The x-axis is the fill rate. The y-axis is the average
+  memory saved per instance, as a percentage of the bytes delegated. Each line
+  represents a different delegated-fields size, from 16 to 144 bytes, in increments of
   16 bytes.}
   \label{fig:rarely-used}
 \end{figure}
@@ -116,7 +114,7 @@ Assume the cost of a pointer is 4 bytes, and the cost of an object header is 8
 bytes.  Let:
 \begin{eqnarray} 
 B &=& the\ size\ in\ bytes\ of\ the\ delegated\ fields \nonumber \\
-F &=& the\ fill\ rate,\ between\ 0\ and\ 1 \nonumber
+F &=& the\ fill\ rate\ as\ a\ number\ between\ 0\ and\ 1 \nonumber
 \end{eqnarray}
 
 While every object pays a
@@ -126,17 +124,18 @@ a side object will result in an average savings per object of:
 B-4\ \ -\ \ F(B+8) \nonumber
 \end{eqnarray}
 
-For the savings to be positive, the following must be true
+For the savings to be positive, the following must be true:
 \footnote{This calculation does not include alignment overhead.
 Delegating fields to a side object may increase alignment costs,
 depending on the other fields in your object.
 If the header size is not a multiple of the alignment (e.g.
-on the IBM 32-bit JRE), delegation can sometimes reduce alignment costs.}:
+on the IBM 32-bit JRE), delegation can sometimes reduce alignment costs.}
 \begin{eqnarray}
 F &<& \frac{B-4}{B+8} \nonumber
 \end{eqnarray}
 
 } 
+
 A common error is to put rarely used fields in a side
 class with lazy allocation, but have code paths that
 cause the side object to be allocated all the time, even when it's not needed.
@@ -220,11 +219,13 @@ enum SMLSize {
 }
 
 enum NumericSize {
-	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN;
+	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE,
+	FOURTEEN, SIXTEEN;
 }
 
 enum PetiteSize {
-    ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN;
+    ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, 
+    FOURTEEN, SIXTEEN;
 }
 
 enum WomensSize {
@@ -238,9 +239,11 @@ combined into one enum type:
 \begin{shortlisting}
 enum ClothingSize {
 	XSMALL, SMALL, MEDIUM, LARGE, XLARGE, 
-	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE, FOURTEEN, SIXTEEN,
-    PETITE_ZERO, PETITE_TWO, PETITE_FOUR, PETITE_SIX, PETITE_EIGHT, PETITE_TEN,
-    PETITE_TWELVE, PETITE_FOURTEEN, PETITE_SIXTEEN,
+	ZERO, TWO, FOUR, SIX, EIGHT, TEN, TWELVE,
+	FOURTEEN, SIXTEEN,
+    PETITE_ZERO, PETITE_TWO, PETITE_FOUR, PETITE_SIX,
+    PETITE_EIGHT, PETITE_TEN, PETITE_TWELVE,
+    PETITE_FOURTEEN, PETITE_SIXTEEN,
 	ONEX, TWOX, THREEX, FOURX;
 }
 
@@ -311,23 +314,23 @@ public abstract class Product {
 }
 
 class Book extends Product {
-	static Category bookCategory; // Points to the 
-                                  // book category object
+	static Category bookCategory;	// Points to the 
+									 // book category object
 	public Category getCategory() {return bookCategory;}  
 	..
 }
 
 class Music extends Product {
-	static Category musicCategory; // Points to the
-                                   // music category object
+	static Category musicCategory; 	// Points to the
+									    // music category object
 	public Category getCategory() {return musicCategory;}  
 	..
 }
 
 class Clothing extends Product {
 	static Category clothingCategory; // Points to the
-	                                  // clothing category
-                                      // object
+	                                      // clothing category
+                                          // object
 	public Category getCategory() {return clothingCategory;}  
 	.. 
 }
