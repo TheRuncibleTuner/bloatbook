@@ -494,7 +494,7 @@ a few properties of the data we are considering sharing. For this example,
 we'll start with a set of one million \class{String}s, and make the
 simplifying assumption that they are all the same size, ten characters each.
 Without any sharing, this data would require 64 bytes per \class{String},
-or 64 Mbytes in total. Next, we'll need the overhead
+or 61 Mbytes in total. Next, we'll need the overhead
 of the sharing mechanism, in this case Java's built-in string interning. The
 \jre stores its map of shared strings in native memory. We'll assume that the
 native map costs 20 bytes on average for each distinct value\footnote{This is
@@ -525,8 +525,9 @@ varies based on this ratio. Each data point compares not sharing
 interning (the right bar). There is considerable savings with even
 a moderate amount of duplication. For example, when distinct values
 are 50\% of the total number of \class{String}s, on average 2 identical
-\class{String}s per value, 22 Mbytes are saved. When the
-percent is above 76\%, however, memory is wasted, since there isn't enough duplication to justify the extra overhead.
+\class{String}s per value, 21 Mbytes are saved. When the
+percent is above 76\%, however, memory is wasted, since there isn't enough
+duplication to justify the extra overhead.
 
 \callout{callout:sharing-savings}{Estimating the Savings from Sharing}{
 \index{Sharing Savings Calculation}
