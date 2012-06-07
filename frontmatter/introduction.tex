@@ -4,9 +4,9 @@
 
 Managing your Java program's memory couldn't be easier, or so it would
 seem. Java provides you with automatic garbage collection, and a compiler that
-runs as your program is running and responds to its operation. There are many
-standard, open source, and proprietary libraries available that provide powerful
-functionality, and are written by experts. All you have to do is piece together
+responds to your program's operation. There are lots of
+libraries and frameworks available, written by experts, that provide powerful
+functionality. All you have to do is piece together
 the parts and let the Java runtime system do the rest for you.
 
 The reality, unfortunately, is very different. If you just assemble the parts, take
@@ -14,14 +14,17 @@ the defaults, and follow all the good advice to make your
 program flexible and maintainable, you will likely find that your memory needs are
 \emph{much} higher than imagined. You may also find that precious memory
 resources are wasted holding on to data that is no longer needed, or, even
-worse, that your system suffers from memory leaks. Java is filled with
-costly memory traps that are easy to fall into.  All too often, these problems
+worse, that your system suffers from memory leaks. All too often, these problems
 won't show up until late in the cycle, when the whole system comes together. 
 You may discover, for example, when your product is about to ship, that your design is
 far from fitting into memory, or that it does not support nearly the number
 of users it needs to support. Fixing these problems can
 take a major effort, requiring extensive refactoring or rethinking
 architectural decisions, such as the choice of frameworks you use.
+
+[NOTE: In the next few paragraphs there's a lot of overlap with the Preface.
+Most of this material can be merged/moved into the preface. Let's 
+get quickly to Facts and Fictions, which is very concrete.]
 
 This book is a guide to using memory wisely in Java. Memory usage,
 like any other aspect of software, needs to be carefully
@@ -37,7 +40,9 @@ put off until there is a crisis.)  This book gives you the tools to make
 informed choices early on.  It gives you 
 an approach to looking at your system's uses of memory, and a practical guide
 to making informed tradeoffs in every part of your design and
-implementation.  (Common patterns that make up your design - helps you understand costs and alternatives.  Also 
+implementation. Java is also filled with
+costly memory traps that are easy to fall into.  
+ (Common patterns that make up your design - helps you understand costs and alternatives.  Also 
 relevant Java mechanisms).  Three kinds of info: patterns, mechanisms, and an
 organization/approach to thinking about memory.
 
@@ -61,8 +66,11 @@ problems, you have fewer ways of fixing them without rethinking larger aspects o
 All of this makes it important to understand what memory
 costs and alternatives are, as early as possible.
 
+[NOTE: Combine and streamline these two versions of the Facts and Fictions
+intro]
 
-Beyond the technical realities of using memory well in Java there are some commonly held misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
+Beyond the technical realities of using memory well in Java there are some commonly held
+misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
 of these myths, and getting a better understanding of why memory problems
 can be so common in Java.
 
@@ -75,14 +83,28 @@ the software culture and popular beliefs can lead you to ignore memory
 costs. Some of these beliefs are really myths --- they might have once
 been true, but no longer. Here are several.
 
+[NOTE: Myths and Quiz go here.  This
+is important info, not covered elsewhere in the book.
+The underlying point (doesn't necessarily need to be stated) is why paying
+attention to costs etc. matters, and that it's possible to make a big difference.]
+
+[NOTE: Quiz can be a callout or scattered callouts.
+Doesn't have to be multiple choice. Maybe just a single answer, with
+an answer key on the next page.]
+
 \section{Memory-conscious Engineering}
+
+[NOTE: this is about our approach, and can give a roadmap of the book
+too. Needs to be rewritten/restructured to reflect our current breakdown: space,
+lifetime, scalability.]
 
 At a high level, the approach we present in this book is simple. For each part of your data design:
 - understand the space needs of the various implementation alternatives
 - determine how long that data should remain alive, and then choose an appropriate implementation to achieve that
 
-The bulk of this book takes you through the most common patterns that come up in practice for each topic. We show you how to recognize
-these patterns in your designs, and give you relevant information about costs and other pitfalls.  
+The bulk of this book takes you through the most common patterns that come up in
+practice for each topic. We show you how to recognize these patterns in your
+designs, and give you relevant information about costs and other pitfalls.
 
 discuss looking at each data structures separately
 
@@ -97,22 +119,43 @@ discuss entities and collections
 
 \subsubsection{Entity-Collection Diagrams}
 
-Much of this book is about how to implement your data designs to make the most efficient use of space. In this section we introduce a diagram, called the \emph{entity-collection(E-C) diagram}, that helps with that process. It highlights the major elements of the data model implementation, so that the costs and scaling consequences of the design are easily visible. We use these diagrams throughout the book to illustrate various implementation options and their costs.
+[NOTE: give only the highest-level description of E-C diagrams here.  E-C
+diagrams are explained fully in Chapter 2.]
 
-A data model implementation begins with a conceptual understanding of the entities and relationships in the model.  This may be an informal understanding, or it may be formalized in a diagram such as an E-R diagram or a UML class diagram.  At some point that conceptual model is turned into Java classes that represent the entities, attributes, and assocations of the model, as well as any auxiliary structures, such as indexes, needed to access the data.  The example below shows a simple conceptual model, using a UML class diagram.  A Java implementation of that model is also shown, using rectangles for classes and arrows for references.  %The Java diagram below is typical of a schema diagram, in that it shows 
+Much of this book is about how to implement your data designs to make the most
+efficient use of space. In this section we introduce a diagram, called the
+\emph{entity-collection(E-C) diagram}, that helps with that process. It
+highlights the major elements of the data model implementation, so that the
+costs and scaling consequences of the design are easily visible. We use these
+diagrams throughout the book to illustrate various implementation options and
+their costs.
+
+A data model implementation begins with a conceptual understanding of the
+entities and relationships in the model.  This may be an informal understanding,
+or it may be formalized in a diagram such as an E-R diagram or a UML class
+diagram.  At some point that conceptual model is turned into Java classes that
+represent the entities, attributes, and assocations of the model, as well as any
+auxiliary structures, such as indexes, needed to access the data.  The example
+below shows a simple conceptual model, using a UML class diagram.  A Java
+implementation of that model is also shown, using rectangles for classes and
+arrows for references.  %The Java diagram below is typical of a schema diagram,
+in that it shows
 
 
-In these models we make a distinction between the implementations of entities and the implementation of collections.  We do this for a number of reasons.  First, the kinds of choices you make to improve the storage of your entities are often different from those Collections are also depicted as nodes, using an octagonal shape.  This is different from UML class diagrams, where associations are shown as edges. E-C diagrams show 
+In these models we make a distinction between the implementations of entities
+and the implementation of collections.  We do this for a number of reasons. 
+First, the kinds of choices you make to improve the storage of your entities are
+often different from those Collections are also depicted as nodes, using an
+octagonal shape.  This is different from UML class diagrams, where associations
+are shown as edges. E-C diagrams show
 
-\subsection{Managing lifetime}
 
-discuss overview of approach to lifetime management
+\section{Conventions Used in This Book}
 
-\subsection{Defining Terms}
+[NOTE: add data structure to the list]
 
 Terms like object can have different meanings in the literature.  The following are the conventions used throughout this book.
 
-Since the word \textit{object} can have different meanings, we precisely define the terminology used:
 \begin{itemize}
 \item A \textit{class} is a Java class. A class name, for example \texttt{String}, always appears in type-writer font. 
 \item A \textit{data model} is a set of classes that represents one or more logical concepts.
