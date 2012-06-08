@@ -22,7 +22,8 @@ of users it needs to support. Fixing these problems can
 take a major effort, requiring extensive refactoring or rethinking
 architectural decisions, such as the choice of frameworks you use.
 
-[NOTE: In the next few paragraphs there's a lot of overlap with the Preface.
+[NOTE(GSS): In the next few paragraphs there's a lot of overlap with the
+Preface.
 Most of this material can be merged/moved into the preface. Let's 
 get quickly to Facts and Fictions, which is very concrete.]
 
@@ -66,7 +67,7 @@ problems, you have fewer ways of fixing them without rethinking larger aspects o
 All of this makes it important to understand what memory
 costs and alternatives are, as early as possible.
 
-[NOTE: Combine and streamline these two versions of the Facts and Fictions
+[NOTE(GSS): Combine/streamline these two versions of the Facts and Fictions
 intro]
 
 Beyond the technical realities of using memory well in Java there are some commonly held
@@ -83,20 +84,23 @@ the software culture and popular beliefs can lead you to ignore memory
 costs. Some of these beliefs are really myths --- they might have once
 been true, but no longer. Here are several.
 
-[NOTE: Myths and Quiz go here.  This
-is important info, not covered elsewhere in the book.
+[NOTE(GSS): Myths and Quiz go here. 
 The underlying point (doesn't necessarily need to be stated) is why paying
 attention to costs etc. matters, and that it's possible to make a big difference.]
 
-[NOTE: Quiz can be a callout or scattered callouts.
+[NOTE(GSS): Quiz can be a callout or scattered callouts.
 Doesn't have to be multiple choice. Maybe just a single answer, with
 an answer key on the next page.]
 
 \section{Memory-conscious Engineering}
 
-[NOTE: this is about our approach, and can give a roadmap of the book
-too. Needs to be rewritten/restructured to reflect our current breakdown: space,
+[NOTE(GSS): this is our approach, with a roadmap of the book.
+Needs to be rewritten/restructured to reflect our current breakdown: space,
 lifetime, scalability.]
+
+[NOTE(GSS): Somewhere in here will be a description of bloat factor and of E-C
+diagrams.  Just a high-level description of each in the Intro, detailed
+descriptions and examples are in Chapter 2.]
 
 At a high level, the approach we present in this book is simple. For each part of your data design:
 - understand the space needs of the various implementation alternatives
@@ -118,9 +122,6 @@ discuss health very briefly
 discuss entities and collections
 
 \subsubsection{Entity-Collection Diagrams}
-
-[NOTE: give only the highest-level description of E-C diagrams here.  E-C
-diagrams are explained fully in Chapter 2.]
 
 Much of this book is about how to implement your data designs to make the most
 efficient use of space. In this section we introduce a diagram, called the
@@ -152,7 +153,7 @@ are shown as edges. E-C diagrams show
 
 \section{Conventions Used in This Book}
 
-[NOTE: add data structure to the list]
+[NOTE(GSS): add data structure to the list]
 
 Terms like object can have different meanings in the literature.  The following are the conventions used throughout this book.
 
