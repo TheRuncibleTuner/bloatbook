@@ -75,30 +75,11 @@ the relationship between products and alternate suppliers.
   \class{HashSets} of alternate \class{Suppliers} related to \class{Products}.}
   \label{fig:product-hashset}
 \end{figure}
-%Sun library --  Empty HashSet -- 136 bytes
-% 16 bytes HashSet (header + pointer)
-% 40 byptes HashMap Object 
-% 80 bytes empty array of entries
 
-%HashMapEntry:  24 bytes:  header + 4 fields (value, key, next, hash)
-% 4 entries -- 96 bytes
-% total overhead for 4 entry hashset: 232 bytes
-% 100,000 hashsets with 4 entries is 22.125MB
-
-% HashMap size: 40 for header + 8 for array header
-% 24 bytes per entry + 6 per entry in the array (assume extra for growth space)
-% so for 100,000 entries, thats 48 + 3,000,000 bytes = 2.86MB
-%
-% Edge 16*400,000 = 6.4 million = 6.1MB
-%
-% ArrayList container is 24 bytes (header, size, modcount, pointer) 
-% Default array size os 10 -- 10*4+12 = 52 rounds to 56
-% ArrayList is 80 (56+24) for 4 entries.
-% 400,000 ArrayLists is: 32,000,000 bytes
 
 Using a \class{HashSet} for alternate suppliers turns out to be a
 very costly decision. The alternate suppliers are represented by 100,000
-very small \class{HashSet}s, each consuming 232 bytes, for a total cost of 22.125MB. 
+very small \class{HashSet}s, each consuming 232 bytes, for a total cost of 22.1MB. 
 This cost is all overhead.
 It's hard to think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern is very, very common. For
@@ -118,7 +99,7 @@ approximately a third the size of a \class{HashSet}.
  stored in an \class{ArrayLists}.}
   \label{fig:product-arraylist}
 \end{figure}
-This simple change saves 14.49MB. 
+This simple change saves 14.5MB. 
 
 
 \section{The Cost Of Collections}
@@ -193,24 +174,35 @@ library implementations in circulation have costs
 similar to these. You can calculate them using the same methodology.
 
 
-
 \begin{table}
-  \centering
- %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
- % \includegraphics{eight-char-string}
- \begin{tabular}{llll} \toprule
- 	 Collection & Fixed Default Cost with No Entries & Variable Cost  \\ \midrule
- 	ArrayList & 80 bytes (capacity for 10 entries) & 4 bytes  \\
- 	LinkedList & 48 bytes & 24 bytes  \\
- 	HashMap & 120 bytes (capacity for 16 entries) & 28 bytes  \\
- 	HashSet & 136 bytes (capacity for 16 entries) & 28 bytes &  \\
- 	\bottomrule
- \end{tabular}
-  \caption{The cost breakdown of four basic Java standard library collections
-  with default size and no entries. The fixed cost includes an array whose
-   size equals the default capacity. The variable cost, the memory needed for
-   an entry, indicates scalability.}
-  \label{tab:collection-costs}
+\centering
+ 		\begin{tabular}{lrl}
+ 		\toprule
+	 	 Collection & With 4 entries & With n entries\\
+	 	 \midrule
+	 	ArrayList & 80 & 80 , n = 0 .. 10 \\
+ 		LinkedList & 144 & 48 + n*24 , for any n \\
+ 		HashMap & 216 & 120 + n*24 , n = 0 .. 11 \\
+ 		HashSet & 232 & 136 + n*24 , n = 0 .. 11 \\
+	 	\bottomrule
+	 	\end{tabular}
+
+%	\caption{}\label{tab:small-collections-default}{}
+ 		\begin{tabular}{lrl}
+ 		\toprule
+	 	 Collection & With 4 entries & With n entries\\
+	 	 \midrule
+	 	ArrayList & 56 & 40 + (n/2)*8 , n = 0 .. 10 \\
+ 		LinkedList & 144 & 48 + n*24 , for any n\\
+ 		HashMap & 184 & 88 + n*24 , n = 0 .. 5 \\
+ 		HashSet & 200 & 104 + n*24 , n = 0 .. 5 \\
+	 	\bottomrule
+ 	 	\end{tabular}
+%	\caption{}\label{tab:small-collections-minimum}{}
+	\caption{Size in bytes of some common collection classes, when they contain very few
+	elements. n = number of elements. Formulas are valid only for the range specified. (a) Default size
+	(b) Minimum size.[TODO: format as a table with two subtables; footnote re: doesn't include KeySet]}
+	\label{fig:sharing-pool}
 \end{table}
 
 Our guess is that the
@@ -268,14 +260,8 @@ explicit action.
   \class{ArrayLists} after the first phase. This should save quite a bit of
   space, since there are 100,000 \class{ArrayLists} with four entries on
   average. In fact, trimming these
- \class{ArrayLists} saves 2.29MB, as shown in
+ \class{ArrayLists} saves 2.3MB, or another 30\%, as shown in
  Figure~\ref{fig:trimmed-product}. 
- % 100,000 4 entry arrays == a 4 entry array is 32 bytes (16+12=28, rounds up
- % to 32)
- % So each array saves (56-32)=24 bytes.  100,000*24=2,400,000 bytes saved
- % = 1,600,000 bytes
- % 400,000 * (10-2)*4 = 12,800,000 byptes/ saves 32 bytes per arraylist
- % 32*400000=12,800,000 saved   32,000,000 - 12,800,000 = 19,200,000
 
  \begin{figure}
   \centering
@@ -339,11 +325,14 @@ suppliers, so there are 100,000 empty \class{ArrayLists} before any
 of these \class{ArrayLists} will become non-empty, but it is likely that a good
 number of products have no alternate suppliers. If 25\% of the products in the
 final graph still have no alternate suppliers, there will be 25,000 empty
-\class{ArrayLists}, which consume .95MB even after calling \code{trimToSize}. 
+\class{ArrayLists}, which consume about 1MB even after calling
+\code{trimToSize}.
 Figure~\ref{fig:empty-array} shows the entity-collection
-diagram after removing 25,000 empty alternate supplier \class{ArrayLists}. Note
-that there are now only 75,000 alternate supplier \class{ArrayLists} shown, and
-since there are no more empty \class{ArrayLists}, the average fanout increases to 5.33. 
+diagram after removing 25,000 empty alternate supplier \class{ArrayList}s. Note
+that there are now only 75,000 alternate supplier \class{ArrayList}s shown,
+since there are no more empty \class{ArrayList}s. Therefore, we adjust the
+average fanout in and out of \class{ArrayList} to .75 and
+5.33 respectively.
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/empty-product.pdf}
@@ -355,7 +344,7 @@ since there are no more empty \class{ArrayLists}, the average fanout increases t
  Delaying allocation prevents creating too many empty collections.
  That is, instead of initializing all of the collections that you think you
  may need, allocate them on-demand, just before inserting an edge. On-demand
- allocation requires more checking code, to avoid \code{NullPointerExceptions}.
+ allocation requires more checking code, to avoid \code{NullPointerException}s.
  
  Alternatively, you can initialize collection fields to reference static empty collections,
  including EMPTY\_SET,
@@ -446,7 +435,7 @@ This representation is very similiar to the original \class{Product} class in
 section~\ref{sec:rarely-used} where there is one alternate suppler field, and
 here there are four. Taking all of the optimizations 
 together, we have gone from the initial \class{HashSet} representation
-of 22.125MB in Section~\ref{section:choosing-collection} to the in-lined field
+of 22.1MB in Section~\ref{section:choosing-collection} to the in-lined field
 representation of 1.86MB. 
 
 \section{Hybrid Representation}

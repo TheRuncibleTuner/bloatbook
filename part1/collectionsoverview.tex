@@ -129,11 +129,12 @@ by a few hundred thousand instances.
 Fortunately, there are some easy choices you can make that
 can save a lot of space. The cost of different
 collection classes varies greatly, even among ones that could work equally well
-in the same situation. For example, a 5-element \class{ArrayList} with room for growth takes 80 bytes. An equivalent \class{HashSet} costs 276 bytes,
-or 3.5 times as much. Like other kinds of infrastructure, collections serve a
-necessary function, and paying for overhead can be worthwhile. That is, as long as you are not
+in the same situation. For example, a 5-element \class{ArrayList} with room for growth takes 80 bytes. 
+An equivalent \class{HashSet} costs 256 bytes,
+or more than 3 times as much. Like other kinds of infrastructure, collections
+serve a necessary function, and paying for overhead can be worthwhile. That is, as long as you are not
 paying for features you don't need. In the above example, a
-70\% space savings can be achieved if the application can do without the
+69\% space savings can be achieved if the application can do without the
 uniqueness checking provided by \class{HashSet}.  In
 Section~\ref{sec:better-designs} we saw a similar example, achieving a large
 improvement when real-time
