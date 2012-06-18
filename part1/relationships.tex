@@ -1,38 +1,39 @@
 \chapter{Relationships}
 \label{chapter:representing-relationships}
 
-Relationships in an
-entity-relationship model are typically implemented in Java using the
-standard library collection classes:
-each object points to collections of other objects related to it.
-Since relationships are at the core of any data model, it
- is not uncommon for a Java application to create hundreds of
-thousands, even millions, of collections. Therefore, simple decisions, like
-which collection class to use, when to create it, and how to initialize it,
-can make a surprisingly big difference on memory cost.
-This chapter shows
- how to lower memory costs when implementing relationships with collections.
+One-to-many relationships
+%such as those in an entity-relationship model,
+are typically implemented in Java using the standard library collection classes.
+Each object maintains a collection of the objects related to
+it along a given relationship. Since one-to-many relationships are such an
+important part of most data models, it is not uncommon for Java applications to
+need hundreds of thousands, or even millions, of collections.
+Therefore, simple decisions, like which collection class to choose,
+when to create collections, and how to initialize them,
+can make a big difference on memory cost.
+This chapter shows how to lower memory costs when implementing
+relationships\footnote{We'll use the term \emph{relationship} to
+mean one-to-many relationship unless otherwise noted.} with collections.
  
- \section{Choosing The Right Collection}
+ \section{Choosing the Right Collection for the Task}
  \label{section:choosing-collection}
-
 
 The standard Java collection classes vary widely in terms of how much memory they use.
 Not surprisingly, the more functionality a collection provides, the more
 memory it consumes. Collections range from simple, highly efficient
-\class{ArrayLists} to very complex
-\class{ConcurrentHashMaps}, which offer sophisticated concurrent access
+\class{ArrayList}s to very complex
+\class{ConcurrentHashMap}s, which offer sophisticated concurrent access
 control at an extremely high price. 
 Using overly general collections, that provide more functionality than
 really needed, is a common pattern leading to excessive memory bloat.
 This section looks at what to consider when choosing a collection to
 represent a relationship target. 
 
-Using collections for relationships often results in many small or empty
-collections, because there are either lots of objects in the relationship or
- many objects are related to a only few other objects, or both. When there
-are lots of collections with only a few entries, you need to ask  whether the
-functionality of the collection you choose is worth the memory cost of that
+Using collections for relationships often results in many small or
+empty collections, because in practice, along any given relationship, there are
+usually lots of objects that are related to at most a few other objects. When
+there are lots of collections with only a few entries, you need to ask  whether
+the functionality of the collection you choose is worth the memory cost of that
 functionality.
 
 To make this discussion more concrete, let's return to the product and supplier example 
@@ -102,22 +103,24 @@ approximately a third the size of a \class{HashSet}.
 This simple change saves 14.5MB. 
 
 
-\section{The Cost Of Collections}
+\section{The Cost of Collections}
 \label{sec:collectioncost}
 Let's look inside a \class{HashSet} to see why it is so much bigger than an
-\class{ArrayList}. Some of its extra cost is because of additional
-functionality, such as entry uniqueness and constant-time access. Other extra
-cost because of unavoidable Java overhead, and because
-\class{HashSet} is optimized for performance: the \class{HashSet} implementation
-assumes \class{HashSets} will be very large, and sacrifices memory space in favor of performance. 
-Additionally, \class{HashSet} reuses the \class{HashMap} implementation, which
-is expensive memory-wise. \class{HashSet} is implemented as a degenerate
-\class{HashMap}, that is, a \class{HashMap} with no values. 
+\class{ArrayList}. Some of its extra cost is because of additional functionality,
+such as constant-time uniqueness checking and removal of entries.
+\class{HashSet} is also optimized for performance, and sacrifices memory 
+under the assumption that \class{HashSet}s will contain a large number of
+elements. Additionally, \class{HashSet} reuses the \class{HashMap}
+implementation, which adds to the memory cost.
+\class{HashSet} is implemented as a degenerate
+\class{HashMap}, that is, one with keys but no values. Other extra costs
+are due to unavoidable Java overhead. 
 
- The internal
-structure of a \class{HashSet}, shown in Figure~\ref{fig:hashset_new}, consists
-of wrapper objects, an entry array, and linked lists of entries. Most
-collections have similar kinds of internal components.
+The internal structure of a \class{HashSet} is shown in
+Figure~\ref{fig:hashset_new}. Most
+collections are similar in their basic structure: a wrapper
+object (sometimes more), and an internal structure that changes as entries are
+added or removed.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/hashset_new.pdf}
@@ -126,25 +129,27 @@ collections have similar kinds of internal components.
 \end{figure}
 
 
-
-\paragraph{Wrapper Objects.}
-The \class{HashSet} object itself is just a wrapper, delegating all of its work
-to a \class{HashMap}. Therefore, there is an additional wrapper, a \class{HashMap} object. All
-collections have wrapper objects, but a \class{HashSet} has two of them.
+\begin{description}
+\item[Wrapper objects] The \class{HashSet} object itself is just a wrapper,
+delegating all of its work to a \class{HashMap}. Therefore, there is an additional wrapper,
+a \class{HashMap} object. All
+collections have wrapper objects, but a \class{HashSet} has two of them. 
+Together they incur a fixed cost of 56 bytes.
  
-\paragraph{Entry Array.}
-Since this is a hashing structure, there is an array to store the hashed
-entries. The default initial size of the array is 16.
+\item[Array] \class{HashMap} uses a \emph{chaining} design, with an array
+of hash buckets. Each bucket is implemented as a linked list of
+\class{HashMap\$Entry} objects, representing elements that map to the same hash
+bucket. The default initial size of the array is 16, or a fixed cost of 80
+bytes including the JVM overhead.
  
-\paragraph{Entries.} 
-\class{HashMap} stores all entries in clash lists, so there is a
-\class{HashMap\$Entry} object for each \class{HashSet} entry. The size of a
-\class{HashMap\$Entry} is 24 bytes.
-\paragraph{}
+\item[Entries] \class{HashMap} maintains a
+\class{HashMap\$Entry} object for each element in the collection. The size of a
+\class{HashMap\$Entry} is 24 bytes. fields? variable cost?
 
+\end{description}
 
-In contrast, \class{ArrayList} has a smaller fixed cost and a smaller
-variable cost than \class{HashSet}. It is really just an expandable array,
+In contrast, \class{ArrayList} has a
+smaller fixed cost and a smaller variable cost than \class{HashSet}. It is really just an expandable array,
 consisting of a wrapper object and an array of entries, as shown in Figure~\ref{fig:arraylist}. 
 Lower fixed cost means that an \class{ArrayList} with just a few
  elements is smaller than a \class{HashSet} with the same elements. Fixed costs
@@ -176,9 +181,10 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
 \centering
- 		\begin{tabular}{lrl}
+ 		\begin{tabular}{lcc}
  		\toprule
-	 	 Collection & With 4 entries & With n entries\\
+	 	 Collection & \multicolumn{2}{c}{Size in bytes} \\
+	 	 & with 4 entries & with n entries \\
 	 	 \midrule
 	 	ArrayList & 80 & 80 , n = 0 .. 10 \\
  		LinkedList & 144 & 48 + n*24 , for any n \\
@@ -186,11 +192,12 @@ similar to these. You can calculate them using the same methodology.
  		HashSet & 232 & 136 + n*24 , n = 0 .. 11 \\
 	 	\bottomrule
 	 	\end{tabular}
-
+	 	
 %	\caption{}\label{tab:small-collections-default}{}
- 		\begin{tabular}{lrl}
+ 		\begin{tabular}{lcc}
  		\toprule
-	 	 Collection & With 4 entries & With n entries\\
+	 	 Collection & \multicolumn{2}{c}{Size in bytes} \\
+	 	 & with 4 entries & with n entries \\
 	 	 \midrule
 	 	ArrayList & 56 & 40 + (n/2)*8 , n = 0 .. 10 \\
  		LinkedList & 144 & 48 + n*24 , for any n\\
