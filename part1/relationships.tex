@@ -55,7 +55,7 @@ class Supplier {
 	String sku;
 }
 \end{shortlisting}
- 
+
 
 %Since collection implementations are hidden, it's
 %easy to see how this happens.
@@ -117,15 +117,15 @@ implementation, which adds to the memory cost.
 are due to unavoidable Java overhead. 
 
 The internal structure of a \class{HashSet} is shown in
-Figure~\ref{fig:hashset_new}. Most
+Figure~\ref{fig:inside-hashset}. Most
 collections are similar in their basic structure: a wrapper
 object (sometimes more), and an internal structure that changes as entries are
 added or removed.
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/hashset_new.pdf}
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-hashset.pdf}
   \caption{The internal structure of a \class{HashSet}.}
-  \label{fig:hashset_new}
+  \label{fig:inside-hashset}
 \end{figure}
 
 
@@ -150,17 +150,18 @@ bytes including the JVM overhead.
 
 In contrast, \class{ArrayList} has a
 smaller fixed cost and a smaller variable cost than \class{HashSet}. It is really just an expandable array,
-consisting of a wrapper object and an array of entries, as shown in Figure~\ref{fig:arraylist}. 
+consisting of a wrapper object and an array of entries, as shown in
+Figure~\ref{fig:inside-arraylist}.
 Lower fixed cost means that an \class{ArrayList} with just a few
  elements is smaller than a \class{HashSet} with the same elements. Fixed costs
  include wrapper objects and unitialized array elements. The fact that \class{HashSet}
  delegates to \class{HashMap} inflates its fixed cost. 
  \begin{figure}
   \centering
- \includegraphics[width=.80\textwidth]{part1/Figures/collections/arraylist.pdf}
-  \caption{The internal structure of an \class{ArrayList}, which has a
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
+ \caption{The internal structure of an \class{ArrayList}, which has a
   relatively low fixed overhead, and is scalable.}
-  \label{fig:arraylist}
+  \label{fig:inside-arraylist}
 \end{figure}
  Lower variable cost means that
  \class{ArrayList} scales much better than \class{HashSet}. The variable cost
@@ -169,7 +170,7 @@ Lower fixed cost means that an \class{ArrayList} with just a few
  \class{HashMap\$Entry}, which is 28 bytes. So \class{ArrayList}  is better
  both for small and large sets.
 
-Table~\ref{tab:collection-costs} shows the memory costs of four basic
+Table~\ref{tab:small-collection-costs} shows the memory costs of four basic
 collections, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and \class{HashSet}.
 This table shows the default size when the collection is just allocated without
 entries, and any additional entry cost. These costs have
@@ -209,7 +210,7 @@ similar to these. You can calculate them using the same methodology.
 	\caption{Size in bytes of some common collection classes, when they contain very few
 	elements. n = number of elements. Formulas are valid only for the range specified. (a) Default size
 	(b) Minimum size.[TODO: format as a table with two subtables; footnote re: doesn't include KeySet]}
-	\label{fig:sharing-pool}
+	\label{tab:small-collection-costs}
 \end{table}
 
 Our guess is that the
@@ -312,9 +313,9 @@ entries will be added eventually. However, often collections are allocated
 just in case they are needed later, and remain empty throughout the execution.
 
 Suppose the relationship
-in Figure~\ref{fig:trimmed-graph} is initialized by the code:
+in Figure~\ref{fig:trimmed-product} is initialized by the code:
 \begin{shortlisting}
-ArrayList<Product> products;
+List<Product> products;
 int numProducts;
    ..
    public void initAlternateSupplierRelationship() {
