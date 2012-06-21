@@ -3,19 +3,19 @@
 
 Excessive memory consumption is a chronic problem in Java applications.
 Over the past dozen years, we have helped developers, testers, architects, and
-performance analysts get to the root of memory inefficiencies.
+performance analysts get to the root of their memory inefficiencies.
 This is a persistent problem, and cuts across the gamut of applications.
 Client, server, and batch applications --- none of them seem to be immune. They
 commonly suffer from memory exhaustion due to memory leaks, or due to
 insufficient memory capacity to handle their needs.
 
-These failures continue to occur, despite the steady march of available memory
-in computers. Ten years ago, a 500MB heap was considered big. For a while, as
-load and features increased demand for memory, it was sufficient to throw
-hardware at the problem. At least, this was true, ignoring memory leaks.
-Now, as heap grow into the multi-gigabyte range, teams turn to 64-bit
-architectures and distributed in-memory stores, in order to leverage even larger
-heaps.
+These failures continue to occur, despite the steady march of available memory.
+Ten years ago, a 500MB heap was considered big. For a while, as load and added
+features increased demand for memory, it was sufficient to throw hardware at the
+problem. At least, this was true, ignoring memory leaks.
+Now, as memory requirements grow into the multi-gigabyte range, teams turn to
+64-bit architectures and distributed in-memory stores, in order to leverage even
+larger heaps.
 
 %Faced with the black box that is the Java heap, they are forced to
 %accept often unpallateable solutions: either limit functionality to that which
@@ -30,33 +30,44 @@ heaps.
 %Computers are now equipped with gigabytes of memory, yet these teams often find
 %their applications on the brink of exhausting available resources. 
 
-Throwing hardware at the problem is a perfectly fine solution, but there are
-alternatives that offer large gains, at the expense of a some extra design
-work up front. That is the subject of this book: opening up the possibility for
-memory-conscious programming.
+Increasing memory capacity is a perfectly fine solution, but there are
+alternatives that offer large reductions in memory consumption, at the expense
+of some extra design work up front. Even though the potential gains are there,
+most developers treat the Java heap as a black box.
+Java programmers are encouraged not to think about physical storage, and instead
+to let the runtime worry about it. They code according to the constraints of
+budgets and best practices. What pops out the other end, when an application is
+run for the first time, is seen as largely unpredictible, some unknowable
+function of the engineering and architectural choices the team has made.
 
-Even though the potential gains are there, we have found that development teams
-often view Java memory consumption with a sense of resignation. They code
-according to the constraints of budgets and best practices. What pops out the
-other end, when an application is run for the first time, is seen as largely
-unpredictible, some unknowable function of the engineering and architectural
-choices the team has made.
+This is a reasonable position to take, because much of the heap is hidden from
+view. Programming has become an act of assembling reusable libraries and
+frameworks. Developers are routinely faced with ``icebergs''. They code to APIs
+which create a mountain of objects under the covers.
+
+That is the subject of this book: opening up this mystery, and presenting the
+possibility of practical memory-conscious programming in Java.
 
 There is great room for improvement because Java heaps are not just big, but
 filled with bloat. The bytes in every application's heap can be divided into two
 parts. Some of the heap is ``real data'', the names of employees, their
 identification numbers and age. The rest is, in various forms, the overhead of
 storing this data. The ratio of these two numbers gives a good sense of the
-memory efficiency of the implementation. A bloated heap has a low ratio of data
-to overhead.
+memory efficiency of the implementation. A bloated heap has a high ratio of
+overhead to real data.
 
 In our experiences, we have seen ratios as high as 19:1, where as much as 95\%
-of memory devoted to overhead rather than "`real data"'.
+of memory devoted to overhead. It is typical to see 50-60\% overhead: less than
+half the heap is storing real data!
 % This much bloat is an indication that a lot of memory is being used to
 % accomplish little.
-We have seen applications where a simple transaction needs 500K for the session
-state for one user, or 1 gigabyte of memory to support only a few hundred users.
+This level of overhead often impacts the scalability of the application. We have
+seen an application where a simple transaction needs 500 kilobytes for the
+session state for one user. This figure is the slope of the curve that governs
+the number of simultaneous users the system can support.
 
+
+\begin{comment}
 By the time we are called in to help with a performance problem, the situation
 is often critical. The application is either in the final stages of testing or
 about to be deployed. Fixing problems this late in the cycle is very expensive,
@@ -64,12 +75,7 @@ and can sometimes require major code refactoring. It would certainly be better
 if it were possible to deal with memory issues earlier on, during development or
 even design.
 
-Why ...? Java developers face some unique challenges when it comes to memory.
-First, much is hidden from view. A Java developer who assembles a system out of
-reusable libraries and frameworks is truly faced with an "`iceberg"', where a
-single call or constructor may invoke many layers of hidden framework code. We
-have seen over and over again how easy it is for space costs to pile across the
-layers. %Framework designers have an especially hard problem in addition, of
+Why ...? %Framework designers have an especially hard problem in addition, of
 trying to predict their usage, and design for every possible case, often an
 impossible task, usually leading to waste for some case that matters to you!
 While there is much good advice on how to code flexible and maintainable
@@ -97,17 +103,25 @@ the book.
 
 
 %Compared to systems languages like C, Java space costs are high, even for the most basic building blocks. This makes it all the more important for developers to be aware of memory costs.  Java heaps are not just big, but are often bloated, with as much as 80\% of memory devoted to overhead. Memory bloat can have a serious impact on development schedules and on the scalability of deployed systems. Fortunately, bloated designs are not an inevitable consequence of object-oriented development.
+\end{comment}
 
-This book is a comprehensive, practical guide to memory-conscious programming in
-Java. It addresses two different and equally important aspects of using memory
-well. Much of the book covers how to represent your data efficiently. It takes
-you through common modeling patterns, and highlights their costs and discusses
-tradeoffs that can be made. The book also devotes substantial space to managing
-the lifetime of objects, from very short-lived temporaries to longer-lived
-structures such as caches. Lifetime management issues are a common source of
-bugs, such as memory leaks, and inefficiency (mostly performance).  Throughout
-the book we use examples to illustrate common idioms. Most of the examples are
-distilled from more complex examples we have seen in real-world applications. 
+This book addresses three aspects of using memory well: 
+\begin{enumerate}
+	\item Representing your data efficiently.
+	\item Avoiding memory leaks by managing object lifetimes.
+	\item Estimating the scalability of your designs.
+\end{enumerate}
+It takes you through common modeling
+patterns, and highlights their costs and discusses tradeoffs that can be made.
+The book also devotes substantial space to managing the lifetime of objects,
+from very short-lived temporaries to longer-lived structures such as caches.
+Lifetime management issues are a common source of bugs, such as memory leaks,
+and inefficiency.  Throughout the book we use examples to illustrate common
+idioms. Most of the examples are distilled from more complex examples we have
+seen in real-world applications. They may seem silly at first, but truly
+represent the norm. Many of them occur in the standard library itself, a piece
+of code one would think would be highly optimized, given its prolific use.
+
 Throughout the book are also guides to Java mechanisms that are relevant to a
 given topic.  These include features in the language proper, as well as the
 garbage collector and the standard libraries.
