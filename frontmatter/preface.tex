@@ -105,27 +105,30 @@ the book.
 %Compared to systems languages like C, Java space costs are high, even for the most basic building blocks. This makes it all the more important for developers to be aware of memory costs.  Java heaps are not just big, but are often bloated, with as much as 80\% of memory devoted to overhead. Memory bloat can have a serious impact on development schedules and on the scalability of deployed systems. Fortunately, bloated designs are not an inevitable consequence of object-oriented development.
 \end{comment}
 
-This book addresses three aspects of using memory well: 
+This book addresses three aspects of using memory well:
 \begin{enumerate}
-	\item Representing your data efficiently.
-	\item Avoiding memory leaks by managing object lifetimes.
-	\item Estimating the scalability of your designs.
+	\item \textbf{Representing your data efficiently}. The book illustrates
+	common modeling patterns, shows you how to estimate their costs, and
+	discusses tradeoffs that can be made.
+	\item \textbf{Avoiding memory leaks by managing object lifetimes}, from very
+	short-lived temporaries to longer-lived structures such as caches.
+	\item \textbf{Estimating the scalability of your designs}, by identifying the
+	extent to which bloat governs the amount of load you can support.
 \end{enumerate}
-It takes you through common modeling
-patterns, and highlights their costs and discusses tradeoffs that can be made.
-The book also devotes substantial space to managing the lifetime of objects,
-from very short-lived temporaries to longer-lived structures such as caches.
-Lifetime management issues are a common source of bugs, such as memory leaks,
-and inefficiency.  Throughout the book we use examples to illustrate common
-idioms. Most of the examples are distilled from more complex examples we have
-seen in real-world applications. They may seem silly at first, but truly
-represent the norm. Many of them occur in the standard library itself, a piece
-of code one would think would be highly optimized, given its prolific use.
+%Lifetime management issues are a common source of bugs, such as memory leaks,
+%and inefficiency.
+Throughout the book we use examples to illustrate common
+idioms. Most of the examples are distilled from cases we have
+seen in deployed applications. Some of them may seem silly at first, but, over
+the top as they may seem, they truly represent the norm. 
+%Many of them occur in
+%the standard library itself, a piece of code one would think would be highly
+%optimized, given its prolific use. 
+In addition to presenting an approach to better design, this book also serves as
+a guide to Java memory management mechanisms. These include features in the
+language proper, as well as the garbage collector and the standard libraries. 
 
-Throughout the book are also guides to Java mechanisms that are relevant to a
-given topic.  These include features in the language proper, as well as the
-garbage collector and the standard libraries.
-
+\begin{comment}
 While the book is a collection of advice on practical topics, it is also
 organized so as to give a systematic approach to memory issues. When read as a
 whole it can be helpful in seeing the range of topics that need to be
@@ -136,6 +139,7 @@ on their own where possible, so that if a particular pattern comes up in your
 code you can quickly get some ideas on costs and alternatives. At the same time,
 familiarizing yourself with a few concepts in the Introduction will make the
 reading much easier.
+\end{comment}
 
 
 
@@ -148,15 +152,20 @@ reading much easier.
 % dramatic improvements in memory efficiency are sometimes possible with a
 % little care.
 
-The book is appropriate for Java developers (experienced and novice alike),
-especially framework and applications developers, who are faced with decisions
-every day that will have impact down the line in system test and production. It
-is also aimed at technical managers and testers, who need to make sure that Java
-software meets its performance requirements.  This material should be of
+The most important part of this teaching is to apply it early.
+Fixing data modeling problems late in the development cycle is usually
+impossible. By that time, APIs and storage schemas have been fixed.
+
+The book is appropriate for a wide range of Java developers and architects,
+those practitioners involved with framework and applications developers, who are
+faced with decisions every day that will have impact down the line in system test and production.
+It is also aimed at technical managers and testers, who need to make sure that
+Java software meets its performance requirements.  This material should be of
 interest to students and teachers of software engineering, who would like to
 gain a better understanding of memory usage patterns in real-world Java
 applications. Basic knowledge of Java is assumed.
 
+\begin{comment}
 Much of the content relies on knowing or measuring the size of objects at
 runtime. Sizes vary depending which JRE you are using. Our reference JRE is Sun
 \javasix Update 14. Unless otherwise stated, all sizes are for this reference
@@ -199,3 +208,4 @@ weak and soft references, and the basic workings of the garbage collector.
 Finally, we present techniques for avoiding common errors such as memory leaks
 and drag. %plus making things fit.
 
+\end{comment}
