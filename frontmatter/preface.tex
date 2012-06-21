@@ -1,22 +1,61 @@
 \chapter*{Preface}
 \label{chapter:preface}
 
-Over the past ten years, we have worked with developers, testers, and
-performance analysts to help fix memory-related problems in large Java
-applications.  During the many years we have spent studying the performance of
-Java applications, it has become clear to us that the problems related to memory
-is a topic worthy of a book. In spite of the fact that computers are now
-equipped with gigabytes of memory, Java developers face an uphill battle getting
-their applications to fit in memory. Ten years ago, a 500MB heap was considered
-big. Now it is not unusual to see applications that are having trouble fitting
-into 2 to 3 gigabyte heaps, and developers are turning to 64-bit architectures
-to be able to run with even larger heaps.
+Excessive memory consumption is a chronic problem in Java applications.
+Over the past dozen years, we have helped developers, testers, architects, and
+performance analysts get to the root of memory inefficiencies.
+This is a persistent problem, and cuts across the gamut of applications.
+Client, server, and batch applications --- none of them seem to be immune. They
+commonly suffer from memory exhaustion due to memory leaks, or due to
+insufficient memory capacity to handle their needs.
 
-Java heaps are not just big, but are often bloated, with as much as 80\% of
-memory devoted to overhead rather than "`real data"'. This much bloat is an
-indication that a lot of memory is being used to accomplish little. We have seen
-applications where a simple transaction needs 500K for the session state for one
-user, or 1 Gigabyte of memory to support only a few hundred users.
+These failures continue to occur, despite the steady march of available memory
+in computers. Ten years ago, a 500MB heap was considered big. For a while, as
+load and features increased demand for memory, it was sufficient to throw
+hardware at the problem. At least, this was true, ignoring memory leaks.
+Now, as heap grow into the multi-gigabyte range, teams turn to 64-bit
+architectures and distributed in-memory stores, in order to leverage even larger
+heaps.
+
+%Faced with the black box that is the Java heap, they are forced to
+%accept often unpallateable solutions: either limit functionality to that which
+%\emph{can} fit, or spend large amounts of money buying more hardware.
+
+
+
+% During the many years we have spent studying the performance of Java
+% applications, it has become clear to us that the problems related to memory is
+% a topic worthy of a book.
+
+%Computers are now equipped with gigabytes of memory, yet these teams often find
+%their applications on the brink of exhausting available resources. 
+
+Throwing hardware at the problem is a perfectly fine solution, but there are
+alternatives that offer large gains, at the expense of a some extra design
+work up front. That is the subject of this book: opening up the possibility for
+memory-conscious programming.
+
+Even though the potential gains are there, we have found that development teams
+often view Java memory consumption with a sense of resignation. They code
+according to the constraints of budgets and best practices. What pops out the
+other end, when an application is run for the first time, is seen as largely
+unpredictible, some unknowable function of the engineering and architectural
+choices the team has made.
+
+There is great room for improvement because Java heaps are not just big, but
+filled with bloat. The bytes in every application's heap can be divided into two
+parts. Some of the heap is ``real data'', the names of employees, their
+identification numbers and age. The rest is, in various forms, the overhead of
+storing this data. The ratio of these two numbers gives a good sense of the
+memory efficiency of the implementation. A bloated heap has a low ratio of data
+to overhead.
+
+In our experiences, we have seen ratios as high as 19:1, where as much as 95\%
+of memory devoted to overhead rather than "`real data"'.
+% This much bloat is an indication that a lot of memory is being used to
+% accomplish little.
+We have seen applications where a simple transaction needs 500K for the session
+state for one user, or 1 gigabyte of memory to support only a few hundred users.
 
 By the time we are called in to help with a performance problem, the situation
 is often critical. The application is either in the final stages of testing or
