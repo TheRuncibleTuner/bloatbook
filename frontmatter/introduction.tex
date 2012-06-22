@@ -2,12 +2,55 @@
 \chapter{Introduction}
 \label{chapter:introduction}
 
-Managing your Java program's memory couldn't be easier, or so it would
-seem. Java provides you with automatic garbage collection, and a compiler that
-responds to your program's operation. There are lots of
-libraries and frameworks available, written by experts, that provide powerful
-functionality. All you have to do is piece together
-the parts and let the Java runtime system do the rest for you.
+Object orientation, while a boon to developer productivity, usually comes at the
+expense of a degree of performance. When programming in this style, as we all do
+when we code in Java, we make design choices that tend to favor small things.
+We would rather write a large number of small methods than a small number of
+large methods. Doing so usually results in methods that are individually easier
+to understand. Having smaller methods is also nice, because they can be mixed
+and matched, and thus reused more flexibly than monolithic code.
+
+This style of coding methods actually isn't so bad for execution time, at least
+not as bad as one would expect. As our code runs, a Just-in-Time (JIT) compiler
+is busy optimizing away some of the overheads of having many small method
+invocations. These optimizations, primarily method inlining, do a reasonable job
+of reducing the penalty of coding in a object-oriented way. Performance may not
+reach the ultimate levels of coding in a language such as C, but at least the
+JIT has our back.
+
+A similar situation occurs with memory consumption.
+Here, the story is not nearly as rosy. Modeling your data in Java is the process
+of designing how to map bytes of data to fields and classes.
+For example, an employee maps to a \texttt{Employee} Java class, and each
+employee's identification number maps to an \texttt{int} field in that class. At
+runtime, the Java Virtual Machine (JVM) will allocate an instance of that class,
+thereby setting aside memory in the heap for its fields.
+
+What happens if the identification number is not a scalar, but instead a mix of
+numbers and characters? Even if the number is of fixed length, Java still forces
+you to store this in an side array --- the language does not allow you to inline
+that array into the \texttt{Employee} object itself. This means that, unless
+your data is scalar primitives you pay the expense of allocating a new object,
+and pointing to it. 
+
+This cost, of \emph{delegation}, is around 16 bytes. You pay this cost for every
+field of data that you choose, or are forced by the language, to delegate rather
+than inline.
+The java runtime makes no attempt to inline that side array for you.
+This lies in contrast to what the JIT does for methods: the JIT creates a small
+number of larger methods by inlining small methods into larger ones.
+
+This probably seems like height of madness, worrying about 16 bytes, in the age
+of multi-gigabyte handheld devices. 
+
+
+Java automatically reclaims memory that you
+allocate, the frameworks you use offer caching and pooling mechanisms
+
+After all, Java provides you with automatic garbage collection, and there are
+lots of libraries and frameworks available, written by experts, that provide
+powerful functionality. All you have to do is piece together the parts and let
+the Java runtime system do the rest for you.
 
 The reality, unfortunately, is very different. If you just assemble the parts, take
 the defaults, and follow all the good advice to make your
@@ -170,4 +213,39 @@ Terms like object can have different meanings in the literature.  The following 
 
 
  
+microscopic estimating (field-level counting), and accounting to predict
+scale
 
+EC diagram, bloat factory, scaling, 
+
+lifetime: sometimes it's not a leak, just a consumption problem (in-memory
+design, didn't fit)
+
+sometimes optimizations cost: making a side object for rarely used fields; when
+is it useful sharing immutable data (how much sharing before factoring it out
+is worthwhile)
+
+what java gives you, what it doesn't, some things are kinda hard to use; java
+makes it hard for you
+
+you actually have control
+
+
+
+preface
+
+things are hard to change at some point. it's easy to get to an irreconciliable
+spot.
+
+intro
+
+why isn't this just for systems programmers making b-trees? this is about
+everyday application development
+
+i have GC, why care about lifetime?
+i have standard data structures, why care about data model design?
+
+data modeL: entites and relations
+
+visual presentation of density
+[flyweight: canonicalizing map]
