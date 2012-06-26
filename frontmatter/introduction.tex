@@ -18,9 +18,10 @@ of reducing the penalty of coding in a object-oriented way. Performance may not
 reach the ultimate levels of coding in a language such as C, but at least the
 JIT has our back.
 
-A similar situation occurs with memory consumption.
-Here, the story is not nearly as rosy. Modeling your data in Java is the process
-of designing how to map bytes of data to fields and classes.
+A similar situation occurs with memory consumption, though this story is not
+nearly as rosy.
+Modeling your data in Java is the process of designing how to map bytes of data
+to fields and classes.
 For example, an employee maps to a \texttt{Employee} Java class, and each
 employee's identification number maps to an \texttt{int} field in that class. At
 runtime, the Java Virtual Machine (JVM) will allocate an instance of that class,
@@ -35,18 +36,27 @@ and pointing to it.
 
 This cost, of \emph{delegation}, is around 16 bytes. You pay this cost for every
 field of data that you choose, or are forced by the language, to delegate rather
-than inline.
-The java runtime makes no attempt to inline that side array for you.
-This lies in contrast to what the JIT does for methods: the JIT creates a small
-number of larger methods by inlining small methods into larger ones.
+than inline. The java runtime makes no attempt to inline that side array
+for you. This lies in contrast to what the JIT does for methods: the JIT creates a
+small number of larger methods by inlining small methods into larger ones.
 
 This probably seems like height of madness, worrying about 16 bytes, in the age
-of multi-gigabyte handheld devices. 
+of multi-gigabyte devices the size of your hand. It is true that a few bytes
+here and there would not be worth the hassle, if these were costs paid only a
+few times, or were small relative to the actual data you were trying to store.
+Unfortunately, these overheads are not easily amortized, especially in a
+language like Java.
+
+% TODO NMM 20120625
+%The Java runtime does help out quite a bit does offer to automatically reclaims
+%memory that you allocate
 
 
-Java automatically reclaims memory that you
-allocate, the frameworks you use offer caching and pooling mechanisms
 
+
+
+
+\begin{comment}
 After all, Java provides you with automatic garbage collection, and there are
 lots of libraries and frameworks available, written by experts, that provide
 powerful functionality. All you have to do is piece together the parts and let
@@ -64,12 +74,15 @@ far from fitting into memory, or that it does not support nearly the number
 of users it needs to support. Fixing these problems can
 take a major effort, requiring extensive refactoring or rethinking
 architectural decisions, such as the choice of frameworks you use.
+\end{comment}
 
+\begin{comment}
 [NOTE(GSS): In the next few paragraphs there's a lot of overlap with the
 Preface.
 Most of this material can be merged/moved into the preface. Let's 
 get quickly to Facts and Fictions, which is very concrete.]
 
+[NMM 20120625 i have moved this paragraph in part, to the preface]
 This book is a guide to using memory wisely in Java. Memory usage,
 like any other aspect of software, needs to be carefully
 engineered. Predicting
@@ -92,7 +105,10 @@ organization/approach to thinking about memory.
 
 (If you are like most Java developers, you probably don't have a good picture of
 of how much memory your designs use.)
+\end{comment}
 
+% TODO put this somewhere later? NMM 20120625
+\begin{comment}
 Achieving efficient memory usage takes some effort in any language. 
 There are things about Java that make it especially easy to end up with bloated
 or even incorrect data designs. One reason is that Java is so easy to program,
@@ -109,31 +125,53 @@ structures and managing their storage. This means that if you find you have
 problems, you have fewer ways of fixing them without rethinking larger aspects of your design.
 All of this makes it important to understand what memory
 costs and alternatives are, as early as possible.
+\end{comment}
 
-[NOTE(GSS): Combine/streamline these two versions of the Facts and Fictions
-intro]
+%\section{Facts and Fictions}
+% [NOTE(GSS): Myths and Quiz go here.
+% The underlying point (doesn't necessarily need to be stated) is why paying
+% attention to costs etc. matters, and that it's possible to make a big
+% difference.]
 
-Beyond the technical realities of using memory well in Java there are some commonly held
-misconceptions that often make things worse. So before getting into how to engineer memory in Java, it is worth dispelling some
-of these myths, and getting a better understanding of why memory problems
-can be so common in Java.
+% [NOTE(GSS): Quiz can be a callout or scattered callouts.
+% Doesn't have to be multiple choice. Maybe just a single answer, with an answer
+% key on the next page.]
 
-\section{Facts and Fictions}
-%\section{Some Common Misconceptions About Memory}
+% Alternate Version 1:
+%In addition to the technical reasons why managing memory can be a challenge,
+% there are other reasons why memory footprint problems are so common. In particular,
+%the software culture and popular beliefs can lead you to ignore memory
+%costs. Some of these beliefs are really myths --- they might have once
+%been true, but no longer. Here are several.
+% Alternate Version 2:
+% Beyond the technical realities of using memory well in Java there are some
+% commonly held misconceptions that often make things worse. So before getting
+% into how to engineer memory in Java, it is worth dispelling some of these
+% myths, and getting a better understanding of why memory problems can be so
+% common in Java.
 
-In addition to the technical reasons why managing memory can be a challenge, there
-are other reasons why memory footprint problems are so common. In particular,
-the software culture and popular beliefs can lead you to ignore memory
-costs. Some of these beliefs are really myths --- they might have once
-been true, but no longer. Here are several.
+A good example of this problem lies in the way Java represents the fundamental
+data types, such as numbers and strings. The Java primitives are implemented in Java.
+You may only on the order of a thousand instances of your own data types, but
+your heap is likely to contain millions of each of these primitives.
 
-[NOTE(GSS): Myths and Quiz go here. 
-The underlying point (doesn't necessarily need to be stated) is why paying
-attention to costs etc. matters, and that it's possible to make a big difference.]
+\callout{quiz1}{The Primitives that aren't so Primitive}{
+\noindent The Java standard
+library ships with a suite of data types to handle the basic functionality of
+representing numbers and strings. You might think that, being so elemental and
+so widely used, that these would be highly optimized. Quite the opposite is
+true.
+\begin{itemize}
+\item An \texttt{Integer} object consumes \emph{four} times more memory than its
+non-object counterpart, the \textt{int}, even if both represent the same piece
+of data: 16 bytes versus 4 bytes.
+\item A \texttt{String} object that represents 8 characters consumes \emph{four}
+times more memory than the characters themselves, and \emph{eight} times more memory
+than if these were represented as ASCII characters.
+\end{itemize}
+}
 
-[NOTE(GSS): Quiz can be a callout or scattered callouts.
-Doesn't have to be multiple choice. Maybe just a single answer, with
-an answer key on the next page.]
+
 
 \section{Memory-conscious Engineering}
 
