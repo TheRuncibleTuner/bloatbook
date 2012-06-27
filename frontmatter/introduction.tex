@@ -47,9 +47,7 @@ few times, or were small relative to the actual data you were trying to store.
 Unfortunately, these overheads are not easily amortized, especially in a
 language like Java.
 
-% TODO NMM 20120625
-%The Java runtime does help out quite a bit does offer to automatically reclaims
-%memory that you allocate
+
 
 
 
@@ -205,18 +203,61 @@ for each collection.
 \end{itemize}
 }
 
+%c from texinfo.tex
+\def\ifmonospace{\ifdim\fontdimen3\font=0pt }
+
+%c C plus plus
+\def\C++{%
+\ifmonospace%
+    C++%
+\else%
+    C\kern-.1667em\raise.30ex\hbox{\smaller{++}}%
+\fi%
+\spacefactor1000 }
+
 The overheads of primitives and collections each are bad on their own. The
 problem of overhead multiplies when you combine them.
 
 \callout{quiz3}{The Big Pileup}{
-Let's say that you want to store one million pieces of information. 
+%The ratio of overhead to actual data of each piece of information  
 
-Primitive data types are expensive, and storing data in the standard collections
-comes with a high overhead. The story gets worse as you combine them into larger
-data structures. With each added layer, expenses }
+Primitive data types are expensive, as is storing data in the standard
+collections comes with a high overhead. The story gets worse as you combine them
+into larger data structures. With each added layer, expenses pile up. Let's say
+that you want to store one million pieces of information. 
+\begin{itemize}
+  \item In a language like \C++, short strings, say 10 characters a piece,
+  stored in a simple array will consume \textbf{42} megabytes. %((4 + 10*4)*1000000 +
+  % 12)/1024/1024
+  \item In Java, this example will consume \textbf{122} megabytes. % ((4 +
+  % 28+16+10*2*4)*1000000 + 12)/1024/1024
+  \item These same strings stored in a \class{HashSet} will consume \textbf{141}
+  megabytes. %((24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
+  \item If the elements are instead a class wrapped around a strings, this will
+  consume \textbf{156} megabytes. %((24 + 16 + 28+16+10*2*4)*1000000 + 104)/1024/1024
+  \item If the elements are each a set with on average a single string, this
+  will consume \textbf{263} megabytes. %((24 + 104 + 24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
+\end{itemize}
+}
+
+Who would be so silly as to choose anything but the first way of storing these
+strings? Welcome to the wonderful world of Java! In various forms, we have seen
+all of these in real, deployed applications. However, you needn't resign
+yourself to high memory consumption, because, with a bit of design work, there
+is usually huge room for improvement.
+
+High memory consumption is problematic when it forces expenditures for extra RAM
+and machines, but grows even more troublesome when it leads to application
+failures due to heap exhaustion. Sometimes, this is due to a design that
+requires the entire data set to be in memory at one time, but a lack of
+available Java heap to contain it all. Other times, your application runs out of
+memory because of a memory leak.
 
 \callout{quiz4}{Memory Leaks in a Managed Runtime}{
-}
+Java is often referred to as having a \emph{managed runtime}. An important part
+of this is automatic garbage collection. The sales pitch here claims that manual
+reclamation of memory isn't required, and, for the most part, this is actually
+true.  }
 
 \section{Memory-conscious Engineering}
 
