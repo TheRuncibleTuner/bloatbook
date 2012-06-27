@@ -22,15 +22,15 @@ A similar situation occurs with memory consumption, though this story is not
 nearly as rosy.
 Modeling your data in Java is the process of designing how to map bytes of data
 to fields and classes.
-For example, an employee maps to a \texttt{Employee} Java class, and each
-employee's identification number maps to an \texttt{int} field in that class. At
+For example, an employee maps to a \class{Employee} Java class, and each
+employee's identification number maps to an \class{int} field in that class. At
 runtime, the Java Virtual Machine (JVM) will allocate an instance of that class,
 thereby setting aside memory in the heap for its fields.
 
 What happens if the identification number is not a scalar, but instead a mix of
 numbers and characters? Even if the number is of fixed length, Java still forces
 you to store this in an side array --- the language does not allow you to inline
-that array into the \texttt{Employee} object itself. This means that, unless
+that array into the \class{Employee} object itself. This means that, unless
 your data is scalar primitives you pay the expense of allocating a new object,
 and pointing to it. 
 
@@ -151,37 +151,82 @@ costs and alternatives are, as early as possible.
 % common in Java.
 
 A good example of this problem lies in the way Java represents the fundamental
-data types, such as numbers and strings. The Java primitives are implemented in Java.
-You may only on the order of a thousand instances of your own data types, but
-your heap is likely to contain millions of each of these primitives.
+data types, such as numbers and strings. The Java primitives are implemented in
+Java. You may only have a thousand instances of your own data types, but your
+heap is likely to contain millions of each of these primitives.
 
-\callout{quiz1}{The Primitives that aren't so Primitive}{
+\callout{quiz1}{The Primitives that Aren't so Primitive}{
 \noindent The Java standard
 library ships with a suite of data types to handle the basic functionality of
 representing numbers and strings. You might think that, being so elemental and
 so widely used, that these would be highly optimized. Quite the opposite is
 true.
 \begin{itemize}
-\item An \texttt{Integer} object consumes \emph{four} times more memory than its
-non-object counterpart, the \textt{int}, even if both represent the same piece
+\item An \class{Integer} object consumes \emph{four} times more memory than its
+non-object counterpart, the \class{int}, even if both represent the same piece
 of data: 16 bytes versus 4 bytes.
-\item A \texttt{String} object that represents 8 characters consumes \emph{four}
+\item A \class{String} object that represents 8 characters consumes \emph{four}
 times more memory than the characters themselves, and \emph{eight} times more memory
 than if these were represented as ASCII characters.
+\item A \class{Date} object consumes FIXME times more memory than the 4 bytes
+worth of information it represents.
 \end{itemize}
 }
 
 
 
+%The overhead of these primitive data types is high. Doing better is possible,
+%but, within the constraints of the Java language, and following principled
+%object orientation, doing so takes some forethought.
+
+Another basic building block of Java programs is the collections. The use
+collections is unavoidable, but, with some planning, you can avoid wasting space
+on the overhead of the collection implementations.
+
+\callout{quiz2}{Surprisingly Expensive Collections}{ The standard Java
+collections library offers implementations of sets, maps, and lists. These are
+all implemented in Java, and often come at a high expense.
+The expense comes in two forms: the overhead of for each entry, and the overhead
+for each collection.
+
+\begin{itemize}
+  \item Each \class{HashSet} costs 104 bytes, plus 24 bytes of overhead for
+  each entry. This is more expensive than the more functional \class{HashMap}.
+  %, which  costs 88 bytes per collection.
+  \item If you have a large number of small sets, the per-collection cost
+  dominates. By restructuring to have a small number of large sets, or
+  by choosing a more efficient representation of small sets, you can reduce
+  overhead by a factor of 5.
+  %\item If your heap contains 100 sets with an average of 10000 entries, you
+  % will waste 244 kilobytes on collection overhead.
+  %\item If your heap contains the same total number of entries, but with an
+  % average of only 10 entries per collection, you will waste 10 megabytes on
+  % overhead --- this is an order of magnitude worse.
+\end{itemize}
+}
+
+The overheads of primitives and collections each are bad on their own. The
+problem of overhead multiplies when you combine them.
+
+\callout{quiz3}{The Big Pileup}{
+Let's say that you want to store one million pieces of information. 
+
+Primitive data types are expensive, and storing data in the standard collections
+comes with a high overhead. The story gets worse as you combine them into larger
+data structures. With each added layer, expenses }
+
+\callout{quiz4}{Memory Leaks in a Managed Runtime}{
+}
+
 \section{Memory-conscious Engineering}
 
-[NOTE(GSS): this is our approach, with a roadmap of the book.
-Needs to be rewritten/restructured to reflect our current breakdown: space,
-lifetime, scalability.]
+%[NOTE(GSS): this is our approach, with a roadmap of the book.
+%Needs to be rewritten/restructured to reflect our current breakdown: space,
+%lifetime, scalability.]
 
-[NOTE(GSS): Somewhere in here will be a description of bloat factor and of E-C
-diagrams.  Just a high-level description of each in the Intro, detailed
-descriptions and examples are in Chapter 2.]
+%[NOTE(GSS): Somewhere in here will be a description of bloat factor and of E-C
+%diagrams.  Just a high-level description of each in the Intro, detailed
+%descriptions and examples are in Chapter 2.]
 
 At a high level, the approach we present in this book is simple. For each part of your data design:
 - understand the space needs of the various implementation alternatives
@@ -232,6 +277,7 @@ octagonal shape.  This is different from UML class diagrams, where associations
 are shown as edges. E-C diagrams show
 
 
+\begin{comment}
 \section{Conventions Used in This Book}
 
 [NOTE(GSS): add data structure to the list.  possibly add relationship as well.]
@@ -243,14 +289,14 @@ Terms like object can have different meanings in the literature.  The following 
 \item A \textit{data model} is a set of classes that represents one or more logical concepts.
 \item Finally, an \textit{object} is an instance of a class, that exists at runtime occupying a contiguous section of memory.
 \end{itemize} 
+\end{comment}
 
 
 
 
 
-
-
- 
+\begin{comment}
+ % NICK's NOTES
 microscopic estimating (field-level counting), and accounting to predict
 scale
 
@@ -287,3 +333,4 @@ data modeL: entites and relations
 
 visual presentation of density
 [flyweight: canonicalizing map]
+\end{comment}
