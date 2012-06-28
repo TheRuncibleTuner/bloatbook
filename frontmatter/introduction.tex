@@ -203,30 +203,24 @@ for each collection.
 \end{itemize}
 }
 
-%c from texinfo.tex
-\def\ifmonospace{\ifdim\fontdimen3\font=0pt }
 
-%c C plus plus
-\def\C++{%
-\ifmonospace%
-    C++%
-\else%
-    C\kern-.1667em\raise.30ex\hbox{\smaller{++}}%
-\fi%
-\spacefactor1000 }
 
 The overheads of primitives and collections each are bad on their own. The
-problem of overhead multiplies when you combine them.
+problem of overhead multiplies when you combine them. This is a frequent
+occurrence, given the way we all program these days. Applications are an
+assemblage of reuseable code. The standard \class{HashSet} is a subclass of
+\class{HashMap}, well, because, logically, that is an essential truth: a set is
+a map with a null value. We make these choices, in favor of reuse rather than
+specialization, at every juncture. As the process of assembling code proceeds,
+these choices being to pile up, usually at the expense of memory consumption.
 
 \callout{quiz3}{The Big Pileup}{
-%The ratio of overhead to actual data of each piece of information  
-
 Primitive data types are expensive, as is storing data in the standard
 collections comes with a high overhead. The story gets worse as you combine them
 into larger data structures. With each added layer, expenses pile up. Let's say
 that you want to store one million pieces of information. 
 \begin{itemize}
-  \item In a language like \C++, short strings, say 10 characters a piece,
+  \item In a language like \CC, short strings, say 10 characters a piece,
   stored in a simple array will consume \textbf{42} megabytes. %((4 + 10*4)*1000000 +
   % 12)/1024/1024
   \item In Java, this example will consume \textbf{122} megabytes. % ((4 +
@@ -253,13 +247,34 @@ requires the entire data set to be in memory at one time, but a lack of
 available Java heap to contain it all. Other times, your application runs out of
 memory because of a memory leak.
 
-\callout{quiz4}{Memory Leaks in a Managed Runtime}{
-Java is often referred to as having a \emph{managed runtime}. An important part
-of this is automatic garbage collection. The sales pitch here claims that manual
-reclamation of memory isn't required, and, for the most part, this is actually
-true.  }
+\callout{quiz4}{Memory Leaks in a Managed Runtime}{ Java is often referred to as
+having a \emph{managed runtime}. An important part of this is automatic garbage
+collection. The standard sales pitch here claims that manual reclamation of
+memory isn't required, and, for the most part, this is actually true.
+\begin{itemize}
+  \item With a publish/subscribe mechanism, you need to carefully
+  manage the subscription list. If subscribers forget to deregister, then you
+  will leak all objects that are transitively pointed to by the object that
+  represents that subscriber.
+  \item In caches with a sizing policy that is a function of the
+  number of entries, rather than the total memory consumed by the entries, there
+  is a good chance that the memory consumed by the cache will, at some point,
+  exceed available heap capacity.
+  \item Race conditions can also result in code that is no longer accessible by
+  the program, but is \emph{reachable}, i.e. considered alive by the garbage
+  collector. These orphaned objects will stay around for the duration of the
+  run, and possibly accumulate over time.
+%  If
+  %you implement a nested set of maps, such as to handle a multi-part key, and a
+  % race condition results in one thread overwriting the nested map for the
+  % primary key, then the secondary map will no longer be accessible,
+  %even though it is \emph{reachable}.
+\end{itemize}
+}
 
-\section{Memory-conscious Engineering}
+% [NMM 20120627] i think it might be good to have this section title be the same
+% as the title of the book, or nearly so
+\section{\thetitle}
 
 %[NOTE(GSS): this is our approach, with a roadmap of the book.
 %Needs to be rewritten/restructured to reflect our current breakdown: space,
@@ -269,15 +284,25 @@ true.  }
 %diagrams.  Just a high-level description of each in the Intro, detailed
 %descriptions and examples are in Chapter 2.]
 
-At a high level, the approach we present in this book is simple. For each part of your data design:
-- understand the space needs of the various implementation alternatives
-- determine how long that data should remain alive, and then choose an appropriate implementation to achieve that
+In this book, you will learn three skills. First is an approach to estimating
+the memory-efficiency by a given implementation. The book presents a metric and
+a diagramming technique that you can use to keep track of the amount of bloat in
+design alternatives, as well as an approach to estimating how well the design
+will scale up as load increases. Second is the confidence (?) to evaluate
+alternative designs. The book presents a number of archetypal patterns in the
+use of memory and, for each, a set of alternative implementations. Third is the
+knowledge of how best to use the mechanisms that Java provides in order to avoid
+memory leaks.
 
-The bulk of this book takes you through the most common patterns that come up in
-practice for each topic. We show you how to recognize these patterns in your
-designs, and give you relevant information about costs and other pitfalls.
+Central to all of this is a focus on understanding your requirements. Do you
+need random access into this data? Will entries ever be deleted? Does this entry
+need to remain alive for the duration of the program? The book will guide you
+through these design requirement questions, with a constant focus on common
+patterns that come up in practice for each topic. The book shows you how to
+recognize these patterns in your designs, and give you relevant information
+about costs and other pitfalls.
 
-discuss looking at each data structures separately
+% discuss looking at each data structures separately [NMM ??]
 
 \subsection{Estimating Space Costs}
 
