@@ -220,17 +220,19 @@ collections comes with a high overhead. The story gets worse as you combine them
 into larger data structures. With each added layer, expenses pile up. Let's say
 that you want to store one million pieces of information. 
 \begin{itemize}
-  \item In a language like \CC, short strings, say 10 characters a piece,
-  stored in a simple array will consume \textbf{42} megabytes. %((4 + 10*4)*1000000 +
-  % 12)/1024/1024
-  \item In Java, this example will consume \textbf{122} megabytes. % ((4 +
-  % 28+16+10*2*4)*1000000 + 12)/1024/1024
-  \item These same strings stored in a \class{HashSet} will consume \textbf{141}
-  megabytes. %((24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
-  \item If the elements are instead a class wrapped around a strings, this will
-  consume \textbf{156} megabytes. %((24 + 16 + 28+16+10*2*4)*1000000 + 104)/1024/1024
+  \item In a language like \CC, short strings, say 8 ASCII characters a piece,
+  stored in a simple array will consume \textbf{11} megabytes. %((4 + 8)*1000000 + 12)/1024/1024
+  \item In Java, this example consumes \textbf{61} megabytes, % ((4 +
+  % 28+16+8*2)*1000000 + 12)/1024/1024
+  a factor of 5.5x more expensive.
+  \item These same strings stored in a \class{HashSet} consume \textbf{80}
+  megabytes, %((24 + 28+16+10*2)*1000000 + 104)/1024/1024
+  an extra factor of 31\%.
+  \item If the elements are instead a class wrapped around a strings, this 
+  consumes \textbf{95} megabytes. %((24 + 16 + 28+16+10*2*4)*1000000 +% 104)/1024/1024
+  You pay an extra 18\% for the luxury of that wrapper object. 
   \item If the elements are each a set with on average a single string, this
-  will consume \textbf{263} megabytes. %((24 + 104 + 24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
+  consumes \textbf{202} megabytes. %((24 + 104 + 24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
 \end{itemize}
 }
 
@@ -284,23 +286,44 @@ memory isn't required, and, for the most part, this is actually true.
 %diagrams.  Just a high-level description of each in the Intro, detailed
 %descriptions and examples are in Chapter 2.]
 
-In this book, you will learn three skills. First is an approach to estimating
-the memory-efficiency by a given implementation. The book presents a metric and
-a diagramming technique that you can use to keep track of the amount of bloat in
-design alternatives, as well as an approach to estimating how well the design
-will scale up as load increases. Second is the confidence (?) to evaluate
-alternative designs. The book presents a number of archetypal patterns in the
-use of memory and, for each, a set of alternative implementations. Third is the
-knowledge of how best to use the mechanisms that Java provides in order to avoid
-memory leaks.
-
-Central to all of this is a focus on understanding your requirements. Do you
-need random access into this data? Will entries ever be deleted? Does this entry
-need to remain alive for the duration of the program? The book will guide you
-through these design requirement questions, with a constant focus on common
-patterns that come up in practice for each topic. The book shows you how to
+Central to good design is a keen focus on understanding your requirements.
+Do you need random access into this data? Will entries ever be deleted? Does
+this entry need to remain alive for the duration of the program? The book will
+guide you through these design requirement questions, with a constant focus on
+common patterns that come up in practice for each topic. It shows you how to
 recognize these patterns in your designs, and give you relevant information
 about costs and other pitfalls.
+
+Throughout the course of this book, you will learn three skills, to aid you in
+designing more efficient data models:
+\begin{enumerate}
+  \item Estimating memory efficiency and 
+  \item Recognizing common patterns of memory usage.
+  \item Using the mechanisms that Java provides in order to properly manage the
+  lifetime of your objects, and thus avoid memory leaks.
+\end{enumerate} 
+
+
+\subsection{Estimating the Efficiency of Your Design}
+The book shows you how to compute an accounting metric, the
+\emph{bloat factor}, which measures the density of actual data in your data
+models.
+Poor designs will have a high bloat factor.
+You will also learn an approach to estimating how well the design will scale up
+as load increases.
+The book also introduces a diagramming technique, called \emph{Entity-Collection
+Diagrams},that you can use to keep track of the amount of bloat in design
+alternatives.
+
+\subsection{Recognizing Common Patterns}
+Second is the confidence (wrong word?) to evaluate alternative designs. The book
+presents a number of archetypal patterns in the use of memory and, for each, a
+set of alternative implementations.
+
+\subsection{Utilizing Lifetime Management Mechanisms}
+Third is the knowledge of how best to use 
+
+
 
 % discuss looking at each data structures separately [NMM ??]
 
