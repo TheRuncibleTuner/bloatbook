@@ -236,11 +236,27 @@ that you want to store one million pieces of information.
 \end{itemize}
 }
 
+\begin{wrapfigure}{r}{0.5\textwidth}
+	\vspace{-2.25em}
+	\centering
+	\subfigure[C++]{\includegraphics[width=0.2\textwidth]{Figures/c++_density}}
+	\qquad
+	\subfigure[Java]{\includegraphics[width=0.2\textwidth]{Figures/java_density}}
+	\caption{The density of actual data (shown in the darker shade) versus
+	the overhead of storing data when storing 8-character strings
+	in an array: C++ versus Java.
+	}
+	\label{fig:c++_versus_java_density}
+\end{wrapfigure}
+
 Who would be so silly as to choose anything but the first way of storing these
 strings? Welcome to the wonderful world of Java! In various forms, we have seen
 all of these in real, deployed applications. However, you needn't resign
 yourself to high memory consumption, because, with a bit of design work, there
-is usually huge room for improvement.
+is usually huge room for improvement. Keeping an eye on the \emph{density} of
+actual data, relative to the overheads of storing that data, is a key to healthy
+design. \autoref{fig:c++_versus_java_density} illustrates the first two of these
+examples, elided to show just the first five entries of the array. 
 
 High memory consumption is problematic when it forces expenditures for extra RAM
 and machines, but grows even more troublesome when it leads to application
