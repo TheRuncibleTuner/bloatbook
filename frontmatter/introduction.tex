@@ -228,7 +228,7 @@ that you want to store one million pieces of information.
   \item These same strings stored in a \class{HashSet} consume \textbf{80}
   megabytes, %((24 + 28+16+10*2)*1000000 + 104)/1024/1024
   an extra factor of 31\%.
-  \item If the elements are instead a class wrapped around a strings, this 
+  \item If the elements are instead a class wrapped around a single string, this 
   consumes \textbf{95} megabytes. %((24 + 16 + 28+16+10*2*4)*1000000 +% 104)/1024/1024
   You pay an extra 18\% for the luxury of that wrapper object. 
   \item If the elements are each a set with on average a single string, this
@@ -287,65 +287,73 @@ memory isn't required, and, for the most part, this is actually true.
 %descriptions and examples are in Chapter 2.]
 
 Central to good design is a keen focus on understanding your requirements.
-Do you need random access into this data? Will entries ever be deleted? Does
-this entry need to remain alive for the duration of the program? The book will
-guide you through these design requirement questions, with a constant focus on
-common patterns that come up in practice for each topic. It shows you how to
-recognize these patterns in your designs, and give you relevant information
-about costs and other pitfalls.
+In the context of memory consumption, there are important aspects of your needs
+to keep in mind. Do you need random access into this data? Will entries ever be
+deleted from collections? Does this entry need to remain alive for the duration
+of the program? Which collections will grow larger as various aspects of load
+increase? The book will guide you through these design requirement questions,
+with a constant focus on common patterns that come up in practice. It shows you
+how to recognize these patterns in your designs, and give you relevant
+information about costs and other pitfalls.
 
 Throughout the course of this book, you will learn three skills, to aid you in
 designing more efficient data models:
 \begin{enumerate}
-  \item Estimating memory efficiency and 
+  \item Estimating memory efficiency with simple back-of-the-envelope
+  calculations.
   \item Recognizing common patterns of memory usage.
   \item Using the mechanisms that Java provides in order to properly manage the
-  lifetime of your objects, and thus avoid memory leaks.
+  lifetime of your objects, thus avoiding memory leaks, and manage data models
+  that do not fit into the Java heap.
 \end{enumerate} 
 
+% probably overkill:
+%\dividingline
 
-\subsection{Estimating the Efficiency of Your Design}
-The book shows you how to compute an accounting metric, the
-\emph{bloat factor}, which measures the density of actual data in your data
-models.
-Poor designs will have a high bloat factor.
-You will also learn an approach to estimating how well the design will scale up
-as load increases.
-The book also introduces a diagramming technique, called \emph{Entity-Collection
-Diagrams},that you can use to keep track of the amount of bloat in design
-alternatives.
+%\subsection{Estimating the Efficiency of Your Design}
+%discuss estimating (Edith text on counting bytes, etc is great) (including
+%   scalability discussion) (and focusing on important stuff)
+%discuss health very briefly
+%discuss entities and collections
 
-\subsection{Recognizing Common Patterns}
-Second is the confidence (wrong word?) to evaluate alternative designs. The book
-presents a number of archetypal patterns in the use of memory and, for each, a
-set of alternative implementations.
+\autoref{part:1} presents the issues of estimating memory efficiency.
+\autoref{chapter:memory-health} shows you how to compute an accounting metric,
+the \textbf{Bloat Factor}, which measures the density of actual data in your
+data models. Memory spent on pointers, and on headers that the Java runtime
+tacks on to every object, are not absolutely necessary parts of a design. Poor
+designs will waste more space on these overheads, and thus have a high bloat
+factor. If you read only one chapter of this book,
+\autoref{chapter:memory-health} is the one to focus on.
 
-\subsection{Utilizing Lifetime Management Mechanisms}
-Third is the knowledge of how best to use 
-
-
+\autoref{chapter:memory-health} also introduces a diagramming technique, the
+\textbf{Entity-Collection Diagram}, that aids in determining these costs, and in
+comparing the amount of bloat in design alternatives.
+An E-C Diagram makes explicit the two key aspects of the health of a design:
+% highlights the major elements of the data model implementation, so that the
+% costs and scaling consequences of the design are easily visible.
+% These diagrams appear throughout the book to illustrate various implementation
+% options and their costs.
+the implementations of the \emph{entities} of your application, such as your
+business objects, and way you have chosen to associate them using collections.
+% The kinds of choices you make to improve the storage of your entities are
+% often different from those Collections are also depicted as nodes, using an
+% octagonal shape.
+This is different from UML class diagrams, where associations are shown as
+edges.
+\autoref{chapter:delegation} through
+% \autoref{chapter:field-patterns},\autoref{chapter:representing-values},
+\autoref{chapter:sharing-immutable-data} cover issues related to the design of
+entities.
+\autoref{chapter:brief-introduction-collections} through
+% \autoref{chapter:representing-relationships},
+% \autoref{chapter:tables-indexes},
+\autoref{chapter:dynamic-records} help with planning out to use off-the-shelf
+collections, and also with the design of new collections libraries.
 
 % discuss looking at each data structures separately [NMM ??]
 
-\subsection{Estimating Space Costs}
-
-discuss estimating (Edith text on counting bytes, etc is great) (including
-scalability discussion) (and focusing on important stuff)
-
-discuss health very briefly
-
-discuss entities and collections
-
-\subsubsection{Entity-Collection Diagrams}
-
-Much of this book is about how to implement your data designs to make the most
-efficient use of space. In this section we introduce a diagram, called the
-\emph{entity-collection(E-C) diagram}, that helps with that process. It
-highlights the major elements of the data model implementation, so that the
-costs and scaling consequences of the design are easily visible. We use these
-diagrams throughout the book to illustrate various implementation options and
-their costs.
-
+\begin{comment}
+[NMM 20120628 too much E-C diagram detail for intro?]
 A data model implementation begins with a conceptual understanding of the
 entities and relationships in the model.  This may be an informal understanding,
 or it may be formalized in a diagram such as an E-R diagram or a UML class
@@ -356,14 +364,41 @@ below shows a simple conceptual model, using a UML class diagram.  A Java
 implementation of that model is also shown, using rectangles for classes and
 arrows for references.  %The Java diagram below is typical of a schema diagram,
 in that it shows
+\end{comment}
+
+% probably overkill:
+%\dividingline
+
+\autoref{part:2} discusses managing the lifetime of objects. In
+\autoref{chapter:lifetime-requirements}, you will learn how to establish the
+lifetime requirements of your data, by mapping your needs to one of four common
+lifetime patterns: temporaries, permanently resident objects, objects with
+correlated lifetimes, and objects that represent a time-space trade-off.
+\autoref{chapter:lifetime-fundamentals} provides a primer on the memory
+management facilities that Java offers.
+\autoref{chapter:lifetime-implementation-strategies} and
+\autoref{chapter:trading-space-for-time} focus on the last two of these lifetime
+patterns.
+
+% probably overkill:
+%\dividingline
+
+In addition to determining the bloat factor of individual data structures and
+avoiding memory leaks, it is important to estimate how well the overall design
+will scale up as load increases. The final part of this book, \autoref{part:3},
+covers issues related to the scalability of your designs.
+\autoref{chapter:estimating-scalability} teaches you strategies for estimating
+the scalability of a design, given an E-C Diagram.
+\autoref{chapter:large-long-lived} covers the cases when your data model still
+does not fit, even after applying the tuning methodology of \autoref{part:1}.
+Sometimes you need to tear down the elements of the facade of object
+orientation, and this is entirely possible while remaining largely within the
+confines of Java, and without resorting to the use of secondary storage.
+Finally, \autoref{chapter:secondary-stores} gives strategies for the case when
+you must resort to the use of disk or remote storage in order to make your data
+fit.
 
 
-In these models we make a distinction between the implementations of entities
-and the implementation of collections.  We do this for a number of reasons. 
-First, the kinds of choices you make to improve the storage of your entities are
-often different from those Collections are also depicted as nodes, using an
-octagonal shape.  This is different from UML class diagrams, where associations
-are shown as edges. E-C diagrams show
 
 
 \begin{comment}
