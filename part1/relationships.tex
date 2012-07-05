@@ -1,4 +1,4 @@
-\chapter{Relationships}
+\chapter{One-to-many Relationships}
 \label{chapter:representing-relationships}
 
 One-to-many relationships
@@ -13,7 +13,7 @@ when to create collections, and how to initialize them,
 can make a big difference on memory cost.
 This chapter shows how to lower memory costs when implementing
 relationships\footnote{We'll use the term \emph{relationship} to
-mean one-to-many relationship unless otherwise noted.} with collections.
+mean a one-to-many relationship unless otherwise noted.} with collections.
  
  \section{Choosing the Right Collection for the Task}
  \label{section:choosing-collection}
@@ -446,7 +446,7 @@ together, we have gone from the initial \class{HashSet} representation
 of 22.1MB in Section~\ref{section:choosing-collection} to the in-lined field
 representation of 1.86MB. 
 
-\section{Hybrid Representation}
+\section{Hybrid Representations}
 
 An interesting case is when the sizes of the collections used in a relationship
 is not uniform. That is, some collections are small and some collections are
