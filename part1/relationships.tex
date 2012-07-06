@@ -161,8 +161,7 @@ Lower fixed cost means that an \class{ArrayList} with just a few
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
  \caption{The internal structure of an \class{ArrayList}, shown with three
  entries and default capacity. \class{ArrayList} has a relatively low
- fixed overhead, and is scalable.
- Shown with three entries, default capacity.}
+ fixed overhead, and is scalable.}
   \label{fig:inside-arraylist}
 \end{figure}
  Lower variable cost means that
@@ -171,6 +170,7 @@ Lower fixed cost means that an \class{ArrayList} with just a few
  The variable cost of a \class{HashSet} is an entry array pointer plus a
  \class{HashMap\$Entry}, which is 28 bytes. So \class{ArrayList}  is better
  both for small and large sets.
+
 
 Table~\ref{tab:small-collection-costs} shows the memory costs of four basic
 collections, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and \class{HashSet}.
