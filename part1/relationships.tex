@@ -301,11 +301,20 @@ extra entry, which is a sentinal.
 \section{Avoiding Empty Collections}
 
 Maintaining a large number of empty collections is another common problem that
-leads to memory bloat. A quick look inside any empty collection shows that it is not all that empty. 
-Even if the default initial capacity is overridden and set to zero, empty
-collections are still large. A zero-sized \class{ArrayList}
+leads to memory bloat. A quick look inside the empty collections show that they
+are not all that empty! All of the empty collections in the standard library
+require at least two objects each. Even if the default initial capacity is
+overridden and set to zero, empty collections are still large. A zero-sized \class{ArrayList}
 consumes 40 bytes, a \class{HashMap} takes 64 bytes, and the smallest
 \class{HashSet} takes 80 bytes.
+
+ \begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-empty.pdf}
+  \caption{The internal structure of three typical empty collections. Each
+  contains at a minimum of two objects.}
+  \label{fig:inside-empty}
+\end{figure}
 
 Empty collection problems are generally caused by eager initialization, that is,
 allocating collections before they are actually needed. Exacerbating this
@@ -313,7 +322,7 @@ problem, collections allocate their own internal objects in an eager
 fashion. For example, \class{HashMap} allocates its internal array before any
 entries are inserted. You might think that eager initialization is not such a
 big problem, since entries will be added eventually. However, it's common to
-find that many collections remain empty throughout an execution.
+find large numbers of collections that remain empty throughout an execution.
 
 Suppose the relationship
 in Figure~\ref{fig:trimmed-product} is initialized by the code:
