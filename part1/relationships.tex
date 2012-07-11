@@ -300,45 +300,43 @@ extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
 
-Too many empty collections is another common problem that leads to memory bloat.
-A quick look inside an empty collection shows that it is not all that empty. 
-
-bytes, assuming a default initial size. 
-Even if the default initial size is overridden and set to zero, empty
-collections are still large. A zero-sized \class{HashMap} consumes 56 bytes, and a zero-sized
-\class{ArrayList} consumes 40 bytes. Empty \class{HashSets} are even bigger.
+Maintaining a large number of empty collections is another common problem that
+leads to memory bloat. A quick look inside any empty collection shows that it is not all that empty. 
+Even if the default initial capacity is overridden and set to zero, empty
+collections are still large. A zero-sized \class{ArrayList}
+consumes 40 bytes, a \class{HashMap} takes 64 bytes, and the smallest
+\class{HashSet} takes 80 bytes.
 
 Empty collection problems are generally caused by eager initialization, that is,
 allocating collections before they are actually needed. Exacerbating this
-problem, collections themselves also allocate their internal objects in an eager
-fashion. For example, \class{HashMap} allocates its entry array before any entries are inserted.
-You might think that eager initialization is not such a big problem, since
-entries will be added eventually. However, often collections are allocated
-just in case they are needed later, and remain empty throughout the execution.
+problem, collections allocate their own internal objects in an eager
+fashion. For example, \class{HashMap} allocates its internal array before any
+entries are inserted. You might think that eager initialization is not such a
+big problem, since entries will be added eventually. However, it's common to
+find that many collections remain empty throughout an execution.
 
 Suppose the relationship
 in Figure~\ref{fig:trimmed-product} is initialized by the code:
 \begin{shortlisting}
 List<Product> products;
 int numProducts;
-   ..
-   public void initAlternateSupplierRelationship() {
-       ..
-       for (int i = 0; i < numProducts; i++) {
-          Product product = products.get(i);
-          product.alternateSuppliers = 
+..
+public void initAlternateSupplierRelationship() {
+	..
+	for (int i = 0; i < numProducts; i++) {
+    	Product product = products.get(i);
+		product.alternateSuppliers = 
                            new ArrayList<Supplier>();
-       }
-   }
+    }
+}
 \end{shortlisting}
 Initially, each product is mapped to an empty \class{ArrayList} for alternate
 suppliers, so there are 100,000 empty \class{ArrayLists} before any
 \class{Supplier}s are inserted. As the alternate suppliers are populated, many
 of these \class{ArrayLists} will become non-empty, but it is likely that a good
-number of products have no alternate suppliers. If 25\% of the products in the
-final graph still have no alternate suppliers, there will be 25,000 empty
-\class{ArrayLists}, which consume about 1MB even after calling
-\code{trimToSize}.
+number of products have no alternate suppliers. If 25\% of the products have no
+alternate suppliers, there will be 25,000 empty \class{ArrayLists}, which consume
+about 1MB even after calling \code{trimToSize}.
 Figure~\ref{fig:empty-array} shows the entity-collection
 diagram after removing 25,000 empty alternate supplier \class{ArrayList}s. Note
 that there are now only 75,000 alternate supplier \class{ArrayList}s shown,
@@ -349,38 +347,64 @@ average fanout in and out of \class{ArrayList} to .75 and
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/empty-product.pdf}
  \caption{The relationship between \class{Product}s and \class{Supplier}s
-  where there are no empty \class{ArrayLists}.}
+  with no empty \class{ArrayLists}.}
   \label{fig:empty-array}
 \end{figure}
  
- Delaying allocation prevents creating too many empty collections.
+ \paragraph{Lazy allocation} Delaying allocation is the way to avoid creating
+ lots of empty collections.
  That is, instead of initializing all of the collections that you think you
- may need, allocate them on-demand, just before inserting an edge. On-demand
- allocation requires more checking code, to avoid \code{NullPointerException}s.
+ may need, allocate them on demand. On-demand allocation requires more checking code, to avoid
+ \code{NullPointerException}s.
  
- Alternatively, you can initialize collection fields to reference static empty collections,
- including EMPTY\_SET,
- EMPTY\_LIST, and EMPTY\_MAP. For example, 
- calling static method \code{Colletions.emptyList} to initialize edge
- \class{ArrayLists} maps all nodes to a singleton immutable static
- \class{ArrayList}, so that no empty \class{ArrayLists} are created:
- \begin{shortlisting}
-     public void initAlternateSupplierRelationship() {
+The abstract \class{Collections} class provides a better solution for many
+applications. You can initialize collection fields to shared, immutable empty
+collections using static methods \code{emptySet()}, \code{emptyList()},
+and \code{emptyMap()}\footnote{Static constants EMPTY\_SET, EMPTY\_LIST, and
+EMPTY\_MAP provide a similar capability. without the type safety of
+generics.}.
+In the following example, calling static method \code{Collections.emptyList()}
+maps all products to a single immutable empty list of suppliers, so that no
+empty \class{ArrayLists} are created:
+
+\begin{shortlisting}
+class Product {
+	String sku;
+	String name;
+	.. 
+	List<Supplier> alternateSuppliers;
+}
+ 
+class Supplier {
+	..
+    public void initAlternateSupplierRelationship() {
        ..
        for (int i = 0; i < numProducts; i++) {
           Product product = products.get(i);
           product.alternateSuppliers = 
                                Collections.emptyList();
-       }
-     } 
- \end{shortlisting}
+		}
+    } 
+}
+\end{shortlisting}
 This initialization avoids the need to check whether an \class{ArrayList}
-exists at every use. For example, the size method and iterators will just work.
-However, you have to be careful not to let any references to static empty
-collections escape their immediate context. 
-If you give out a reference to a static empty collection, 
-then there is no way to update this escaped empty-collection reference
-once an actual collection is allocated. 
+exists at every use. The size method, iterators, and other access functions will
+work as in any other collection.
+However, you have to be careful not to let any references to these static empty
+collections escape their immediate context. If you give out a reference to a
+static empty collection, then there is no way to update this reference once an actual
+collection is allocated. Instead, you can provide access and
+update methods to the relationship, so that the implementation remains hidden.
+You will also need to code to interfaces, avoiding concrete classes
+except where needed. In this example, \code{Product} declares
+a \code{List} of suppliers, so that it can point to the shared empty list or
+an \class{ArrayList} once it's populated.
+This is, of course, a good practice in general, so that the implementation can
+be easily changed later.
+
+If lazy allocation is not a good option for your application, then
+right-sizing them, at initialization time or after loading is
+completed, can still make a difference.
 
 \section{Fixed Size Collections}
 
