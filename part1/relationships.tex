@@ -226,47 +226,47 @@ cost, which is all overhead, filling the heap.
 Many collection classes, such as \class{ArrayList}, \class{HashMap} and
 \class{HashSet}, use arrays in their implementations. When the array becomes
 full, a larger array is allocated and the contents are copied into the new array.
-Since allocation and copying can be expensive, these arrays are always
-allocated with some extra capacity, to avoid paying these growth costs too
+Since allocation and copying can be expensive, these arrays are
+allocated with extra capacity, to avoid paying these growth costs too
 often. 
 %This is why
-By default, the initial capacity of an \class{ArrayList} is 10, and
-its capacity increases by 50\% when it is reallocated. 
-By default, the capacity of a \class{HashMap} or \class{HashSet}
-starts at 16, and grows by a factor of 2 when it becomes 75\% full.
+By default, the initial capacity of an \class{ArrayList} is 10, and the capacity
+increases by 50\% whenever the array is reallocated.
+The default capacity of a \class{HashMap} or \class{HashSet}
+starts at 16, and grows by a factor of 2 when the collection becomes 75\% full.
 
 These policies trade space
 for time, on the assumption that collections always grow.
 However, many applications have hundreds of thousands of
-collections that will never contain more than a few elements, or that do not
-grow once the data has been loaded. 
+collections that will never
+contain more than a few elements, or that do not grow once the data has been loaded. 
 %As a result, there is no performance gain
-In these cases, the empty array slots can add up to a significant bloat problem.
-This extra space can be eliminated with no loss of performance. 
+In these cases, the empty array slots can add up to a significant bloat problem,
+The extra space can be eliminated with no loss of performance.
 %,unless you take explicit action.
 
 Fortunately, it is possible to right-size collections at creation
-time, by specifying an initial capacity.  For example, if you know that an
-\class{ArrayList} has a maximum size $x$, which is less than the default size, then it's worth passing $x$ as a
-parameter to the constructor to set the initial capacity of the
-\class{ArrayList} to $x$. However, if you are wrong and the \class{ArrayList}
-grows bigger than $x$, then it will grow by 50\%, which may
-be worse than just taking the default initial size. Unfortunately, the standard
-collections do not give you much control over the growth policy.
+time, by specifying an initial capacity. For example, if you know that an
+\class{ArrayList} has a maximum size of $x$, which is less than the default
+size, then you can set its initial capacity to $x$ when calling its constructor. On the
+other hand, the standard collections do not give you much control over their
+growth policy. So if you are wrong and the \class{ArrayList} grows bigger than
+$x$, extra capacity will be allocated, which may be worse than just taking the
+default. 
  
-Alternatively, you can call the \code{trimToSize} method
-which shrinks the array by eliminating the extra growth space. Trimming reallocates and
-copies the array, so it is expensive to keep calling \code{trimToSize} while an
-\class{ArrayList} is still growing. Trimming is appropriate after
-it has been fully constructed and will never grow again. In fact, applications
-often have a build phase followed by a used phase, in which case
-\class{ArrayLists} can be trimmed between these two phases, so that the cost of reallocation 
-and copying is paid only once.
+Another approach is to call the \code{trimToSize} method of \class{ArrayList},
+which shrinks the array by eliminating the extra growth space. 
+Since trimming reallocates and copies the array, it is expensive to call
+\code{trimToSize} while a collection is still growing. Trimming is
+appropriate after a collection is fully populated. In 
+applications where the data has a build phase followed by a use phase,
+the \class{ArrayList}s can be trimmed between these two phases.
+%so that the cost of reallocation and copying is paid only once.
  
 Returning to the example of the relationship between products and alternate
 suppliers, the \class{ArrayList}s in Figure~\ref{fig:product-arraylist} have
 been initialized with default capacity. If we assume that the the relationship
-is built in one phase, and used in another phase, then it is possible to trim the
+is built in one phase and used in another phase, then it is possible to trim the
 \class{ArrayList}s after the first phase. This should save quite a bit of
 space, since there are 100,000 \class{ArrayList}s with four entries on
 average. In fact, trimming these
@@ -282,13 +282,18 @@ Figure~\ref{fig:trimmed-product}.
   \label{fig:trimmed-product}
 \end{figure}
  
-\class{HashSets} and \class{HashMaps} do not have \code{trimToSize} methods,
-but it is possible to pass the initial capacity and load factor as constructor
-parameters. In hash-based collections, some excess capacity is needed
-to reduce the likelihood of collisions, and to limit the expense of rehashing the entries
-when the array is reallocated.Extra care is required when setting these parameters, as
-mentioned, to avoid increasing the number of collisions, or causing
-more rehashing of entries when the collection is growing.
+\class{HashSet}s and \class{HashMap}s do not have \code{trimToSize}
+methods, but it is possible to set their initial capacity at construction time.
+Hash-based collections always require some excess capacity to reduce the
+likelihood of collisions. The load factor, by default .75, limits the
+on the number of elements in the collection relative to the size of the array.
+When setting the initial capacity it's important to take the load factor into account,
+so that you leave enough headroom. The initial capacity is the number of
+buckets. .. finish this ..
+
+Neither \class{ArrayList}, \class{HashMap}, nor \class{HashSet} automatically
+reduces the size of its array when elements are removed, or when the collection
+is cleared.
 
 %However, before changing the initial capacity, you should
 %ask yourself whether using a \class{HashSet} or \class{HashMap} is a
@@ -412,7 +417,7 @@ average fanout in and out of \class{ArrayList} to .75 and 5.33, respectively.
  avoid creating lots of empty collections.
  That is, instead of initializing all of the collections that you think you
  may need, allocate them on demand. 
- The simplest approach is to leave collection fields null
+ One approach is simply to leave collection fields null
  until needed. However, this requires extra checking code whenever you
  access these fields, to avoid \code{NullPointerException}s.
  
