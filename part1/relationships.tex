@@ -237,12 +237,13 @@ starts at 16, and grows by a factor of 2 when the collection becomes 75\% full.
 
 These policies trade space
 for time, on the assumption that collections always grow.
-However, many applications have hundreds of thousands of
-collections that will never
-contain more than a few elements, or that do not grow once the data has been loaded. 
+However, an application's relationships may have
+hundreds of thousands of collections that do not grow once the data has
+been loaded. Most may never contain more than a few elements.
 %As a result, there is no performance gain
-In these cases, the empty array slots can add up to a significant bloat problem,
-The extra space can be eliminated with no loss of performance.
+In these cases, the empty array slots can add up to a significant bloat problem.
+The extra space can be eliminated with no loss of performance. The same holds
+true for larger collections the stop growing. 
 %,unless you take explicit action.
 
 Fortunately, it is possible to right-size collections at creation
@@ -254,8 +255,8 @@ growth policy. So if you are wrong and the \class{ArrayList} grows bigger than
 $x$, extra capacity will be allocated, which may be worse than just taking the
 default. 
  
-Another approach is to call the \code{trimToSize} method of \class{ArrayList},
-which shrinks the array by eliminating the extra growth space. 
+For an \class{ArrayList}, another approach is to call its \code{trimToSize}
+method, which shrinks the array by eliminating the extra growth space. 
 Since trimming reallocates and copies the array, it is expensive to call
 \code{trimToSize} while a collection is still growing. Trimming is
 appropriate after a collection is fully populated. In 
