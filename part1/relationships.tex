@@ -139,8 +139,9 @@ These cost 24 bytes each. Note that since this is a
 \class{HashSet}, the value field in each \class{HashMap\$Entry} object is not
 used\footnote{There is an additional memory cost that occurs in a very common
 case: if you choose to iterate over the contents of the set.
-The first time you create an iterator, a 16-byte \class{HashMap\$KeySet} object will be created and retained for the lifetime of the set. This cost is not reflected in any of
-our diagrams or numbers.}.
+The first time you create an iterator, a 16-byte \class{HashMap\$KeySet} object
+will be created and retained by the set for its lifetime. This
+cost is not reflected in any of our diagrams or numbers.}.
 \end{description}
 
 In contrast, \class{ArrayList} is a simpler structure, as shown in
@@ -206,7 +207,7 @@ similar to these. You can calculate them using the same methodology.
 %	\caption{}\label{tab:small-collections-minimum}{}
 	\caption{Size in bytes of some common collection classes, when they contain very few
 	elements. n = number of elements. Formulas are valid only for the range specified. (a) Default size
-	(b) Minimum size.[TODO: format as a table with two subtables; footnote re: doesn't include KeySet]}
+	(b) Minimum size.[TODO: format as a table with two subtables]}
 	\label{tab:small-collection-costs}
 \end{table}
 
@@ -237,21 +238,20 @@ starts at 16, and grows by a factor of 2 when the collection becomes 75\% full.
 
 These policies trade space
 for time, on the assumption that collections always grow.
-However, an application's relationships may have
+However, many applications have relationships with
 hundreds of thousands of collections that do not grow once the data has
-been loaded. Most may never contain more than a few elements.
-%As a result, there is no performance gain
-In these cases, the empty array slots can add up to a significant bloat problem.
-The extra space can be eliminated with no loss of performance. The same holds
-true for larger collections the stop growing. 
+been loaded. Most may never contain more than a few elements. 
+In these cases, the empty array slots can add up to a
+significant bloat problem, with nothing gained in performance. 
+The same holds true for larger collections that stop growing. 
 %,unless you take explicit action.
 
-Fortunately, it is possible to right-size collections at creation
+Fortunately, it is often possible to right-size collections at creation
 time, by specifying an initial capacity. For example, if you know that an
 \class{ArrayList} has a maximum size of $x$, which is less than the default
 size, then you can set its initial capacity to $x$ when calling its constructor. On the
 other hand, the standard collections do not give you much control over their
-growth policy. So if you are wrong and the \class{ArrayList} grows bigger than
+growth policies. So if you are wrong and the \class{ArrayList} grows bigger than
 $x$, extra capacity will be allocated, which may be worse than just taking the
 default. 
  
@@ -285,16 +285,19 @@ Figure~\ref{fig:trimmed-product}.
  
 \class{HashSet}s and \class{HashMap}s do not have \code{trimToSize}
 methods, but it is possible to set their initial capacity at construction time.
-Hash-based collections always require some excess capacity to reduce the
-likelihood of collisions. The load factor, by default .75, limits the
-on the number of elements in the collection relative to the size of the array.
-When setting the initial capacity it's important to take the load factor into account,
-so that you leave enough headroom. The initial capacity is the number of
-buckets. .. finish this ..
+The initial capacity is the number of hash buckets, that is, the number of slots
+in the array. It is automatically rounded up to the nearest power of
+two. Hash-based collections always require some excess capacity to reduce the
+likelihood of collisions. In addition, if the collection does grow and the
+array needs to be reallocated, there will be the expense of
+rehashing the entries. The load factor, by default .75, determines the
+maximum number of elements in the collection relative to the size of the array,
+before a larger array needs to be allocated. When setting the initial
+capacity it's important to take the load factor into account, so that you leave enough headroom.
 
-Neither \class{ArrayList}, \class{HashMap}, nor \class{HashSet} automatically
-reduces the size of its array when elements are removed, or when the collection
-is cleared.
+An \class{ArrayList}, \class{HashMap}, or \class{HashSet}
+will not automatically reduce the size of its array when elements are removed,
+or when the collection is cleared.
 
 %However, before changing the initial capacity, you should
 %ask yourself whether using a \class{HashSet} or \class{HashMap} is a
