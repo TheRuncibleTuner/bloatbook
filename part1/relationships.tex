@@ -35,7 +35,9 @@ usually lots of objects that are related to either just a few other
 objects or to none at all.
 When there are lots of collections with only a few entries, you need to ask  whether
 the functionality of the collection you choose is worth the memory cost of that
-functionality.
+functionality\footnote{We'll use the term \emph{small collections} to
+mean \emph{very} small collections,
+where the number of elements is (roughly) in the single digits.}.
 
 To make this discussion more concrete, let's return to the product and supplier example 
 from section~\ref{sec:rarely-used}, and change it a little
@@ -64,9 +66,9 @@ the relationship between products and alternate suppliers.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-hashset.pdf}
- \caption{A relationship between products and alternate suppliers,
-  stored as a
-  \class{HashSets} of alternate \class{Suppliers} related to \class{Products}.}
+ \caption{A relationship between products and alternate suppliers.
+  Stored as one
+  \class{HashSet} of alternate \class{Suppliers} per \class{Product}.}
   \label{fig:product-hashset}
 \end{figure}
 
@@ -77,20 +79,21 @@ very small \class{HashSet}s, each consuming 232 bytes, for a total cost of 22.1M
 This cost is all overhead.
 It's hard to think of a good reason why such a heavy-weight collection should ever be used
  for storing just a few entries, and yet, this pattern is very, very common. For
- small sets, \class{ArrayList} is almost always a better choice. \class{HashSet} maintains uniqueness
-  and provides fast access, but enforcing uniqueness
-is not always needed. If uniqueness is
-important, it can be enforced for an \class{ArrayList} 
- with  little extra checking code, and usually without significant performance
- loss when sets are small. Figure~\ref{fig:product-arraylist} shows improved
- memory usage with \class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead,
-approximately a third the size of a \class{HashSet}.
+ small sets, \class{ArrayList} is almost always a better choice. \class{HashSet}
+ does maintain uniqueness, but enforcing uniqueness
+in the data model is not always needed. Many applications
+ perform this check in their loading code. If it is
+important to guarantee uniqueness in the data model, it can be enforced for an
+\class{ArrayList} with  little extra checking code, and usually without significant performance
+ loss when sets are small.  Figure~\ref{fig:product-arraylist} shows improved memory usage with
+ \class{ArrayList}. Each \class{ArrayList} incurs 80 bytes of overhead, approximately a third the size of
+ a \class{HashSet}.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-arraylist.pdf}
  \caption{A relationship between 100,000 products and alternate suppliers,
- where the alternate \class{Suppliers} associated with each \class{Product} are
- stored in an \class{ArrayLists}.}
+ where the alternate \class{Supplier}s associated with each
+ \class{Product} are stored in an \class{ArrayList}.}
   \label{fig:product-arraylist}
 \end{figure}
 This simple change saves 14.5MB. 
