@@ -99,7 +99,7 @@ important to guarantee uniqueness in the data model, it can be enforced for an
 This simple change saves 14.5MB. 
 
 
-\section{Inside the Collections}
+\section{The Cost of Small Collections}
 \label{sec:collectioncost}
 Let's look inside a \class{HashSet} to see why it is so much bigger than an
 \class{ArrayList}. Some of its extra cost is because of additional functionality,
@@ -171,7 +171,7 @@ entry array pointer plus a \class{HashMap\$Entry}, which is 28 bytes. Lower vari
 \end{figure}
  
 
-Table~\ref{tab:small-collection-costs} shows the memory costs of four basic
+Table~\ref{tab:small-collections-default} shows the memory costs of four basic
 collections, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and \class{HashSet}.
 This table shows the default size when the collection is just allocated without
 entries, and any additional entry cost. These costs have
@@ -183,36 +183,42 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
 \centering
- 		\begin{tabular}{lcc}
+ 		\begin{tabular}{l||r||rrr}
  		\toprule
-	 	 Collection & \multicolumn{2}{c}{Size in bytes} \\
-	 	 & with 4 entries & with n entries \\
+	 	 Collection & \makebox{with 4 entries} & \multicolumn{3}{c}{with
+	 	 n entries}\\
+	 	 & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 80 & 80 , n = 0 .. 10 \\
- 		LinkedList & 144 & 48 + n*24 , for any n \\
- 		HashMap & 216 & 120 + n*24 , n = 0 .. 11 \\
- 		HashSet & 232 & 136 + n*24 , n = 0 .. 11 \\
+	 	ArrayList & 80 & 80 & 0 & 0 .. 10 \\
+ 		LinkedList & 144 & 48 & 24 & for any n \\
+ 		HashMap & 216 & 120 & 24 & 0 .. 11 \\
+ 		HashSet & 232 & 136 & 24 & 0 .. 11 \\
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-%	\caption{}\label{tab:small-collections-default}{}
- 		\begin{tabular}{lcc}
+	\caption{Default size in bytes of some common collection classes when they
+	contain very few entries. Variable cost is the additional cost per entry above the fixed
+	cost. Costs apply only within the specified range.}
+	\label{tab:small-collections-default}
+\end{table}
+\begin{table}
+\centering
+ 		\begin{tabular}{l||r||rrr}
  		\toprule
-	 	 Collection & \multicolumn{2}{c}{Size in bytes} \\
-	 	 & with 4 entries & with n entries \\
+	 	 Collection & with 4 entries & \multicolumn{3}{c}{with n entries}\\
+	 	 & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 56 & 40 + (n/2)*8 , n = 0 .. 10 \\
- 		LinkedList & 144 & 48 + n*24 , for any n\\
- 		HashMap & 184 & 88 + n*24 , n = 0 .. 5 \\
- 		HashSet & 200 & 104 + n*24 , n = 0 .. 5 \\
+	 	ArrayList & 56 & 40 & (n/2)*8 & 0 .. 10 \\
+ 		LinkedList & 144 & 48 & 24 & for any n\\
+ 		HashMap & 184 & 88 & 24 & 0 .. 5 \\
+ 		HashSet & 200 & 104 & 24 & 0 .. 5 \\
 	 	\bottomrule
  	 	\end{tabular}
-%	\caption{}\label{tab:small-collections-minimum}{}
-	\caption{Size in bytes of some common collection classes, when they contain very few
-	elements. Variable cost is the additional cost per entry, above the fixed
-	cost. Numbers apply only within the specified range.
-	(a) Default size (b) Minimum size.[TODO: format as a table with two subtables]}
-	\label{tab:small-collection-costs}
+	\caption{Size in bytes of some common collection classes when they contain very few
+	entries and capacity is initialized to the minimum. Variable cost is the
+	additional cost per entry above the fixed cost. Costs apply only within the
+	specified range.}
+	\label{tab:small-collections-minimum}
 \end{table}
 
 Our guess is that the
