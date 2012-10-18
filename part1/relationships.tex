@@ -183,41 +183,41 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||rrr}
+ 		\begin{tabular}{l||r||r||rrl}
  		\toprule
-	 	 Collection & \makebox{with 4 entries} & \multicolumn{3}{c}{with
-	 	 n entries}\\
-	 	 & & Fixed & Variable & Range \\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} &
+	 	 \multicolumn{3}{c}{with n entries}\\
+	 	 & & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 80 & 80 & 0 & 0 .. 10 \\
- 		LinkedList & 144 & 48 & 24 & for any n \\
- 		HashMap & 216 & 120 & 24 & 0 .. 11 \\
- 		HashSet & 232 & 136 & 24 & 0 .. 11 \\
+	 	ArrayList & 80 & 80 & 80 & 0 & 0 .. 10 \\
+ 		LinkedList & 72 & 144 & 48 & 24 & any n \\
+ 		HashMap & 144 & 216 & 120 & 24 & 0 .. 11 \\
+ 		HashSet & 160 & 232 & 136 & 24 & 0 .. 11 \\
 	 	\bottomrule
 	 	\end{tabular}
 	 	
 	\caption{Default size in bytes of some common collection classes when they
-	contain very few entries. Variable cost is the additional cost per entry above the fixed
-	cost. Costs apply only within the specified range.}
+	contain very few entries. Variable cost is the cost per entry, above the fixed
+	cost of the collection. Costs apply only within the specified range.}
 	\label{tab:small-collections-default}
 \end{table}
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||rrr}
+ 		\begin{tabular}{l||r||r||rrl}
  		\toprule
-	 	 Collection & with 4 entries & \multicolumn{3}{c}{with n entries}\\
-	 	 & & Fixed & Variable & Range \\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} &
+	 	 \multicolumn{3}{c}{with n entries}\\
+	 	 & & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 56 & 40 & (n/2)*8 & 0 .. 10 \\
- 		LinkedList & 144 & 48 & 24 & for any n\\
- 		HashMap & 184 & 88 & 24 & 0 .. 5 \\
- 		HashSet & 200 & 104 & 24 & 0 .. 5 \\
+	 	ArrayList & 48 (80)  & 56 (80) & 40 & (n/2)*8 & 0 .. 10 \\
+ 		HashMap & 112 (144) & 184 (216)  & 88 & 24 & 0 .. 5 \\
+ 		HashSet & 128 (160) & 200 (232) & 104 & 24 & 0 .. 5 \\
 	 	\bottomrule
  	 	\end{tabular}
 	\caption{Size in bytes of some common collection classes when they contain very few
 	entries and capacity is initialized to the minimum. Variable cost is the
-	additional cost per entry above the fixed cost. Costs apply only within the
-	specified range.}
+	cost per entry, above the fixed cost of the collection. Costs apply only within
+	the specified range.}
 	\label{tab:small-collections-minimum}
 \end{table}
 
