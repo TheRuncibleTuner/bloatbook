@@ -7,8 +7,9 @@ look up by value, collections are an essential part of any
 design. In Java, collections are easy to use, and, just as easily, to misuse when
 it comes to space. Like much else in Java, they don't come with a price tag
 showing how much memory they need. In fact, collections
-often use much more memory than you might expect. In most Java applications they are the second largest consumer of memory, after
-Strings. It's not unusual for collection overhead to take up between x and y\%
+often use much more memory than you might expect. In most Java applications they are the
+second largest consumer of memory, after
+strings. It's not unusual for collection overhead to take up between x and y\%
 of the Java heap. The way collections are employed can make
 or break a system's ability to scale up.
 
@@ -41,11 +42,11 @@ classes.
 
 \begin{description}
 \item[Chapter~\ref{chapter:representing-relationships}.
-One-to-Many Relationships] An important use of collections is to implement
-relationships that let you quickly navigate from an object to related objects
-via references. This chapter covers the patterns and pitfalls of
-implementing one-to-many relationships. At runtime, each relationship becomes a
-large number of collection instances, with many containing just a few elements.
+One-to-Many Relationships] An important use of collections is to
+implement one-to-many relationships. These enable quick navigation from an
+object to related objects via references. This chapter covers the patterns and pitfalls of
+implementing these relationships. At runtime, each relationship
+becomes a large number of collection instances, with many containing just a few elements.
 %In a product catalog, for example, each product object would have one
 %collection instance pointing to that product's suppliers, and another pointing
 %to the product's parts.
@@ -59,9 +60,9 @@ point for accessing a large number of objects. For example, your application
 might maintain a list of all the objects of one type, or have an index for
 looking up objects by unique key. This chapter shows how to analyze the memory
 costs of these structures. The main
-issue is understanding which costs will be amortized as the structure grows. The
-chapter also covers more complex cases, such as a multikey map, where there is a
-choice between a single collection and a multilevel design.
+issue is understanding which costs will be amortized as the structure grows, and
+which will continue to increase. The chapter also covers more complex cases,
+such as a multikey map, where there is a choice between a single collection and a multilevel design.
 % large structures
 % compare design alternatives
 
@@ -157,7 +158,7 @@ applications with a few large and growing collections. Yet many systems have lar
 of small collections that never grow once initialized. Given all of this, it is important
 to be aware of what collections cost, so you can make informed choices as early as possible. 
 
-It is not enough to know the cost of a collection in the abstract, but to
+It is not enough to know the cost of a collection class in the abstract, but to
 understand \emph{how it will work in your design}. This is because some
 collections were only designed to be used at a certain scale. 
 %the same collection
