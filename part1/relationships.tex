@@ -34,7 +34,7 @@ usually lots of objects that are related to either just a few other
 objects or to none at all.
 When there are lots of collections with only a few entries, you need to ask  whether
 the functionality of the collection you choose is worth the memory cost of that
-functionality\footnote{Throughout the book we'll use the term
+functionality\footnote{We'll use the shorthand
 \emph{relationship} to mean a one-to-many relationship, unless otherwise noted. 
 We'll also use \emph{small collection} to mean a very small collection, where
 the number of elements is roughly in the single digits.}
@@ -99,80 +99,78 @@ important to guarantee uniqueness in the data model, it can be enforced for an
 This simple change saves 14.5MB. 
 
 
-\section{The Cost of Small Collections}
+\section{Inside Small Collections}
 \label{sec:collectioncost}
 Let's look inside a \class{HashSet} to see why it is so much bigger than an
-\class{ArrayList}. Some of its extra cost is because of additional functionality,
-such as providing uniqueness checking and entry removal in constant time.
-\class{HashSet} is also optimized for performance, and sacrifices memory 
-under the assumption that \class{HashSet}s will contain a large number of
-elements. Additionally, \class{HashSet} delegates its work to a
-degenerate \class{HashMap}, that is, one with keys but no values. This decision,
-to reuse the more general \class{HashMap} code, adds to the memory
-cost. Other extra costs are due to unavoidable Java overhead.
-
-The internal structure of a \class{HashSet} is shown in
+\class{ArrayList}.
+The structure of a \class{HashSet} is shown in
 Figure~\ref{fig:inside-hashset}. All
-collections are similar in their basic structure: a wrapper which remains
-stable, and an internal structure that changes as entries are added and removed.
+collections have a similar basic structure: a wrapper
+which remains stable, and an internal structure that changes as entries are
+added and removed.
+
+The standard library designers chose to implement
+\class{HashSet} by delegating its work
+to a \class{HashMap}, one with keys but no values.
+The \class{HashSet} object is therefore just a wrapper, that points to the
+\class{HashMap} wrapper. All collections have
+wrapper objects, but a \class{HashSet} has two of them. 
+Together they incur a fixed cost of 56 bytes.
+
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-hashset.pdf}
-  \caption{The internal structure of a \class{HashSet}, shown with 3 entries.}
+  \caption{A look inside a \class{HashSet}. Shown with 3
+  entries.}
   \label{fig:inside-hashset}
 \end{figure}
 
-
-\begin{description}
-\item[Wrappers] The \class{HashSet} object itself is just a wrapper,
-delegating all of its work to a \class{HashMap}. Therefore, there is an additional wrapper,
-a \class{HashMap} object. All
-collections have wrapper objects, but a \class{HashSet} has two of them. 
-Together they incur a fixed cost of 56 bytes.
  
-\item[Internal structure] \class{HashMap} uses a \emph{chaining} design. There
-is an array of hash buckets, where each slot points to a linked list of
-\class{HashMap\$Entry} objects that map to the same
-hash bucket. The default initial capacity is 16, to allow for growth.
-Including its JVM overhead, the array adds a fixed cost of 80 bytes.
- 
-\class{HashMap} maintains a
-\class{HashMap\$Entry} object for each element stored in the collection. 
-These cost 24 bytes each. Note that since this is a
-\class{HashSet}, the value field in each \class{HashMap\$Entry} object is not
-used\footnote{There is an additional memory cost that occurs in a very common
-case: if you choose to iterate over the contents of the set.
+Another key decision is \class{HashMap}'s use of a \emph{chaining}
+design. The internal structure is an array of hash buckets,
+where each bucket is a linked list of \class{HashMap\$Entry} objects, each
+pointing to a key and value.
+To allow for growth, and to lessen the chances of a collision, the default
+capacity of the array is 16. The array costs 80 bytes, bringing the total fixed
+cost to 136 bytes. That's the minimum memory needed for a \class{HashSet}.
+A \class{HashMap\$Entry} is maintained for
+each entry, at 24 bytes each. This is the collection's variable
+cost, that is, the incremental cost of storing an
+entry\footnote{An additional fixed cost occurs in a very common case:
+iterating over the contents of the set.
 The first time you create an iterator, a 16-byte \class{HashMap\$KeySet} object
-will be created and retained by the set for its lifetime. This
-cost is not reflected in any of our diagrams or numbers.}.
-\end{description}
+is created, and retained for the lifetime of the set. This
+cost is not reflected in any of the figures or discussion.}.
 
 In contrast, \class{ArrayList} is a simpler structure, as shown in
 Figure~\ref{fig:inside-arraylist}. It's an expandable array,
-consisting of a wrapper object, and an array that points directly at the data
-elements. As a result, it has a smaller fixed cost and a smaller
+consisting of a wrapper object and an array that points to the data
+elements directly. As a result, it has a smaller fixed cost and a smaller
 variable cost than \class{HashSet}. Fixed costs
-include wrappers and the array's JVM overhead, and empty slots.
-The fact that \class{HashSet} delegates to \class{HashMap} inflates its fixed cost. 
-Lower fixed cost means that an \class{ArrayList} with just a few
- elements is smaller than a \class{HashSet} with the same elements. 
-The variable cost of an \class{ArrayList} is a slot in the array, which
-is 4 bytes. The variable cost of a \class{HashSet} is an
-entry array pointer plus a \class{HashMap\$Entry}, which is 28 bytes. Lower variable cost means that
- \class{ArrayList} scales much better than \class{HashSet}. So \class{ArrayList} is better
- both for small and large sets.
+include the single wrapper object and the array's \jre overhead and empty
+slots. Fixed costs matter most in small collections; as a collection
+grows they become less significant. The variable cost of a small
+\class{ArrayList} can be considered 0, since this comes out of the extra
+capacity allocated in advance by default.\footnote{For small
+collections allocated with excess capacity, we count the excess capacity as a
+fixed cost. In the next chapter we look at larger collections, where we treat excess capacity as a
+variable cost, since it's allocated
+proportionally to the size of the collection as it grows.}.
+The variable cost of a \class{HashSet} is 24 bytes. Lower variable cost means
+that \class{ArrayList} scales much better than \class{HashSet}. So \class{ArrayList} is better both for small and large sets.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
- \caption{The internal structure of an \class{ArrayList}, shown with three
+ \caption{Inside an \class{ArrayList}. Shown with three
  entries and default capacity. \class{ArrayList} has a relatively low
  fixed overhead, and is scalable.}
   \label{fig:inside-arraylist}
 \end{figure}
  
 
-Table~\ref{tab:small-collections-default} shows the memory costs of four basic
-collections, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and \class{HashSet}.
+Table~\ref{tab:small-collections-default} shows the memory costs of four common
+collection classes, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and
+\class{HashSet}.
 This table shows the default size when the collection is just allocated without
 entries, and any additional entry cost. These costs have
 been calculated based on the Sun JVM, using the techniques described in Chapter~\ref{chapter:delegation}. 
@@ -220,6 +218,21 @@ similar to these. You can calculate them using the same methodology.
 	the specified range.}
 	\label{tab:small-collections-minimum}
 \end{table}
+
+The fact that \class{HashSet} delegates to \class{HashMap} inflates its fixed
+cost in two ways: the cost of the extra wrapper object, and the cost of fields
+in the \class{HashMap} that aren't needed when it's used as a set. 
+Note that since the \class{HashMap\$Entry} class is designed for
+a \class{HashMap}, its value field is not used.
+
+Some of its extra cost is because of additional functionality,
+such as providing uniqueness checking and entry removal in constant time.
+\class{HashSet} is also optimized for performance, and sacrifices memory 
+under the assumption that \class{HashSet}s will contain a large number of
+elements. Additionally, \class{HashSet} delegates its work to a
+degenerate \class{HashMap}, that is, one with keys but no values. This decision,
+to reuse the more general \class{HashMap} code, adds to the memory
+cost. Other extra costs are due to unavoidable Java overhead.
 
 Our guess is that the
 collection class developers would be surprised by the relationship usage pattern
