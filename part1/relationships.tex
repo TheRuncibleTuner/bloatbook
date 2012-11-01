@@ -109,13 +109,20 @@ collections have a similar basic structure: a wrapper
 which remains stable, and an internal structure that changes as entries are
 added and removed.
 
-The standard library designers chose to implement
-\class{HashSet} by delegating its work
-to a \class{HashMap}, one with keys but no values.
-The \class{HashSet} object is therefore just a wrapper, that points to the
+The standard library designers implemented
+\class{HashSet} by delegating its work to a degenerate \class{HashMap},
+that is, one with keys but no values.
+The \class{HashSet} object is therefore just a wrapper, and it points to a
 \class{HashMap} wrapper. All collections have
 wrapper objects, but a \class{HashSet} has two of them. 
-Together they incur a fixed cost of 56 bytes.
+%Together they incur a fixed cost of 56 bytes.
+
+\class{HashMap} itself uses a \emph{chaining}
+design. Its internal structure is an array of hash buckets, with initial size of
+16 by default.  Each bucket is a linked
+list of \class{HashMap\$Entry} objects. Each entry object points to an element of the user's data, in other
+words, to a key and value.
+% to allow for growth and reduce collisions.
 
  \begin{figure}
   \centering
@@ -125,13 +132,27 @@ Together they incur a fixed cost of 56 bytes.
   \label{fig:inside-hashset}
 \end{figure}
 
- 
-Another key decision is \class{HashMap}'s use of a \emph{chaining}
-design. The internal structure is an array of hash buckets,
-where each bucket is a linked list of \class{HashMap\$Entry} objects, each
-pointing to a key and value.
-To allow for growth, and to lessen the chances of a collision, the default
-capacity of the array is 16. The array costs 80 bytes, bringing the total fixed
+In contrast, \class{ArrayList} is a simpler structure, as shown in
+Figure~\ref{fig:inside-arraylist}. It's an expandable array,
+consisting of a wrapper object and an array.  The array points directly to the
+user data. The array has an initial size of 10 by default.  As a result of its
+simpler design \class{ArrayList} has a smaller fixed cost and a smaller
+variable cost than \class{HashSet}.
+
+Fixed costs for an \class{ArrayList} include the single wrapper object and the
+array's \jre overhead and empty slots. Fixed costs
+matter most in small collections; as a collection grows they become less significant. 
+
+The variable cost of a small
+\class{ArrayList} can be considered 0, since this comes out of the extra
+capacity allocated in advance by default.\footnote{For small
+collections allocated with excess capacity, we count the excess capacity as a
+fixed cost. As collections grow, however, they typically allocate excess
+capacity proportionally to the size of the collection. Therefore, for larger
+collections we'll treat this is a variable cost, as
+in the next chapter.}.
+
+The array costs 80 bytes, bringing the total fixed
 cost to 136 bytes. That's the minimum memory needed for a \class{HashSet}.
 A \class{HashMap\$Entry} is maintained for
 each entry, at 24 bytes each. This is the collection's variable
@@ -142,22 +163,10 @@ The first time you create an iterator, a 16-byte \class{HashMap\$KeySet} object
 is created, and retained for the lifetime of the set. This
 cost is not reflected in any of the figures or discussion.}.
 
-In contrast, \class{ArrayList} is a simpler structure, as shown in
-Figure~\ref{fig:inside-arraylist}. It's an expandable array,
-consisting of a wrapper object and an array that points to the data
-elements directly. As a result, it has a smaller fixed cost and a smaller
-variable cost than \class{HashSet}. Fixed costs
-include the single wrapper object and the array's \jre overhead and empty
-slots. Fixed costs matter most in small collections; as a collection
-grows they become less significant. The variable cost of a small
-\class{ArrayList} can be considered 0, since this comes out of the extra
-capacity allocated in advance by default.\footnote{For small
-collections allocated with excess capacity, we count the excess capacity as a
-fixed cost. In the next chapter we look at larger collections, where we treat excess capacity as a
-variable cost, since it's allocated
-proportionally to the size of the collection as it grows.}.
-The variable cost of a \class{HashSet} is 24 bytes. Lower variable cost means
-that \class{ArrayList} scales much better than \class{HashSet}. So \class{ArrayList} is better both for small and large sets.
+
+
+ The variable cost of a \class{HashSet} is 24 bytes. Lower variable
+cost means that \class{ArrayList} scales much better than \class{HashSet}. So \class{ArrayList} is better both for small and large sets.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
