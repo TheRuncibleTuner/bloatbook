@@ -197,9 +197,9 @@ similar to these. You can calculate them using the same methodology.
 	 	 & & & Fixed & Variable & Range \\
 	 	 \midrule
 	 	ArrayList & 80 & 80 & 80 & 0 & 0 .. 10 \\
- 		LinkedList & 72 & 144 & 48 & 24 & any n \\
  		HashMap & 144 & 216 & 120 & 24 & 0 .. 11 \\
  		HashSet & 160 & 232 & 136 & 24 & 0 .. 11 \\
+ 		LinkedList & 72 & 144 & 48 & 24 & any n \\
 	 	\bottomrule
 	 	\end{tabular}
 	 	
@@ -216,9 +216,9 @@ similar to these. You can calculate them using the same methodology.
 	 	 \multicolumn{3}{c}{with n entries}\\
 	 	 & & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 48 (80)  & 56 (80) & 40 & (n/2)*8 & 0 .. 10 \\
- 		HashMap & 112 (144) & 184 (216)  & 88 & 24 & 0 .. 5 \\
- 		HashSet & 128 (160) & 200 (232) & 104 & 24 & 0 .. 5 \\
+	 	ArrayList & 48 & 56 & 40 & (n/2)*8 & 0 .. 10 \\
+ 		HashMap & 112 & 184 & 88 & 24 & 0 .. 5 \\
+ 		HashSet & 128 & 200 & 104 & 24 & 0 .. 5 \\
 	 	\bottomrule
  	 	\end{tabular}
 	\caption{Size in bytes of some common collection classes when they contain very few
