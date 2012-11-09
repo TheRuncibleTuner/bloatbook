@@ -120,9 +120,8 @@ wrapper objects, but a \class{HashSet} has two of them.
 \class{HashMap} itself uses a \emph{chaining}
 design. Its internal structure is an array of hash buckets, with initial size of
 16 by default.  Each bucket is a linked
-list of \class{HashMap\$Entry} objects. Each entry object points to an element of the user's data, in other
-words, to a key and value.
-% to allow for growth and reduce collisions.
+list of \class{HashMap\$Entry} objects. Each entry object
+points to an element of the user's data, in other words, to a key and value.
 
  \begin{figure}
   \centering
@@ -139,34 +138,35 @@ user data. The array has an initial size of 10 by default.  As a result of its
 simpler design \class{ArrayList} has a smaller fixed cost and a smaller
 variable cost than \class{HashSet}.
 
-Fixed costs for an \class{ArrayList} include the single wrapper object and the
-array's \jre overhead and empty slots. Fixed costs
-matter most in small collections; as a collection grows they become less significant. 
+The fixed cost is the memory needed before any entries are added.
+For a \class{HashSet} this is the two wrapper objects, at 56 bytes, plus
+the array's \jre overhead and 16 slots,
+80 bytes, bringing the total to 136 bytes. We count the array's empty slots as a
+fixed cost, since they are allocated right from the start
+\footnote{\class{HashSet} has another fixed cost that occurs in a
+common usage scenario.  If you iterate over the contents of the set, a 16-byte
+\class{HashMap\$KeySet} object will be created and retained for the lifetime of
+the set. We don't include this in any of our numbers.}.
+The fixed cost of a default-sized \class{ArrayList} is considerably
+lower, a total of 80 bytes. That includes its wrapper object and default
+10-element array. Fixed costs matter most in
+small collections; as a collection grows they become less significant.
 
-The variable cost of a small
-\class{ArrayList} can be considered 0, since this comes out of the extra
-capacity allocated in advance by default.\footnote{For small
-collections allocated with excess capacity, we count the excess capacity as a
-fixed cost. As collections grow, however, they typically allocate excess
-capacity proportionally to the size of the collection. Therefore, for larger
-collections we'll treat this is a variable cost, as
-in the next chapter.}.
+\footnote{As a collection grows beyond its initial size, it makes more sense to
+treat excess capacity as a variable cost, as we'll discuss in the next chapter.
+This is because growth policies typically allocate excess capacity
+in proportion to the size of the collection}.
 
-The array costs 80 bytes, bringing the total fixed
-cost to 136 bytes. That's the minimum memory needed for a \class{HashSet}.
 A \class{HashMap\$Entry} is maintained for
 each entry, at 24 bytes each. This is the collection's variable
 cost, that is, the incremental cost of storing an
-entry\footnote{An additional fixed cost occurs in a very common case:
-iterating over the contents of the set.
-The first time you create an iterator, a 16-byte \class{HashMap\$KeySet} object
-is created, and retained for the lifetime of the set. This
-cost is not reflected in any of the figures or discussion.}.
+entry
 
-
-
- The variable cost of a \class{HashSet} is 24 bytes. Lower variable
-cost means that \class{ArrayList} scales much better than \class{HashSet}. So \class{ArrayList} is better both for small and large sets.
+The variable cost of a \class{HashSet} is 24 bytes. The variable cost of a small
+\class{ArrayList} can be considered 0, since by default the array has been
+allocated with 10 extra slots. Lower variable
+cost means that \class{ArrayList} scales much better than \class{HashSet}. 
+So \class{ArrayList} is better both for small and large sets.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
@@ -203,9 +203,9 @@ similar to these. You can calculate them using the same methodology.
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-	\caption{Default size in bytes of some common collection classes when they
-	contain very few entries. Variable cost is the cost per entry, above the fixed
-	cost of the collection. Costs apply only within the specified range.}
+	\caption{Costs of some common collections when they
+	contain very few entries and are allocated with default capacity. Variable
+	cost is the cost per entry, above the fixed cost of the collection. Costs apply only within the specified range.}
 	\label{tab:small-collections-default}
 \end{table}
 \begin{table}
@@ -216,15 +216,15 @@ similar to these. You can calculate them using the same methodology.
 	 	 \multicolumn{3}{c}{with n entries}\\
 	 	 & & & Fixed & Variable & Range \\
 	 	 \midrule
-	 	ArrayList & 48 & 56 & 40 & (n/2)*8 & 0 .. 10 \\
- 		HashMap & 112 & 184 & 88 & 24 & 0 .. 5 \\
- 		HashSet & 128 & 200 & 104 & 24 & 0 .. 5 \\
+	 	ArrayList & 48 & 56 & 40 & (n/2)*8 & any n \\
+ 		HashMap & 112 &     & 64 & 24 & 0 .. 1 \\
+ 		        &     & 184 & 88 & 24 & 2 .. 5 \\
+ 		HashSet & 128 &     & 80 & 24 & 0 .. 5 \\
+		        &     & 200 & 104 & 24 & 2 .. 5 \\
 	 	\bottomrule
  	 	\end{tabular}
-	\caption{Size in bytes of some common collection classes when they contain very few
-	entries and capacity is initialized to the minimum. Variable cost is the
-	cost per entry, above the fixed cost of the collection. Costs apply only within
-	the specified range.}
+	\caption{Costs of some common collection classes when capacity is set to the
+	minimum to accomodate the number of entries shown.}
 	\label{tab:small-collections-minimum}
 \end{table}
 
