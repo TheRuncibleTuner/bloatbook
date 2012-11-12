@@ -139,18 +139,17 @@ simpler design \class{ArrayList} has a smaller fixed cost and a smaller
 variable cost than \class{HashSet}.
 
 The fixed cost is the memory needed before any entries are added.
-For a \class{HashSet} this is the two wrapper objects, at 56 bytes, plus
-the array's \jre overhead and 16 slots,
-80 bytes, bringing the total to 136 bytes. We count the array's empty slots as a
-fixed cost, since they are allocated right from the start
-\footnote{\class{HashSet} has another fixed cost that occurs in a
-common usage scenario.  If you iterate over the contents of the set, a 16-byte
-\class{HashMap\$KeySet} object will be created and retained for the lifetime of
-the set. We don't include this in any of our numbers.}.
-The fixed cost of a default-sized \class{ArrayList} is considerably
+For a \class{HashSet} the fixed cost consists of two wrapper objects at 56 bytes, plus
+the array's \jre overhead and 16 slots, bringing the total to 136 bytes. We are including the
+array's empty slots as a fixed cost since they are allocated right from the start.
+The fixed cost of an \class{ArrayList} is considerably
 lower, a total of 80 bytes. That includes its wrapper object and default
 10-element array. Fixed costs matter most in
-small collections; as a collection grows they become less significant.
+small collections. As a collection grows they become less significant.
+\footnote{\class{HashSet} actually has an additional fixed cost in a
+common usage scenario. The first time you iterate over the contents of
+the set, an additional 16-byte \class{HashMap\$KeySet} object is created, and retained for the lifetime of
+the set. This cost doesn't appear in our figures.}.
 
 \footnote{As a collection grows beyond its initial size, it makes more sense to
 treat excess capacity as a variable cost, as we'll discuss in the next chapter.
@@ -190,16 +189,15 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||r||rrl}
+ 		\begin{tabular}{l||r||r||rl}
  		\toprule
-	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} &
-	 	 \multicolumn{3}{c}{with n entries}\\
-	 	 & & & Fixed & Variable & Range \\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{2}{c}{with n entries}\\
+	 	 & & & fixed + n*variable & comments \\
 	 	 \midrule
-	 	ArrayList & 80 & 80 & 80 & 0 & 0 .. 10 \\
- 		HashMap & 144 & 216 & 120 & 24 & 0 .. 11 \\
- 		HashSet & 160 & 232 & 136 & 24 & 0 .. 11 \\
- 		LinkedList & 72 & 144 & 48 & 24 & any n \\
+	 	ArrayList & 80 & 80 & 80 & for n in 0..10 \\
+ 		HashMap & 144 & 216 & 120 + n*24 & for n in 0..11 \\
+ 		HashSet & 160 & 232 & 136 + n*24 & for n in 0..11 \\
+ 		LinkedList & 72 & 144 & 48 + n*24 & for any n \\
 	 	\bottomrule
 	 	\end{tabular}
 	 	
@@ -210,21 +208,20 @@ similar to these. You can calculate them using the same methodology.
 \end{table}
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||r||rrl}
+ 		\begin{tabular}{l||r||r||rl}
  		\toprule
-	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} &
-	 	 \multicolumn{3}{c}{with n entries}\\
-	 	 & & & Fixed & Variable & Range \\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{2}{c}{with n entries}\\
+	 	 & & & fixed + n*variable & comments \\
 	 	 \midrule
-	 	ArrayList & 48 & 56 & 40 & (n/2)*8 & any n \\
- 		HashMap & 112 &     & 64 & 24 & 0 .. 1 \\
- 		        &     & 184 & 88 & 24 & 2 .. 5 \\
- 		HashSet & 128 &     & 80 & 24 & 0 .. 5 \\
-		        &     & 200 & 104 & 24 & 2 .. 5 \\
+	 	ArrayList & 48 & 56 & 40 + (n/2)*8 & for any n, capacity = n \\
+ 		HashMap & 88 & 184   & 64 + n*24 & for n in 0..1, capacity = 2 \\
+ 		        &     &  & 88 + n*24 & for n in 3..5, capacity = 8 \\
+ 		HashSet & 104 & 200 & 80 + n*24 & for n in 0..1, capacity = 2 \\
+		        &     & & 104 + n*24 & for n in 3..5, capacity = 8 \\
 	 	\bottomrule
  	 	\end{tabular}
-	\caption{Costs of some common collection classes when capacity is set to the
-	minimum to accomodate the number of entries shown.}
+	\caption{Costs of some common collection classes when capacity is set
+	to the minimum to accomodate the number of entries shown.}
 	\label{tab:small-collections-minimum}
 \end{table}
 
