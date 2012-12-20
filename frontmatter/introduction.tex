@@ -2,296 +2,219 @@
 \chapter{Introduction}
 \label{chapter:introduction}
 
-Object orientation, while a boon to developer productivity, usually comes at the
-expense of a degree of performance. When programming in this style, as we all do
-when we code in Java, we make design choices that tend to favor small things.
-We would rather write a large number of small methods than a small number of
-large methods. Doing so usually results in methods that are individually easier
-to understand. Having smaller methods is also nice, because they can be mixed
-and matched, and thus reused more flexibly than monolithic code.
+Managing your Java program's memory couldn't be easier, or so it would seem.
+Java provides you with automatic garbage collection, and a compiler that
+responds to your program's operation. There are lots of libraries and frameworks
+available, written by experts, that provide powerful functionality. All you have
+to do is piece together the parts and let the Java runtime system do the rest
+for you.
 
-This style of coding methods actually isn't so bad for execution time, at least
-not as bad as one would expect. As our code runs, a Just-in-Time (JIT) compiler
-is busy optimizing away some of the overheads of having many small method
-invocations. These optimizations, primarily method inlining, do a reasonable job
-of reducing the penalty of coding in a object-oriented way. Performance may not
-reach the ultimate levels of coding in a language such as C, but at least the
-JIT has our back.
+The reality, unfortunately, is very different.  If you just assemble the parts,
+take the defaults, and follow all the good advice to make your program flexible
+and maintainable, you will likely find that precious memory resources are wasted
+holding on to data that is no longer needed, or even worse, that your system
+suffers from memory leaks. All too often, these problems won't show up until
+late in the cycle, when the whole system comes together. You may discover, for
+example, when your product is about to ship, that your design is far from
+fitting into memory, or that it does not support nearly the number of users it
+needs to support.  Fixing these problems can take a major effort, requiring
+extensive refactoring or rethinking architecural decisions, such as the choice
+of frameworks you use.  
 
-A similar situation occurs with memory consumption, though this story is not
-nearly as rosy.
-Modeling your data in Java is the process of designing how to map bytes of data
-to fields and classes.
-For example, an employee maps to a \class{Employee} Java class, and each
-employee's identification number maps to an \class{int} field in that class. At
-runtime, the Java Virtual Machine (JVM) will allocate an instance of that class,
-thereby setting aside memory in the heap for its fields.
-
-What happens if the identification number is not a scalar, but instead a mix of
-numbers and characters? Even if the number is of fixed length, Java still forces
-you to store this in an side array --- the language does not allow you to inline
-that array into the \class{Employee} object itself. This means that, unless
-your data is scalar primitives you pay the expense of allocating a new object,
-and pointing to it. 
-
-This cost, of \emph{delegation}, is around 16 bytes. You pay this cost for every
-field of data that you choose, or are forced by the language, to delegate rather
-than inline. The java runtime makes no attempt to inline that side array
-for you. This lies in contrast to what the JIT does for methods: the JIT creates a
-small number of larger methods by inlining small methods into larger ones.
-
-This probably seems like height of madness, worrying about 16 bytes, in the age
-of multi-gigabyte devices the size of your hand. It is true that a few bytes
-here and there would not be worth the hassle, if these were costs paid only a
-few times, or were small relative to the actual data you were trying to store.
-Unfortunately, these overheads are not easily amortized, especially in a
-language like Java.
+Alternatively, a methodology based on sound design can
+prevent this type of scenario from happening. Memory usage, like any other
+aspect of software, needs to be planned. At its core, programming is an engineering
+discipline, and there is no escaping the fact that the consumption of any finite
+resource must be measured and managed.
 
 
+\section{A Short Quiz}
 
+ To start you thinking about memory
+consumption, here is a quiz to test how good you are at estimating sizes of Java objects. 
+(Assume a 32-bit JVM.) If you look inside a typical Java heap, it is mostly filled with the kinds of
+objects used in the quiz --- boxed scalars, strings, and collections.
+\begin{verbatim}
 
+   What is the size ratio in bytes Integer to int?
+   
+      a. 1:1
+      b. 1.33:1
+      c. 2:1
+      d. 4:1
+      e. 8:1
+      
+\end{verbatim}
+Correct answer: d. 
 
+ Every time
+a program instantiates a class, there is an object created in the heap, and as
+shown by the 4:1 size ratio of \class{Integer} to \class{int}, objects are not
+cheap.
+\begin{verbatim}
+   
+   How many bytes in an 8-character string?
 
+      a. 8 bytes
+      b. 16 bytes
+      c. 20 bytes
+      d. 40 bytes
+      e. 56 bytes
 
+\end{verbatim}
+Correct answer: e.
 
-\begin{comment}
-After all, Java provides you with automatic garbage collection, and there are
-lots of libraries and frameworks available, written by experts, that provide
-powerful functionality. All you have to do is piece together the parts and let
-the Java runtime system do the rest for you.
+Strings often consume half of the heap and are
+surprisingly costly. If you are a C programmer, you might think that an 8-character string should consume 9 bytes
+of memory, 8 bytes for characters and 1 byte to indicate the end of the string.
+What could possibly be taking up 56 bytes? Part of the cost is because Java uses
+th 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
+The rest is various kinds of overhead.
+\begin{verbatim}             
+   Arrange the following 2-element collections in size order:
+    
+      ArrayList, HashSet, LinkedList, HashMap
+      
+\end{verbatim}
+Correct answer: ArrayList, LinkedList, HashMap, HashSet.
+  
+After strings,
+collections are the most common types of objects in the heap. Surprisingly, a
+\class{HashSet} is bigger than a \class{HashMap} --- an interesting fact that
+will be explained later.
+\begin{verbatim}      
+   How many collections are there in a typical heap?
+   
+      a. between five and ten
+      b. tens
+      c. hundreds
+      d. thousands
+      e. one or more orders of magnitude bigger than above
+      
+\end{verbatim}
+Correct answer: e.
+ 
+In typical real programs, having 100's of thousands and
+even millions of collection instances in a heap is not at all unusual. If there are a million collections in
+the heap, then the collection choice matters. One collection type might use 20
+bytes more than another, which may seem insignificant, but in a production
+execution, the wrong choice can add close to 20 megabytes.
+\begin{verbatim}
+   What is the size of an empty ConcurrentHashMap?
+   
+      a. 17 bytes
+      b. 170 bytes
+      c. 1700 bytes
+      d. 17000 bytes
+      e. 500 bytes
+                 
+\end{verbatim}
+Correct answer: c.
+ 
+\class{ConcurrentHashMap}, compared to the more common
+collections in the standard library, is surprisingly expensive. If you are used to creating
+hundreds of \class{HashMaps}, then you might think that it is not a problem to
+create hundreds of \class{ConcurrentHashMaps}. There is certainly nothing in
+the API to warn you that \class{HashMaps} and \class{ConcurrentHashMaps} are
+completely different when it comes to memory usage. This example shows why
+understanding memory costs are important.
 
-The reality, unfortunately, is very different. If you just assemble the parts, take
-the defaults, and follow all the good advice to make your
-program flexible and maintainable, you will likely find that your memory needs are
-\emph{much} higher than imagined. You may also find that precious memory
-resources are wasted holding on to data that is no longer needed, or, even
-worse, that your system suffers from memory leaks. All too often, these problems
-won't show up until late in the cycle, when the whole system comes together. 
-You may discover, for example, when your product is about to ship, that your design is
-far from fitting into memory, or that it does not support nearly the number
-of users it needs to support. Fixing these problems can
-take a major effort, requiring extensive refactoring or rethinking
-architectural decisions, such as the choice of frameworks you use.
-\end{comment}
+The quiz gives some sense of how surprising the sizes are for the Java basic
+objects, like \class{Integers}, strings, and collections. When code is layered
+with multiple abstractions, memory costs become more and more difficult to
+predict.
 
-\begin{comment}
-[NOTE(GSS): In the next few paragraphs there's a lot of overlap with the
-Preface.
-Most of this material can be merged/moved into the preface. Let's 
-get quickly to Facts and Fictions, which is very concrete.]
+\section{Facts and Fictions}
 
-[NMM 20120625 i have moved this paragraph in part, to the preface]
-This book is a guide to using memory wisely in Java. Memory usage,
-like any other aspect of software, needs to be carefully
-engineered. Predicting
-your system's memory needs early in the cycle, and engineering with those needs in mind, can make
-the difference between success and failure of your project. Engineering means making
-informed tradeoffs, and, unfortunately, the information
-to do so isn't always available. While there has been much written on how to
-build systems that are bug-free, easy to maintain, and secure,
-there is little guidance available on how to use Java memory efficiently
-or even correctly. (Too often memory issues are left to chance, or at least
-put off until there is a crisis.)  This book gives you the tools to make
-informed choices early on.  It gives you 
-an approach to looking at your system's uses of memory, and a practical guide
-to making informed tradeoffs in every part of your design and
-implementation. Java is also filled with
-costly memory traps that are easy to fall into.  
- (Common patterns that make up your design - helps you understand costs and alternatives.  Also 
-relevant Java mechanisms).  Three kinds of info: patterns, mechanisms, and an
-organization/approach to thinking about memory.
+In addition to the technical and engineering challenges that managing memory
+pose, there are other reasons why memory problems are so common. In particular,
+the software culture and popular beliefs can lead you to ignore memory costs. 
+Some of these beliefs are really myths --- they might have once been true, but
+no longer.  Here are several.
 
-(If you are like most Java developers, you probably don't have a good picture of
-of how much memory your designs use.)
-\end{comment}
-
-% TODO put this somewhere later? NMM 20120625
-\begin{comment}
-Achieving efficient memory usage takes some effort in any language. 
-There are things about Java that make it especially easy to end up with bloated
-or even incorrect data designs. One reason is that Java is so easy to program,
-so it gives you a false sense of security that everything is being handled for you. (Languages like C give you a
-lot of control over storage, and so it is clear what
-the consequences of your choices are.) Also, as we shall see,
-the basic costs of building blocks such as Strings, can be surprisingly expensive,
-when compared with languages like C++. So much is done for you in
-Java, from management of the heap, to all the functionality hidden behind framework APIs, that it can be
-difficult to find out how much memory your data structures need, or how long
-they are staying around, until you have a fully running system. Compared to
-many languages, Java also gives you fewer options for designing your data
-structures and managing their storage. This means that if you find you have
-problems, you have fewer ways of fixing them without rethinking larger aspects of your design.
-All of this makes it important to understand what memory
-costs and alternatives are, as early as possible.
-\end{comment}
-
-%\section{Facts and Fictions}
-% [NOTE(GSS): Myths and Quiz go here.
-% The underlying point (doesn't necessarily need to be stated) is why paying
-% attention to costs etc. matters, and that it's possible to make a big
-% difference.]
-
-% [NOTE(GSS): Quiz can be a callout or scattered callouts.
-% Doesn't have to be multiple choice. Maybe just a single answer, with an answer
-% key on the next page.]
-
-% Alternate Version 1:
-%In addition to the technical reasons why managing memory can be a challenge,
-% there are other reasons why memory footprint problems are so common. In particular,
-%the software culture and popular beliefs can lead you to ignore memory
-%costs. Some of these beliefs are really myths --- they might have once
-%been true, but no longer. Here are several.
-% Alternate Version 2:
-% Beyond the technical realities of using memory well in Java there are some
-% commonly held misconceptions that often make things worse. So before getting
-% into how to engineer memory in Java, it is worth dispelling some of these
-% myths, and getting a better understanding of why memory problems can be so
-% common in Java.
-
-A good example of this problem lies in the way Java represents the fundamental
-data types, such as numbers and strings. The Java primitives are implemented in
-Java. You may only have a thousand instances of your own data types, but your
-heap is likely to contain millions of each of these primitives.
-
-\callout{quiz1}{The Primitives that Aren't so Primitive}{
-\noindent The Java standard
-library ships with a suite of data types to handle the basic functionality of
-representing numbers and strings. You might think that, being so elemental and
-so widely used, that these would be highly optimized. Quite the opposite is
-true.
-\begin{itemize}
-\item An \class{Integer} object consumes \emph{four} times more memory than its
-non-object counterpart, the \class{int}, even if both represent the same piece
-of data: 16 bytes versus 4 bytes.
-\item A \class{String} object that represents 8 characters consumes \emph{four}
-times more memory than the characters themselves, and \emph{eight} times more memory
-than if these were represented as ASCII characters.
-\item A \class{Date} object consumes FIXME times more memory than the 4 bytes
-worth of information it represents.
-\end{itemize}
+\callout{myth1}{Memory Is Cheap.}{
+Since memory is so cheap, you
+do not have to think of memory as a finite resource.  In fact, to avoid code
+complexity, you should not even think about how much memory is being used.
 }
 
+There is a wide-spread belief that objects are free, at least temporaries are,
+and everything will be taken care of for you by the garbage collector.
+Given all of the research on garbage collection and runtime optimization, this
+is not a surprising perception. Therefore, much of software engineering focuses on
+design from a maintainability standpoint, and assumes the performance will
+magically be taken care of.
+
+In fact, all of the commercial JITs that
+we know of are doing absolutely nothing in terms of storage optimization, so
+that every single object, with all of its fields, ends up as an object in the
+heap, taking up space.  We'll look into the details of what that means.
+Yes, garbage collectors clean up temporary objects, but there are many
+objects that are not temporaries and therefore not garbage-collected. It is the
+long-lived objects that cause memory problems.
 
 
-%The overhead of these primitive data types is high. Doing better is possible,
-%but, within the constraints of the Java language, and following principled
-%object orientation, doing so takes some forethought.
+\callout{myth2}{Libraries and Frameworks are Optimized.}
+{Another common myth is that the libraries frameworks are already optimized,
+because these were written by experts.
+} 
 
-Another basic building block of Java programs is the collections. The use
-collections is unavoidable, but, with some planning, you can avoid wasting space
-on the overhead of the collection implementations.
+Standard libraries and frameworks are usually optimized for speed, not
+necessarily memory usage. Even when framework authors try to pay attention to
+memory, they often have a hard time predicting what the usage of their
+framework is going to be. Sometimes they guess wrong, sometimes they don't know
+where to start.  So it's very unlikely that a framework has been optimized for
+your particular use case.  And of course, the nesting of frameworks results in
+layers of unoptimized memory costs.
 
-\callout{quiz2}{Surprisingly Expensive Collections}{ The standard Java
-collections library offers implementations of sets, maps, and lists. These are
-all implemented in Java, and often come at a high expense.
-The expense comes in two forms: the overhead of for each entry, and the overhead
-for each collection.
-
-\begin{itemize}
-  \item Each \class{HashSet} costs 104 bytes, plus 24 bytes of overhead for
-  each entry. This is more expensive than the more functional \class{HashMap}.
-  %, which  costs 88 bytes per collection.
-  \item If you have a large number of small sets, the per-collection cost
-  dominates. By restructuring to have a small number of large sets, or
-  by choosing a more efficient representation of small sets, you can reduce
-  overhead by a factor of 5.
-  %\item If your heap contains 100 sets with an average of 10000 entries, you
-  % will waste 244 kilobytes on collection overhead.
-  %\item If your heap contains the same total number of entries, but with an
-  % average of only 10 entries per collection, you will waste 10 megabytes on
-  % overhead --- this is an order of magnitude worse.
-\end{itemize}
+\callout{myth3}{Nothing Can Be Done.}
+{Java is expensive, and there is nothing you can do about it.
+This is just the cost of object-oriented programming in Java.
 }
 
+The whole purpsoe of this book is to show that there are informed trade-offs and
+many techniques that a programmer can employ to improve memory usage. There is
+almost always something you can do!
 
+\callout{myth4}{Improving Memory Usage Hurts Performance.}
+{There will always be a performance/memory tradeoff. If you improve memory
+usage, then the application will run slower. 
+Similarly, if you improve performance, the memory usage will suffer.
+} 
 
-The overheads of primitives and collections each are bad on their own. The
-problem of overhead multiplies when you combine them. This is a frequent
-occurrence, given the way we all program these days. Applications are an
-assemblage of reuseable code. The standard \class{HashSet} is a subclass of
-\class{HashMap}, well, because, logically, that is an essential truth: a set is
-a map with a null value. We make these choices, in favor of reuse rather than
-specialization, at every juncture. As the process of assembling code proceeds,
-these choices being to pile up, usually at the expense of memory consumption.
+This is a false dichotomy in a lot of people's minds: if an application is
+using a lot of memory, then it must be buying you something in terms of performance. 
+But in reality, that is not always the case. In fact, sometimes bad memory usage will
+result in poor performance as well. For example, if 
+the heap is holding on to a lot of long-lived objects, then there is very little
+headroom for temporaries, and so the garbage collector has to run much more
+often.  Similarly, if there are too many long-lived objects, then your cache may
+be too small for optimal performance.
 
-\callout{quiz3}{The Big Pileup}{
-Primitive data types are expensive, as is storing data in the standard
-collections comes with a high overhead. The story gets worse as you combine them
-into larger data structures. With each added layer, expenses pile up. Let's say
-that you want to store one million pieces of information. 
-\begin{itemize}
-  \item In a language like \CC, short strings, say 8 ASCII characters a piece,
-  stored in a simple array will consume \textbf{11} megabytes. %((4 + 8)*1000000 + 12)/1024/1024
-  \item In Java, this example consumes \textbf{61} megabytes, % ((4 +
-  % 28+16+8*2)*1000000 + 12)/1024/1024
-  a factor of 5.5x more expensive.
-  \item These same strings stored in a \class{HashSet} consume \textbf{80}
-  megabytes, %((24 + 28+16+10*2)*1000000 + 104)/1024/1024
-  an extra factor of 31\%.
-  \item If the elements are instead a class wrapped around a single string, this 
-  consumes \textbf{95} megabytes. %((24 + 16 + 28+16+10*2*4)*1000000 +% 104)/1024/1024
-  You pay an extra 18\% for the luxury of that wrapper object. 
-  \item If the elements are each a set with on average a single string, this
-  consumes \textbf{202} megabytes. %((24 + 104 + 24 + 28+16+10*2*4)*1000000 + 104)/1024/1024
-\end{itemize}
+\callout{myth5}{There are No Memory Leaks in Java.}
+{Since Java has a garbage collector, it isn't possible
+to have a memory leak in Java.
 }
 
-\begin{wrapfigure}{r}{0.5\textwidth}
-	\vspace{-2.25em}
-	\centering
-	\subfigure[C++]{\includegraphics[width=0.2\textwidth]{Figures/c++_density}}
-	\qquad
-	\subfigure[Java]{\includegraphics[width=0.2\textwidth]{Figures/java_density}}
-	\caption{The density of actual data (shown in the darker shade) versus
-	the overhead of storing data when storing 8-character strings
-	in an array: C++ versus Java.
-	}
-	\label{fig:c++_versus_java_density}
-\end{wrapfigure}
+Java is often referred to as having a managed runtime. An important
+part of this is automatic garbage collection. The standard sales pitch
+here claims that manual reclamation of memory isn't required, and, for
+the most part, this is actually true. Memory leaks occur frequently in
+languages like C++, where the programmer can easily forget to free an
+object when the variable pointing to it goes away.  However, in Java, the
+garbage collector automatically finds free objects when pointer variables go
+away. So how can you get a memory leak? 
 
-Who would be so silly as to choose anything but the first way of storing these
-strings? Welcome to the wonderful world of Java! In various forms, we have seen
-all of these in real, deployed applications. However, you needn't resign
-yourself to high memory consumption, because, with a bit of design work, there
-is usually huge room for improvement. Keeping an eye on the \emph{density} of
-actual data, relative to the overheads of storing that data, is a key to healthy
-design. \autoref{fig:c++_versus_java_density} illustrates the first two of these
-examples, elided to show just the first five entries of the array. 
+Problems arise when long-lived data
+structures hold on to objects too long, and these structures continue to grow
+indefinitely. The garbage collector cannot collect objects that are still part
+of live structures. If structures continue to grow without bound, eventually you
+will run out of memory. This is, in fact, a memory leak, and can be a
+particularly hard problem to solve. Managing the lifetime of objects and data
+structures is part of any good memory model design. The second part of this book
+deals extensively with this topic.
 
-High memory consumption is problematic when it forces expenditures for extra RAM
-and machines, but grows even more troublesome when it leads to application
-failures due to heap exhaustion. Sometimes, this is due to a design that
-requires the entire data set to be in memory at one time, but a lack of
-available Java heap to contain it all. Other times, your application runs out of
-memory because of a memory leak.
-
-\callout{quiz4}{Memory Leaks in a Managed Runtime}{ Java is often referred to as
-having a \emph{managed runtime}. An important part of this is automatic garbage
-collection. The standard sales pitch here claims that manual reclamation of
-memory isn't required, and, for the most part, this is actually true.
-\begin{itemize}
-  \item With a publish/subscribe mechanism, you need to carefully
-  manage the subscription list. If subscribers forget to deregister, then you
-  will leak all objects that are transitively pointed to by the object that
-  represents that subscriber.
-  \item In caches with a sizing policy that is a function of the
-  number of entries, rather than the total memory consumed by the entries, there
-  is a good chance that the memory consumed by the cache will, at some point,
-  exceed available heap capacity.
-  \item Race conditions can also result in code that is no longer accessible by
-  the program, but is \emph{reachable}, i.e. considered alive by the garbage
-  collector. These orphaned objects will stay around for the duration of the
-  run, and possibly accumulate over time.
-%  If
-  %you implement a nested set of maps, such as to handle a multi-part key, and a
-  % race condition results in one thread overwriting the nested map for the
-  % primary key, then the secondary map will no longer be accessible,
-  %even though it is \emph{reachable}.
-\end{itemize}
-}
-
-% [NMM 20120627] i think it might be good to have this section title be the same
-% as the title of the book, or nearly so
+
 \section{\thetitle}
 
 %[NOTE(GSS): this is our approach, with a roadmap of the book.
