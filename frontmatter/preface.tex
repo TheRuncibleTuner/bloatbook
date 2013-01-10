@@ -15,33 +15,30 @@ is often critical. The application is either in the final stages of testing or
 about to be deployed. Fixing memory problems this late in the development cycle
 is often very costly, and may require major code refactoring. It is clearly much
 better to anticipate memory requirements in the design phase, but this is rarely
-done. This insight is the motivation for this book. While there has been much written on
-how to build systems that are bug-free, easy to maintain, and secure, there is
+done. This observation is the motivation for this book. While there has
+been much written on how to build systems that are bug-free, easy to maintain, and secure, there is
 little guidance available on how to use Java memory efficiently and correctly.
 
-This book presents a methodology and tools to make informed choices. It covers
-best practices and traps, and addresses three distinct aspects of using memory
+This book presents practical techniques and a comprehensive approach to making
+informed choices. It covers best practices and traps, and addresses three distinct aspects of using memory
 well:
 \begin{enumerate}
 	\item \textbf{Representing data efficiently}. The book illustrates
 	common modeling patterns, shows how to estimate their costs, and
 	discusses tradeoffs that can be made.
-	\item \textbf{Avoiding memory leaks by managing object lifetimes}, from very
-	short-lived temporaries to longer-lived structures such as caches.
+	\item \textbf{Managing object lifetimes}, from very
+	short-lived temporaries to longer-lived structures such as caches, and
+	especially, avoiding memory leaks.
 	\item \textbf{Estimating the scalability of designs}, by identifying the
 	extent to which memory overhead governs the amount of load that can be
 	supported.
 \end{enumerate}
 
-In addition to teaching a comprehensive and practical approach to improving
-memory usage, this book is a guide to using Java memory management 
-mechanisms effectively, paying special attention to some of the unique
-challenges faced by Java programmers.
-
-First, memory usage is hidden from developers, who are encouraged to treat the
-Java heap as a black box, and instead
-to let the runtime manage it. They code according to the constraints of
-budgets and best practices. When an
+Java developers face some
+unique challenges when it comes to memory.
+First, memory usage is hidden from developers, who are
+encouraged to treat the Java heap as a black box, and instead to let the runtime manage it. 
+When an
 application is run for the first time, the size of the heap is largely
 unpredictible, some unknowable function of the engineering and architectural choices the team has made.
 A Java developer, assembling a system out of reusable libraries and frameworks,
@@ -51,33 +48,35 @@ how easy it is for space costs to pile up across these layers.
 
 Secondly, Java heaps
 are not just big, but filled with bloat. The bytes in every application's heap can be divided into two
-parts. Some of the heap is ``real data'', the names of employees, their
-identification numbers and age. The rest is, in various forms, the overhead of
-storing this data. The ratio of these two numbers gives a good sense of the
+parts. Some of the heap is ``real data'', such as the names of employees, their
+identification numbers and their ages. The rest is, in various forms, the
+overhead of storing this data. The ratio of these two numbers gives a good sense of the
 memory efficiency of the implementation. A bloated heap has a high ratio of
 overhead to real data.
 
-In our experiences, we have seen ratios as high as 19:1, where as much as 95\%
-of memory devoted to overhead. It is typical to see over 50-60\% overhead: less
-than half the heap is storing real data! This level of overhead often impacts the scalability of 
-the application. We have
-seen an application where a simple transaction needs 500 kilobytes for the
-session state for one user. This figure is the slope of the curve that governs
-the number of simultaneous users the system can support.  
+In our experience, we have seen ratios as high as 19:1, where as much as 95\%
+of memory is devoted to overhead. In other words,
+way less than half the heap is storing real data! This level of overhead often
+impacts the scalability of the application. And this doesn't include duplicate
+data and data that is not really needed. For example, in one application, a
+simple transaction needed 500 kilobytes for the session state for one user. This
+figure is the slope of the curve that governs the number of simultaneous users the system can support.  
 
 The design of the Java language and standard libraries contribute to high
 overhead ratios. Java's data modeling features and managed runtime give
-developers fewer options than languages like C++, that allows more direct control over
+developers fewer options than languages like C++, that allow more direct control over
 storage. Taking these features out of the hands of developers has been a huge
 plus for ease of learning and for safety of the language. However, it leaves the
 developer who wants to engineer frugally with fewer options. 
 
 The good news is that it is possible to make intelligent choices that save
-memory with existing Java building blocks --- there is no need to avoid best
-coding practices, rewrite libraries, nor spend a huge amount of time counting
-bytes. Through the extensive use of examples, this book guides you step-by-step 
- through how to make the best and well-informed use of standard collections,
- Strings, and other available libraries.
+memory with existing Java building blocks --- there is no need to avoid good
+coding practices nor rewrite libraries. However, you do need to understand how
+to estimate the cost of various options and more consciously engineer the
+lifetime of objects. Through the extensive use of examples, this book guides you
+through common memory usage patterns. For each pattern, we help you understand
+what it costs, and how to choose among alternative solutions. We also help you
+focus your efforts where it matters the most.
 
 The examples are chosen to illustrate common idioms, with the expectation that
 the reader will be able to carry the ideas presented into other situations
@@ -89,8 +88,7 @@ fiction.
 The content is appropriate for a wide range of Java practitioners, and only
 basic knowledge of Java is assumed.
 Practitioners involved with either framework or application development can
-take this knowledge to produce more efficient applications that are less prone to
-memory leaks.
+take this knowledge to produce more efficient applications and ones that are less prone to memory leaks.
 Technical managers and testers can benefit from the knowledge of how memory
 consumption scales up, as they help the team sanity check its designs in larger
 scale environments.
