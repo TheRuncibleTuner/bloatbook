@@ -11,15 +11,16 @@ for you.
 
 The reality, unfortunately, is very different.  If you just assemble the parts,
 take the defaults, and follow all the good advice to make your program flexible
-and maintainable, you will likely find that precious memory resources are wasted
+and maintainable, you will likely find that your memory needs are much higher
+than imagined. You may also find that precious memory resources are wasted
 holding on to data that is no longer needed, or even worse, that your system
 suffers from memory leaks. All too often, these problems won't show up until
-late in the cycle, when the whole system comes together. You may discover, for
-example, when your product is about to ship, that your design is far from
-fitting into memory, or that it does not support nearly the number of users it
+late in the cycle, when the whole system comes together. You may discover, 
+for example, when your product is about to ship, that your design is far from fitting into memory, 
+or that it does not support nearly the number of users it
 needs to support.  Fixing these problems can take a major effort, requiring
-extensive refactoring or rethinking architecural decisions, such as the choice
-of frameworks you use.  
+extensive refactoring or rethinking of architectural decisions, such as the
+choice of frameworks you use.  
 
 Alternatively, a methodology based on sound design can
 prevent this type of scenario from happening. Memory usage, like any other
@@ -36,10 +37,10 @@ consumption, here is a quiz to test how good you are at estimating sizes of Java
 objects used in the quiz --- boxed scalars, strings, and collections.
 \begin{verbatim}
 
-   What is the size ratio in bytes Integer to int?
+   What is the size ratio in bytes of Integer to int?
    
       a. 1:1
-      b. 1.33:1
+      b. 1.5:1
       c. 2:1
       d. 4:1
       e. 8:1
@@ -53,7 +54,7 @@ shown by the 4:1 size ratio of \class{Integer} to \class{int}, objects are not
 cheap.
 \begin{verbatim}
    
-   How many bytes in an 8-character string?
+   How many bytes in an 8-character String?
 
       a. 8 bytes
       b. 16 bytes
@@ -65,10 +66,11 @@ cheap.
 Correct answer: e.
 
 Strings often consume half of the heap and are
-surprisingly costly. If you are a C programmer, you might think that an 8-character string should consume 9 bytes
+surprisingly costly. If you are a C programmer, you might think that an 8-character string should 
+consume 9 bytes
 of memory, 8 bytes for characters and 1 byte to indicate the end of the string.
 What could possibly be taking up 56 bytes? Part of the cost is because Java uses
-th 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
+the 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
 The rest is various kinds of overhead.
 \begin{verbatim}             
    Arrange the following 2-element collections in size order:
@@ -79,9 +81,9 @@ The rest is various kinds of overhead.
 Correct answer: ArrayList, LinkedList, HashMap, HashSet.
   
 After strings,
-collections are the most common types of objects in the heap. Surprisingly, a
-\class{HashSet} is bigger than a \class{HashMap} --- an interesting fact that
-will be explained later.
+collections are the largest consumers of memory. Surprisingly, a
+\class{HashSet} is bigger than a \class{HashMap}, even though it does less.
+This is an interesting fact that will be explained later.
 \begin{verbatim}      
    How many collections are there in a typical heap?
    
@@ -89,16 +91,16 @@ will be explained later.
       b. tens
       c. hundreds
       d. thousands
-      e. one or more orders of magnitude bigger than above
+      e. two or more orders of magnitude bigger than above
       
 \end{verbatim}
 Correct answer: e.
  
-In typical real programs, having 100's of thousands and
-even millions of collection instances in a heap is not at all unusual. If there are a million collections in
-the heap, then the collection choice matters. One collection type might use 20
+In typical real programs, having hundreds of thousands or millions of collection
+instances in a heap is not at all unusual. If there are a million collections in
+the heap, then the collection choice matters. One collection type might use 80
 bytes more than another, which may seem insignificant, but in a production
-execution, the wrong choice can add close to 20 megabytes.
+execution, a few wrong choices can add hundreds of megabytes.
 \begin{verbatim}
    What is the size of an empty ConcurrentHashMap?
    
@@ -113,14 +115,14 @@ Correct answer: c.
  
 \class{ConcurrentHashMap}, compared to the more common
 collections in the standard library, is surprisingly expensive. If you are used to creating
-hundreds of \class{HashMaps}, then you might think that it is not a problem to
-create hundreds of \class{ConcurrentHashMaps}. There is certainly nothing in
+thousands of \class{HashMaps}, then you might think that it is not a problem to
+create thousands of \class{ConcurrentHashMaps}. There is certainly nothing in
 the API to warn you that \class{HashMaps} and \class{ConcurrentHashMaps} are
 completely different when it comes to memory usage. This example shows why
 understanding memory costs are important.
 
 The quiz gives some sense of how surprising the sizes are for the Java basic
-objects, like \class{Integers}, strings, and collections. When code is layered
+objects, like boxed scalars, strings, and collections. When code is layered
 with multiple abstractions, memory costs become more and more difficult to
 predict.
 
@@ -129,14 +131,19 @@ predict.
 In addition to the technical and engineering challenges that managing memory
 pose, there are other reasons why memory problems are so common. In particular,
 the software culture and popular beliefs can lead you to ignore memory costs. 
-Some of these beliefs are really myths --- they might have once been true, but
-no longer.  Here are several.
+Some of these beliefs are actually myths.  Here are several.
 
-\callout{myth1}{Memory Is Cheap.}{
-Since memory is so cheap, you
-do not have to think of memory as a finite resource.  In fact, to avoid code
-complexity, you should not even think about how much memory is being used.
-}
+\callout{myth0}{Memory is Cheap.}{
+Since memory is so cheap, you do not have to think of memory as a finite
+resource.} {
+Buying more memory at the last minute to fix a severe scalability problem or
+memory leak is rarely an option.  Magnitude!!!!
+}  
+
+\callout{myth1}{You Can Ignore Memory In Java.}{
+Java's garbage collector and JIT will optimize your memory usage.
+To avoid code complexity, you should not even think about how much memory is
+being used. }
 
 There is a wide-spread belief that objects are free, at least temporaries are,
 and everything will be taken care of for you by the garbage collector.
@@ -148,9 +155,10 @@ magically be taken care of.
 In fact, all of the commercial JITs that
 we know of are doing absolutely nothing in terms of storage optimization, so
 that every single object, with all of its fields, ends up as an object in the
-heap, taking up space.  We'll look into the details of what that means.
-Yes, garbage collectors clean up temporary objects, but there are many
-objects that are not temporaries and therefore not garbage-collected. It is the
+heap, taking up space.\footnote{Some \JITs optimize space by allocating a
+small percentage of temporaries on the stack.} We'll look into the details of what that means. Yes,
+garbage collectors clean up temporary objects, but there are many objects that are not 
+temporaries and therefore not garbage-collected. It is the
 long-lived objects that cause memory problems.
 
 
@@ -162,8 +170,8 @@ because these were written by experts.
 Standard libraries and frameworks are usually optimized for speed, not
 necessarily memory usage. Even when framework authors try to pay attention to
 memory, they often have a hard time predicting what the usage of their
-framework is going to be. Sometimes they guess wrong, sometimes they don't know
-where to start.  So it's very unlikely that a framework has been optimized for
+framework is going to be. Sometimes they guess wrong and sometimes they don't
+know where to start.  So it's very unlikely that a framework has been optimized for
 your particular use case.  And of course, the nesting of frameworks results in
 layers of unoptimized memory costs.
 
@@ -172,9 +180,10 @@ layers of unoptimized memory costs.
 This is just the cost of object-oriented programming in Java.
 }
 
-The whole purpsoe of this book is to show that there are informed trade-offs and
-many techniques that a programmer can employ to improve memory usage. There is
-almost always something you can do!
+The purpose of this book is to show that there are
+many techniques that you can employ to improve memory usage, armed with some
+knowledge of what things cost. There is almost always something you can do that
+can make a difference!
 
 \callout{myth4}{Improving Memory Usage Hurts Performance.}
 {There will always be a performance/memory tradeoff. If you improve memory
@@ -193,29 +202,56 @@ be too small for optimal performance.
 
 \callout{myth5}{There are No Memory Leaks in Java.}
 {Since Java has a garbage collector, it isn't possible
-to have a memory leak in Java.
+to have a memory leak.
 }
 
-Java is often referred to as having a managed runtime. An important
+Java has a managed runtime. An important
 part of this is automatic garbage collection. The standard sales pitch
-here claims that manual reclamation of memory isn't required, and, for
+claims that manual reclamation of memory isn't required, and, for
 the most part, this is actually true. Memory leaks occur frequently in
 languages like C++, where the programmer can easily forget to free an
 object when the variable pointing to it goes away.  However, in Java, the
-garbage collector automatically finds free objects when pointer variables go
-away. So how can you get a memory leak? 
+garbage collector automatically finds free objects. So how can you get a
+memory leak?
 
 Problems arise when long-lived data
-structures hold on to objects too long, and these structures continue to grow
-indefinitely. The garbage collector cannot collect objects that are still part
-of live structures. If structures continue to grow without bound, eventually you
-will run out of memory. This is, in fact, a memory leak, and can be a
-particularly hard problem to solve. Managing the lifetime of objects and data
-structures is part of any good memory model design. The second part of this book
-deals extensively with this topic.
+structures hold on to objects longer than they are needed, and these structures
+continue to grow indefinitely. The garbage collector cannot collect objects
+when it thinks they are still needed. If structures continue to grow without
+bound, eventually you will run out of memory. This is, in fact, a memory leak, 
+and can be a particularly hard problem to solve. Deciding how long each object
+should stay in memory is a necessary part of the developer's job, even with a
+managed runtime. The second part of this book deals extensively with
+this topic.
 
 \section{\thetitle}
 
+The majority of the book is organized according to common patterns you are
+likely to make use of in your designs. For each pattern, we show how to estimate
+costs and show some common traps and solutions.
+
+Interspersed throughout the book are a look at some lower level Java mechanisms
+you rely on. We look inside a sampling of building blocks, such as collections
+to give you insight on how these and similar classes are constructed.  We also
+look at life-time management mechanisms, such as weak and soft references, and
+guide you to make the best use of them.
+
+It is important to focus your optimization efforts where they matter.  Because
+your options are limited in Java, it is even more important to make sure your
+``optimization'' is appropriate to your data's usage profile. It is easy to make
+things worse if you are not careful. At key points in the book we give you
+techniques for analyzing whether an optimization is worthwhile.
+
+In practice, many problems stem not from implementation errors, but from having
+a fuzzy understanding of requirements. Understanding how your data is used will help you choose more
+efficient implementations which are specialized to your use case. Similarly, 
+understanding the reasons to keep your data in memory for a
+specific length of time will avoid problems with life-time management. 
+Throughout the book, we give you questions to ask about your data. For example:
+  Do you need random access into this data? Will entries ever be
+deleted from collections? Does this entry need to remain alive for the duration
+of the program? Which collections will grow larger as various aspects of load
+increase?
 %[NOTE(GSS): this is our approach, with a roadmap of the book.
 %Needs to be rewritten/restructured to reflect our current breakdown: space,
 %lifetime, scalability.]
@@ -226,10 +262,7 @@ deals extensively with this topic.
 
 Central to good design is a keen focus on understanding your requirements.
 In the context of memory consumption, there are important aspects of your needs
-to keep in mind. Do you need random access into this data? Will entries ever be
-deleted from collections? Does this entry need to remain alive for the duration
-of the program? Which collections will grow larger as various aspects of load
-increase? The book will guide you through these design requirement questions,
+to keep in mind.   The book will guide you through these design requirement questions,
 with a constant focus on common patterns that come up in practice. It shows you
 how to recognize these patterns in your designs, and give you relevant
 information about costs and other pitfalls.
