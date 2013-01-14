@@ -37,7 +37,7 @@ consumption, here is a quiz to test how good you are at estimating sizes of Java
 objects used in the quiz --- boxed scalars, strings, and collections.
 \begin{verbatim}
 
-   What is the size ratio in bytes of Integer to int?
+Question 1.  What is the size ratio in bytes of Integer to int?
    
       a. 1:1
       b. 1.5:1
@@ -46,15 +46,10 @@ objects used in the quiz --- boxed scalars, strings, and collections.
       e. 8:1
       
 \end{verbatim}
-Correct answer: d. 
 
- Every time
-a program instantiates a class, there is an object created in the heap, and as
-shown by the 4:1 size ratio of \class{Integer} to \class{int}, objects are not
-cheap.
 \begin{verbatim}
    
-   How many bytes in an 8-character String?
+Question 2.  How many bytes in an 8-character String?
 
       a. 8 bytes
       b. 16 bytes
@@ -63,46 +58,27 @@ cheap.
       e. 56 bytes
 
 \end{verbatim}
-Correct answer: e.
 
-Strings often consume half of the heap and are
-surprisingly costly. If you are a C programmer, you might think that an 8-character string should 
-consume 9 bytes
-of memory, 8 bytes for characters and 1 byte to indicate the end of the string.
-What could possibly be taking up 56 bytes? Part of the cost is because Java uses
-the 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
-The rest is various kinds of overhead.
 \begin{verbatim}             
-   Arrange the following 2-element collections in size order:
+Question 3.  Arrange the following 2-element collections in size order:
     
       ArrayList, HashSet, LinkedList, HashMap
       
 \end{verbatim}
-Correct answer: ArrayList, LinkedList, HashMap, HashSet.
-  
-After strings,
-collections are the largest consumers of memory. Surprisingly, a
-\class{HashSet} is bigger than a \class{HashMap}, even though it does less.
-This is an interesting fact that will be explained later.
+
 \begin{verbatim}      
-   How many collections are there in a typical heap?
+Question 4.  How many collections are there in a typical heap?
    
       a. between five and ten
       b. tens
       c. hundreds
       d. thousands
-      e. two or more orders of magnitude bigger than above
+      e. two or more orders of magnitude bigger than the above
       
 \end{verbatim}
-Correct answer: e.
- 
-In typical real programs, having hundreds of thousands or millions of collection
-instances in a heap is not at all unusual. If there are a million collections in
-the heap, then the collection choice matters. One collection type might use 80
-bytes more than another, which may seem insignificant, but in a production
-execution, a few wrong choices can add hundreds of megabytes.
+
 \begin{verbatim}
-   What is the size of an empty ConcurrentHashMap?
+Question 5.  What is the size of an empty ConcurrentHashMap?
    
       a. 17 bytes
       b. 170 bytes
@@ -111,15 +87,59 @@ execution, a few wrong choices can add hundreds of megabytes.
       e. 500 bytes
                  
 \end{verbatim}
-Correct answer: c.
- 
+
+\newpage
+
+Question 1.  Correct answer: d.
+
+\begin{quote}
+Every time
+a program instantiates a class, there is an object created in the heap, and as
+shown by the 4:1 size ratio of \class{Integer} to \class{int}, objects are not
+cheap.
+\end{quote}
+
+Question 2.  Correct answer: e.
+
+\begin{quote}
+Strings often consume 40-50\% of the heap and are
+surprisingly costly. If you are a C programmer, you might think that an 8-character string should 
+consume 9 bytes
+of memory, 8 bytes for characters and 1 byte to indicate the end of the string.
+What could possibly be taking up 56 bytes? Part of the cost is because Java uses
+the 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
+The rest is various kinds of overhead.
+\end{quote}
+
+Questions 3.  Correct answer: ArrayList, LinkedList, HashMap, HashSet.
+
+\begin{quote}
+After strings,
+collections are the largest consumers of memory in most applications. Surprisingly, a
+\class{HashSet} is bigger than a \class{HashMap}, even though it does less.
+This is an interesting fact that will be explained later.
+\end{quote}
+
+Question 4.  Correct answer: e.
+
+\begin{quote}
+In typical real programs, having hundreds of thousands, or even millions of collection
+instances in a heap is not at all unusual. If there are a million collections in
+the heap, then the collection choice matters. One collection type might use 80
+bytes more than another, which may seem insignificant, but in a production
+execution, a few wrong choices can add hundreds of megabytes.
+\end{quote}
+
+Question 5.  Correct answer: c.
+\begin{quote}
 \class{ConcurrentHashMap}, compared to the more common
 collections in the standard library, is surprisingly expensive. If you are used to creating
 thousands of \class{HashMaps}, then you might think that it is not a problem to
 create thousands of \class{ConcurrentHashMaps}. There is certainly nothing in
 the API to warn you that \class{HashMaps} and \class{ConcurrentHashMaps} are
 completely different when it comes to memory usage. This example shows why
-understanding memory costs are important.
+understanding memory costs is important.
+\end{quote}
 
 The quiz gives some sense of how surprising the sizes are for the Java basic
 objects, like boxed scalars, strings, and collections. When code is layered
@@ -135,35 +155,38 @@ Some of these beliefs are actually myths.  Here are several.
 
 \callout{myth0}{Memory is Cheap.}{
 Since memory is so cheap, you do not have to think of memory as a finite
-resource.} {
-Buying more memory at the last minute to fix a severe scalability problem or
-memory leak is rarely an option.  Magnitude!!!!
-}  
+resource.}
+Buying more memory at the last minute to fix a severe scalability problem is rarely an option, especially
+if the off by an order of magnitude from what was planned.  And no
+amount of additional memory will fix a memory leak over time. Adding a large amount of memory can also have
+a negative impact on performance, such as on the operation of the garbage collector, and could hit up against physical
+contraints in the system architecture.
 
 \callout{myth1}{You Can Ignore Memory In Java.}{
 Java's garbage collector and JIT will optimize your memory usage.
 To avoid code complexity, you should not even think about how much memory is
 being used. }
 
-There is a wide-spread belief that objects are free, at least temporaries are,
-and everything will be taken care of for you by the garbage collector.
+There is a widespread belief that objects are free, at least temporaries are, 
+and everything will be taken care of for you by the garbage collector and the JIT compiler.
 Given all of the research on garbage collection and runtime optimization, this
 is not a surprising perception. Therefore, much of software engineering focuses on
 design from a maintainability standpoint, and assumes the performance will
 magically be taken care of.
 
-In fact, all of the commercial JITs that
-we know of are doing absolutely nothing in terms of storage optimization, so
+In fact, all of the commercial JITs
+we know of do absolutely nothing in terms of storage optimization, so
 that every single object, with all of its fields, ends up as an object in the
-heap, taking up space.\footnote{Some \JITs optimize space by allocating a
-small percentage of temporaries on the stack.} We'll look into the details of what that means. Yes,
-garbage collectors clean up temporary objects, but there are many objects that are not 
-temporaries and therefore not garbage-collected. It is the
-long-lived objects that cause memory problems.
+heap, taking up space.\footnote{Some JITs do optimize a
+small percentage of temporaries by allocating them on the stack.} 
+%In a later chapter we'll look into the details of what that means.
+Yes, garbage collectors do a good job of cleaning up temporary objects, though having a large number of
+temporaries will still require extra space and time. And many objects are not
+temporaries. It is these longer-lived objects that cause memory problems. 
 
 
 \callout{myth2}{Libraries and Frameworks are Optimized.}
-{Another common myth is that the libraries frameworks are already optimized,
+{Another common myth is that the libraries and frameworks are already optimized,
 because these were written by experts.
 } 
 
@@ -183,7 +206,7 @@ This is just the cost of object-oriented programming in Java.
 The purpose of this book is to show that there are
 many techniques that you can employ to improve memory usage, armed with some
 knowledge of what things cost. There is almost always something you can do that
-can make a difference!
+will make a difference!
 
 \callout{myth4}{Improving Memory Usage Hurts Performance.}
 {There will always be a performance/memory tradeoff. If you improve memory
