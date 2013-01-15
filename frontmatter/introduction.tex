@@ -259,22 +259,20 @@ to give you insight on how these and similar classes are constructed.  We also
 look at life-time management mechanisms, such as weak and soft references, and
 guide you to make the best use of them.
 
-It is important to focus your optimization efforts where they matter.  Because
-your options are limited in Java, it is even more important to make sure your
-``optimization'' is appropriate to your data's usage profile. It is easy to make
-things worse if you are not careful. At key points in the book we give you
-techniques for analyzing whether an optimization is worthwhile.
+It is important to focus your optimization efforts where they matter most. It's also 
+easy to make things worse, if you're not careful.
+At key points in the book we give you formulas so you can determine whether an optimization is worthwhile,
+given your assumptions about the properties of your data.
 
-In practice, many problems stem not from implementation errors, but from having
-a fuzzy understanding of requirements. Understanding how your data is used will help you choose more
-efficient implementations which are specialized to your use case. Similarly, 
-understanding the reasons to keep your data in memory for a
-specific length of time will avoid problems with life-time management. 
-Throughout the book, we give you questions to ask about your data. For example:
-  Do you need random access into this data? Will entries ever be
-deleted from collections? Does this entry need to remain alive for the duration
-of the program? Which collections will grow larger as various aspects of load
-increase?
+In practice, many problems look like implementation errors, but are actually caused by a
+fuzzy understanding of requirements. Throughout the book we give you questions to
+ask about your data. For example: Do you need random access into this data? Will entries ever be
+deleted from these collections? Is the lifetime of this object tied to another object or event? Which
+collections will grow larger as various aspects of load increase?  These questions can help you
+choose more efficient representations, specialized for your your case.  They can also help you predict
+scalability, and avoid some lifetime management bugs like memory leaks.
+
+
 %[NOTE(GSS): this is our approach, with a roadmap of the book.
 %Needs to be rewritten/restructured to reflect our current breakdown: space,
 %lifetime, scalability.]
@@ -282,24 +280,6 @@ increase?
 %[NOTE(GSS): Somewhere in here will be a description of bloat factor and of E-C
 %diagrams.  Just a high-level description of each in the Intro, detailed
 %descriptions and examples are in Chapter 2.]
-
-Central to good design is a keen focus on understanding your requirements.
-In the context of memory consumption, there are important aspects of your needs
-to keep in mind.   The book will guide you through these design requirement questions,
-with a constant focus on common patterns that come up in practice. It shows you
-how to recognize these patterns in your designs, and give you relevant
-information about costs and other pitfalls.
-
-Throughout the course of this book, you will learn three skills, to aid you in
-designing more efficient data models:
-\begin{enumerate}
-  \item Estimating memory efficiency with simple back-of-the-envelope
-  calculations.
-  \item Recognizing common patterns of memory usage.
-  \item Using the mechanisms that Java provides in order to properly manage the
-  lifetime of your objects, thus avoiding memory leaks, and manage data models
-  that do not fit into the Java heap.
-\end{enumerate} 
 
 % probably overkill:
 %\dividingline
