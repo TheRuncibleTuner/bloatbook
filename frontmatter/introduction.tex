@@ -248,29 +248,36 @@ managed runtime. The second part of this book deals extensively with
 this topic.
 
 \section{\thetitle}
+The approach taken in this book is first and foremost a practical one. The book
+is organized into common design problems and patterns that have an impact on memory usage. Each section
+helps you estimate memory costs of your own classes and off-the-shelf libraries, in the context of typical
+usage. For each pattern we point out the most common traps and solutions, and help you estimate
+costs when making tradeoffs.
+While the book, as a whole, is a comprehensive approach to memory, it's designed
+so that you can pick and choose what you need when you need it. That way, you can focus your efforts where
+you'll get the most benefit right away, no matter what part of the development cycle you're in for a particular part of your
+system. This approach fits nicely with different styles of development, including agile. 
 
-The majority of the book is organized according to common patterns you are
-likely to make use of in your designs. For each pattern, we show how to estimate
-costs and show some common traps and solutions.
+With its emphasis on estimating costs, the book can help you focus your optimization
+efforts where they matter most. It covers both parts of the estimation problem: what does a
+data structure cost at a particular size, and how will it scale up. It's also easy to make things worse when
+optimizing, if you're not careful, since there are so many hidden memory costs in Java. At key points in the
+book we'll give you formulas so you can determine whether an optimization is worthwhile, 
+given the characteristics of your data.
 
-Interspersed throughout the book are a look at some lower level Java mechanisms
-you rely on. We look inside a sampling of building blocks, such as collections
-to give you insight on how these and similar classes are constructed.  We also
-look at life-time management mechanisms, such as weak and soft references, and
-guide you to make the best use of them.
+Interspersed throughout the book we'll look at some of the lower-level aspects of Java
+that have an impact on memory usage. We'll look inside some building blocks, such as
+strings and collections, to give you insight into how these and similar classes make use of memory. 
+We'll also look at lifetime management mechanisms, such as weak and soft references and thread-local storage,
+and show how best to use them.
 
-It is important to focus your optimization efforts where they matter most. It's also 
-easy to make things worse, if you're not careful.
-At key points in the book we give you formulas so you can determine whether an optimization is worthwhile,
-given your assumptions about the properties of your data.
-
-In practice, many problems look like implementation errors, but are actually caused by a
+In practice, many problems that look like implementation errors are actually caused by a
 fuzzy understanding of requirements. Throughout the book we give you questions to
 ask about your data. For example: Do you need random access into this data? Will entries ever be
 deleted from these collections? Is the lifetime of this object tied to another object or event? Which
 collections will grow larger as various aspects of load increase?  These questions can help you
-choose more efficient representations, specialized for your your case.  They can also help you predict
-scalability, and avoid some lifetime management bugs like memory leaks.
+choose efficient representations that are specialized for your application's use cases.  They can also help
+you predict scalability, and avoid lifetime management bugs like memory leaks.
 
 
 %[NOTE(GSS): this is our approach, with a roadmap of the book.
