@@ -108,8 +108,8 @@ byte with bit flags that you manage yourself, EnumSet.
 \section{Dates}
 
 While \textit{time} and \textit{date} are not primitive data types in most
-programming languages, they are common and surprisingly complex enough to call
-out. In Java, there are different ways of representing times and dates, and as
+programming languages, they are common and surprisingly complex. 
+In Java, there are different ways of representing times and dates, and as
 usual, the more functionality you want, the more memory the representation takes
 up. We describe here three common representations.
 
@@ -119,10 +119,10 @@ The simplest and most compact way is to represent a time and date as a
     long timeNow = System.currentTimeMillis();
 \end{shortlisting}
 The method call \code{System.currentTimeMillis()} returns the current 
-date and time in milliseconds since January 1st 1970.  This representation is
+date and time in milliseconds since January 1, 1970.  This representation is
 perfect for timestamping, performance timings, and relative time
 comparisons, however, it is clearly limited. For example, sometimes you want the
-representation to be an object for type safety, the ability to initializate it
+representation to be an object for type safety, the ability to initialize it
 to \code{null}, or the ability to store it in a a structure like a
 \code{HashTable}, for example.
 
