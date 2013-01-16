@@ -248,18 +248,19 @@ managed runtime. The second part of this book deals extensively with
 this topic.
 
 \section{\thetitle}
-The approach taken in this book is first and foremost a practical one. The book
-is organized into common design problems and patterns that have an impact on memory usage. Each section
-helps you estimate memory costs of your own classes and off-the-shelf libraries, in the context of typical
+This book presents a practical approach to making effective use of memory.
+It's organized according to the most common design problems and patterns that
+have an impact on memory usage. Each section helps you estimate memory costs of your own classes and off-the-shelf libraries,
+in the context of typical
 usage. For each pattern we point out the most common traps and solutions, and help you estimate
 costs when making tradeoffs.
-While the book, as a whole, is a comprehensive approach to memory, it's designed
-so that you can pick and choose what you need when you need it. That way, you can focus your efforts where
+While the book, as a whole, gives you a comprehensive approach to memory usage,
+it's designed so that you can pick and choose what you need when you need it. That way, you can focus your efforts where
 you'll get the most benefit right away, no matter what part of the development cycle you're in for a particular part of your
 system. This approach fits nicely with different styles of development, including agile. 
 
-With its emphasis on estimating costs, the book can help you focus your optimization
-efforts where they matter most. It covers both parts of the estimation problem: what does a
+With its emphasis on estimating costs, the book can help you focus your
+optimization efforts where they matter most. It covers both parts of the estimation problem: what does a
 data structure cost at a particular size, and how will it scale up. It's also easy to make things worse when
 optimizing, if you're not careful, since there are so many hidden memory costs in Java. At key points in the
 book we'll give you formulas so you can determine whether an optimization is worthwhile, 
@@ -275,18 +276,11 @@ In practice, many problems that look like implementation errors are actually cau
 fuzzy understanding of requirements. Throughout the book we give you questions to
 ask about your data. For example: Do you need random access into this data? Will entries ever be
 deleted from these collections? Is the lifetime of this object tied to another object or event? Which
-collections will grow larger as various aspects of load increase?  These questions can help you
-choose efficient representations that are specialized for your application's use cases.  They can also help
-you predict scalability, and avoid lifetime management bugs like memory leaks.
+collections will grow larger as various aspects of load increase?  Asking these
+questions can help you choose efficient representations that are specialized for your application's use cases.
+They can also help you predict scalability, and avoid lifetime management bugs
+like memory leaks.
 
-
-%[NOTE(GSS): this is our approach, with a roadmap of the book.
-%Needs to be rewritten/restructured to reflect our current breakdown: space,
-%lifetime, scalability.]
-
-%[NOTE(GSS): Somewhere in here will be a description of bloat factor and of E-C
-%diagrams.  Just a high-level description of each in the Intro, detailed
-%descriptions and examples are in Chapter 2.]
 
 % probably overkill:
 %\dividingline
@@ -297,17 +291,19 @@ you predict scalability, and avoid lifetime management bugs like memory leaks.
 %discuss health very briefly
 %discuss entities and collections
 
-\autoref{part:1} presents the issues of estimating memory efficiency.
-\autoref{chapter:memory-health} shows you how to compute an accounting metric,
-the \textbf{Bloat Factor}, which measures the density of actual data in your
+\autoref{part:1} covers the design and implementation of an application's data.
+\autoref{chapter:memory-health} lays the foundation by introducing two concepts
+that are used throughout the book. If you read only one chapter of this book before the others,
+\autoref{chapter:memory-health} is the one to focus on.
+It shows you how to compute an accounting metric,
+the \emph{Bloat Factor}, which measures the density of actual data in your
 data models. Memory spent on pointers, and on headers that the Java runtime
 tacks on to every object, are not absolutely necessary parts of a design. Poor
 designs will waste more space on these overheads, and thus have a high bloat
-factor. If you read only one chapter of this book,
-\autoref{chapter:memory-health} is the one to focus on.
+factor. 
 
 \autoref{chapter:memory-health} also introduces a diagramming technique, the
-\textbf{Entity-Collection Diagram}, that aids in determining these costs, and in
+\emph{Entity-Collection Diagram}, that aids in determining these costs, and in
 comparing the amount of bloat in design alternatives.
 An E-C Diagram makes explicit the two key aspects of the health of a design:
 % highlights the major elements of the data model implementation, so that the
@@ -319,19 +315,30 @@ business objects, and way you have chosen to associate them using collections.
 % The kinds of choices you make to improve the storage of your entities are
 % often different from those Collections are also depicted as nodes, using an
 % octagonal shape.
-This is different from UML class diagrams, where associations are shown as
-edges.
-\autoref{chapter:delegation} through
+%This is different from UML class diagrams, where associations are shown as
+%edges.
+Chapters~\ref{chapter:delegation} through
 % \autoref{chapter:field-patterns},\autoref{chapter:representing-values},
-\autoref{chapter:sharing-immutable-data} cover issues related to the design of
-entities.
-\autoref{chapter:brief-introduction-collections} through
+\ref{chapter:representing-values} cover issues related to the design of
+entities. \autoref{chapter:delegation} is on basic estimation techniques and
+the cost of objects, \autoref{chapter:field-patterns} covers efficient patterns
+for designing classes from fields, and \autoref{chapter:representing-values}
+covers the costs of some common field
+datatypes. Next, \autoref{chapter:sharing-immutable-data} provides techniques
+for reducing the amount of duplicate data.
+Chapters \ref{chapter:brief-introduction-collections} through
 % \autoref{chapter:representing-relationships},
 % \autoref{chapter:tables-indexes},
-\autoref{chapter:dynamic-records} help with planning out to use off-the-shelf
-collections, and also with the design of new collections libraries.
-
-% discuss looking at each data structures separately [NMM ??]
+\ref{chapter:dynamic-records} go through the use of
+off-the-shelf collections. \autoref{chapter:brief-introduction-collections} is
+an overview of collection costs and standard and open source
+collection resources.
+The rest of the collections chapters are organized according to the use of
+collections:
+as one-to-many relationships (\autoref{chapter:representing-relationships}),
+as large access structures such as indexes
+(\autoref{chapter:tables-indexes}), and as dynamic records and attribute maps
+(\autoref{chapter:dynamic-records}).
 
 \begin{comment}
 [NMM 20120628 too much E-C diagram detail for intro?]
