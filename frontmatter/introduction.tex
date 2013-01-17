@@ -291,52 +291,48 @@ like memory leaks.
 %discuss health very briefly
 %discuss entities and collections
 
-\autoref{part:1} covers the design and implementation of an application's data.
-\autoref{chapter:memory-health} lays the foundation by introducing two concepts
-that are used throughout the book. If you read only one chapter of this book before the others,
-\autoref{chapter:memory-health} is the one to focus on.
+\autoref{part:1} is about designing and implementing memory-efficient data models.
+\autoref{chapter:memory-health}, \nameref{chapter:memory-health}, lays the foundation with two
+concepts that are used throughout the book. If you read one chapter first,
+this is the one to focus on.
 It shows you how to compute an accounting metric,
 the \emph{Bloat Factor}, which measures the density of actual data in your
-data models. Memory spent on pointers, and on headers that the Java runtime
-tacks on to every object, are not absolutely necessary parts of a design. Poor
-designs will waste more space on these overheads, and thus have a high bloat
-factor. 
-
-\autoref{chapter:memory-health} also introduces a diagramming technique, the
-\emph{Entity-Collection Diagram}, that aids in determining these costs, and in
-comparing the amount of bloat in design alternatives.
-An E-C Diagram makes explicit the two key aspects of the health of a design:
+data models. Memory spent on everything else, such as
+internal object headers, is the overhead of the representation of the data. Poor designs waste
+more space on these overheads, and thus have a high bloat factor. \autoref{chapter:memory-health} also introduces a diagramming technique,
+the \emph{Entity-Collection Diagram}, that makes it easy to see memory costs and overheads in a design,
+and to compare design alternatives.
+The diagram separates out the two kinds of memory consumers:
 % highlights the major elements of the data model implementation, so that the
 % costs and scaling consequences of the design are easily visible.
 % These diagrams appear throughout the book to illustrate various implementation
 % options and their costs.
-the implementations of the \emph{entities} of your application, such as your
-business objects, and way you have chosen to associate them using collections.
-% The kinds of choices you make to improve the storage of your entities are
-% often different from those Collections are also depicted as nodes, using an
-% octagonal shape.
-%This is different from UML class diagrams, where associations are shown as
-%edges.
+%
+% the implementation of
+the application's \emph{entities}, such as your
+business objects, and the choice of collections used to access them. Entities and collections have
+different patterns in the way they use memory, and they require different solutions.
+
 Chapters~\ref{chapter:delegation} through
-% \autoref{chapter:field-patterns},\autoref{chapter:representing-values},
-\ref{chapter:representing-values} cover issues related to the design of
-entities. \autoref{chapter:delegation} is on basic estimation techniques and
-the cost of objects, \autoref{chapter:field-patterns} covers efficient patterns
-for designing classes from fields, and \autoref{chapter:representing-values}
-covers the costs of some common field
-datatypes. Next, \autoref{chapter:sharing-immutable-data} provides techniques
-for reducing the amount of duplicate data.
+\ref{chapter:representing-values} cover the design of
+entities. \autoref{chapter:delegation} is about estimating memory costs. It covers the basic costs of fields
+and objects, and the construction of entities from multiple objects.
+\autoref{chapter:field-patterns} covers efficient patterns for laying out classes from fields.
+\autoref{chapter:representing-values} compares alternative representations for common field datatypes. 
+\autoref{chapter:sharing-immutable-data}, \nameref{chapter:sharing-immutable-data}, provides techniques for
+reducing the amount of duplicate data.
+
 Chapters \ref{chapter:brief-introduction-collections} through
 % \autoref{chapter:representing-relationships},
 % \autoref{chapter:tables-indexes},
-\ref{chapter:dynamic-records} go through the use of
-off-the-shelf collections. \autoref{chapter:brief-introduction-collections} is
-an overview of collection costs and standard and open source
-collection resources.
-The rest of the collections chapters are organized according to the use of
-collections:
+\ref{chapter:dynamic-records} are about using
+off-the-shelf collection classes. \autoref{chapter:brief-introduction-collections} is
+an overview of collection resources and costs.
+%in the standard library and open source frameworks
+The next three chapters go through memory usage patterns for the different ways
+collections are used:
 as one-to-many relationships (\autoref{chapter:representing-relationships}),
-as large access structures such as indexes
+as large access structures such as indexes and tables
 (\autoref{chapter:tables-indexes}), and as dynamic records and attribute maps
 (\autoref{chapter:dynamic-records}).
 
@@ -359,51 +355,45 @@ in that it shows
 
 \autoref{part:2} discusses managing the lifetime of objects. In
 \autoref{chapter:lifetime-requirements}, you will learn how to establish the
-lifetime requirements of your data, by mapping your needs to one of four common
-lifetime patterns: temporaries, permanently resident objects, objects with
-correlated lifetimes, and objects that represent a time-space trade-off.
+lifetime requirements of your data, mapping your needs to one of a number of common lifetime patterns. Many
+problems can be avoided by carefully understanding the reasons for retaining data in memory.
+You may need some objects to remain alive only in conjunction with related objects or events,
+while some other objects hang around to avoid the performance cost of recomputing them.
 \autoref{chapter:lifetime-fundamentals} provides a primer on the memory
-management facilities that Java offers.
-\autoref{chapter:lifetime-implementation-strategies} and
-\autoref{chapter:trading-space-for-time} focus on the last two of these lifetime
-patterns.
+management facilities that Java offers, to help you implement the lifetime policies of your data.
+
+%\autoref{chapter:lifetime-implementation-strategies} and
+%\autoref{chapter:trading-space-for-time} focus on the last two of these lifetime
+%patterns.
 
 % probably overkill:
 %\dividingline
 
-In addition to determining the bloat factor of individual data structures and
-avoiding memory leaks, it is important to estimate how well the overall design
-will scale up as load increases. The final part of this book, \autoref{part:3},
-covers issues related to the scalability of your designs.
+%In addition to determining the bloat factor of individual data structures and
+%avoiding memory leaks, it is important to estimate how well the overall design
+%will scale up as load increases. 
+%The final part of this book, 
+\autoref{part:3} covers issues related to the scalability of your designs.
 \autoref{chapter:estimating-scalability} teaches you strategies for estimating
-the scalability of a design, given an E-C Diagram.
-\autoref{chapter:large-long-lived} covers the cases when your data model still
-does not fit, even after applying the tuning methodology of \autoref{part:1}.
-Sometimes you need to tear down the elements of the facade of object
-orientation, and this is entirely possible while remaining largely within the
-confines of Java, and without resorting to the use of secondary storage.
-Finally, \autoref{chapter:secondary-stores} gives strategies for the case when
-you must resort to the use of disk or remote storage in order to make your data
-fit.
+the scalability of a design as load increases, using the
+Entity-Collection Diagram and Bloat Factor that were introduced in \autoref{chapter:memory-health}. 
+It will help you determine the relationship between load and memory usage, and assess whether your
+design will fit into memory.
+\autoref{chapter:large-long-lived} covers cases when your data model does not fit, even after
+applying the tuning methodology of \autoref{part:1}. This chapter gives you techniques for 
+achieving greater scalability by stepping outside of object orientation, 
+while remaining within the
+confines of Java, and without resorting to the use of secondary storage. 
+
+The memory cost estimates in the book are mostly from the 32-bit \oracle \javasix \jre.
+\autoref{chapter:jre-comparison} is a reference for estimating memory costs, giving more information for the
+most common \jres and architectures. \autoref{chapter:jre-options} covers memory configuration
+options for these same \jres.
 
 
-
-
-\begin{comment}
-\section{Conventions Used in This Book}
-
-[NOTE(GSS): add data structure to the list.  possibly add relationship as well.]
-
-Terms like object can have different meanings in the literature.  The following are the conventions used throughout this book.
-
-\begin{itemize}
-\item A \textit{class} is a Java class. A class name, for example \texttt{String}, always appears in type-writer font. 
-\item A \textit{data model} is a set of classes that represents one or more logical concepts.
-\item Finally, an \textit{object} is an instance of a class, that exists at runtime occupying a contiguous section of memory.
-\end{itemize} 
-\end{comment}
-
-
+%Finally, \autoref{chapter:secondary-stores} gives strategies for the case when
+%you must resort to the use of disk or remote storage in order to make your data
+%fit.
 
 
 
