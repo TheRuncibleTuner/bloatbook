@@ -102,10 +102,10 @@ cheap.
 Question 2.  Correct answer: e.
 
 \begin{quote}
-Strings often consume 40-50\% of the heap and are
+Strings often consume 40-50\% of the heap. They are
 surprisingly costly. If you are a C programmer, you might think that an 8-character string should 
 consume 9 bytes
-of memory, 8 bytes for characters and 1 byte to indicate the end of the string.
+of memory: 8 bytes for characters and 1 byte to indicate the end of the string.
 What could possibly be taking up 56 bytes? Part of the cost is because Java uses
 the 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.
 The rest is various kinds of overhead.
@@ -153,6 +153,7 @@ pose, there are other reasons why memory problems are so common. In particular,
 the software culture and popular beliefs can lead you to ignore memory costs. 
 Some of these beliefs are actually myths.  Here are several.
 
+\begin{comment}
 \callout{myth0}{Memory is Cheap.}{
 Since memory is so cheap, you do not have to think of memory as a finite
 resource.}
@@ -161,6 +162,7 @@ if the off by an order of magnitude from what was planned.  And no
 amount of additional memory will fix a memory leak over time. Adding a large amount of memory can also have
 a negative impact on performance, such as on the operation of the garbage collector, and could hit up against physical
 contraints in the system architecture.
+\end{comment}
 
 \callout{myth1}{You Can Ignore Memory In Java.}{
 Java's garbage collector and JIT will optimize your memory usage.
@@ -198,31 +200,6 @@ know where to start.  So it's very unlikely that a framework has been optimized 
 your particular use case.  And of course, the nesting of frameworks results in
 layers of unoptimized memory costs.
 
-\callout{myth3}{Nothing Can Be Done.}
-{Java is expensive, and there is nothing you can do about it.
-This is just the cost of object-oriented programming in Java.
-}
-
-The purpose of this book is to show that there are
-many techniques that you can employ to improve memory usage, armed with some
-knowledge of what things cost. There is almost always something you can do that
-will make a difference!
-
-\callout{myth4}{Improving Memory Usage Hurts Performance.}
-{There will always be a performance/memory tradeoff. If you improve memory
-usage, then the application will run slower. 
-Similarly, if you improve performance, the memory usage will suffer.
-} 
-
-This is a false dichotomy in a lot of people's minds: if an application is
-using a lot of memory, then it must be buying you something in terms of performance. 
-But in reality, that is not always the case. In fact, sometimes bad memory usage will
-result in poor performance as well. For example, if 
-the heap is holding on to a lot of long-lived objects, then there is very little
-headroom for temporaries, and so the garbage collector has to run much more
-often.  Similarly, if there are too many long-lived objects, then your cache may
-be too small for optimal performance.
-
 \callout{myth5}{There are No Memory Leaks in Java.}
 {Since Java has a garbage collector, it isn't possible
 to have a memory leak.
@@ -247,35 +224,68 @@ should stay in memory is a necessary part of the developer's job, even with a
 managed runtime. The second part of this book deals extensively with
 this topic.
 
+\callout{myth4}{Improving Memory Usage Hurts Performance.}
+{There will always be a performance/memory tradeoff. If you improve memory
+usage, then the application will run slower. 
+Similarly, if you improve performance, the memory usage will suffer.
+} 
+
+This is a false dichotomy in a lot of people's minds: if an application is
+using a lot of memory, then it must be buying you something in terms of performance. 
+But in reality, that is not always the case. In fact, sometimes bad memory usage will
+result in poor performance as well. For example, if 
+the heap is holding on to a lot of long-lived objects, then there is very little
+headroom for temporaries, and so the garbage collector has to run much more
+often.  Similarly, if there are too many long-lived objects, then your cache may
+be too small for optimal performance.
+
+\callout{myth3}{Nothing Can Be Done.}
+{Java is expensive, and there is nothing you can do about it.
+This is just the cost of object-oriented programming in Java.
+}
+
+The purpose of this book is to show that there are
+many techniques that you can employ to improve memory usage, armed with some
+knowledge of what things cost. There is almost always something you can do that
+will make a difference!
+
+
+
 \section{\thetitle}
-This book presents a practical approach to making effective use of memory.
-It's organized according to the most common design problems and patterns that
-have an impact on memory usage. Each section helps you estimate memory costs of your own classes and off-the-shelf libraries,
-in the context of typical
-usage. For each pattern we point out the most common traps and solutions, and help you estimate
-costs when making tradeoffs.
-While the book, as a whole, gives you a comprehensive approach to memory usage,
-it's designed so that you can pick and choose what you need when you need it. That way, you can focus your efforts where
-you'll get the most benefit right away, no matter what part of the development cycle you're in for a particular part of your
-system. This approach fits nicely with different styles of development, including agile. 
+This book presents a practical approach to making effective use of memory. 
+The main focus is on how to represent your data models efficiently. It also
+addresses managing the lifetime of data, which is a common source
+of errors such as memory leaks. 
+The book is organized according to
+the most common design problems and patterns that have an impact on memory usage. For each pattern we point out
+traps, provide solutions, and help you compare alternative designs.
+%tradeoffs
+We guide you in estimating memory costs of your own classes and
+off-the-shelf libraries in the context of typical usage. 
+While the book as a whole gives you a
+comprehensive approach to memory usage, it's designed so that you can pick and choose what you need when you need it.
+That way, you can focus your efforts where you'll get the most benefit right away, no matter what
+part of the development cycle you're in for a particular part of your system.
+This approach fits nicely with different styles of development, including agile.
 
-With its emphasis on estimating costs, the book can help you focus your
-optimization efforts where they matter most. It covers both parts of the estimation problem: what does a
+The estimation techniques presented will help
+you focus your optimization efforts where they matter most.
+The book covers both parts of the estimation problem: what does a
 data structure cost at a particular size, and how will it scale up. It's also easy to make things worse when
-optimizing, if you're not careful, since there are so many hidden memory costs in Java. At key points in the
-book we'll give you formulas so you can determine whether an optimization is worthwhile, 
-given the characteristics of your data.
+optimizing, if you're not careful, since there are so many hidden memory costs
+in Java. At relevant points we'll give you formulas to
+determine whether an optimization is worthwhile given the characteristics of your data.
 
-Interspersed throughout the book we'll look at some of the lower-level aspects of Java
-that have an impact on memory usage. We'll look inside some building blocks, such as
-strings and collections, to give you insight into how these and similar classes make use of memory. 
-We'll also look at lifetime management mechanisms, such as weak and soft references and thread-local storage,
+Interspersed throughout the book are a look at some elements
+of Java that have an impact on memory. We'll look inside some library
+classes such as strings and collections, to give you insight into how these and
+similar classes make use of memory.
+We'll also look at lifetime management mechanisms, such as weak and soft references,
 and show how best to use them.
 
-In practice, many problems that look like implementation errors are actually caused by a
-fuzzy understanding of requirements. Throughout the book we give you questions to
-ask about your data. For example: Do you need random access into this data? Will entries ever be
-deleted from these collections? Is the lifetime of this object tied to another object or event? Which
+In practice, many problems that look like implementation errors are actually
+caused by an incomplete understanding of requirements. Throughout the book we
+give you questions to ask about your data. For example: Do you need random access into this data? Will entries ever be deleted from these collections? Is the lifetime of this object tied to another object or event? Which
 collections will grow larger as various aspects of load increase?  Asking these
 questions can help you choose efficient representations that are specialized for your application's use cases.
 They can also help you predict scalability, and avoid lifetime management bugs
@@ -298,39 +308,37 @@ this is the one to focus on.
 It shows you how to compute an accounting metric,
 the \emph{Bloat Factor}, which measures the density of actual data in your
 data models. Memory spent on everything else, such as
-internal object headers, is the overhead of the representation of the data. Poor designs waste
-more space on these overheads, and thus have a high bloat factor. \autoref{chapter:memory-health} also introduces a diagramming technique,
+Java's internal object headers, is the overhead of the representation.
+Poor designs waste more space on these overheads, and thus have a high bloat factor. \autoref{chapter:memory-health} also
+introduces a diagramming technique,
 the \emph{Entity-Collection Diagram}, that makes it easy to see memory costs and overheads in a design,
 and to compare design alternatives.
-The diagram separates out the two kinds of memory consumers:
+It separates out the two kinds of memory consumers:
 % highlights the major elements of the data model implementation, so that the
 % costs and scaling consequences of the design are easily visible.
 % These diagrams appear throughout the book to illustrate various implementation
 % options and their costs.
 %
 % the implementation of
-the application's \emph{entities}, such as your
+the application's \emph{entities}, such as the
 business objects, and the choice of collections used to access them. Entities and collections have
 different patterns in the way they use memory, and they require different solutions.
 
 Chapters~\ref{chapter:delegation} through
 \ref{chapter:representing-values} cover the design of
 entities. \autoref{chapter:delegation} is about estimating memory costs. It covers the basic costs of fields
-and objects, and the construction of entities from multiple objects.
+and objects, and the costs of constructing entities from multiple classes.
 \autoref{chapter:field-patterns} covers efficient patterns for laying out classes from fields.
 \autoref{chapter:representing-values} compares alternative representations for common field datatypes. 
-\autoref{chapter:sharing-immutable-data}, \nameref{chapter:sharing-immutable-data}, provides techniques for
+\autoref{chapter:sharing-immutable-data} provides techniques for
 reducing the amount of duplicate data.
 
 Chapters \ref{chapter:brief-introduction-collections} through
-% \autoref{chapter:representing-relationships},
-% \autoref{chapter:tables-indexes},
-\ref{chapter:dynamic-records} are about using
-off-the-shelf collection classes. \autoref{chapter:brief-introduction-collections} is
+\ref{chapter:dynamic-records} are about
+using collections. \autoref{chapter:brief-introduction-collections} is
 an overview of collection resources and costs.
 %in the standard library and open source frameworks
-The next three chapters go through memory usage patterns for the different ways
-collections are used:
+The next three chapters cover the various uses of collections:
 as one-to-many relationships (\autoref{chapter:representing-relationships}),
 as large access structures such as indexes and tables
 (\autoref{chapter:tables-indexes}), and as dynamic records and attribute maps
@@ -353,14 +361,18 @@ in that it shows
 % probably overkill:
 %\dividingline
 
-\autoref{part:2} discusses managing the lifetime of objects. In
+\autoref{part:2} is about managing the lifetime of objects. In
 \autoref{chapter:lifetime-requirements}, you will learn how to establish the
-lifetime requirements of your data, mapping your needs to one of a number of common lifetime patterns. Many
-problems can be avoided by carefully understanding the reasons for retaining data in memory.
-You may need some objects to remain alive only in conjunction with related objects or events,
-while some other objects hang around to avoid the performance cost of recomputing them.
+lifetime requirements of your data, mapping your needs to one of a number
+of common lifetime patterns.
+For example, some objects' lifetimes need to be correlated with
+related objects; others may have their lifetimes extended to buy
+performance by avoiding recomputation.
+%Many problems can be avoided by carefully
+%understanding the reasons for retaining data in memory.
 \autoref{chapter:lifetime-fundamentals} provides a primer on the memory
-management facilities that Java offers, to help you implement the lifetime policies of your data.
+management facilities that Java offers, to help you implement the lifetime
+requirements of your data.
 
 %\autoref{chapter:lifetime-implementation-strategies} and
 %\autoref{chapter:trading-space-for-time} focus on the last two of these lifetime
@@ -373,22 +385,25 @@ management facilities that Java offers, to help you implement the lifetime polic
 %avoiding memory leaks, it is important to estimate how well the overall design
 %will scale up as load increases. 
 %The final part of this book, 
-\autoref{part:3} covers issues related to the scalability of your designs.
-\autoref{chapter:estimating-scalability} teaches you strategies for estimating
-the scalability of a design as load increases, using the
-Entity-Collection Diagram and Bloat Factor that were introduced in \autoref{chapter:memory-health}. 
-It will help you determine the relationship between load and memory usage, and assess whether your
-design will fit into memory.
+\autoref{part:3} covers issues related to scalability.
+\autoref{chapter:estimating-scalability} teaches strategies for estimating
+how a design will scale up as load increases.
+It builds on the Entity-Collection Diagram and Bloat Factor introduced in
+\autoref{chapter:memory-health}.
+% It will help you assess whether your design will fit into memory.
 \autoref{chapter:large-long-lived} covers cases when your data model does not fit, even after
-applying the tuning methodology of \autoref{part:1}. This chapter gives you techniques for 
-achieving greater scalability by stepping outside of object orientation, 
-while remaining within the
-confines of Java, and without resorting to the use of secondary storage. 
+applying the tuning methodology of \autoref{part:1}. This chapter presents
+bulk storage techniques for achieving greater scalability, without
+resorting to the use of secondary storage. This approach remains
+within the confines of Java, but gives up many of the benefits of object
+orientation.
 
-The memory cost estimates in the book are mostly from the 32-bit \oracle \javasix \jre.
-\autoref{chapter:jre-comparison} is a reference for estimating memory costs, giving more information for the
-most common \jres and architectures. \autoref{chapter:jre-options} covers memory configuration
-options for these same \jres.
+The memory estimates in the examples are from the 32-bit \oracle
+\javasix \jre.
+\autoref{chapter:jre-comparison} is a reference for estimating memory costs,
+for some common \jres and architectures.
+\autoref{chapter:jre-options} gives memory configuration options for these same
+\jres.
 
 
 %Finally, \autoref{chapter:secondary-stores} gives strategies for the case when
