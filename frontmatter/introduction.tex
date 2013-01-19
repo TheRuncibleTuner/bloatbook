@@ -257,8 +257,9 @@ effective use of memory.
 %The main focus is on how to represent your data models efficiently. It also
 %addresses managing the lifetime of data, which is a common source
 %of errors such as memory leaks. 
-It is organized according to
-the most common design problems and patterns that have an impact on memory usage. For each pattern we point out
+It is organized by
+%the most 
+common design problems and patterns that have an impact on memory usage. For each pattern we point out
 traps, provide solutions, and help you compare the costs of alternative
 designs.
 %examples
@@ -271,8 +272,8 @@ That way, you can focus your efforts where you'll get the most benefit right awa
 part of the development cycle you're in for a particular part of your system.
 This approach fits nicely with different styles of development, including agile.
 
-\paragraph{Estimation}The book covers both parts of the estimation problem: what does a
-data structure cost at a particular size, and how will it scale up. The
+\paragraph{Estimation}The book covers both aspects of the estimation problem:
+what does a data structure cost at a particular size, and how will it scale up. The
 estimation techniques will help you focus your optimization efforts where they matter most.
 It's also easy to make things worse when
 optimizing, if you're not careful, since there are so many hidden memory costs
@@ -306,8 +307,8 @@ like memory leaks.
 
 \paragraph{Roadmap}\autoref{part:1} is about designing and implementing
 memory-efficient data models.
-\autoref{chapter:memory-health}, \nameref{chapter:memory-health}, lays the foundation with two
-concepts that are used throughout the book. If you read one chapter first,
+\autoref{chapter:memory-health}, on \nameref{chapter:memory-health}, lays the
+foundation with two concepts that are used throughout the book. If you read one chapter first,
 this is the one to focus on.
 It shows you how to compute an accounting metric,
 the \emph{Bloat Factor}, which measures the density of actual data in your
@@ -344,7 +345,7 @@ an overview of collection resources and costs.
 %in the standard library and open source frameworks
 The next three chapters cover the various uses of collections:
 as one-to-many relationships (\autoref{chapter:representing-relationships}),
-as large access structures such as indexes and tables
+as large data access structures such as indexes
 (\autoref{chapter:tables-indexes}), and as dynamic records and attribute maps
 (\autoref{chapter:dynamic-records}).
 
