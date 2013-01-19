@@ -252,39 +252,42 @@ will make a difference!
 
 
 \section{\thetitle}
-This book presents a practical approach to making effective use of memory. 
-The main focus is on how to represent your data models efficiently. It also
-addresses managing the lifetime of data, which is a common source
-of errors such as memory leaks. 
-The book is organized according to
+\paragraph{Problem-focused}This book presents a practical approach to making
+effective use of memory.
+%The main focus is on how to represent your data models efficiently. It also
+%addresses managing the lifetime of data, which is a common source
+%of errors such as memory leaks. 
+It is organized according to
 the most common design problems and patterns that have an impact on memory usage. For each pattern we point out
-traps, provide solutions, and help you compare alternative designs.
+traps, provide solutions, and help you compare the costs of alternative
+designs.
+%examples
 %tradeoffs
-We guide you in estimating memory costs of your own classes and
-off-the-shelf libraries in the context of typical usage. 
-While the book as a whole gives you a
+%We guide you in estimating memory costs of your own classes and
+%off-the-shelf libraries in the context of typical usage. 
+While the book, as a whole, gives you a
 comprehensive approach to memory usage, it's designed so that you can pick and choose what you need when you need it.
 That way, you can focus your efforts where you'll get the most benefit right away, no matter what
 part of the development cycle you're in for a particular part of your system.
 This approach fits nicely with different styles of development, including agile.
 
-The estimation techniques presented will help
-you focus your optimization efforts where they matter most.
-The book covers both parts of the estimation problem: what does a
-data structure cost at a particular size, and how will it scale up. It's also easy to make things worse when
+\paragraph{Estimation}The book covers both parts of the estimation problem: what does a
+data structure cost at a particular size, and how will it scale up. The
+estimation techniques will help you focus your optimization efforts where they matter most.
+It's also easy to make things worse when
 optimizing, if you're not careful, since there are so many hidden memory costs
 in Java. At relevant points we'll give you formulas to
 determine whether an optimization is worthwhile given the characteristics of your data.
 
-Interspersed throughout the book are a look at some elements
-of Java that have an impact on memory. We'll look inside some library
+\paragraph{Java mechanisms}Interspersed throughout the book are a look at some
+elements of Java that have an impact on memory. We'll look inside some library
 classes such as strings and collections, to give you insight into how these and
 similar classes make use of memory.
 We'll also look at lifetime management mechanisms, such as weak and soft references,
 and show how best to use them.
 
-In practice, many problems that look like implementation errors are actually
-caused by an incomplete understanding of requirements. Throughout the book we
+\paragraph{Requirements}In practice, many problems that look like implementation
+errors are actually caused by an incomplete understanding of requirements. Throughout the book we
 give you questions to ask about your data. For example: Do you need random access into this data? Will entries ever be deleted from these collections? Is the lifetime of this object tied to another object or event? Which
 collections will grow larger as various aspects of load increase?  Asking these
 questions can help you choose efficient representations that are specialized for your application's use cases.
@@ -301,7 +304,8 @@ like memory leaks.
 %discuss health very briefly
 %discuss entities and collections
 
-\autoref{part:1} is about designing and implementing memory-efficient data models.
+\paragraph{Roadmap}\autoref{part:1} is about designing and implementing
+memory-efficient data models.
 \autoref{chapter:memory-health}, \nameref{chapter:memory-health}, lays the foundation with two
 concepts that are used throughout the book. If you read one chapter first,
 this is the one to focus on.
