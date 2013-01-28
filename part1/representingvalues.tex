@@ -101,9 +101,101 @@ building a \class{String} is fine, but they should be used only as temporaries.
 
 \section{Representing Bit Flags}
 \label{sec:bit-flags}
-TOWRITE:
-- Discuss/compare cost of three representations: a bunch of boolean fields, a
-byte with bit flags that you manage yourself, EnumSet.
+
+A value that can be represented by a single bit seems pretty innocuous from a
+memory point of view. However, there are different ways to represent bit flags
+in Java, and so it's worth devoting a section to the cost implications of
+bit flags. As an example, let's consider a business, open seven days a
+week, where employees are assigned to work on different fixed days.  We compare three
+different ways of representing work days as bit flags in an employee record.
+ 
+First, you can represent bit flags as boolean fields in an object. For example
+employee working days can be directly stored in an employee record:
+\begin{shortlisting}
+
+    class Employee {
+    	boolean monday, tuesday, wednesday, thursday, friday, saturday, sunday;
+    	
+    	public void setWorkMonday(boolean flag) {
+    		monday = flag;
+    	}
+    	..
+    }
+    
+\end{shortlisting}
+Each boolean field takes one byte, so each employee contains at least seven
+bytes to store workday information. 
+
+Alternatively, you can represent bit flags very compactly as actual bits, and
+manipulate the bits directly in accessor methods. There is more code involved,
+but it is isolated in these few methods. Seven days of the week can be stored as
+bits in a single field:
+
+\begin{shortlisting}
+	class EmployeeWorkSchedule {
+	
+		static int Monday = 0x01;
+		static int Tuesday = 0x02;
+		static int Wednesday = 0x04;
+		static int Thursday = 0x08;
+		static int Friday = 0x10;
+		static int Saturday = 0x20;
+		static int Sunday = 0x40;
+		
+		int workdays;
+		
+		public void setWorkMonday(boolean flag) {
+			if (flag) {
+				workdays = workdays | Monday;
+			} else {
+				workdays = workdays & ~Monday;
+			}
+		}
+		..
+   }
+		       
+\end{shortlisting}
+
+While compact, these representations are awkward from a coding and
+stylistic point of view. A better practice is to represent bit flag values
+using an Enumeration type, and to represent bit flag fields using Java
+\class{EnumerationSet}s:
+\begin{shortlisting} 
+	enum Weekdays = 
+	     {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
+    
+    EnumerationSet<Weekdays> workdays = new EnumerationSet<Weekdays>();
+    
+    
+    public void setWorkMonday(boolean flag) {
+			if (flag) {
+				workdays.add(MONDAY);
+			} else {
+				workdays.remove(MONDAY);
+			}
+		}
+    
+    
+\end{shortlisting}
+
+Since an \class{EnumerationSet} is an object, this representation is going to
+cost more because of delegation. On the Sun JVM, the storage is pretty
+well optimized. If the underlying Enum type has less than 64 elements, then an
+EnumSet is represented by one object, taking 24 bytes. If the Enym type has more
+than 64 elements, then an EnumSet is two objects, a wrapper plus a
+\class{long[]} array. The total cost is 40 bytes + enough 8-byte \class{long}s
+in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee, 4 bytes
+for the field and 24 bytes for the \class{EnumerationSet}. This is considerably
+more expensive than storing the bit flags as either bits or bytes. 
+
+When possible, sharing can optimize the cost of 
+ \class{EnumerationSet}s considerably. Suppose
+that there are 1000 employees. The cost of storing the workdays for these
+employees using an \class{EnumertionSet} is 28,000 bytes. 
+Now suppose 900 employees work Monday
+through Friday. These employees can share an \class{EnumerationSet} representing
+these normal working days, reducing the cost to 6,376 bytes.
+
 
 \section{Dates}
 
