@@ -132,7 +132,7 @@ but it is isolated in these few methods. Seven days of the week can be stored as
 bits in a single field:
 
 \begin{shortlisting}
-	class EmployeeWorkSchedule {
+	class Employee {
 	
 		static int Monday = 0x01;
 		static int Tuesday = 0x02;
@@ -160,20 +160,21 @@ While compact, these representations are awkward from a coding and
 stylistic point of view. A better practice is to represent bit flag values
 using an Enumeration type, and to represent bit flag fields using Java
 \class{EnumerationSet}s:
-\begin{shortlisting} 
-	enum Weekdays = 
-	     {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
+\begin{shortlisting}
+
+    class Employee {
+ 
+		enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY}
+    	EnumSet<Day> workdays = EnumSet.noneOf(Day.class);
     
-    EnumerationSet<Weekdays> workdays = new EnumerationSet<Weekdays>();
-    
-    
-    public void setWorkMonday(boolean flag) {
+   	 	public void setWorkMonday(boolean flag) {
 			if (flag) {
-				workdays.add(MONDAY);
+				workdays.add(Day.MONDAY);
 			} else {
-				workdays.remove(MONDAY);
+				workdays.remove(Day.MONDAY);
 			}
 		}
+	}
     
     
 \end{shortlisting}
@@ -181,7 +182,7 @@ using an Enumeration type, and to represent bit flag fields using Java
 Since an \class{EnumerationSet} is an object, this representation is going to
 cost more because of delegation. On the Sun JVM, the storage is pretty
 well optimized. If the underlying Enum type has less than 64 elements, then an
-EnumSet is represented by one object, taking 24 bytes. If the Enym type has more
+EnumSet is represented by one object of size 24 bytes. If the Enym type has more
 than 64 elements, then an EnumSet is two objects, a wrapper plus a
 \class{long[]} array. The total cost is 40 bytes + enough 8-byte \class{long}s
 in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee, 4 bytes
