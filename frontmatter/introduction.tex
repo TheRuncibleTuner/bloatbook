@@ -4,8 +4,8 @@
 
 Managing your Java program's memory couldn't be easier, or so it would seem.
 Java provides you with automatic garbage collection, and a compiler that
-responds to your program's operation. There are lots of libraries and frameworks
-available, written by experts, that provide powerful functionality. All you have
+responds to your program's operation. There are lots of libraries and frameworks,
+written by experts, that provide powerful functionality. All you have
 to do is piece together the parts and let the Java runtime system do the rest
 for you.
 
@@ -33,8 +33,8 @@ resource must be measured and managed.
 
  To start you thinking about memory
 consumption, here is a quiz to test how good you are at estimating sizes of Java objects. 
-(Assume a 32-bit JVM.) If you look inside a typical Java heap, it is mostly filled with the kinds of
-objects used in the quiz --- boxed scalars, strings, and collections.
+If you look inside a typical Java heap, it is mostly filled with the kinds of
+objects used in the quiz --- boxed scalars, strings, and collections. Assume a 32-bit JVM.
 \begin{verbatim}
 
 Question 1.  What is the size ratio in bytes of Integer to int?
@@ -200,6 +200,13 @@ know where to start.  So it's very unlikely that a framework has been optimized 
 your particular use case.  And of course, the nesting of frameworks results in
 layers of unoptimized memory costs.
 
+A related myth is that library writers and other systems programmers are the only ones
+who need be concerned with memory efficiency. In fact, many problems
+%do not come from the design of complex data access mechanisms, but 
+are caused by everyday data modeling
+and implementation decisions at every level of code. These choices, of how classes are designed and 
+frameworks are used, can make a big difference.
+
 \callout{myth5}{There are No Memory Leaks in Java.}
 {Since Java has a garbage collector, it isn't possible
 to have a memory leak.
@@ -218,7 +225,7 @@ Problems arise when long-lived data
 structures hold on to objects longer than they are needed, and these structures
 continue to grow indefinitely. The garbage collector cannot collect objects
 when it thinks they are still needed. If structures continue to grow without
-bound, eventually you will run out of memory. This is, in fact, a memory leak, 
+bound, you will eventually run out of memory. This is, in fact, a memory leak, 
 and can be a particularly hard problem to solve. Deciding how long each object
 should stay in memory is a necessary part of the developer's job, even with a
 managed runtime. The second part of this book deals extensively with
@@ -259,32 +266,37 @@ effective use of memory.
 %of errors such as memory leaks. 
 It is organized by
 %the most 
-common design problems and patterns that have an impact on memory usage. For each pattern we point out
+common design problems that have an impact on memory usage. For each problem we point out
 traps, provide solutions, and help you compare the costs of alternative
 designs.
 %examples
 %tradeoffs
 %We guide you in estimating memory costs of your own classes and
 %off-the-shelf libraries in the context of typical usage. 
-While the book, as a whole, gives you a
-comprehensive approach to memory usage, it's designed so that you can pick and choose what you need when you need it.
-That way, you can focus your efforts where you'll get the most benefit right away, no matter what
-part of the development cycle you're in for a particular part of your system.
+The book is also designed to give you a comprehensive
+approach to memory issues. When read as a whole it can be helpful in seeing the range of topics that need to
+be considered, especially early in design. At the same time, most chapters and sections are written to stand
+on their own, so that you can pick and choose what you need when you need it. That way, you can focus your efforts
+where you'll get the most benefit right away for a particular part of your system or stage of development. 
 This approach fits nicely with different styles of development, including agile.
 
-\paragraph{Estimation}The book covers both aspects of the estimation problem:
-what does a data structure cost at a particular size, and how will it scale up. The
-estimation techniques will help you focus your optimization efforts where they matter most.
-It's also easy to make things worse when
-optimizing, if you're not careful, since there are so many hidden memory costs
-in Java. At relevant points we'll give you formulas to
+\paragraph{Estimation}The book devotes a lot of attention to estimating memory
+costs. The estimation techniques will help you make better choices in your designs, and to focus your
+optimization efforts where they matter most.
+The approach separates the problem into two parts. First,
+what does a data structure cost at a particular size, and how much room is there for improvement?
+Second, how will it scale up?
+
+It's easy to make things
+worse when optimizing, if you're not careful, since there are so many hidden memory costs
+in Java. At relevant points we give you formulas to
 determine whether an optimization is worthwhile given the characteristics of your data.
 
-\paragraph{Java mechanisms}Interspersed throughout the book are a look at some
-elements of Java that have an impact on memory. We'll look inside some library
+\paragraph{Java mechanisms}Throughout the book we look at some
+elements of Java that have an impact on memory. We look inside some library
 classes such as strings and collections, to give you insight into how these and
 similar classes make use of memory.
-We'll also look at lifetime management mechanisms, such as weak and soft references,
+We also look at lifetime management mechanisms, such as weak and soft references,
 and show how best to use them.
 
 \paragraph{Requirements}In practice, many problems that look like implementation
@@ -343,7 +355,7 @@ Chapters \ref{chapter:brief-introduction-collections} through
 using collections. \autoref{chapter:brief-introduction-collections} is
 an overview of collection resources and costs.
 %in the standard library and open source frameworks
-The next three chapters cover the various uses of collections:
+The next three chapters cover the typical uses of collections:
 as one-to-many relationships (\autoref{chapter:representing-relationships}),
 as large data access structures such as indexes
 (\autoref{chapter:tables-indexes}), and as dynamic records and attribute maps
@@ -368,11 +380,11 @@ in that it shows
 
 \autoref{part:2} is about managing the lifetime of objects. In
 \autoref{chapter:lifetime-requirements}, you will learn how to establish the
-lifetime requirements of your data, mapping your needs to one of a number
+lifetime requirements of your data, mapping them to one of a number
 of common lifetime patterns.
-For example, some objects' lifetimes need to be correlated with
-related objects; others may have their lifetimes extended to buy
-performance by avoiding recomputation.
+For example, you may need to correlate some objects' lifetimes with
+related objects; you may want to extend some other objects' lifetimes
+to buy performance by avoiding recomputation.
 %Many problems can be avoided by carefully
 %understanding the reasons for retaining data in memory.
 \autoref{chapter:lifetime-fundamentals} provides a primer on the memory
@@ -405,7 +417,7 @@ orientation.
 
 The memory estimates in the examples are from the 32-bit \oracle
 \javasix \jre.
-\autoref{chapter:jre-comparison} is a reference for estimating memory costs,
+\autoref{chapter:jre-comparison} is a reference for estimating memory costs
 for some common \jres and architectures.
 \autoref{chapter:jre-options} gives memory configuration options for these same
 \jres.

@@ -15,13 +15,13 @@ is often critical. The application is either in the final stages of testing or
 about to be deployed. Fixing memory problems this late in the development cycle
 is often very costly, and may require major code refactoring. It is clearly much
 better to anticipate memory requirements in the design phase, but this is rarely
-done. This observation is the motivation for this book. While there has
-been much written on how to build systems that are bug-free, easy to maintain, and secure, there is
+done. A key reason is a lack of information. This observation is the motivation for this book. While
+there has been much written on how to build systems that are bug-free, easy to maintain, and secure, there is
 little guidance available on how to use Java memory efficiently and correctly.
 
-This book presents practical techniques and a comprehensive approach to making
-informed choices. It covers best practices and traps, and addresses three distinct aspects of using memory
-well:
+This book presents practical techniques, and a comprehensive approach, for
+making informed choices about memory. It
+covers best practices and traps, and addresses three distinct aspects of using memory well:
 \begin{enumerate}
 	\item \textbf{Representing data efficiently}. The book illustrates
 	common modeling patterns, shows how to estimate their costs, and
@@ -56,11 +56,11 @@ overhead to real data.
 
 In our experience, we have seen ratios as high as 19:1, where as much as 95\%
 of memory is devoted to overhead. In other words,
-way less than half the heap is storing real data! This level of overhead often
-impacts the scalability of the application. And this doesn't include duplicate
-data and data that is not really needed. For example, in one application, a
-simple transaction needed 500 kilobytes for the session state for one user. This
-figure is the slope of the curve that governs the number of simultaneous users the system can support.  
+only a tiny fraction of the heap is storing real data! This level of overhead often
+impacts the scalability of the application. And this doesn't include duplicate data and data that is not
+really needed, two other common sources of waste. For example, in one application, a simple transaction
+needed 500 kilobytes for the session state for one user. This
+figure is the slope of the curve that governs the number of simultaneous users that system could support.  
 
 The design of the Java language and standard libraries contribute to high
 overhead ratios. Java's data modeling features and managed runtime give
@@ -71,9 +71,9 @@ developer who wants to engineer frugally with fewer options.
 
 The good news is that it is possible to make intelligent choices that save
 memory with existing Java building blocks --- there is no need to avoid good
-coding practices nor rewrite libraries. However, you do need to understand how
+coding practices nor rewrite libraries. However, developers do need to understand how
 to estimate the cost of various options and more consciously engineer the
-lifetime of objects. Through the extensive use of examples, this book guides you
+lifetime of objects. Through the extensive use of examples, this book guides the reader
 through common memory usage patterns. For each pattern, we help you understand
 what it costs, and how to choose among alternative solutions. We also help you
 focus your efforts where it matters the most.
