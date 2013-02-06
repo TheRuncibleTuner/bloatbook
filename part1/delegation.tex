@@ -216,7 +216,7 @@ needs of the most common ones.
 \begin{tabular}{lcc} \toprule
 	Class & Number of objects & Size in bytes \\ \midrule
 	String (8-character) & 2 & 56 \\
-	Date & 1 & 24 \\
+	Date & usually 1, up to 2 & 24, when 1 object \\
 	BigDecimal & usually 1, up to 5 & 32, when 1 object \\
 	Enum & 0, uses a shared object & 0 \\
 	\bottomrule
