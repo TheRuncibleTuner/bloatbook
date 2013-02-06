@@ -69,7 +69,7 @@ representations of the same value. (See Chapter~\ref{chapter:delegation} for
 details on these costs.) In the first example, an integer 47 can be
 represented as a 4 byte field, a boxed object, or a Java \class{String}. 
 The \class{String} is by far the costliest representation, with a bloat factor of
-92\%, and 13 times the memory of the scalar representation.  Similarly for the other two examples, a
+92\%, or 13 times the memory of the scalar representation.  Similarly for the other two examples, a
 boolean and an enumerated type.
 \class{String}s are simply a very expensive way to represent scalar values.
 
@@ -115,7 +115,7 @@ First, you can represent bit flags as boolean fields in an object. For example
 employee working days can be directly stored in an employee record:
 \begin{shortlisting}
 
-    class Employee {
+    public class Employee {
     	boolean monday, tuesday, wednesday, thursday, friday, saturday, sunday;
     	
     	public void setWorkMonday(boolean flag) {
@@ -129,28 +129,28 @@ Each boolean field takes one byte, so each employee contains at least seven
 bytes to store workday information. 
 
 Alternatively, you can represent bit flags very compactly as actual bits, and
-manipulate the bits directly in accessor methods. There is more code involved,
+manipulate the bits via accessor methods. There is more code involved,
 but it is isolated in these few methods. Seven days of the week can be stored as
-bits in a single field:
+bits in a single byte field:
 
 \begin{shortlisting}
 	class Employee {
 	
-		static int Monday = 0x01;
-		static int Tuesday = 0x02;
-		static int Wednesday = 0x04;
-		static int Thursday = 0x08;
-		static int Friday = 0x10;
-		static int Saturday = 0x20;
-		static int Sunday = 0x40;
+		public final static byte Monday = 0x01;
+		public final static byte Tuesday = 0x02;
+		public final static byte Wednesday = 0x04;
+		public final static byte Thursday = 0x08;
+		public final static byte Friday = 0x10;
+		public final static byte Saturday = 0x20;
+		public final static byte Sunday = 0x40;
 		
-		int workdays;
+		private byte workdays;
 		
 		public void setWorkMonday(boolean flag) {
 			if (flag) {
-				workdays = workdays | Monday;
+				workdays = (byte)(workdays | Monday);
 			} else {
-				workdays = workdays & ~Monday;
+				workdays = (byte)(workdays & ~Monday);
 			}
 		}
 		..
@@ -160,20 +160,21 @@ bits in a single field:
 
 While compact, these representations are awkward from a coding and
 stylistic point of view. A better practice is to represent bit flag values
-using an Enumeration type, and to represent bit flag fields using Java
-\class{EnumerationSet}s:
+using an enumerated type, and to represent bit flag fields using Java
+\class{EnumSet}s:
 \begin{shortlisting}
 
     class Employee {
  
-		enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY}
-    	EnumSet<Day> workdays = EnumSet.noneOf(Day.class);
+		public enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
+    	
+    	private EnumSet<Day> workdays = EnumSet.noneOf(Day.class);
     
-   	 	public void setWorkMonday(boolean flag) {
+   	 	public void setWorkday(Day day) {
 			if (flag) {
-				workdays.add(Day.MONDAY);
+				workdays.add(day);
 			} else {
-				workdays.remove(Day.MONDAY);
+				workdays.remove(day);
 			}
 		}
 	}
@@ -184,12 +185,12 @@ using an Enumeration type, and to represent bit flag fields using Java
 Since an \class{EnumSet} is an object, this representation is going to
 cost more because of delegation. On the Sun JVM, the storage is pretty
 well optimized. If the underlying Enum type has less than 64 elements, then an
-EnumSet is represented by one object of size 24 bytes. If the Enym type has more
-than 64 elements, then an EnumSet is two objects, a wrapper plus a
+EnumSet is represented by one object of size 24 bytes. If the \code{enum} type has more
+than 64 elements, then an \class{EnumSet} is two objects, a wrapper plus a
 \class{long[]} array. The total cost is 40 bytes + enough 8-byte \class{long}s
-in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee, 4 bytes
-for the field and 24 bytes for the \class{EnumSet}. This is considerably
-more expensive than storing the bit flags as either bits or bytes. 
+in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee:
+4 bytes for the reference field and 24 bytes for the \class{EnumSet}. This is considerably
+more expensive than storing the bit flags as either bits or booleans. 
 
 When possible, sharing can optimize the cost of 
  \class{EnumSet}s considerably. Suppose
@@ -197,7 +198,8 @@ that there are 1000 employees. The cost of storing the workdays for these
 employees using an \class{EnumSet} is 28,000 bytes. 
 Now suppose 900 employees work Monday
 through Friday. These employees can share an \class{EnumSet} representing
-these normal working days, reducing the cost to 6,376 bytes.
+these normal working days, reducing the cost to 6,424 bytes.  See \autoref{chapter:sharing-immutable-data}
+for more on sharing data.
 
 
 \section{Dates}
