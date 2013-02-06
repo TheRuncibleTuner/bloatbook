@@ -1,8 +1,8 @@
 \chapter{Representing Field Values}
 \label{chapter:representing-values}
 
-So far, we have been concerned with the wasteful overhead that results from
-data representation. But what about the data itself?
+So far, we have been concerned with the wasteful overhead that can result when
+modeling your entities as classes and fields. But what about the field data itself?
 Java gives you a number of different ways to represent common datatypes, such
 as strings, numbers, dates, and bit flags. Depending on which
 representation you choose, the overhead costs can vary quite a bit. 
@@ -12,7 +12,8 @@ In this chapter, we look at the costs of different representations for the most
 commmon datatypes.
 
 \section{Character Strings}
-String is the most common non-trivial datatype found in Java programs. We
+String is the most common non-trivial datatype found in Java programs, and the single largest 
+consumer of memory in most applications. We
 discuss when to use a Java \class{String} to represent data, and when not to.
 \paragraph{External vs. Internal Datatype Forms}
 Character strings are the universal data type, in that all data can be
@@ -38,23 +39,23 @@ the overhead of scalars and even of boxed forms.
   \centering
 \begin{tabular}{llr} \toprule \toprule
 & Example & Size \\ \midrule \midrule
-INTEGER & int anint = 47; & 4 \\
+integer & int anint = 47; & 4 \\
 \midrule
-& Integer anint = new Integer(47); & 4+16  \\
+& Integer anint = new Integer(47); & 20 (4+16)  \\
 \midrule
-& String anint = new String(``47''); & 4+48 \\
+& String anint = new String(``47''); & 52 (4+48) \\
 \midrule
 \midrule
-BOOLEAN & boolean abool = true; & 1\\
+boolean & boolean abool = true; & 1\\
 \midrule
-& Boolean abool = new Boolean(true): & 4+16 \\
+& Boolean abool = new Boolean(true): & 20 (4+16) \\
 \midrule
-& String abool = new String(``true''); & 4+48 \\
+& String abool = new String(``T''); & 52 (4+48) \\
 \midrule \midrule
-ENUMERATION & enum Gender {MASCULINE, FEMININE, NEUTER}; &\\
-& Gender aGender = MASCULINE; & 4 \\
+enumerated type & enum Gender \{MASCULINE, FEMININE, NEUTER\}; &\\
+& Gender agender = MASCULINE; & 4 \\
 \midrule
-& String agender = new String(``masculine''); & 4+48 \\
+& String agender = new String(``masculine''); & 68 (4+64) \\
 \bottomrule \bottomrule
 \end{tabular}
 \caption{The cost of different ways to represent an integer, a boolean, and an
@@ -64,11 +65,12 @@ additional delegated objects.}
 \end{table}
 
 Table~\ref{tab:data-sizes} shows three examples of the cost of different
-representations of the same value. (See Chapter~\ref{chapter.delegation} for
-details on these costs.) In the first example, and integer 47 can be
+representations of the same value. (See Chapter~\ref{chapter:delegation} for
+details on these costs.) In the first example, an integer 47 can be
 represented as a 4 byte field, a boxed object, or a Java \class{String}. 
 The \class{String} is by far the costliest representation, with a bloat factor of
-96\%.  Similarly for the other two examples, a boolean and an enumeration type.
+92\%, and 13 times the memory of the scalar representation.  Similarly for the other two examples, a
+boolean and an enumerated type.
 \class{String}s are simply a very expensive way to represent scalar values.
 
 \paragraph{StringBuffer vs. String}
