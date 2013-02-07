@@ -185,10 +185,10 @@ using an enumerated type, and to represent bit flag fields using Java
 Since an \class{EnumSet} is an object, this representation is going to
 cost more because of delegation. On the Sun JVM, the storage is pretty
 well optimized. If the underlying Enum type has less than 64 elements, then an
-EnumSet is represented by one object of size 24 bytes. If the \code{enum} type has more
-than 64 elements, then an \class{EnumSet} is two objects, a wrapper plus a
-\class{long[]} array. The total cost is 40 bytes + enough 8-byte \class{long}s
-in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee:
+\class{EnumSet} is represented by one object of size 24 bytes. If the
+\code{enum} type has more than 64 elements, then an \class{EnumSet} is two objects, a wrapper plus a
+\class{long[]} array. The total cost is 40 bytes plus enough 8-byte
+\class{long}s in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee:
 4 bytes for the reference field and 24 bytes for the \class{EnumSet}. This is considerably
 more expensive than storing the bit flags as either bits or booleans. 
 
@@ -204,13 +204,14 @@ for more on sharing data.
 
 \section{Dates}
 
-While \textit{time} and \textit{date} are not primitive data types in most
-programming languages, they are common and surprisingly complex. 
-In Java, there are different ways of representing times and dates, and as
-usual, the more functionality you want, the more memory the representation takes
-up. We describe here three common representations.
+Dates are very common in applications, but representing a date as a data type
+can be complex. The complexity comes from the need to represent
+universal time  and support conversions, arithmetic operations, and external
+representations. In Java, there are different ways of representing times and
+dates, and as usual, the more functionality you want, the more memory the
+representation takes up.
 
-The simplest and most compact way is to represent a time and date as a
+The simplest and most compact way is to represent a time and date is as a
 \code{long} integer:
 \begin{shortlisting}
     long timeNow = System.currentTimeMillis();
@@ -218,46 +219,60 @@ The simplest and most compact way is to represent a time and date as a
 The method call \code{System.currentTimeMillis()} returns the current 
 date and time in milliseconds since January 1, 1970.  This representation is
 perfect for timestamping, performance timings, and relative time
-comparisons, however, it is clearly limited. For example, sometimes you want the
-representation to be an object for type safety, the ability to initialize it
-to \code{null}, or the ability to store it in a a structure like a
-\code{HashTable}, for example.
+comparisons, however, it is clearly limited.  
 
-The simplest way to represent a time and date as an object is to use the
-\class{java.util.Date} class:
+For more functionality, you can use the \class{java.util.Date} class:
 \begin{shortlisting}
     Date date = new Date();
 \end{shortlisting}
 This creates a relatively small object (24 bytes) that stores the current date
-and time in milliseconds since January 1, 1970. The class \class{Date} has
-little other functionality, since most of its original methods have been
-deprecated. It does implement the \class{Comparable} interface, which enables
-date comparison. The main advantages of this representation over \code{long} are
-those that come with being a typed object.
+and time in milliseconds since January 1, 1970. The class \class{Date} itself
+supports little other functionality, since most of its original methods have
+been deprecated. You can print a \class{Date} object using the default
+\method{toString} function. Interestingly, printing a \class{Date} has the funny
+side effect of creating another object inside the \class{Date} object, which
+doesn't go away!
+
+So how do you get around this lack of functionality?
+Because of the semantic richness of dates, Java provides other classes that
+support various calendar functions, that operate on \class{Date} objects. For
+example, \class{SimpleDateFormat} will print a \class{Date} according to a
+specified format:
+\begin{shortlisting}
+    SimpleDateFormat dateFormat =  new SimpleDateFormat("dd/MM/yy"); 
+    System.out.println(dateFormat.format(new Date())); 
+\end{shortlisting}
+
+For other date-related functions, you can use 
+\class{GregorianCalendar}, which implements the very rich \class{Calendar}
+interface and serves as a wrapper for \class{Date}:
+\begin{shortlisting}
+
+	GregorianCalendar calendar = new GregorianCalendar();
+    Date now = calendar.getTime();
+    int year       = calendar.get(Calendar.YEAR);
+	int month      = calendar.get(Calendar.MONTH); 
+	calendar.add(Calendar.MONTH, 3); 
+	..
+    
+\end{shortlisting}
+
+Now we have functionality, but at what cost? It turns out that a
+\class{GregorianCalendar}, created with the default constructor requires six
+objects, totalling 424 bytes. This doesn't include the many temporaries
+thrown off during the initialization process. This means that if you need to
+create many dates in your application, you should not store them as
+\class{GregorianCalendars}. Instead, you should store your dates as \class{Date}
+objects, and use just one or two instances of a \class{GregorianCalendar} for
+operating on the dates:
+\begin{shortlisting}
+     static calendar = new GregorianCalendar();
+     ..
+	 Date now = calendar.getTime();
+	 calendar.setTime(now);   // a single instance of a 
 
 
-
-If you just need an object to hold a date, for instance as a property in a
-simple domain model object, you can use the java.util.Date class.
-
-Date is a total of 24 bytes, not 16.  That doesn't include the pointer:
-
-long fastDate    8
-Date cdate  4
-header + alignment = 12 
-
-This Date instance contains the current time as its date and time.
-java.util.Date date = new java.util.Date();
-
-long time = date.getTime(); 
-
-java.util.Calendar -- has methods to do date and time arithmetic like adding a
-day or
-month to another date.
-If you need to do date calculations like adding days or months to another date,
-or check what weekday (monday, tuesday etc.) a given date is, or convert dates and times between time zones, use the java.util.Calendar Calendar -- can do calendar arithmetic -- add a day or
-month to another date; convert between timezones, etc. - Discuss/compare cost of three representations:
-Date vs. Calendar vs. time in millis.  Advice on when each is appropriate.
+\end{shortlisting}
 
 \section{BigInteger and BigDecimal}
 TOWRITE:
