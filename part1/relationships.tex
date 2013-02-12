@@ -139,22 +139,24 @@ simpler design \class{ArrayList} has a smaller fixed cost and a smaller
 variable cost than \class{HashSet}.
 
 The fixed cost is the memory needed before any entries are added.
-For a \class{HashSet} the fixed cost consists of two wrapper objects at 56 bytes, plus
+For a \class{HashSet} the fixed cost consists of two wrapper objects, taking 56 bytes, plus
 the array's \jre overhead and 16 slots, bringing the total to 136 bytes. We are including the
-array's empty slots as a fixed cost since they are allocated right from the start.
+array's empty slots as a fixed cost since they are allocated right from the start
+\footnote{Once a collection grows beyond its initial size, we'll treat
+treat excess capacity as a variable cost, as we discuss in the next chapter.
+%This is because growth policies allocate excess capacity
+%in proportion to the size of the collection
+}
+\footnote{\class{HashSet} often has another
+fixed cost, not shown in our figures.  The first time you iterate over
+the set, a 16-byte \class{HashMap\$KeySet} is created and retained for the lifetime of
+the set.}.
 The fixed cost of an \class{ArrayList} is considerably
 lower, a total of 80 bytes. That includes its wrapper object and default
 10-element array. Fixed costs matter most in
 small collections. As a collection grows they become less significant.
-\footnote{\class{HashSet} actually has an additional fixed cost in a
-common usage scenario. The first time you iterate over the contents of
-the set, an additional 16-byte \class{HashMap\$KeySet} object is created, and retained for the lifetime of
-the set. This cost doesn't appear in our figures.}.
 
-\footnote{As a collection grows beyond its initial size, it makes more sense to
-treat excess capacity as a variable cost, as we'll discuss in the next chapter.
-This is because growth policies typically allocate excess capacity
-in proportion to the size of the collection}.
+
 
 A \class{HashMap\$Entry} is maintained for
 each entry, at 24 bytes each. This is the collection's variable
