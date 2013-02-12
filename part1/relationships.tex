@@ -189,40 +189,64 @@ similar to these. You can calculate them using the same methodology.
 
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||r||rl}
+ 		\begin{tabular}{l||r||r||rrl}
  		\toprule
-	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{2}{c}{with n entries}\\
-	 	 & & & fixed + n*variable & comments \\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{3}{c}{with n entries}\\
+	 	 & & & fixed & variable & comments \\
 	 	 \midrule
-	 	ArrayList & 80 & 80 & 80 & for n in 0..10 \\
- 		HashMap & 144 & 216 & 120 + n*24 & for n in 0..11 \\
- 		HashSet & 160 & 232 & 136 + n*24 & for n in 0..11 \\
- 		LinkedList & 72 & 144 & 48 + n*24 & for any n \\
+	 	ArrayList & 80 & 80 & 80 & 0 & for n in 0..10 \\
+ 		HashMap & 144 & 216 & 120 & 24 & for n in 1..11 \\
+ 		HashSet & 160 & 232 & 136 & 24 & for n in 1..11 \\
+ 		LinkedList & 72 & 144 & 48 & 24 & for any n \\
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-	\caption{Costs of some common collections when they
+	\caption{Cost of some common collections when they
 	contain very few entries and are allocated with default capacity. Variable
-	cost is the cost per entry, above the fixed cost of the collection. Costs apply only within the specified range.}
+	cost is the cost per entry, above the fixed cost of the collection. Costs apply only within the specified
+	range.}
 	\label{tab:small-collections-default}
 \end{table}
 \begin{table}
 \centering
- 		\begin{tabular}{l||r||r||rl}
+ 		\begin{tabular}{l||rr||rr}
  		\toprule
-	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{2}{c}{with n entries}\\
-	 	 & & & fixed + n*variable & comments \\
+	 	 Collection & \multicolumn{2}{c}{with 1 entry} & \multicolumn{2}{c}{with 4 entries}\\
+	 	 & default & minimum & default & minimum \\
 	 	 \midrule
-	 	ArrayList & 48 & 56 & 40 + (n/2)*8 & for any n, capacity = n \\
- 		HashMap & 88 & 184   & 64 + n*24 & for n in 0..1, capacity = 2 \\
- 		        &     &  & 88 + n*24 & for n in 3..5, capacity = 8 \\
- 		HashSet & 104 & 200 & 80 + n*24 & for n in 0..1, capacity = 2 \\
-		        &     & & 104 + n*24 & for n in 3..5, capacity = 8 \\
+	 	ArrayList & 80 & 48 & 80 & 56 \\
+ 		HashMap & 144 & 88 & 216 & 184 \\
+  		HashSet & 160 & 104 & 232 & 200 \\
+ 	 	\bottomrule
+ 	 	\end{tabular}
+	\caption{Looking at the effect of capacity on the cost of some small collections, comparing
+	the default capacity with the minimum to accomodate the number of entries.
+	For \class{HashMap} and \class{HashSet}, 1 entry requires a capacity of 2, and 4 entries requires a capacity
+	of 8.}
+	\label{tab:small-collections-minimum-samples}
+\end{table}
+
+\begin{table}
+\centering
+ 		\begin{tabular}{l||rrl}
+ 		\toprule
+	 	 Collection & \multicolumn{3}{c}{with n entries}\\
+	 	 & fixed & variable & comments \\
+	 	 \midrule
+	 	ArrayList & 40 & (n/2)*8 & for any n \\
+	 	\midrule
+ 		HashMap &  64 & 24 & capacity = 2, holds up to 1 \\
+ 		        &  72 & 24 & capacity = 4, holds up to 2 \\
+ 		        &  88 & 24 & capacity = 8, holds up to 5 \\
+ 		\midrule
+ 		HashSet &  80 & 24 & capacity = 2, holds up to 1\\
+ 		        &  88 & 24 & capacity = 4, holds up to 2 \\
+		        &  104 & 24 & capacity = 8, holds up to 5 \\
 	 	\bottomrule
  	 	\end{tabular}
-	\caption{Costs of some common collection classes when capacity is set
-	to the minimum to accomodate the number of entries shown.}
-	\label{tab:small-collections-minimum}
+	\caption{Fixed and variable costs of some common collection classes when capacity is set
+	to the minimum to accomodate the number of entries.}
+	\label{tab:small-collections-minimum-fixed-var}
 \end{table}
 
 The fact that \class{HashSet} delegates to \class{HashMap} inflates its fixed
@@ -323,6 +347,12 @@ rehashing the entries. The load factor, by default .75, determines the
 maximum number of elements in the collection relative to the size of the array,
 before a larger array needs to be allocated. When setting the initial
 capacity it's important to take the load factor into account, so that you leave enough headroom.
+
+\autoref{tab:small-collections-minimum-samples} gives a sense of the savings you can achieve
+for some common small collections by setting the capacity to the minimum.
+\autoref{tab:small-collections-minimum-fixed-var} shows the breakdown into fixed and variable costs for some
+minimally-sized collections. You can see, compared to \autoref{tab:small-collections-default}, 
+how minimal sizing reduces the fixed cost.
 
 An \class{ArrayList}, \class{HashMap}, or \class{HashSet}
 will not automatically reduce the size of its array when elements are removed,
