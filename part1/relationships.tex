@@ -211,7 +211,7 @@ the standard libraries, along with a few
 examples from open source frameworks.
 The table shows the cost of sample small collections, plus fixed and
 variable costs so you can compute the costs of these collections for small sizes
-in genearl. All have been allocated with default capacity.
+in general. All have been allocated with default capacity.
 %and the default size when the collection is just allocated without entries, and
 % any additional entry cost. 
 These costs have been calculated based on the \oracle \jre,
@@ -222,7 +222,6 @@ using the techniques described in Chapter~\ref{chapter:delegation}.
 You can calculate costs for similar classes using the same methodology.
 \autoref{chapter:jre-comparison} has more information about additional classes
 and \jre platforms.
-
 
 LinkedList fixed cost includes sentinel entry, 48 bytes. lower than default AL. 
 Variable cost adds up quickly.
@@ -248,6 +247,17 @@ With 2 entries total cost is higher than default AL.
 	range.}
 	\label{tab:small-collections-default}
 \end{table}
+
+
+\begin{figure}
+  \centering
+ \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-linkedlist.pdf}
+ \caption{A look inside a \class{LinkedList}. Shown with 3
+  entries.}
+  \label{fig:inside-linkedlist}
+\end{figure}
+
+
 \begin{table}
 \centering
  		\begin{tabular}{l||rr||rr}
