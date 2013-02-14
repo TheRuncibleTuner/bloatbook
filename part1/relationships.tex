@@ -154,20 +154,19 @@ the set.}.
 The fixed cost of an \class{ArrayList} is considerably
 lower, a total of 80 bytes. That includes its wrapper object and default
 10-element array. Fixed costs matter most in
-small collections. As a collection grows they become less significant.
+small collections. As collections grow they become less significant.
 
-
-
-A \class{HashMap\$Entry} is maintained for
-each entry, at 24 bytes each. This is the collection's variable
-cost, that is, the incremental cost of storing an
-entry
-
-The variable cost of a \class{HashSet} is 24 bytes. The variable cost of a small
-\class{ArrayList} can be considered 0, since by default the array has been
-allocated with 10 extra slots. Lower variable
-cost means that \class{ArrayList} scales much better than \class{HashSet}. 
-So \class{ArrayList} is better both for small and large sets.
+A \class{HashSet} maintains a \class{HashMap\$Entry} object for 
+each entry, at 24 bytes each. This is its
+variable cost, that is, the incremental cost of storing an
+entry. The variable cost of an \emph{entry-based} collection like
+\class{HashSet} is typically much higher than that of an \emph{array-based}
+collection, such as \class{ArrayList}, that uses array slots to store its entries.
+A lower variable cost means that \class{ArrayList} scales much
+better than \class{HashSet}.
+The variable cost also matters for small collections, when you have a lot of
+instances them. Note that
+we treat the variable cost of a small \class{ArrayList} to be 0, since we've already counted the 10 initial slots in the fixed cost.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
@@ -178,16 +177,56 @@ So \class{ArrayList} is better both for small and large sets.
 \end{figure}
  
 
-Table~\ref{tab:small-collections-default} shows the memory costs of four common
-collection classes, \class{ArrayList}, \class{LinkedList}, \class{HashMap}, and
-\class{HashSet}.
-This table shows the default size when the collection is just allocated without
-entries, and any additional entry cost. These costs have
-been calculated based on the Sun JVM, using the techniques described in Chapter~\ref{chapter:delegation}. 
-The various other Java standard
-library implementations in circulation have costs
-similar to these. You can calculate them using the same methodology.
+Looking back over why \class{HashSet} takes more space than \class{ArrayList},
+we can see a number of reasons. Some of the extra cost is because of
+additional functionality, such as providing uniqueness checking and entry removal in constant time.
+\class{HashSet} is also optimized for performance, and sacrifices memory 
+under the assumption that \class{HashSet}s will contain a large number of
+elements. The decision
+to reuse the more general \class{HashMap} code adds to the memory needed,
+especially the fixed cost. Other extra costs
+are due to unavoidable Java overhead.
+Our guess is that the collection class developers would be surprised by the relationship usage
+pattern that results in hundreds of thousands of small \class{HashSets}. 
+%Why bother
+%implementing expandable structures and clever hashing algorithms for only a few
+% entries? 
+This mismatch between collection implementation and usage is 
+a leading cause of memory bloat. 
+%The overhead cost of a \class{HashSet} is
+%remarkably high. Creating many small collections multiplies this basic
+% infrastructure cost, which is all overhead, filling the heap. 
 
+%The fact that \class{HashSet} delegates to \class{HashMap} inflates its fixed
+%cost in two ways: the cost of the extra wrapper object, and the cost of fields
+%in the \class{HashMap} that aren't needed when it's used as a set. 
+%Note that since the \class{HashMap\$Entry} class is designed for
+%a \class{HashMap}, its value field is not used.
+
+ 
+Let's look now at some
+additional choices for small collections.
+Table~\ref{tab:small-collections-default} shows the memory costs of four common classes from
+the standard libraries, along with a few
+examples from open source frameworks.
+The table shows the cost of sample small collections, plus fixed and
+variable costs so you can compute the costs of these collections for small sizes
+in genearl. All have been allocated with default capacity.
+%and the default size when the collection is just allocated without entries, and
+% any additional entry cost. 
+These costs have been calculated based on the \oracle \jre,
+using the techniques described in Chapter~\ref{chapter:delegation}.
+%The various other Java standard
+%library implementations in circulation have costs
+%similar to these. 
+You can calculate costs for similar classes using the same methodology.
+\autoref{chapter:jre-comparison} has more information about additional classes
+and \jre platforms.
+
+
+LinkedList fixed cost includes sentinel entry, 48 bytes. lower than default AL. 
+Variable cost adds up quickly.
+With 2 entries total cost is higher than default AL.
 
 \begin{table}
 \centering
@@ -251,30 +290,7 @@ similar to these. You can calculate them using the same methodology.
 	\label{tab:small-collections-minimum-fixed-var}
 \end{table}
 
-The fact that \class{HashSet} delegates to \class{HashMap} inflates its fixed
-cost in two ways: the cost of the extra wrapper object, and the cost of fields
-in the \class{HashMap} that aren't needed when it's used as a set. 
-Note that since the \class{HashMap\$Entry} class is designed for
-a \class{HashMap}, its value field is not used.
 
-Some of its extra cost is because of additional functionality,
-such as providing uniqueness checking and entry removal in constant time.
-\class{HashSet} is also optimized for performance, and sacrifices memory 
-under the assumption that \class{HashSet}s will contain a large number of
-elements. Additionally, \class{HashSet} delegates its work to a
-degenerate \class{HashMap}, that is, one with keys but no values. This decision,
-to reuse the more general \class{HashMap} code, adds to the memory
-cost. Other extra costs are due to unavoidable Java overhead.
-
-Our guess is that the
-collection class developers would be surprised by the relationship usage pattern
-that results in hundreds of thousands of small \class{HashSets}. Why bother
-implementing expandable structures and clever hashing algorithms for only a few entries?
-This mismatch between collection implementation and usage is 
-a leading cause of memory bloat. The overhead cost of a \class{HashSet} is
-remarkably high. Creating many small collections multiplies this basic infrastructure
-cost, which is all overhead, filling the heap. 
- 
 
 \section{Properly Sizing Collections}
 \label{sec:proper-size}
