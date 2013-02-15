@@ -326,15 +326,27 @@ predict, you just have to beware.
 
 \section{Summary} 
 
-There are common data types that are just beyond simple primitives that can take
-up a lot of space.  These include character strings, bit sets, dates, and
+There are common data types just beyond simple primitives that can
+take up a lot of space.  These include character strings, bit sets, dates, and
 arbitrary-precision numeric data. This chapter shows the costs of various
 representations and what the trade-offs are. Not surprisingly, the cost varies
 according to functionality, and the main lessor is not to use expensive
 representations unless you need the functionality.
 
 \begin{itemize}
-  \item  blah, blah
+  \item  Don't use \class{String} to store data that can be natuarlly
+  represented in a more compact data form, such as integer or boolean.
+  \item Storing strings in \class{StringBuffer}s can waste a lot of space
+  if they are sized much bigger than the data they store.
+  \item Even simple bit flags can cause bloat. If you generate lots of objects
+  with bitflags, you should make sure you choose the most efficient
+  representation.
+  \item Beware of storing dates as \class{GregorianCalendar}s.  A
+  \class{GregorianCalendar} should only be used and reused as a converter
+  object, to perform operations on \class{Date}s.
+  \item \class{BigInteger} and \class{BigDecimal} provide arbitrary precision
+  arithmetic on integers and decimals, and are needed when this functionality is
+  needed. Otherwise, using them just consume a lot of space and time.
 \end{itemize}
 
 
