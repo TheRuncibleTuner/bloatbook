@@ -159,14 +159,13 @@ small collections. As collections grow they become less significant.
 A \class{HashSet} maintains a \class{HashMap\$Entry} object for 
 each entry, at 24 bytes each. This is its
 variable cost, that is, the incremental cost of storing an
-entry. The variable cost of an \emph{entry-based} collection like
-\class{HashSet} is typically much higher than that of an \emph{array-based}
-collection, such as \class{ArrayList}, that uses array slots to store its entries.
+entry. It is much higher than that of an \class{ArrayList}, which
+use a 4-byte array slot to point to each entry.
 A lower variable cost means that \class{ArrayList} scales much
-better than \class{HashSet}.
-The variable cost also matters for small collections, when you have a lot of
-instances them. Note that
-we treat the variable cost of a small \class{ArrayList} to be 0, since we've already counted the 10 initial slots in the fixed cost.
+better than \class{HashSet} for large collections. The variable cost also
+adds up for small collections, whenever you have a lot of instances of them.  
+%Note that we treat the variable cost of a small \class{ArrayList} to be 0,
+% since we've already counted the 10 initial slots in the fixed cost.
  \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-arraylist.pdf}
@@ -177,9 +176,10 @@ we treat the variable cost of a small \class{ArrayList} to be 0, since we've alr
 \end{figure}
  
 
-Looking back over why \class{HashSet} takes more space than \class{ArrayList},
-we can see a number of reasons. Some of the extra cost is because of
-additional functionality, such as providing uniqueness checking and entry removal in constant time.
+In summary, why does \class{HashSet} take more space than \class{ArrayList}?
+We can see a number of reasons. Some of the extra cost is because of
+additional functionality, such as providing uniqueness checking and entry
+removal, in constant time.
 \class{HashSet} is also optimized for performance, and sacrifices memory 
 under the assumption that \class{HashSet}s will contain a large number of
 elements. The decision
@@ -204,13 +204,11 @@ a leading cause of memory bloat.
 %a \class{HashMap}, its value field is not used.
 
  
-Let's look now at some
-additional choices for small collections.
-Table~\ref{tab:small-collections-default} shows the memory costs of four common classes from
-the standard libraries, along with a few
-examples from open source frameworks.
-The table shows the cost of sample small collections, plus fixed and
-variable costs so you can compute the costs of these collections for small sizes
+%Let's look now at some additional choices for small collections.
+Table~\ref{tab:small-collections-default} compares the memory costs of four
+common classes from the standard libraries.
+The table shows bytes needed when each collection contains just a few
+entries, plus fixed and variable costs for computing the memory needed for small sizes
 in general. All have been allocated with default capacity.
 %and the default size when the collection is just allocated without entries, and
 % any additional entry cost. 
@@ -223,9 +221,6 @@ You can calculate costs for similar classes using the same methodology.
 \autoref{chapter:jre-comparison} has more information about additional classes
 and \jre platforms.
 
-LinkedList fixed cost includes sentinel entry, 48 bytes. lower than default AL. 
-Variable cost adds up quickly.
-With 2 entries total cost is higher than default AL.
 
 \begin{table}
 \centering
@@ -248,7 +243,6 @@ With 2 entries total cost is higher than default AL.
 	\label{tab:small-collections-default}
 \end{table}
 
-
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/inside-linkedlist.pdf}
@@ -256,6 +250,32 @@ With 2 entries total cost is higher than default AL.
   entries.}
   \label{fig:inside-linkedlist}
 \end{figure}
+
+Let's now look at one more choice, \class{LinkedList}, useful when ordering is
+needed and there are frequent insertions or deletions.
+\autoref{fig:inside-linkedlist} shows its internal structure. A
+\class{LinkedList} always has one wrapper object, plus a dummy entry object that
+acts as an end-of-list sentinel, presumably for performance reasons. The total
+fixed cost is 48 bytes.
+\class{LinkedList}, just like \class{HashSet}, \class{HashMap}, and
+\class{TreeMap}, is an \emph{entry-based} collection, where an internal entry object
+is allocated for each element in the collection. Each \class{LinkedList.Entry}
+requires 24 bytes, the variable cost of the collection. Entry-based collections
+have higher variable costs than \emph{array-based} collections,
+such as \class{ArrayList}, which point directly to the user data from array
+slots.
+The combination of fixed and variable costs can make \class{LinkedList} an
+expensive choice even at small sizes.  From
+\autoref{tab:small-collections-default} we can see that a 4-element
+\class{LinkedList} is much larger than the equivalent \class{ArrayList}. Again, for such
+small collections it's worth
+asking what the performance gains
+are in practice, compared to an array-based representation.  In the next chapter
+we'll look at a few examples of array-based maps and sets from some open source
+frameworks, in the context of larger collections. A few of these are appropriate
+for small collections as well.
+
+
 
 
 \begin{table}
