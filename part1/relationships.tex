@@ -386,15 +386,17 @@ Figure~\ref{fig:trimmed-product}.
  
 \class{HashSet}s and \class{HashMap}s do not have \code{trimToSize}
 methods, but it is possible to set their initial capacity at construction time.
-The initial capacity is the number of hash buckets, that is, the number of slots
-in the array. It is automatically rounded up to the nearest power of
-two. Hash-based collections always require some excess capacity to reduce the
+The initial capacity is actually not the number of elements the collection is
+expected to hold. It specifies instead the number of hash buckets, that is, the
+number of slots in the array. It is automatically rounded up to the
+nearest power of two. Hash-based collections always require some excess capacity to reduce the
 likelihood of collisions. In addition, if the collection does grow and the
 array needs to be reallocated, there will be the expense of
 rehashing the entries. The load factor, by default .75, determines the
-maximum number of elements in the collection relative to the size of the array,
+maximum number of elements in the collection, relative to the size of the array,
 before a larger array needs to be allocated. When setting the initial
-capacity it's important to take the load factor into account, so that you leave enough headroom.
+capacity it's important to take the load factor into account.
+%so that you leave enough headroom
 
 \autoref{tab:small-collections-minimum-samples} gives a sense of the savings you can achieve
 for some common small collections by setting the capacity to the minimum.
