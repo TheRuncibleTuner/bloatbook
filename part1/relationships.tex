@@ -285,9 +285,9 @@ for small collections as well.
 	 	 Collection & \multicolumn{2}{c}{with 1 entry} & \multicolumn{2}{c}{with 4 entries}\\
 	 	 & default & minimum & default & minimum \\
 	 	 \midrule
-	 	ArrayList & 80 & 48 & 80 & 56 \\
- 		HashMap & 144 & 88 & 216 & 184 \\
-  		HashSet & 160 & 104 & 232 & 200 \\
+	 	ArrayList & 80 & 40 & 80 & 56 \\
+ 		HashMap & 144 & 80 & 216 & 184 \\
+  		HashSet & 160 & 96 & 232 & 200 \\
  	 	\bottomrule
  	 	\end{tabular}
 	\caption{Looking at the effect of capacity on the cost of some small collections, comparing
@@ -304,7 +304,7 @@ for small collections as well.
 	 	 Collection & \multicolumn{3}{c}{with n entries}\\
 	 	 & fixed & variable & comments \\
 	 	 \midrule
-	 	ArrayList & 40 & 4 & for any n \\
+	 	ArrayList & 40 & 4*(n-1) & Round total cost up to nearest 8. For any n.\\
 	 	\midrule
  		HashMap &  64 & 24 & capacity = 2, holds up to 1 \\
  		        &  72 & 24 & capacity = 4, holds up to 2 \\
@@ -466,8 +466,8 @@ when empty.
 	 	 \midrule
 	 	ArrayList & 80 & 40 \\
  		LinkedList & 48 & 48 \\
- 		HashMap & 120 & 64 \\
- 		HashSet & 136 & 80 \\
+ 		HashMap & 120 & 56 \\
+ 		HashSet & 136 & 72 \\
 	 	\bottomrule
 	 	\end{tabular}
 	\caption{Size of empty collections, for some common
