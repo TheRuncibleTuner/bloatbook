@@ -645,14 +645,15 @@ together, we have gone from the initial \class{HashSet} representation
 of 22.1MB in Section~\ref{section:choosing-collection} to the in-lined field
 representation of 1.86MB. 
 
+
 \section{Hybrid Representations}
 
-An interesting case is when the sizes of the collections used in a relationship
-is not uniform. That is, some collections are small and some collections are
+It is often the case that the collections used in a relationship
+are not of uniform size. There often are many collections that are small and fewer that are
 very big.  It's reasonable to use an expensive collection like \class{HashSet}
 for the big collections, but then the small collections pay the price. One way
 to handle this problem is to use a hybrid representation. For example, you can
-use arrays for smaller collections, and \class{HashSets} for larger
+use \class{ArrayList}s for smaller collections, and \class{HashSet}s for larger
 collections. 
 
 One catch is that usually you will not know in advance which collections in the
@@ -662,7 +663,7 @@ large enough. Each collection starts as an array, and then once it
 grows past a threshhold, it is converted to a \class{HashSet}.
 
 In our example, suppose that the vast majority of products have four alternate
-suppliers on average, but a few products have over 100 alternate suppliers. We
+suppliers on average, but a few products have over 100 alternate suppliers each. We
 can choose a threshhold, say six entries, which triggers a conversion to a
 \class{HashSet} when the threshhold is exceeded. Here is the class
 \class{Product}:
@@ -670,53 +671,92 @@ can choose a threshhold, say six entries, which triggers a conversion to a
 \begin{shortlisting} 
 public class Product {
 
-	    static final int threshhold = 6;
-		String sku;
-		String name;
+	private static final int threshhold = 6;
+	.. 
+	protected Collection<Supplier> alternateSuppliers;
+	..
+	public Product() {
 		..
-		int numAlternateSuppliers;
-		Supplier[] alternateSuppliers;
-		HashSet<Supplier> bigAlternateSuppliers;
-		
-		void addAlternateSupplier(Supplier supplier) {
-		
-		    /* Check for duplication */
-		    if (hasAlternateSupplier(supplier)) {
-		         return;
-		    }
-		
-		    /* Try to add the supplier to the array alternateSuppliers */
-		    if (numAlternateSuppliers == 0) {
-		        alternateSuppliers = new Supplier[threshhold];
-		    }
-			if (numAlternateSuppliers < threshhold) {
-			    alternateSuppliers[numAlternateSuppliers++] = supplier;
-			    return;
-			}
-			
-			/* If threshhold is exceeded, need to use bigAlternateSuppliers */
-			if (numAlternateSuppliers == threshhold) {
-			    bigAlternateSuppliers = new HashSet<Supplier>();
-			    for (int i = 0; i < threshhold; i++) {
-			    	bigAlternateSuppliers.add(alternateSuppliers[i]);
-			    }
-			    alternateSuppliers = null;
-			}
-			bigAlternateSuppliers.add(supplier);
-			numAlternateSuppliers++;
-			return;
+		// Initialize to a shared, static collection
+		alternateSuppliers = new Collections.emptyList();
+		..
+	}
+	
+	public void addAlternateSupplier(Supplier supplier) {
+		int numSuppliers = alternateSuppliers.size();
+		if (numSuppliers == 0) {
+			// Create a singleton
+			alternateSuppliers = 
+				Collections.singletonList(supplier);
 		}
+		else {
+			if (numSuppliers <= threshold) {
+				// Uniqueness check for non-HashSet cases
+				if (suppliers.contains(supplier)) {
+					return;
+				}
+			 	if (numSuppliers == 1) {
+			 		// Convert to ArrayList
+			 		suppliers = 
+			 			new ArrayList<Supplier>(suppliers);
+			 	}
+			 	else if (numSuppliers == threshold) {
+			 		// Convert to HashSet
+			 		suppliers = 
+			 			new HashSet<Supplier>(suppliers);
+			 	}
+			}
+			// Add supplier
+			suppliers.add(supplier);
+		}
+	}
+	..
 }
 \end{shortlisting}
 The method \code{addAlternateSupplier} adds the supplier to the array if the
-size is less than the thresshold, otherwise, it adds the supplier to the \class{HashSet}.
+size is less than the threshold, otherwise, it adds the supplier to the \class{HashSet}.
 It allocates the alternate supplier array and \class{HashSet} 
 only if and when it is needed, to avoid wasting space with empty collections
 when there are no or only a few alternate suppliers.
 
 Implementing hybrid representations is more complicated than just using one
-collection for a relationship. However, it can save significant space in some
-cases.
+type of collection for a relationship. However, it can save significant space in some
+cases. Depending upon how much extra coding you want to do, you can further optimize 
+by using arrays or direct reference fields, rather than collections, for the small cases.  
+%This can save even more space.
+
+
+\section{Specialized Collections}
+
+\subsection{Immutable behavior}
+
+
+\subsection{Unmodifiable behavior}
+
+\subsection{Concurrent and synchronized behavior}
+
+\begin{table}
+\centering
+ 		\begin{tabular}{l||r||r||rrl}
+ 		\toprule
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{3}{c}{with n entries}\\
+	 	 & & & fixed & variable & comments \\
+	 	 \midrule
+	 	Collections.singleton set &  16 & - & 16 & - &  \\
+	 	Collections.singletonList & 16 & - & 16 & - &  \\
+	 	Collections.singletonMap &  40 & - & 40 & - &  \\
+	 	\midrule
+	 	Guava ImmutableSet &  &  & & &  \\	 	
+	 	\midrule
+	 	UnmodifiableSet &  &  & & &  \\	 	
+	 	\bottomrule
+	 	\end{tabular}
+	 	
+	\caption{Cost of some specialized collections when they
+	contain very few entries and are allocated with default capacity.}
+	\label{tab:specialized-collections-small}
+\end{table}
+
 
 \section{Summary}
 
