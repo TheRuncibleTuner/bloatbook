@@ -230,8 +230,8 @@ and \jre platforms.
 	 	 & & & fixed & variable & comments \\
 	 	 \midrule
 	 	ArrayList & 80 & 80 & 80 & 0 & for n in 0..10 \\
- 		HashMap & 144 & 216 & 120 & 24 & for n in 1..11 \\
- 		HashSet & 160 & 232 & 136 & 24 & for n in 1..11 \\
+ 		HashMap & 144 & 216 & 120 & 24 & for n in 0..12 \\
+ 		HashSet & 160 & 232 & 136 & 24 & for n in 0..12 \\
  		LinkedList & 72 & 144 & 48 & 24 & for any n \\
 	 	\bottomrule
 	 	\end{tabular}
@@ -304,15 +304,15 @@ for small collections as well.
 	 	 Collection & \multicolumn{3}{c}{with n entries}\\
 	 	 & fixed & variable & comments \\
 	 	 \midrule
-	 	ArrayList & 40 & 4*(n-1) & Round total cost up to nearest 8. For any n.\\
+	 	ArrayList & 36 & 4 & for any n; round total cost up to nearest 8\\
 	 	\midrule
  		HashMap &  64 & 24 & capacity = 2, holds up to 1 \\
- 		        &  72 & 24 & capacity = 4, holds up to 2 \\
- 		        &  88 & 24 & capacity = 8, holds up to 5 \\
+ 		        &  72 & 24 & capacity = 4, holds up to 3 \\
+ 		        &  88 & 24 & capacity = 8, holds up to 6 \\
  		\midrule
  		HashSet &  80 & 24 & capacity = 2, holds up to 1\\
- 		        &  88 & 24 & capacity = 4, holds up to 2 \\
-		        &  104 & 24 & capacity = 8, holds up to 5 \\
+ 		        &  88 & 24 & capacity = 4, holds up to 3 \\
+		        &  104 & 24 & capacity = 8, holds up to 6 \\
 	 	\bottomrule
  	 	\end{tabular}
 	\caption{Fixed and variable costs of some common collection classes when capacity is set
@@ -386,7 +386,7 @@ Figure~\ref{fig:trimmed-product}.
  
 \class{HashSet}s and \class{HashMap}s do not have \code{trimToSize}
 methods, but it is possible to set their initial capacity at construction time.
-The initial capacity is actually not the number of elements the collection is
+The capacity is actually not the number of elements the collection is
 expected to hold. It specifies instead the number of hash buckets, that is, the
 number of slots in the array. It is automatically rounded up to the
 nearest power of two. Hash-based collections always require some excess capacity to reduce the
@@ -394,8 +394,11 @@ likelihood of collisions. In addition, if the collection does grow and the
 array needs to be reallocated, there will be the expense of
 rehashing the entries. The load factor, by default .75, determines the
 maximum number of elements in the collection, relative to the size of the array,
-before a larger array needs to be allocated. When setting the initial
-capacity it's important to take the load factor into account.
+before a larger array needs to be allocated. For example, a default
+\class{HashMap} with capacity of 16 can hold a maximum of 12 elements
+before needing to reallocate the array (to capacity 32). When
+setting the initial capacity it's therefore important to take the load factor
+into account.
 %so that you leave enough headroom
 
 \autoref{tab:small-collections-minimum-samples} gives a sense of the savings you can achieve
