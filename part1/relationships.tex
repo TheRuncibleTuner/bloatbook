@@ -334,8 +334,9 @@ often.
 %This is why
 By default, the initial capacity of an \class{ArrayList} is 10, and the capacity
 increases by 50\% whenever the array is reallocated.
-The default capacity of a \class{HashMap} or \class{HashSet}
-starts at 16, and grows by a factor of 2 when the collection becomes 75\% full.
+The capacity of a \class{HashMap} or \class{HashSet}
+starts at 16 by default, and grows by a factor of 2 when the collection becomes
+more than 75\% full.
 
 These policies trade space
 for time, on the assumption that collections always grow.
@@ -394,11 +395,10 @@ likelihood of collisions. In addition, if the collection does grow and the
 array needs to be reallocated, there will be the expense of
 rehashing the entries. The load factor, by default .75, determines the
 maximum number of elements in the collection, relative to the size of the array,
-before a larger array needs to be allocated. For example, a default
+before a larger array needs to be allocated. Therefore, it is important to take
+the load factor into account when setting capacity. For example, a default
 \class{HashMap} with capacity of 16 can hold a maximum of 12 elements
-before needing to reallocate the array (to capacity 32). When
-setting the initial capacity it's therefore important to take the load factor
-into account.
+before needing to allocate a larger array. 
 %so that you leave enough headroom
 
 \autoref{tab:small-collections-minimum-samples} gives a sense of the savings you can achieve
