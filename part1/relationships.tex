@@ -659,28 +659,30 @@ to handle this problem is to use a hybrid representation. For example, you can
 use \class{ArrayList}s for smaller collections, and \class{HashSet}s for larger
 collections. 
 
-One catch is that usually you will not know in advance which collections in the
+One catch is that you usually will not know in advance which collections in the
 relationship will end up being small and which will grow to be large. Therefore
-a conversion operation will be necessary at some point if a collection grows
-large enough. Each collection starts as an array, and then once it
-grows past a threshhold, it is converted to a \class{HashSet}.
+one or more conversion operations will be necessary at some point if a
+collection grows large enough. 
 
-In our example, suppose that the vast majority of products have four alternate
-suppliers on average, but a few products have over 100 alternate suppliers each. We
-can choose a threshhold, say six entries, which triggers a conversion to a
-\class{HashSet} when the threshhold is exceeded. Here is the class
-\class{Product}:
+Returning to our original example, let's suppose that 25\% of
+products have no alternate suppliers, 25\% have one alternate supplier, the next 25\% have betwen
+two and four suppliers, and the remaining 25\% have more than four. This time
+let's also assume that we do need to guarantee uniqueness in the data model.
+The code for the \class{Product} class is shown below. As in the case of lazy allocation of
+empty collections, we'll need to hide access to the collections behind
+accessor and update methods. 
 
 \begin{shortlisting} 
 public class Product {
 
+	// Threshold for switching to HashSet
 	private static final int threshhold = 6;
 	.. 
 	protected Collection<Supplier> alternateSuppliers;
 	..
 	public Product() {
 		..
-		// Initialize to a shared, static collection
+		// Initialize to a shared, empty collection
 		alternateSuppliers = Collections.emptyList();
 		..
 	}
@@ -716,6 +718,21 @@ public class Product {
 	..
 }
 \end{shortlisting}
+
+Each collection is initialized to a shared reference to a static empty set,
+from the standard library class \class{Collections}. The \class{Collections}
+class also provides factory methods which create singleton collections, that 
+use much less memory than their more general counterparts. A singleton list and
+set are only 16 bytes each. The singleton collections are immutable. In our
+example, if we expect there to be deletions, it's easy to write code that simply deletes
+the singleton until it's needed again.
+
+
+Each collection starts as an array, and then once it
+grows past a threshhold, it is converted to a \class{HashSet}.
+We can choose a
+threshhold, say six entries, which triggers a conversion to a \class{HashSet} when the threshhold is exceeded. Here is the class \class{Product}:
+
 The method \code{addAlternateSupplier} adds the supplier to the array if the
 size is less than the threshold, otherwise, it adds the supplier to the \class{HashSet}.
 It allocates the alternate supplier array and \class{HashSet} 
