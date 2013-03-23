@@ -580,34 +580,35 @@ If lazy allocation is not a good option for your application, then
 right-sizing collections, at initialization time or after loading is
 completed, will still make a difference for empty collections.
 
-\section{Fixed Size Collections}
-
-Java collections can grow to be
-arbitrarily big, but this functionality comes at a cost.
-Collections include wrapper objects, and 
-may be sized with extra growth room. If
-you know that the size of a collection is fixed, having the ability to expand
-the collection is unnecessary, and it is better to choose a cheaper alternative.
-In fact, often you can use a
-simple Java array, and not use a collection at all.  
-
-In our example, alternate suppliers are stored in an
- \class{ArrayList}, which inside is a
-wrapper pointing to an array of \class{Suppliers}.  If we assume that
-every product has at most four alternate suppliers, then  it isn't 
-necessary to store these in an \class{ArrayList} --- a simple array will do.
-Eliminating the \class{ArrayList} object removes 24 bytes per
-product, but we have to add 4 bytes to each \class{Product} to store the number
-of alternate suppliers. The total savings is 1.43MB for 75,000 products:
-\begin{shortlisting} 
-class Product {
-	String sku;
-	String name;
-	.. 
-	int numAlternateSuppliers;
-	Supplier[4] alternateSuppliers;
-}
-\end{shortlisting}
+%\section{Fixed Size Collections}
+%
+%Java collections can grow to be
+%arbitrarily big, but this functionality comes at a cost.
+%Collections include wrapper objects, and 
+%may be sized with extra growth room. If
+%you know that the size of a collection is fixed, having the ability to expand
+%the collection is unnecessary, and it is better to choose a cheaper
+% alternative.
+%In fact, often you can use a
+%simple Java array, and not use a collection at all.  
+%
+%In our example, alternate suppliers are stored in an
+% \class{ArrayList}, which inside is a
+%wrapper pointing to an array of \class{Suppliers}.  If we assume that
+%every product has at most four alternate suppliers, then  it isn't 
+%necessary to store these in an \class{ArrayList} --- a simple array will do.
+%Eliminating the \class{ArrayList} object removes 24 bytes per
+%product, but we have to add 4 bytes to each \class{Product} to store the number
+%of alternate suppliers. The total savings is 1.43MB for 75,000 products:
+%\begin{shortlisting} 
+%class Product {
+%	String sku;
+%	String name;
+%	.. 
+%	int numAlternateSuppliers;
+%	Supplier[4] alternateSuppliers;
+%}
+%\end{shortlisting}
  
 
 %\begin{figure}
@@ -618,35 +619,35 @@ class Product {
 %  eliminates another 24 bytes.}
 %  \label{fig:edges}
 %\end{figure}
-This is an example of choosing an overly-general collection. In
-this situation, you don't need a collection at all. Using \class{ArrayList}
-for storing fixed- or bounded-size arrays is a
-common practice that can be easily avoided.
-
-There is one final optimization that can be performed on the \class{Product}
-class. Namely, making the four alternate suppliers into fields of
-\class{Product} instead of elements of an array. This optimization
- a 32 byte array object for 75,000 products, while adding three additional
- fields to the \class{Product} for 100,000 objects, saving another 1.1MB in
- total:
-\begin{shortlisting}
-class Product {
-	String sku;
-	String name;
-	.. 
-	Supplier alternateSupplier1;
-	Supplier alternateSupplier2;
-	Supplier alternateSupplier3;
-	Supplier alternateSupplier4;
-}
-\end{shortlisting}
-
-This representation is very similiar to the original \class{Product} class in
-section~\ref{sec:rarely-used} where there is one alternate suppler field, and
-here there are four. Taking all of the optimizations 
-together, we have gone from the initial \class{HashSet} representation
-of 22.1MB in Section~\ref{section:choosing-collection} to the in-lined field
-representation of 1.86MB. 
+%This is an example of choosing an overly-general collection. In
+%this situation, you don't need a collection at all. Using \class{ArrayList}
+%for storing fixed- or bounded-size arrays is a
+%common practice that can be easily avoided.
+%
+%There is one final optimization that can be performed on the \class{Product}
+%class. Namely, making the four alternate suppliers into fields of
+%\class{Product} instead of elements of an array. This optimization
+% a 32 byte array object for 75,000 products, while adding three additional
+% fields to the \class{Product} for 100,000 objects, saving another 1.1MB in
+% total:
+%\begin{shortlisting}
+%class Product {
+%	String sku;
+%	String name;
+%	.. 
+%	Supplier alternateSupplier1;
+%	Supplier alternateSupplier2;
+%	Supplier alternateSupplier3;
+%	Supplier alternateSupplier4;
+%}
+%\end{shortlisting}
+%
+%This representation is very similiar to the original \class{Product} class in
+%section~\ref{sec:rarely-used} where there is one alternate suppler field, and
+%here there are four. Taking all of the optimizations 
+%together, we have gone from the initial \class{HashSet} representation
+%of 22.1MB in Section~\ref{section:choosing-collection} to the in-lined field
+%representation of 1.86MB. 
 
 
 \section{Hybrid Representations}
@@ -668,8 +669,8 @@ Returning to our original example, let's suppose that 25\% of
 products have no alternate suppliers, 25\% have one alternate supplier, the next 25\% have betwen
 two and four suppliers, and the remaining 25\% have more than four. This time
 let's also assume that we do need to guarantee uniqueness in the data model.
-The code for the \class{Product} class is shown below. As in the case of lazy allocation of
-empty collections, we'll need to hide access to the collections behind
+The code for the \class{Product} class is shown below. As in the case of lazy allocation, we'll
+need to hide access to the collections behind
 accessor and update methods. 
 
 \begin{shortlisting} 
