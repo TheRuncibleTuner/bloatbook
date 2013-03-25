@@ -673,6 +673,8 @@ model. The code for the \class{Product} class is shown below. As in the case of
 lazy allocation, we'll need to hide access to the collections behind
 accessor and update methods. 
 
+TODO: check source code for correctness!
+
 \begin{shortlisting} 
 public class Product {
 
@@ -720,15 +722,21 @@ public class Product {
 }
 \end{shortlisting}
 
-Each collection is initialized to a shared reference to a static empty set,
-from the standard library class \class{Collections}. The \class{Collections}
-class also provides factory methods which create singleton collections, that 
-use much less memory than their more general counterparts. A singleton list and
-set are only 16 bytes each. The singleton collections are immutable. In our
-example, if we expect there to be deletions, it's easy to write code that simply deletes
-the singleton until it's needed again.
+\paragraph{Singleton collections}
+The standard library class \class{Collections} provides
+\emph{singleton collections} that hold one element each.
+They use much
+less memory than their more general counterparts.
+A singleton list and set take only 16 bytes each. The singleton collections
+are created and initialized via factory methods in \class{Collections}. In our
+example, the relationship is first initialized with a shared reference to a
+static empty set. If an element is added, a singleton set is created to hold that first element. 
+The singleton collections are immutable, in other words, they cannot be modified once they are
+initialized. In your application, though, if you expect there to be
+deletions and they are infrequent, it's easy enough to write code that simply
+deletes the singleton collection until it's needed again.
 
-
+\paragraph{\class{ArrayList} and \class{HashSet}}
 Each collection starts as an array, and then once it
 grows past a threshhold, it is converted to a \class{HashSet}.
 We can choose a
