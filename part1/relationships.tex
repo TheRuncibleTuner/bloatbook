@@ -651,7 +651,7 @@ completed, will still make a difference for empty collections.
 
 
 \section{Hybrid Representations}
-
+\subsection{Mostly-small Collections}
 It is often the case that the collections used in a relationship
 are not of uniform size. There often are many collections that are small and fewer that are
 very big.  It's reasonable to use an expensive collection like \class{HashSet}
@@ -666,11 +666,11 @@ one or more conversion operations will be necessary at some point if a
 collection grows large enough. 
 
 Returning to our original example, let's suppose that 25\% of
-products have no alternate suppliers, 25\% have one alternate supplier, the next 25\% have betwen
-two and four suppliers, and the remaining 25\% have more than four. This time
-let's also assume that we do need to guarantee uniqueness in the data model.
-The code for the \class{Product} class is shown below. As in the case of lazy allocation, we'll
-need to hide access to the collections behind
+products have no alternate suppliers, 25\% have one alternate supplier, the next 25\% have
+an average of 3 suppliers each, and the remaining 25\% have an average of 20.
+Let's also assume that we do in fact need to guarantee uniqueness in the data
+model. The code for the \class{Product} class is shown below. As in the case of
+lazy allocation, we'll need to hide access to the collections behind
 accessor and update methods. 
 
 \begin{shortlisting} 
@@ -746,11 +746,11 @@ cases. Depending upon how much extra coding you want to do, you can further opti
 by using arrays or direct reference fields, rather than collections, for the small cases.  
 %This can save even more space.
 
+\subsection{Load vs. Use Scenarios}
 
-\section{Specialized Collections}
+\section{Special-purpose Collections}
 
 \subsection{Immutable behavior}
-
 
 \subsection{Unmodifiable behavior}
 
@@ -763,9 +763,9 @@ by using arrays or direct reference fields, rather than collections, for the sma
 	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{3}{c}{with n entries}\\
 	 	 & & & fixed & variable & comments \\
 	 	 \midrule
-	 	Collections.singleton set &  16 & - & 16 & - &  \\
-	 	Collections.singletonList & 16 & - & 16 & - &  \\
-	 	Collections.singletonMap &  40 & - & 40 & - &  \\
+	 	Collections.SingletonSet &  16 & - & 16 & - &  \\
+	 	Collections.SingletonList & 16 & - & 16 & - &  \\
+	 	Collections.SingletonMap &  40 & - & 40 & - &  \\
 	 	\midrule
 	 	Guava ImmutableSet &  &  & & &  \\	 	
 	 	\midrule
@@ -773,8 +773,8 @@ by using arrays or direct reference fields, rather than collections, for the sma
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-	\caption{Cost of some specialized collections when they
-	contain very few entries and are allocated with default capacity.}
+	\caption{A sampling of special-purpose collections. The table shows their cost
+	when they contain very few entries and are allocated with default capacity.}
 	\label{tab:specialized-collections-small}
 \end{table}
 
