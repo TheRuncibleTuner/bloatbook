@@ -673,13 +673,11 @@ model. The code for the \class{Product} class is shown below. As in the case of
 lazy allocation, we'll need to hide access to the collections behind
 accessor and update methods. 
 
-TODO: check source code for correctness!
-
 \begin{shortlisting} 
 public class Product {
 
 	// Threshold for switching to HashSet
-	private static final int threshhold = 6;
+	private static final int arrayListMax = 6;
 	.. 
 	protected Collection<Supplier> alternateSuppliers;
 	..
@@ -693,30 +691,30 @@ public class Product {
 	public void addAlternateSupplier(Supplier supplier) {
 		int numSuppliers = alternateSuppliers.size();
 		if (numSuppliers == 0) {
-			// Create a singleton
+			// Create a singleton list
 			alternateSuppliers = 
 				Collections.singletonList(supplier);
+			return;
 		}
-		else {
-			if (numSuppliers <= threshold) {
-				// Uniqueness check for non-HashSet cases
-				if (suppliers.contains(supplier)) {
-					return;
-				}
-			 	if (numSuppliers == 1) {
-			 		// Convert to ArrayList
-			 		suppliers = 
-			 			new ArrayList<Supplier>(suppliers);
-			 	}
-			 	else if (numSuppliers == threshold) {
-			 		// Convert to HashSet
-			 		suppliers = 
-			 			new HashSet<Supplier>(suppliers);
-			 	}
+		if (!(alternateSuppliers instanceof HashSet)) {
+			// Uniqueness check for non-HashSet cases
+			if (alternateSuppliers.contains(supplier)) {
+				return;
 			}
-			// Add supplier
-			suppliers.add(supplier);
+			if (numSuppliers == 1 && 
+			 	!(alternateSuppliers instanceof ArrayList)) {
+			 	// Convert to ArrayList
+			 	alternateSuppliers = 
+			 		new ArrayList<Supplier>(alternateSuppliers);
+			}
+			else if (numSuppliers == arrayListMax) {
+				// Convert to HashSet
+			 	alternateSuppliers = 
+			 		new HashSet<Supplier>(alternateSuppliers);
+			}
 		}
+		// Add supplier
+		alternateSuppliers.add(supplier);
 	}
 	..
 }
