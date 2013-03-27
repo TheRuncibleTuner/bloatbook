@@ -290,8 +290,8 @@ for small collections as well.
   		HashSet & 160 & 96 & 232 & 200 \\
  	 	\bottomrule
  	 	\end{tabular}
-	\caption{Looking at the effect of capacity on the cost of some small collections, comparing
-	the default capacity with the minimum to accomodate the number of entries.
+	\caption{The effect of capacity on the cost of some small collections,
+	comparing the default capacity with the minimum to accomodate the number of entries.
 	For \class{HashMap} and \class{HashSet}, 1 entry requires a capacity of 2, and 4 entries requires a capacity
 	of 8.}
 	\label{tab:small-collections-minimum-samples}
@@ -723,12 +723,12 @@ public class Product {
 \paragraph{Singleton collections}
 The standard library class \class{Collections} provides
 \emph{singleton collections} that hold one element each.
-They use much
+These use much
 less memory than their more general counterparts.
-A singleton list and set take only 16 bytes each. The singleton collections
-are created and initialized via factory methods in \class{Collections}. In our
-example, the relationship is first initialized with a shared reference to a
-static empty set, in case there are no alternate suppliers. The method
+A singleton list and set take only 16 bytes each. Singleton collections
+can be created via factory methods in \class{Collections}. In our
+example, we first initialize the relationship with a shared
+reference to a static empty set, in case there are no alternate suppliers. The method
 \code{addAlternateSupplier} creates a singleton set to hold the first alternate supplier, if one is added. 
 The singleton collections are immutable, in other words, they cannot be modified once they are
 initialized. In your application, though, if you expect there to be
@@ -736,16 +736,16 @@ deletions and they are infrequent, it's easy enough to write code that simply
 deletes the singleton collection until it's needed again.
 
 \paragraph{Converting to larger representations}
-If an additional alternate supplier is added, the singleton is replaced by an
-\class{ArrayList}. We can choose a
+If an additional alternate supplier is added, \code{addAlternateSupplier}
+replaces the singleton list with an \class{ArrayList}. We can choose a
 threshhold, say six entries, to be the maximum number of alternate
 suppliers the \class{ArrayList} representation should hold.  If more
 alternate suppliers are added beyond that, the representation is switched
 to the more costly \class{HashSet}.
 For the singleton and \class{ArrayList} representations, we need to check
-uniqueness, and use the \code{contains} method to do so. For \class{HashSet},
-\code{contains} would cause a linear search, so instead we rely on \class{HashSet}'s built-in
-uniqueness checking. 
+uniqueness, and we use the \code{contains} method to do so. For \class{HashSet},
+\code{contains} would cause a linear search, so instead we rely on
+\class{HashSet}'s built-in uniqueness checking. 
 
 %The method \code{addAlternateSupplier} adds the supplier to the array if the
 %size is less than the threshold, otherwise, it adds the supplier to the
