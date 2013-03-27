@@ -665,9 +665,11 @@ relationship will end up being small and which will grow to be large. Therefore
 one or more conversion operations will be necessary at some point if a
 collection grows large enough. 
 
-Returning to our original example, let's suppose that 25\% of
-products have no alternate suppliers, 25\% have one alternate supplier, the next 25\% have
-an average of 3 suppliers each, and the remaining 25\% have an average of 20.
+Returning to our original example, let's suppose that our average of 4 alternate
+suppliers per product is distributed as follows: 25\% of products have no
+alternate suppliers, 25\% have one alternate supplier, the next 25\% have
+between 2 and 6, averaging 3 each, and the remaining 25\% have an
+average of 12 each.
 Let's also assume that we do in fact need to guarantee uniqueness in the data
 model. The code for the \class{Product} class is shown below. As in the case of
 lazy allocation, we'll need to hide access to the collections behind
@@ -756,8 +758,12 @@ uniqueness, and we use the \code{contains} method to do so. For \class{HashSet},
 
 Implementing hybrid representations is more complicated than just using one
 type of collection for a relationship. However, it can save significant space in some
-cases. In our example, \ldots Depending upon how much extra coding you want to
-do, you can further optimize by using arrays or direct reference fields, rather than collections, for the small cases.  
+cases. In our example, an implementation that uses a
+\code{HashSet} (minimally sized) and shares a single empty collection would
+spend 18.9MB on collections overhead. The hybrid representation would reduce
+that to 11.6MB, a 38\% savings. Depending upon how much extra coding you are willing to do, you
+can further optimize by using arrays or direct reference fields, rather than collections,
+for the small cases.
 %This can save even more space.
 
 \subsection{Load vs. Use Scenarios}
