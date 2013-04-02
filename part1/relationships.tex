@@ -746,7 +746,7 @@ alternate suppliers are added beyond that, the representation is switched
 to the more costly \class{HashSet}.
 For the singleton and \class{ArrayList} representations, we need to check
 uniqueness, and we use the \code{contains} method to do so. For \class{HashSet},
-\code{contains} would cause a linear search, so instead we rely on
+we can rely instead on
 \class{HashSet}'s built-in uniqueness checking. 
 
 %The method \code{addAlternateSupplier} adds the supplier to the array if the
@@ -766,7 +766,7 @@ can further optimize by using arrays or direct reference fields, rather than col
 for the small cases.
 %This can save even more space.
 
-\subsection{Load vs. Use Scenarios}
+\subsection{Load vs. use scenarios}
 
 \section{Special-purpose Collections}
 
@@ -780,21 +780,32 @@ for the small cases.
 \centering
  		\begin{tabular}{l||r||r||rrl}
  		\toprule
-	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} & \multicolumn{3}{c}{with n entries}\\
+	 	 Collection & \makebox{with 1 entry} & \makebox{with 4 entries} &
+	 	 \multicolumn{3}{c}{with n entries}\\
 	 	 & & & fixed & variable & comments \\
 	 	 \midrule
-	 	Collections.SingletonSet &  16 & - & 16 & - &  \\
-	 	Collections.SingletonList & 16 & - & 16 & - &  \\
-	 	Collections.SingletonMap &  40 & - & 40 & - &  \\
+	 	 Collections statics: \\
+	 	SingletonSet &  16 & - & 16 & - &  \\
+	 	SingletonList & 16 & - & 16 & - &  \\
+	 	SingletonMap &  40 & - & 40 & - &  \\
 	 	\midrule
-	 	Guava ImmutableSet &  &  & & &  \\	 	
+	 	Guava: \\
+	 	ImmutableList & 40 & 56 & 36 & 4 & for any n; round total up to
+	 	nearest 8
+	 	\\
+	 	ImmutableSet & 64 & 96 & 64 & 8 & for any n; round total up to
+	 	nearest 16
+	 	\\
+	 	ImmutableSortedSet & 40 & 56 & 36 & 4 & for any n; round total up
+	 	to nearest 8  \\
 	 	\midrule
-	 	UnmodifiableSet &  &  & & &  \\	 	
+	 	Standard wrappers: \\
+	 	UnmodifiableSet & - & - & 16  & & above fixed cost of wrapped collection \\	 	
 	 	\bottomrule
 	 	\end{tabular}
 	 	
 	\caption{A sampling of special-purpose collections. The table shows their cost
-	when they contain very few entries and are allocated with default capacity.}
+	when they contain very few entries and are minimally sized.}
 	\label{tab:specialized-collections-small}
 \end{table}
 
