@@ -823,8 +823,13 @@ uses a linear search, which will be slow for a large set.
 	 	SingletonList & 16 & - & 16 & - &  \\
 	 	SingletonMap &  40 & - & 40 & - &  \\
 	 	\midrule
-	 	UnmodifiableList & - & - & 16  & - & Add'l cost \\
-	 	SynchronizedList & - & - & 16  & - & Add'l cost \\	 	
+	 	UnmodifiableList & - & - & 16 & - & add'l cost \\
+	 	UnmodifiableSet & - & - & 16 & - & add'l cost \\
+	 	UnmodifiableMap & - & - & 24 & - & add'l cost \\
+	 	\midrule
+	 	SynchronizedList & - & - & 24  & - & add'l cost \\	 	
+	 	SynchronizedSet & - & - & 16  & - & add'l cost \\	 	
+	 	SynchronizedMap & - & - & 32  & - & add'l cost \\	 	
 	 	\midrule
 	 	\multicolumn{5}{l}{Guava:} \\
 	 	\midrule
@@ -839,12 +844,12 @@ uses a linear search, which will be slow for a large set.
 	 	\midrule
 	 	\multicolumn{5}{l}{Java 1 collections:} \\
 	 	\midrule
-	 	Vector & - & - & -  & - & \\ 	
+	 	Vector & 40 & 56 & 36 \footnotemark[1]  & 4 & for any n\\ 	
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-	\caption{A sampling of special-purpose collections. The table shows their cost
-	when they contain very few entries and are minimally sized.}
+	\caption{A sampling of special-purpose collections. When it applies, costs
+	shown are when minimally sized.}
 	\label{tab:specialized-collections-small}
 \end{table}
 
