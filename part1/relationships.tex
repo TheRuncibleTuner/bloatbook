@@ -856,30 +856,42 @@ uses a linear search, which will be slow for a large set.
 \footnotetext[1]{Round total cost up to nearest 8 bytes.}
 \footnotetext[2]{Round total cost up to nearest 16 bytes.}
 
+\FloatBarrier
 
 \section{Summary}
 
 Collections used to represent relationships often result in many small
-collection instances, whose cost is dominated by a fixed-size
-overhead. This chapter describes a number of ways to mitigate high fixed memory
-costs for relationships implemented with collections:
+collection instances. The cost is dominated by fixed-size
+overhead; variable overhead matters as well. To mitigate high memory costs
+for relationships:
+%implemented with collections:
 \begin{itemize}
-  \item Choose the most memory-efficient collection for the job at hand. In
-  particular when collections have at most a few elements in them, you don't
-  need expensive functionality like hashing. 
+  \item Choose the most memory-efficient collection for the job at hand. For
+  example, when collections have at most a few elements in them, you
+  don't need expensive functionality like hashing. In
+  order to choose, first ask some questions about the relationship:
+  \begin{itemize}
+    \item What operations will be performed? Will there be deletions,
+    insertions, uniqueness checks?
+    \item What's the cardinality? Is it uniformly
+    distributed across the instances, or are there mostly very small
+    collections?
+    \item Is there a distinct load phase, after which the relationship no
+    longer changes?
+  \end{itemize}
   \item Make sure collections are properly sized. If you know that a collection
   will not grow any more, then there is no reason to maintain extra room for
   growth.
-  \item Avoid lots of empty collections. It is common to allocate collections 
- ahead of time, whether or not they will eventually ever be used. If you
- postpone creating them until they are needed, often you will end up with fewer collections, 
- and no empty collections.
- \item Use arrays instead of \class{ArrayLists} when you know the maximum size
- of the collections in advance. You can also eliminate an
- \class{ArrayList} altogether when there are always at most a few entries that
- can be stored in fields.
- \item When the usage pattern is not uniform, it is sometimes reasonable to use
- a hybrid representation.
+  \item Avoid lots of empty collections. You can postpone creating collections
+  until they are needed.
+ \item When the size distribution is not uniform, it is sometimes reasonable to
+ use a hybrid representation that adapts to the data. If there are
+ distinct load vs. use phases, a different representation
+ for each phase can be a good solution.
+ \item Some special-purpose collections can help save space, such as
+ \code{SingletonSet}. Others are not
+ designed for use at a small scale. Make sure the
+ behavior is worth the added cost.
 \end{itemize}
 Knowing which relationships and collections in your application are the most
 important and need to scale is key to applying these optimizations effectively.  
