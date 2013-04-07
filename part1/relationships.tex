@@ -799,14 +799,41 @@ backed by a simple array. Its only caveat is that its \code{contains} function
 uses a linear search, which will be slow for a large set. 
 
 \section{Special-purpose Collections}
+Your application may have the need for collections with specialized
+functionality.  Sometimes, choosing a collection
+that exactly fits your task can result in a space savings, as is the case with
+singleton collections. In many instances, however, collections with additional
+functionality, even those that restrict functionality, cost
+the same or more than their more general counterpart. 
+In this section we look at some special-purpose collections and see how
+their costs play out when they appear in the context of relationships. 
+\autoref{tab:specialized-collections-small} shows
+the costs of various collections discussed in this section.
 
-\subsection{Immutable}
+\subsection{Immutable behavior}
 \label{sec:immutable-collections}
+If you would like to guarantee that certain collections are readonly, the Guava
+framework provides a set of immutable collection classes for that
+purpose. One use of this is if your data has a readonly phase, after loading has
+completed.
+In some applications, even at load time the contents of a collection are known
+in advance and will remain constant thereafter.  
 
-\subsection{Unmodifiable}
+The Guava \code{ImmutableList} has the same fixed and variable costs as the
+standard \code{Arraylist}.  So it won't save any space, but it will provide the
+added protection.  If you require set functionality, class \code{ImmutableSet}
+costs more than an \code{ArrayList}, but considerably less than a \code{HashSet}.
+With 4 elements its total cost is 96 bytes, compared to
+the \code{HashSet}'s 200. \code{ImmutableSortedSet} costs even less, the same
+as \code{ArrayList}, trading a hash-based element lookup for a binary search.
+
+\subsection{Unmodifiable behavior}
 \label{sec:unmodifiable-collections}
+Suppose that we would like to allow users of our data model to be able access
+the list of alternate suppliers.  One approach is to expose the reference to the
+collection itself, as part of the data model's API.
 
-\subsection{Synchronized}
+\subsection{Synchronized behavior}
 \label{sec:synchronized-collections}
 
 \begin{table}
@@ -860,8 +887,8 @@ uses a linear search, which will be slow for a large set.
 
 \section{Summary}
 
-Collections used to represent relationships often result in many small
-collection instances. The cost is dominated by fixed-size
+When collections are used to represent relationships, they often result in many
+small collection instances. Their cost is dominated by fixed-size
 overhead; variable overhead matters as well. To mitigate high memory costs
 for relationships:
 %implemented with collections:
@@ -873,9 +900,9 @@ for relationships:
   \begin{itemize}
     \item What operations will be performed? Will there be deletions,
     insertions, uniqueness checks?
-    \item What's the cardinality? Is it uniformly
-    distributed across the instances, or are there mostly very small
-    collections?
+    \item What's the expected cardinality? Is it uniformly
+    distributed, or will there be mostly small
+    collections and a few large ones? Will there be many empty collections?
     \item Is there a distinct load phase, after which the relationship no
     longer changes?
   \end{itemize}
