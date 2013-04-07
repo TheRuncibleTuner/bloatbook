@@ -15,7 +15,7 @@ This chapter shows how to lower memory costs when implementing
 relationships with collections.
  
  \section{Choosing the Right Collection for the Task}
- \label{section:choosing-collection}
+ \label{sec:choosing-collection}
 
 The standard Java collection classes vary widely in terms of how much memory they use.
 Not surprisingly, the more functionality a collection provides, the more
@@ -807,6 +807,7 @@ functionality, even those that restrict functionality, cost
 the same or more than their more general counterpart. 
 In this section we look at some special-purpose collections and see how
 their costs play out when they appear in the context of relationships. 
+[Something about a collection appropirate for the scale here, and fixed costs]
 \autoref{tab:specialized-collections-small} shows
 the costs of various collections discussed in this section.
 
@@ -816,22 +817,30 @@ If you would like to guarantee that certain collections are readonly, the Guava
 framework provides a set of immutable collection classes for that
 purpose. One use of this is if your data has a readonly phase, after loading has
 completed.
-In some applications, even at load time the contents of a collection are known
-in advance and will remain constant thereafter.  
+In some applications, even at load time the contents of each collection are
+known in advance and will remain constant thereafter.  
 
 The Guava \code{ImmutableList} has the same fixed and variable costs as the
-standard \code{Arraylist}.  So it won't save any space, but it will provide the
-added protection.  If you require set functionality, class \code{ImmutableSet}
-costs more than an \code{ArrayList}, but considerably less than a \code{HashSet}.
-With 4 elements its total cost is 96 bytes, compared to
-the \code{HashSet}'s 200. \code{ImmutableSortedSet} costs even less, the same
-as \code{ArrayList}, trading a hash-based element lookup for a binary search.
+standard \code{ArrayList}. So it will provide the
+added protection at no additional cost.  If you require set functionality,
+Guava provides an \code{ImmutableSet} class. It costs more than an
+\code{ArrayList}, but considerably less than a \code{HashSet}.
+For example, with 4 elements, its total overhead is 96 bytes, compared to
+a \code{HashSet}'s 200. If you are willing to trade a hash-based element
+lookup for a binary search, Guava's \code{ImmutableSortedSet} will save even
+more space, with memory costs again the same as \code{ArrayList}.
 
 \subsection{Unmodifiable behavior}
 \label{sec:unmodifiable-collections}
 Suppose that we would like to allow users of our data model to be able access
-the list of alternate suppliers.  One approach is to expose the reference to the
-collection itself, as part of the data model's API.
+the list of alternate suppliers.  One somehwat naive approach is to expose the
+reference to each collection as part of the data model's API, but make
+the collection unmodifiable. \autoref{} shows the E-C diagram for a solution
+based on using all \class{ArrayList}s, as we had in
+\autoref{fig:product-arraylist} in \autoref{sec:choosing-collection}.
+
+In Java, certain behaviors, such as unmodifiable, are not provided directly in
+collection classes.  Rather, they are 
 
 \subsection{Synchronized behavior}
 \label{sec:synchronized-collections}
@@ -914,7 +923,7 @@ for relationships:
  \item When the size distribution is not uniform, it is sometimes reasonable to
  use a hybrid representation that adapts to the data. If there are
  distinct load vs. use phases, a different representation
- for each phase can be a good solution.
+ for each phase can sometimes be a good solution.
  \item Some special-purpose collections can help save space, such as
  \code{SingletonSet}. Others are not
  designed for use at a small scale. Make sure the
