@@ -815,27 +815,34 @@ the costs of various collections discussed in this section.
 
 \subsection{Immutable behavior}
 \label{sec:immutable-collections}
-If you would like to guarantee that certain collections are readonly, the Guava
-framework provides a set of immutable collection classes for that
-purpose. One use of this is if your data has a readonly phase, after loading has
-completed.
-In some applications, the contents of each relationship
-instance is known even at load time and will remain constant thereafter.  
+The Guava open source framework provides a set of \emph{immutable} collection
+classes.  They supply the same functionality as some of the 
+common standard collections, but prevent update operations from being
+performed. This can be useful if you have a relationship that
+has distinct load and use phases, and you want to
+guarantee that there are no inadvertent
+updates once loading is complete. At the end of loading, simply switch the
+representation to an immutable collection, as discussed in the previous
+section. In some applications, the contents of a relationship may even be known
+at load time, and will remain constant thereafter. In these cases you can allocate an
+immutable collection right from the start.
 
-The Guava \code{ImmutableList} has the same fixed and variable costs as the
-standard \code{ArrayList}. So it provides the
+The class \code{ImmutableList} has the same fixed
+and variable costs as the standard \code{ArrayList}, providing the
 added protection at no additional cost.  If you require set functionality,
-Guava also provides an \code{ImmutableSet} class. It costs more than an
+Guava provides an \code{ImmutableSet} class. It costs more than an
 \code{ArrayList}, but considerably less than a \code{HashSet}.
-For example, with 4 elements, its total overhead is 96 bytes, compared to
-a \code{HashSet}'s 200. If you are willing to trade a hash-based element
-lookup for a binary search, Guava's \code{ImmutableSortedSet} will save even
-more space, with memory costs again the same as \code{ArrayList}.
+For example, with 4 elements, its total overhead is 96 bytes, compared with
+a \code{HashSet}'s 200. If you are willing to trade a
+hash-based element lookup for a binary search, Guava's \code{ImmutableSortedSet} provides
+further savings, giving you set functionality for the same memory cost as an
+\code{ArrayList}.
 
 \subsection{Unmodifiable behavior}
 \label{sec:unmodifiable-collections}
-Suppose that we would like to allow users of our data model to be able access
-the list of alternate suppliers. A seemingly simple approach is to expose the
+[The standard library does not have immutable.  Closest thing is unmodifiable,
+though not really the same.] Suppose that we would like to allow users of our
+data model to be able access the list of alternate suppliers. A seemingly simple approach is to expose the
 reference to each collection as part of the data model's API, but make
 the collection unmodifiable. \autoref{fig:product-unmodifiable-arraylist} shows
 the E-C diagram for a solution based on using all \class{ArrayList}s, as we had in
