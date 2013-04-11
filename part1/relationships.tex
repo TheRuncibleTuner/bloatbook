@@ -799,19 +799,19 @@ backed by a simple array. Its only caveat is that its \code{contains} function
 uses a linear search, which will be slow for a large set. 
 
 \section{Special-purpose Collections}
-Your application's relationships may have the need for
-specialized functionality.  This can mean adding behavior such as
-synchronization, or restricting its operations, for example, to readonly
-behavior.
-Sometimes, choosing a collection that exactly fits your task will result in a space
-savings, as is the case with singleton collections. In some instances, however,
-collections with additional functionality, and even those that restrict
-functionality, cost the same or more than their more general counterpart. 
-In this section we look at some special-purpose collections and see how
-their costs play out when they appear in the context of relationships. 
-[Something about a collection appropriate for the scale here, and fixed costs]
-\autoref{tab:specialized-collections-small} shows
-the costs of various collections discussed in this section.
+Relationships sometimes have additional requirements,
+such as synchronization or readonly behavior. In some cases, choosing a
+collection that exactly fits your task will result in a space savings. For
+example, this is the case with singleton collections. In other instances,
+however, collections with specialized functionality, even those that restrict functionality, 
+have hidden costs compared to their more
+general counterparts. They may be fine at a larger
+scale, but do not scale well when there are
+many small collections, due to higher fixed costs.
+In this section we look at a sampling of special-purpose
+collections, and see how they work when they are used to implement
+relationships. \autoref{tab:specialized-collections-small} shows
+the costs of the special-purpose collections discussed in this chapter.
 
 \subsection{Immutable behavior}
 \label{sec:immutable-collections}
@@ -820,12 +820,12 @@ classes.  They supply the same functionality as some of the
 common standard collections, but prevent update operations from being
 performed. This can be useful if you have a relationship that
 has distinct load and use phases, and you want to
-guarantee that there are no inadvertent
-updates once loading is complete. At the end of loading, simply switch the
+guarantee at run time that there are no inadvertent
+updates, once loading is complete. At the end of loading, simply switch the
 representation to an immutable collection, as discussed in the previous
-section. In some applications, the contents of a relationship may even be known
-at load time, and will remain constant thereafter. In these cases you can allocate an
-immutable collection right from the start.
+section. In some applications, the contents of each relationship instance will
+even be known at load time, and will remain constant thereafter. In
+these cases you can allocate an immutable collection right from the start.
 
 The class \code{ImmutableList} has the same fixed
 and variable costs as the standard \code{ArrayList}, providing the
