@@ -801,21 +801,22 @@ uses a linear search, which will be slow for a large set.
 \section{Special-purpose Collections}
 Relationships sometimes have additional requirements,
 such as synchronization or readonly behavior. In some cases, choosing a
-collection that exactly fits your task will result in a space savings. For
-example, this is the case with singleton collections. In other instances,
+special-purpose collection for the relationship will also result in a space
+savings.
+For example, this is the case with singleton collections. In other instances,
 however, collections with specialized functionality, even those that restrict functionality, 
-have hidden costs compared to their more
-general counterparts. They may be fine at a larger
-scale, but do not scale well when there are
+can have hidden costs compared to their more
+general counterparts. They may work fine as large
+collections, but do not scale well when there are
 many small collections, due to higher fixed costs.
 In this section we look at a sampling of special-purpose
-collections, and see how they work when they are used to implement
+collections, and see how they work in the context of
 relationships. \autoref{tab:specialized-collections-small} shows
-the costs of the special-purpose collections discussed in this chapter.
+the memory costs of the special-purpose collections discussed in this chapter.
 
 \subsection{Immutable behavior}
 \label{sec:immutable-collections}
-The Guava open source framework provides a set of \emph{immutable} collection
+The Guava open source framework includes a set of \emph{immutable} collection
 classes.  They supply the same functionality as some of the 
 common standard collections, but prevent update operations from being
 performed. This can be useful if you have a relationship that
@@ -824,7 +825,7 @@ guarantee at run time that there are no inadvertent
 updates, once loading is complete. At the end of loading, simply switch the
 representation to an immutable collection, as discussed in the previous
 section. In some applications, the contents of each relationship instance will
-even be known at load time, and will remain constant thereafter. In
+even be known at load time, and remain constant thereafter. In
 these cases you can allocate an immutable collection right from the start.
 
 The class \code{ImmutableList} has the same fixed
@@ -914,8 +915,8 @@ functionality.]
 	 	\bottomrule
 	 	\end{tabular}
 	 	
-	\caption{A sampling of special-purpose collections. When it applies, costs
-	shown are when minimally sized.}
+	\caption{A sampling of special-purpose collections and their costs. When
+	applicable, collections are minimally sized.}
 	\label{tab:specialized-collections-small}
 \end{table}
 
