@@ -843,21 +843,25 @@ further savings, giving you set functionality for the same memory cost as an
 \label{sec:unmodifiable-collections}
 [The standard library does not have immutable.  Closest thing is unmodifiable,
 though not really the same.] Suppose that we would like to allow users of our
-data model to be able access the list of alternate suppliers. A seemingly simple approach is to expose the
+data model to be able access the list of alternate suppliers. A seemingly simple
+approach is to expose the
 reference to each collection as part of the data model's API, but make
 the collection unmodifiable. \autoref{fig:product-unmodifiable-arraylist} shows
-the E-C diagram for a solution based on using all \class{ArrayList}s, as we had in
-\autoref{fig:product-arraylist} in \autoref{sec:choosing-collection}.
+the E-C diagram for a solution based on using all \class{ArrayList}s,
+minimally sized, as we had in \autoref{fig:trimmed-product} in
+\autoref{sec:proper-size}.
 
 In Java, certain behaviors, such as unmodifiable, are not provided directly in
 collection classes. Rather, they are available as views over existing
 collection classes, created using static factory methods of the
-\code{Collections} class. As a result, each of these collections incurs an additional fixed cost, the delegation cost of an extra view wrapper. 
+\code{Collections} class. As a result, each of these collections incurs an additional fixed cost,
+ the delegation cost of an extra view wrapper. 
 The inset in
 \autoref{fig:product-unmodifiable-arraylist} shows this in detail.
 
-[Increased from 7.6MB to 9.2MB, an increase of 13\%. 
-Start with right-sized ArrayLists instead?]
+[Increased from 5.3MB to 6.9MB, an increase of 28\% 
+ ]
+
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-unmodifiable-arraylist.pdf}
