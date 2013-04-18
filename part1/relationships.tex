@@ -841,40 +841,63 @@ further savings, giving you set functionality for the same memory cost as an
 
 \subsection{Unmodifiable behavior}
 \label{sec:unmodifiable-collections}
-[The standard library does not have immutable.  Closest thing is unmodifiable,
-though not really the same.] Suppose that we would like to allow users of our
-data model to be able access the list of alternate suppliers. A seemingly simple
-approach is to expose the
-reference to each collection as part of the data model's API, but make
-the collection unmodifiable. \autoref{fig:product-unmodifiable-arraylist} shows
-the E-C diagram for a solution based on using all \class{ArrayList}s,
-minimally sized, as we had in \autoref{fig:trimmed-product} in
-\autoref{sec:proper-size}.
+Suppose our developer would like to allow users of the
+data model to pass around the list of alternate suppliers for each product, 
+but in a way that prevents inadvertent updates. A seemingly simple approach is
+to implement the relationship with a collection that has \emph{unmodifiable}
+behavior, and expose this reference as part of the data model's API. 
 
-In Java, certain behaviors, such as unmodifiable, are not provided directly in
-collection classes. Rather, they are available as views over existing
-collection classes, created using static factory methods of the
-\code{Collections} class. As a result, each of these collections incurs an additional fixed cost,
- the delegation cost of an extra view wrapper. 
-The inset in
-\autoref{fig:product-unmodifiable-arraylist} shows this in detail.
+In the standard Java libraries, certain features such as
+unmodifiable are provided by wrapping an existing collection with a
+view that augments or restricts the behavior of the
+underlying collection\footnote{Note the distinction between an immutable
+collection, whose contents will not change, and an unmodifiable
+view over an \class{ArrayList} which may still be changing.}. The class \code{Collections} provides static factory
+methods for this purpose. Below is the code to create unmodifiable \class{ArrayList}s in the data model:
+ 
+\begin{shortlisting}
+public class Product {
+	..
+	List<Supplier> alternateSuppliers;
+	..
+	public Product() {
+		alternateSuppliers = Collections.unmodifiableList(new ArrayList());
+		..
+	}
+	
+}
+\end{shortlisting}
 
-[Increased from 5.3MB to 6.9MB, an increase of 28\% 
- ]
+
+\autoref{fig:product-unmodifiable-arraylist}
+shows the E-C diagram when we add the unmodifiable behavior to our solution
+from \autoref{fig:trimmed-product} in \autoref{sec:proper-size}, using
+minimally-sized \class{ArrayList}s. The cost of the collections
+increases from 5.3MB to 6.9 MB, or a 28\% increase in collection overhead.  The
+inset shows why: each instance of the relationshiop now incurs an additional
+fixed cost, that of the view wrapper.
+
+It bears asking whether this feature, which serves a development-time
+safety-checking purpose, is worth the relatively high run-time cost that results
+when applying it at such a fine scale.  Alternative solutions are to encapsulate access to the
+relationship, or to turn on the unmodifiable behavior only during testing.
+
+ [base it on solution with empty collections lazily allocated, and reflect in
+ the diagram and source?]
+ [Extra unmodifiable
+cost if caller should iterate. ]
 
 \begin{figure}
   \centering
  \includegraphics[width=.80\textwidth]{part1/Figures/collections/product-unmodifiable-arraylist.pdf}
  \caption{A relationship between 100,000 products and alternate suppliers,
  where the alternate \class{Supplier}s associated with each
- \class{Product} are stored in an \class{Unmodifiable ArrayList}.}
+ \class{Product} are stored in an \class{Unmodifiable ArrayList}. The inset
+ shows how each collection now incurs the fixed cost of an additional
+ view layer.}
   \label{fig:product-unmodifiable-arraylist}
 \end{figure}
 
-[Explain difference between unmodifiable and immutable.  Extra unmodifiable
-cost it caller should iterate.  Both immutable and unmodifiable serve a
-development-time purpose.  Paying at runtime for development-time
-functionality.]
 
 
 \subsection{Synchronized behavior}
