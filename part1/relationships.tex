@@ -803,7 +803,8 @@ Relationships sometimes have additional requirements,
 such as synchronization or readonly behavior. In some cases, choosing a
 special-purpose collection for the relationship will also result in a space
 savings.
-For example, this is the case with singleton collections. In other instances,
+%For example, this is the case with singleton collections. 
+In other instances,
 however, collections with specialized functionality, even those that restrict functionality, 
 can have hidden costs compared to their more
 general counterparts. They may work fine as large
@@ -850,10 +851,13 @@ behavior, and expose this reference as part of the data model's API.
 In the standard Java libraries, certain features such as
 unmodifiable are provided by wrapping an existing collection with a
 view that augments or restricts the behavior of the
-underlying collection\footnote{Note the distinction between an immutable
-collection, whose contents will not change, and an unmodifiable
-view over an \class{ArrayList} which may still be changing.}. The class \code{Collections} provides static factory
-methods for this purpose. Below is the code to create unmodifiable \class{ArrayList}s in the data model:
+underlying collection. The \code{Collections} class provides static factory
+methods for this purpose. In contrast to an
+immutable collection, whose contents will not change, an unmodifiable collection
+is a view over a collection which may continue to change. 
+The view may be passed to selected users to give them restricted access to the
+underlying collection. Below is the code
+to create unmodifiable \class{ArrayList}s in the data model:
  
 \begin{shortlisting}
 public class Product {
@@ -881,11 +885,6 @@ It bears asking whether this feature, which serves a development-time
 safety-checking purpose, is worth the relatively high run-time cost that results
 when applying it at such a fine scale.  Alternative solutions are to encapsulate access to the
 relationship, or to turn on the unmodifiable behavior only during testing.
-
- [base it on solution with empty collections lazily allocated, and reflect in
- the diagram and source?]
- [Extra unmodifiable
-cost if caller should iterate. ]
 
 \begin{figure}
   \centering
