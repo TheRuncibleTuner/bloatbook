@@ -903,37 +903,34 @@ relationship, or to turn on the unmodifiable behavior only during testing.
 \label{sec:synchronized-collections}
 The standard Java collections, such as \code{ArrayList} and \code{HashSet}, do
 not provide for synchronization. 
-Java takes the same approach here as with unmodifiable behavior: you may create
-a synchronized view over an existing collection to guarantee safe usage from
-concurrent threads.  Use static factory methods from the \code{Collections}
-class to create the view.
+Java takes the same approach here as with unmodifiable behavior. To guarantee safe usage of a
+collection from concurrent threads, you may create a synchronized view over it. 
+Static factory methods from the \code{Collections} class are provided for this
+purpose.
 
 As with unmodifiable views, when using this feature for a relationship, the
 view layer adds a fixed cost (see \autoref{tab:specialized-collections-small}) that will
 be multiplied by the number of instances of the relationship. So the memory cost
 of using synchronized behavior at this scale can quickly add up. For a
-relationship that will have concurrent but infrequent updates, and latency is not an issue,
-adding synchronized behavior is a good choice. 
-It is a \emph{much} less expensive choice than using concurrent
-collections in this context\footnote{In the next chapter we'll look at a more extreme example,
-of using concurrent collections at a fine granularity, at a huge memory cost.}.
+relationship that will have infrequent accesses and updates from concurrent
+threads, and latency is not an issue, adding synchronized behavior is a good
+choice. It is a \emph{much} less expensive choice than using
+concurrent collections in this context\footnote{In the next chapter
+we'll look at a more extreme example, of using concurrent collections at a fine granularity, at a huge memory cost.}.
 
 The original Java 1 collections were written
-with built-in synchronized behavior. The Java 2 collections framework moved
-synchronization out of the collections proper.
-The older collections are still available, with some
-minor differences in functionality. These can be a less
-expensive solution in some cases. They have been updated to be
-compatible with the newer interfaces and with generics. Here is what's
-available: 
-\begin{itemize} 
-\item The \code{Vector} class provides for synchronization
-with fixed and variable costs identical to that of the newer \code{ArrayList}.
-\item \class{Hashtable} has similar costs to \class{HashMap}, with a
+with synchronized behavior built in. The Java 2 framework moved
+this behavior out of the collections proper.
+The older collections are still available, and are a less
+expensive solution in some cases. They
+have been updated to be compatible with the newer interfaces and with generics,
+though there are some slight differences in functionality. The
+\code{Vector} class provides for synchronization with fixed and variable costs
+identical to those of the newer \code{ArrayList}.
+\class{Hashtable} has identical costs to \class{HashMap}, but with a
 smaller default capacity and more flexibility in setting the
-initial capacity.
-\item There is no Java 1 analogue to \code{HashSet} or \code{LinkedList}.
-\end{itemize}
+initial capacity. There is no Java 1 analogue to \code{HashSet} or
+\code{LinkedList}.
 
 \begin{table}
 \centering
