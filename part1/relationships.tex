@@ -423,6 +423,7 @@ or when the collection is cleared.
 %extra entry, which is a sentinal.
 
 \section{Avoiding Empty Collections}
+\label{sec:empty-collections}
 
 Maintaining a large number of empty collections is another common problem that
 leads to memory bloat. Empty collection problems are generally caused by eager
@@ -651,7 +652,9 @@ completed, will still make a difference for empty collections.
 
 
 \section{Hybrid Representations}
+\label{sec:hybrid-representations}
 \subsection{Mostly-small collections}
+\label{sec:mostly-small-collections}
 It is often the case that the collections used in a relationship
 are not of uniform size. There often are many collections that are small and fewer that are
 very big.  It's reasonable to use an expensive collection like \class{HashSet}
@@ -799,6 +802,7 @@ backed by a simple array. Its only caveat is that its \code{contains} function
 uses a linear search, which will be slow for a large set. 
 
 \section{Special-purpose Collections}
+\label{sec:special-purpose-collections}
 Relationships sometimes have additional requirements,
 such as synchronization or readonly behavior. In some cases, choosing a
 special-purpose collection for the relationship will also result in a space

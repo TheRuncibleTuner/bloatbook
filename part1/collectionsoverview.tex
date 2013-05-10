@@ -15,10 +15,10 @@ in individual heaps. The way collections are employed can make or break a system
 ability to scale up.
 
 %awareness of costs; thorough analysis of scalability; whether or not will scale
-This chapter and the next three chapters are about using
-collections in a space-efficient way. We'll look at typical patterns of usage,
-their costs, and solutions for saving space. We'll see techniques for
-analyzing how local implementation decisions play out at a larger scale.
+This and the next three chapters are about using
+collections in a space-efficient way. We'll look at typical patterns of
+collection usage, their costs, and solutions for saving space. We'll see
+techniques for analyzing how local implementation decisions play out at a larger scale.
 We will also look at the internal design of a few collection classes.
 
 
@@ -108,7 +108,7 @@ The very smallest of the commonly-used collections, an \emph{empty}
 \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
 itself, but when deeply nested in a design, that could easily be multiplied
-by a few hundred thousand instances.  
+by hundreds of thousands or millions of instances.  
 
 
 
@@ -153,21 +153,29 @@ Because the collection libraries are written in Java, they suffer
 from the same kinds of bloat we've seen in other datatypes. They have
 internal layers of delegation, and extra fields for features that your program may not use. The standard
 collections do have a few options that can help, such as
-specifying the excess capacity for growth. On the whole, though, they do not
-provide many levers for tuning to different situations. They were mostly
-designed for speed rather than space.  They seem to have been designed for
-applications with a few large and growing collections. Yet many systems have large numbers
+letting you specify excess capacity allocated initially. On the
+whole, though, they do not provide many levers for tuning to different situations. They were
+designed mostly for speed rather than space.  They seem to have been designed
+for applications with a few large and growing collections. Yet many systems have large numbers
 of small collections that never grow once initialized. Given all of this, it is important
 to be aware of what collections cost, so you can make informed choices as early as possible. 
 
-It is not enough to know the cost of a collection class in the abstract, but to
-understand \emph{how it will work in your design}. This is because some
-collections were only designed to be used at a certain scale. 
+Collections are pure overhead. For a given collection class, this overhead
+varies depending upon the elements a collection contains. 
+ %instances of a collection class are not uniform in size.
+%Instead, the memory overhead of each collection instance depends on the
+% elements it contains.
+It's important to understand \emph{how a particular collection class will work
+in your design}.
+This is because some collections were only designed to be used at a certain scale. 
 %the same collection
 %class will scale differently in different situations. 
 For example, a certain map class may work
 well as an index over a large table, but can be prohibitively expensive when you
-have many instances of it nested inside a multilevel index. Collections have fixed and
+have many instances of it nested inside a multilevel index. 
+
+Each collection class has its own cost
+profile that determines how it will scale. These are its fixed and
 variable costs, as discussed in Section~\ref{sec:scalability}. 
 The fixed cost is the minimum space needed with or
 without any elements; the variable cost is the additional space needed to
@@ -179,10 +187,15 @@ especially when there are many instances of them. High variable costs matter
 when there are a lot of elements, regardless of whether the elements are spread across
 a lot of small collections or concentrated in a few large ones.
 We'll analyze the space needs of small collections a little differently
-from those of large collections. Table~\ref{tab:} in the next chapter shows the
-sizes of small (and empty) collection for some commonly used collection classes. 
+from those of large collections. This is because many
+collections allocate excess capacity to allow for
+growth.  Tables in Sections~\ref{sec:collectioncost} through
+\ref{sec:empty-collections}
+show the overhead cost of small and empty collections for some commonly-used
+collection classes.
 In the following chapter, Table~\ref{tab:} gives
-information for computing the costs of larger collections.
+information for computing the costs for larger collections.
+\autoref{chapter:jre-comparison} gives more comprehensive information.
 
 
 
@@ -235,33 +248,37 @@ in this book.
 	   Resource & Description & Discussed in
 	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
 	\class{Collections} statics & Memory-efficient
-	implementations of singleton and empty collections. & Section~\ref{} 
+	implementations of singleton and empty collections. &
+	Sections~\ref{sec:mostly-small-collections}, \ref{sec:empty-collections}
 	\\ 
-	& Unmodifiable, checked, and synchronized
+	& Unmodifiable and synchronized
 	behaviors are added via collection wrappers. Can be costly if used at too fine
-	a granularity. & Section~\ref{}
+	a granularity. & Sections~\ref{sec:unmodifiable-collections},
+	\ref{sec:synchronized-collections}
 	\\
 	\class{Arrays} statics & Provides static methods if you need to create
-simple collection functionality from arrays & Section~\ref{} shows one
-example
+simple collection functionality from arrays & Section~\ref{sec:better-designs}
+shows one example
 	\\
 	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
-	& Section~\ref{}
+	& %Section~\ref{}
 	\\
-	\class{EnumMap} & Compact map when keys are \class{Enum}s & Section~\ref{}
+	\class{EnumMap} & Compact map when keys are \class{Enum}s & %Section~\ref{}
 	\\
-	\class{EnumSet} & Compact representation of a set of flags & Section~\ref{}
+	\class{EnumSet} & Compact representation of a set of flags &
+	Section~\ref{sec:bit-flags}
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
 	using weak references. &
-	Section~\ref{}
+	%Section~\ref{}
 	\\
 	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
-in some contexts where synchronized collections are needed & Section~\ref{}
+in some contexts where synchronized collections are needed &
+Section~\ref{sec:synchronized-collections}
 	\\
 	\class{ConcurrentHashMap} & Hash map when contention is a concern. Avoid use at
-	too fine a granularity. & Section~\ref{}
+	too fine a granularity. & %Section~\ref{}
 	\\
 	\bottomrule
 	\end{tabular}
