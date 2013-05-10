@@ -1,38 +1,31 @@
 \chapter{Collections: An Introduction}
 \label{chapter:brief-introduction-collections}
 
-Collections are the glue that bind your data together.  Whether
-providing random or sequential access, or enabling
-look up by value, collections are an essential part of any
-design. In Java, collections are easy to use, and, just as easily, to misuse when
-it comes to space. Like much else in Java, they don't come with a price tag
+Collections are the glue that bind together your data. 
+Whether providing random or sequential access, or
+enabling look up by value, collections are an essential part of any design.
+In Java, collections are easy to use, and, just as easily, to misuse
+when it comes to space. Like much else in Java, they don't come with a price tag
 showing how much memory they need. In fact, collections
 often use much more memory than you might expect. In most Java applications they are the
 second largest consumer of memory, after
-strings. It's not unusual for collection overhead to take up between x and y\%
-of the Java heap. The way collections are employed can make
-or break a system's ability to scale up.
+strings.  Collection overhead typically accounts
+for 10-15\% of the Java heap, and it is not uncommon to see much higher numbers
+in individual heaps. The way collections are employed can make or break a system's
+ability to scale up.
 
 %awareness of costs; thorough analysis of scalability; whether or not will scale
 This chapter and the next three chapters are about using
-collections in a space-efficient way. 
-Collections may serve a number of very
-different purposes in your application. You may use them to implement
-relationships, to organize data into tables, to enable quick lookup via indexes, or
-to store annotations alongside more formally modeled data. Each use
-has its own best practices as well as traps. 
+collections in a space-efficient way. We'll look at typical patterns of usage,
+their costs, and solutions for saving space. We'll see techniques for
+analyzing how local implementation decisions play out at a larger scale.
+We will also look at the internal design of a few collection classes.
 
-The current chapter
-is a short introduction to common issues that are important to understand in
-any use of collections. It concludes with a summary of resources
-that are available in the standard and some open source alternative
-frameworks. Each of the following three
-chapters then goes into depth about a specific way that collections can be
-used. Each of these chapters takes
-you through typical patterns of usage, shows what collections cost for those patterns,
-and gives you techniques for analyzing how local implementation decisions will play out at a larger scale. 
-We will also look at the internal design of a few collection
-classes.
+
+
+%Each of the following three
+%chapters then goes into depth about a specific way that collections can be
+%used. 
 
 %Clarifying requirements can lead to specialized solutions
 %can suggest space-saving solutions, so that you are not paying for
@@ -41,6 +34,15 @@ classes.
 %
 
 \begin{description}
+\item[Chapter~\ref{chapter:brief-introduction-collections}.  Collections: An
+Introduction]
+Collections serve a number of very
+different purposes in your application, each with its own best practices as well
+as traps. The current chapter
+is a short introduction to issues that are common to
+any use of collections. It includes a summary of collection resources
+that are available in the standard and some open source alternative
+frameworks.
 \item[Chapter~\ref{chapter:representing-relationships}.
 One-to-Many Relationships] An important use of collections is to
 implement one-to-many relationships. These enable quick navigation from an
@@ -102,7 +104,7 @@ more space-efficient solutions.
 
 Like other building blocks in Java, the memory costs
 of the standard collections are high overall. 
-The very smallest collection, an \emph{empty}
+The very smallest of the commonly-used collections, an \emph{empty}
 \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
 itself, but when deeply nested in a design, that could easily be multiplied
@@ -211,8 +213,8 @@ restructure your data into a more efficient design if necessary.
 %collection classes can best be used in different situations. 
 
 In this book we focus
-mostly on the standard collections. We also include some information on classes
-from alternative, open source frameworks that can be helpful in keeping
+mostly on the standard collections. We also include information 
+about some alternative, open source frameworks that can be helpful in keeping
 memory costs down.
 
 % just a selection throughout the book.  Encourage the reader to explore more
