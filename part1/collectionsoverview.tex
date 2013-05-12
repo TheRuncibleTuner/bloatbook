@@ -102,15 +102,27 @@ more space-efficient solutions.
 %\section{Designing with Collections}
 \label{sec:designing-with-collections}
 
-Like other building blocks in Java, the memory costs
-of the standard collections are high overall. 
+\paragraph{Choosing carefully}Like other
+building blocks in Java, the memory costs of the standard collections are high overall. 
 The very smallest of the commonly-used collections, an \emph{empty}
 \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
 itself, but when deeply nested in a design, that could easily be multiplied
 by hundreds of thousands or millions of instances.  
 
-
+There is much that is not under your control in the cost
+of collections.
+Because the collection libraries are written in Java, they suffer
+from the same kinds of bloat we've seen in other datatypes. They have
+internal layers of delegation, and extra fields for features that your program
+may not use. Some
+collection classes have a few options that can help, such as
+letting you specify excess capacity allocated initially. On the
+whole, though, they do not provide many levers for tuning to different situations. They were
+designed mostly for speed rather than space. They seem to have been designed
+for applications with a few large and growing collections. Yet many systems have large numbers
+of small collections that never grow once initialized. Given all of this, it is important
+to be aware of what collections cost, so you can make informed choices as early as possible. 
 
 %In addition, the standard APIs can force you into expensive
 %decisions in other parts of your design, such as requiring you to box scalars
@@ -130,44 +142,33 @@ by hundreds of thousands or millions of instances.
 
 
 Fortunately, there are some easy choices you can make that
-can save a lot of space. The cost of different
-collection classes varies greatly, even among ones that could work equally well
-in the same situation. For example, a 5-element \class{ArrayList} with room for growth takes 80 bytes. 
+can save a lot of space. The best thing you can do is to choose carefully
+among collection classes. Costs vary
+greatly, even among collection classes that may work equally well
+in the same situation. 
+%making it all the more important to become familiar with what
+%collections cost. 
+For example, a 5-element \class{ArrayList} with room for growth takes 80 bytes. 
 An equivalent \class{HashSet} costs 256 bytes,
 or more than 3 times as much. Like other kinds of infrastructure, collections
 serve a necessary function, and paying for overhead can be worthwhile. That is, as long as you are not
 paying for features you don't need. In the above example, a
-69\% space savings can be achieved if the application can do without the
-uniqueness checking provided by \class{HashSet}.  In
-Section~\ref{sec:better-designs} we saw a similar example, achieving a large
-improvement when real-time
+69\% space savings can be achieved if the application can do without features
+such as uniqueness checking that
+\class{HashSet} provides. In Section~\ref{sec:better-designs} we saw a similar
+example, achieving a large improvement when real-time
 maintenance of sort order wasn't needed. In the next chapters we'll see more
-examples of how a careful look at your system's
-requirements can help you reduce space.
+examples of how understanding your system's requirements, along with what
+collections cost, can help you make large reductions in memory. 
+In general we do not recommend implementing your own collections, at least not
+until you've exhausted all other possibilities.
 
-There is also much that is not under your control in the cost
-of collections.
-%making it all the more important to become familiar with what
-%collections cost. 
-Because the collection libraries are written in Java, they suffer
-from the same kinds of bloat we've seen in other datatypes. They have
-internal layers of delegation, and extra fields for features that your program may not use. The standard
-collections do have a few options that can help, such as
-letting you specify excess capacity allocated initially. On the
-whole, though, they do not provide many levers for tuning to different situations. They were
-designed mostly for speed rather than space.  They seem to have been designed
-for applications with a few large and growing collections. Yet many systems have large numbers
-of small collections that never grow once initialized. Given all of this, it is important
-to be aware of what collections cost, so you can make informed choices as early as possible. 
-
-Collections are pure overhead. For a given collection class, this overhead
-varies depending upon the elements a collection contains. 
- %instances of a collection class are not uniform in size.
-%Instead, the memory overhead of each collection instance depends on the
-% elements it contains.
-It's important to understand \emph{how a particular collection class will work
-in your design}.
-This is because some collections were only designed to be used at a certain scale. 
+\paragraph{Understanding costs} Collections are pure overhead. Collections are
+variable in size, dependent upon the elements they contain. A given
+collection class will scale differently in different situations, and it's
+important to understand \emph{how a particular collection class
+will work in your design}. Some collections were only designed
+to be used at a certain scale.
 %the same collection
 %class will scale differently in different situations. 
 For example, a certain map class may work
@@ -175,25 +176,24 @@ well as an index over a large table, but can be prohibitively expensive when you
 have many instances of it nested inside a multilevel index. 
 
 Each collection class has its own cost
-profile that determines how it will scale. These are its fixed and
-variable costs, as discussed in Section~\ref{sec:scalability}. 
+profile that determines how it will scale. This is its fixed
+and variable costs, as discussed in Section~\ref{sec:scalability}. 
 The fixed cost is the minimum space needed with or
 without any elements; the variable cost is the additional space needed to
 store each element. The way these costs add up
 depends on the context ---
-whether there are many small collections, or a few large ones. 
+whether there are many small collections or a few large ones. 
 High fixed costs take on more significance in smaller collections,
 especially when there are many instances of them. High variable costs matter
 when there are a lot of elements, regardless of whether the elements are spread across
 a lot of small collections or concentrated in a few large ones.
-We'll analyze the space needs of small collections a little differently
-from those of large collections. This is because many
-collections allocate excess capacity to allow for
-growth.  Tables~\ref{tab:small-collections-default} through \ref{tab:empty-collection-costs} in
+We'll analyze the space needs of very small collections (with number of elements
+roughly in the single digits) a little differently from those of larger
+collections.
+Tables~\ref{tab:small-collections-default} through \ref{tab:empty-collection-costs} in
 \autoref{chapter:representing-relationships} show the overhead cost of small and empty collections for some commonly-used
-collection classes.
-The following chapter gives
-information for computing the costs of larger collections.
+collection classes. The following chapter shows
+how to compute costs for larger collections.
 \autoref{chapter:jre-comparison} gives more comprehensive information for
 additional classes and platforms.
 
