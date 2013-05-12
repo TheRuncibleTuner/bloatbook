@@ -189,13 +189,13 @@ a lot of small collections or concentrated in a few large ones.
 We'll analyze the space needs of small collections a little differently
 from those of large collections. This is because many
 collections allocate excess capacity to allow for
-growth.  Tables in Sections~\ref{sec:collectioncost} through
-\ref{sec:empty-collections}
-show the overhead cost of small and empty collections for some commonly-used
+growth.  Tables~\ref{tab:small-collections-default} through \ref{tab:empty-collection-costs} in
+\autoref{chapter:representing-relationships} show the overhead cost of small and empty collections for some commonly-used
 collection classes.
-In the following chapter, Table~\ref{tab:} gives
-information for computing the costs for larger collections.
-\autoref{chapter:jre-comparison} gives more comprehensive information.
+The following chapter gives
+information for computing the costs of larger collections.
+\autoref{chapter:jre-comparison} gives more comprehensive information for
+additional classes and platforms.
 
 
 
@@ -248,8 +248,8 @@ in this book.
 	   Resource & Description & Discussed in
 	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
 	\class{Collections} statics & Memory-efficient
-	implementations of singleton and empty collections. &
-	Sections~\ref{sec:mostly-small-collections}, \ref{sec:empty-collections}
+	implementations of empty and singleton collections. &
+	Sections~\ref{sec:empty-collections}, \ref{sec:mostly-small-collections}
 	\\ 
 	& Unmodifiable and synchronized
 	behaviors are added via collection wrappers. Can be costly if used at too fine
