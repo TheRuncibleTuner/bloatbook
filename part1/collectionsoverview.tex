@@ -163,8 +163,8 @@ collections cost, can help you make large reductions in memory.
 In general we do not recommend implementing your own collections, unless you've
 exhausted all other possibilities.
 
-The same collection class will scale differently in different situations, and
-it's important to understand how a particular collection class
+The same collection class will scale differently in different situations.
+It's important to understand how a particular collection class
 will work \emph{in your design}. Some collections were only designed
 to be used at a certain scale.
 %the same collection
@@ -173,11 +173,11 @@ For example, a certain map class may work
 well as an index over a large table, but can be prohibitively expensive when you
 have many instances of it nested inside a multilevel index. 
 
-Collections are pure overhead. Each collection class has a cost
-profile that determines how it will scale. This is its fixed
-and variable overhead costs, as discussed in Section~\ref{sec:scalability}. 
-The fixed overhead is the minimum space needed with or
-without any elements; the variable overhead is the additional space needed to
+Collections are pure overhead. Each collection class has fixed
+and variable overhead costs, as discussed in Section~\ref{sec:scalability};
+These are its cost profile, that determines how it will scale in different
+situations.
+The fixed overhead is the minimum space needed with or without any elements; the variable overhead is the additional space needed to
 store each element. The way these costs add up
 depends on the context ---
 whether there are many small collections or a few large ones. 
