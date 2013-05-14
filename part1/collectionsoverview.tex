@@ -261,16 +261,15 @@ simple collection functionality from arrays & Section~\ref{sec:better-designs}
 shows one example
 	\\
 	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
-	& %Section~\ref{}
+	& \autoref{chapter:tables-indexes}
 	\\
-	\class{EnumMap} & Compact map when keys are \class{Enum}s & %Section~\ref{}
+	\class{EnumMap} & Compact map when keys are \class{Enum}s & \autoref{chapter:dynamic-records}
 	\\
 	\class{EnumSet} & Compact representation of a set of flags &
 	Section~\ref{sec:bit-flags}
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
-	using weak references. &
-	%Section~\ref{}
+	using weak references. & \autoref{chapter:tables-indexes}
 	\\
 	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
@@ -278,7 +277,7 @@ in some contexts where synchronized collections are needed &
 Section~\ref{sec:synchronized-collections}
 	\\
 	\class{ConcurrentHashMap} & Hash map when contention is a concern. Avoid use at
-	too fine a granularity. & %Section~\ref{}
+	too fine a granularity. & \autoref{chapter:tables-indexes}
 	\\
 	\bottomrule
 	\end{tabular}
@@ -294,14 +293,16 @@ making it easier to program, adding commonly needed features not
 found in the standard libraries. 
 The alternative collections frameworks can be helpful in two ways when it comes to saving memory. First,
 some frameworks provide space-optimized collection implementations. Second, some frameworks
-provide classes that make it easier to manage object lifetimes. Building your
-own object lifetime management mechanisms can be error prone. Well-tested
-implementations will save you a lot of effort, and can lead to better overall use of space.
+provide classes that make it easier to manage object lifetimes.
+Home-grown lifetime management mechanisms are a common source of errors in many
+applications. Well-tested implementations will save you a lot of effort, and
+can lead to better overall use of space.
 Keep in mind that not all alternative collection classes have
 been optimized for space.
-Some of them actually take up more space than a similar design using the
-standard collections. As always, there is no substitute for analyzing space costs empirically.
-%analyzing space usage yourself
+Many of them actually take up more space than a similar design using the
+standard collections. As always, there is no substitute for analyzing space
+usage yourself.
+%analyzing space usage empirically
 
 In this book we'll look at four of the most recent and relevant
 open source collections frameworks. In the next few chapters we'll look at how
@@ -319,8 +320,8 @@ Although space usage has not been the main focus, it does include a
 few special-purpose classes, for example some of the immutable collections, that
 are more space-efficient than their general-purpose equivalents. Guava's \class{MapMaker}
 class provides very general support for 
-building caches and other lifetime management mechansisms, with optional support
-for concurrency. While most open source frameworks provide some level of compatibility with the
+building caches, sharing pools, and other lifetime management mechansisms,
+with optional support for concurrency. While most open source frameworks provide some level of compatibility with the
 standard collections APIs, Guava has made compatibility a priority.
 
 \item[Apache Commons Collections] The Apache Commons Collections framework
@@ -332,13 +333,15 @@ It does however provide some capabilities for saving memory, such as
 maps and linked lists with customizable storage, and specialized 
 maps that contain just a few elements. It also provides lifetime management
 support through its \class{ReferenceMap} class, in a less general
-manner than the Guava equivalent. As of this writing,
-the Commons API has not been updated to take advantage of generics.
+manner than the Guava equivalent. Compared to Guava, the Commons Collections has
+been around longer. As of this writing it has had little
+recent development, and its API has not been updated to take advantage of
+generics.
 
 \item[GNU Trove] The GNU Trove framework has time and space efficiency as
 its main goal.
 From a memory standpoint its highlights are: collections of primitives that
-avoid boxing and unboxing;  map
+avoid the need for boxed scalars;  map
 and set implementations that are lighter weight than the standard ones; and
 linked lists that can be customized to use less memory.
 
