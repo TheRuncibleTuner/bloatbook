@@ -103,7 +103,7 @@ more space-efficient solutions.
 \label{sec:designing-with-collections}
 
 Like other building blocks in Java, the memory costs of the standard collections
-are high overall. The very smallest of the commonly-used collections, an
+are high overall. The very smallest commonly-used collection, an
 \emph{empty} \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
 itself, but when deeply nested in a design, that could easily be multiplied
@@ -114,10 +114,10 @@ Because the collection libraries are written in Java, they suffer
 from the same kinds of bloat we've seen in other datatypes. They have
 internal layers of delegation, and extra fields for features that your program
 may not use. Some
-collection classes have a few options that can help, such as
-letting you specify excess capacity allocated initially. On the
-whole, though, they do not provide many levers for tuning to different situations. They were
-designed mostly for speed rather than space. They also seem to have been
+collection classes let you specify a few options that can help, such as
+the amount of excess capacity to allocate initially. On the
+whole, though, they provide few levers for tuning to different situations. They
+were designed mostly for speed rather than space. They also seem to have been
 designed for applications with a few large and growing collections. Yet many systems have large numbers
 of small collections that never grow once initialized. In addition, the standard APIs can force you into expensive
 decisions in other parts of your design, such as requiring you to box the
@@ -179,20 +179,20 @@ with or without any elements. The \emph{variable overhead} is the increment of
 space needed to store each additional element. The way these costs add up
 depends on the context --- whether there are many small collections or a few large ones --- as well as
 on the number of elements stored. High fixed costs take on more significance in
-small or empty collections, and in particular, when there are many instances of them.
+small or empty collections, and in particular, when there are many of them.
 High variable costs matter when there are a lot of elements, regardless of whether
 the elements are spread across a lot of small collections or concentrated in a
 few large ones. Some collection classes allocate excess capacity for growth,
-at the time the collection is allocated, as well as later on as it grows. This
-overhead is included in the fixed and variable costs.  
+both at the time the collection is first allocated and later on as the
+collection grows. This overhead is included in the fixed and variable costs.  
 
 We'll analyze the space needs of very small
 collections (where the number of elements is roughly in the single digits) a
 little differently from those of larger collections.
 Tables~\ref{tab:small-collections-default} through \ref{tab:empty-collection-costs} in
-\autoref{chapter:representing-relationships} show the overhead of small and empty collections for some commonly-used
-collection classes. \autoref{chapter:tables-indexes} shows
-how to compute the overhead costs of larger collections.
+\autoref{chapter:representing-relationships} show the overhead of small and empty collections for
+the most commonly-used collection classes. \autoref{chapter:tables-indexes}
+shows how to compute the overhead of larger collections.
 \autoref{chapter:jre-comparison} gives more comprehensive information for
 additional classes and platforms.
 
@@ -205,20 +205,23 @@ additional classes and platforms.
 %Certain collections are designed
 %to be used at a certain scale --- when there are a few large collections, not a
 %lot of smaller ones.  
-It is helpful to look at collection costs 
-together with the data they are storing. If a data structure uses expensive collections
-to store small amounts of data, than it
+It is helpful to look at collection overhead 
+together with the actual data stored in the collections' elements.
+If a data structure uses an expensive collection class to store a small amount of data, than it
 will have a high bloat factor, and ultimately the application's ability to
 support a large amount of data will be limited. The next chapters show
-how to analyze collection costs in the context of your design.
+how to analyze collection costs in the context of a design.
 % to ensure that your system will scale when it is time for deployment.
 This analysis will help you choose the right collection for your design, or
 restructure your data into a more efficient design if necessary.
 
-Finally, we do not recommend implementing your own collection classes, or at
-least not until you have exhausted all other possibilities. First consider all
-of the techniques in the next few chapters, as well as some of the more
-space-efficient open source collection frameworks.
+Finally, we do not recommend implementing your own collection classes,
+or at least not unless you have exhausted all other possibilities. 
+We recommend first considering
+all of the techniques in the next few chapters, as well as 
+some of the more space-efficient open source collection frameworks. Note that
+the space efficiency of any implementation will be limited by
+Java's modeling constraints and delegation costs.
 
 \section{Collections Resources}
 
@@ -306,9 +309,10 @@ you can use some of these classes to solve specific problems.
 Table~\ref{tab:alternative-collections} gives a summary of the capabilities that
 we discuss (sometimes only briefly). This is only a sampling of what's out
 there. We encourage you to further explore these and other frameworks on your own.
-%on your own
 
-\paragraph{Guava} The Guava framework, which grew out of the Google Collections,
+\begin{description}
+
+\item[Guava] The Guava framework, which grew out of the Google Collections,
 is designed primarily for programmer productivity, providing many useful
 features missing from the standard Java collections. 
 Although space usage has not been the main focus, it does include a
@@ -319,7 +323,7 @@ building caches and other lifetime management mechansisms, with optional support
 for concurrency. While most open source frameworks provide some level of compatibility with the
 standard collections APIs, Guava has made compatibility a priority.
 
-\paragraph{Apache Commons Collections} The Apache Commons Collections framework
+\item[Apache Commons Collections] The Apache Commons Collections framework
 has similar objectives to the Guava framework, focusing mostly on programmer productivity rather than on
 efficiency per se. 
 %Of the two, Commons has been around longer. However, as of this writing it
@@ -331,19 +335,21 @@ support through its \class{ReferenceMap} class, in a less general
 manner than the Guava equivalent. As of this writing,
 the Commons API has not been updated to take advantage of generics.
 
-\paragraph{GNU Trove} The GNU Trove framework has time and space efficiency as
+\item[GNU Trove] The GNU Trove framework has time and space efficiency as
 its main goal.
 From a memory standpoint its highlights are: collections of primitives that
 avoid boxing and unboxing;  map
 and set implementations that are lighter weight than the standard ones; and
 linked lists that can be customized to use less memory.
 
-\paragraph{fastutil} The fastutil framework has similar goals to Trove,
+\item[fastutil] The fastutil framework has similar goals to Trove,
 primarily time and space efficiency. Like Trove, fastutil provides primitive collections, along with
 lighter-weight implementations of maps and sets. Some other memory-related
 features include array-based implementations for small
 maps and sets, and support for very large arrays and collections when working
 in a 64-bit address space.
+
+\end{description}
 
 Important note: there are many kinds of open source licenses. Each has different
 restrictions on usage. Make sure to check with your organization's open
