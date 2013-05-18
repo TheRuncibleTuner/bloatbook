@@ -402,25 +402,22 @@ your product, service or internal system.
 \section{Summary}
 Using collections carefully can
 make the difference between a design that scales well and one that
-doesn't. Some items to be aware of when working with collections:
+doesn't. When working with collections, keep in mind:
 \begin{itemize}
   \item The standard Java collections were designed more for speed than for
   space. They are not optimized for some common cases, such as designs with many small
-  collections. In general the Java collections use a lot of memory.
- %not designed for the ways they are actually used.
-  \item Collections vary widely in their memory usage. Awareness of
-  costs is an essential first step in choosing well. Sometimes there is a less
+  collections. In general, Java collections use a lot of memory.
+  \item Collections vary widely in their memory usage. Sometimes there is a less
   expensive choice of collection class available, either from the standard
-  library or from open source alternatives. Initialization options can also make
-  a difference.
+  library or from an open source framework. Analyzing your application's requirements, specifically
+  which features of a collection you really need, can suggest
+  less expensive choices.
+  %Initialization options can also make a difference.
   \item The same collection class will scale differently depending on its
   context. Ensuring scalability means
-  analyzing how a collection's fixed and variable costs
+  analyzing how a collection's fixed and variable overhead costs
   play out in a given situation. Watch out for: collections with
   high fixed costs when you have a lot of small collections, and 
   collections with high variable costs when you have a
   lot of elements.
-  \item Analyzing your application's requirements, specifically
-  which features of a collection you really need, can suggest
-  less expensive choices.
 \end{itemize}
