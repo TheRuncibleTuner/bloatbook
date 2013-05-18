@@ -304,12 +304,15 @@ standard collections. As always, there is no substitute for analyzing space
 usage yourself.
 %analyzing space usage empirically
 
-In this book we'll look at four of the most recent and relevant
-open source collections frameworks. In the next few chapters we'll look at how
-you can use some of these classes to solve specific problems.
+We'll look briefly at four of the most relevant
+open source collections frameworks.  In the next few chapters we'll see a
+few examples of using these classes to solve specific problems.
 Table~\ref{tab:alternative-collections} gives a summary of the capabilities that
-we discuss (sometimes only briefly). This is only a sampling of what's out
-there. We encourage you to further explore these and other frameworks on your own.
+we discuss (sometimes only briefly)\footnote{We use the following versions
+of these frameworks: Guava r14.0.1,
+Apache Commons Collections r3.2.1, GNU Trove r3.0.3, and fastutil r6.5.2}. 
+This is just a sampling of what's available. We encourage you to further explore these and
+other frameworks on your own.
 
 \begin{description}
 
@@ -325,18 +328,16 @@ with optional support for concurrency. While most open source frameworks provide
 standard collections APIs, Guava has made compatibility a priority.
 
 \item[Apache Commons Collections] The Apache Commons Collections framework
-has similar objectives to the Guava framework, focusing mostly on programmer productivity rather than on
-efficiency per se. 
-%Of the two, Commons has been around longer. However, as of this writing it
-% there have not been recent releases, 
+is an older framework with similar objectives to the Guava framework.
+Its focus is mostly on programmer productivity, rather than on efficiency per
+se.
 It does however provide some capabilities for saving memory, such as
 maps and linked lists with customizable storage, and specialized 
 maps that contain just a few elements. It also provides lifetime management
 support through its \class{ReferenceMap} class, in a less general
-manner than the Guava equivalent. Compared to Guava, the Commons Collections has
-been around longer. As of this writing it has had little
-recent development, and its API has not been updated to take advantage of
-generics.
+manner than the Guava equivalent. As of this writing, the Commons Collections 
+has not been under active development for a few years. Its API has
+not been updated to take advantage of generics.
 
 \item[GNU Trove] The GNU Trove framework has time and space efficiency as
 its main goal.
@@ -346,9 +347,9 @@ and set implementations that are lighter weight than the standard ones; and
 linked lists that can be customized to use less memory.
 
 \item[fastutil] The fastutil framework has similar goals to Trove,
-primarily time and space efficiency. Like Trove, fastutil provides primitive collections, along with
-lighter-weight implementations of maps and sets. Some other memory-related
-features include array-based implementations for small
+primarily time and space efficiency. Like Trove, fastutil provides collections
+of primitives, along with lighter-weight implementations of maps and sets. Some
+other memory-related features include array-based implementations for small
 maps and sets, and support for very large arrays and collections when working
 in a 64-bit address space.
 
