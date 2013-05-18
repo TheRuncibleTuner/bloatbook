@@ -261,7 +261,7 @@ simple collection functionality from arrays & Section~\ref{sec:better-designs}
 shows one example
 	\\
 	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
-	& \autoref{chapter:tables-indexes}
+	& \autoref{sec:identity-maps}
 	\\
 	\class{EnumMap} & Compact map when keys are \class{Enum}s & \autoref{chapter:dynamic-records}
 	\\
@@ -269,7 +269,7 @@ shows one example
 	Section~\ref{sec:bit-flags}
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
-	using weak references. & \autoref{chapter:tables-indexes}
+	using weak references. & \autoref{chapter:lifetime-fundamentals}
 	\\
 	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
@@ -367,25 +367,28 @@ your product, service or internal system.
 
 	   Feature & Supported by & Discussed in
 	\\ \cmidrule(r){1-1} \cmidrule(l){2-2} \cmidrule(l){3-3}
-	Primitive collections & fastutil, Trove & Section~\ref{}
+	Primitive collections & fastutil, Trove & \autoref{sec:primitive-maps}
 	\\
 	\\
-	Lighter-weight maps and sets of objects & fastutil, Trove & Section~\ref{}
+	Lighter-weight maps and sets of objects & fastutil, Trove &
+	\autoref{sec:large-collections}
 	\\
 	\\
-	Immutable collections & fastutil, Guava & Section~\ref{}
+	Immutable collections & Guava & \autoref{sec:immutable-collections}
 	\\
 	\\
-	Small collections & Commons (maps only), fastutil & Section~\ref{}
+	Small collections & fastutil, Commons & \autoref{sec:load-vs-use}, 
+	\autoref{chapter:tables-indexes}
 	\\
 	\\
-	Customized linked list storage & Trove & Section~\ref{}
+	Customized linked list storage & Trove & \autoref{sec:large-collections}
 	\\
 	\\
-	Maps with weak/soft references & Commons, Guava & Chapters~\ref{} and ~\ref{}
+	Maps with weak/soft references & Commons, Guava &
+	\autoref{chapter:lifetime-fundamentals}
 	\\
 	\\
-	Caches & Guava & Section~\ref{}
+	Caches and pools & Guava & \autoref{chapter:lifetime-fundamentals}
 	\\
 	\bottomrule
 	\end{tabular}

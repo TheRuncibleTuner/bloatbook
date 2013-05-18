@@ -228,6 +228,7 @@ pointer fields, which increase the cost of these instances when they are
 not stored in a list.
 
 \section{Identity Maps}
+\label{sec:identity-maps}
 The Java standard library does provide one hash map class that uses an open
 addressing implementation. The \class{IdentityMap} class can save you space
 if you have the need for a large map that fits its requirements.  The idea is that
@@ -240,9 +241,10 @@ number of applications where this doesn't matter.
 Suppose I want to associate additional information with each product.  Using a
 standard map, I could map the product's unique key, say SKU, 
 
-
+[Discuss trove/fastutil here too?  If so, add to table in Intro chapter.]
 
 \section{Maps with Scalar Keys or Values}
+\label{sec:primitive-maps}
 
 \section{Multikey Maps. Example: Evaluating Three Alternative Designs}
 
