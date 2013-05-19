@@ -15,6 +15,7 @@ commmon datatypes.
 String is the most common non-trivial datatype found in Java programs, and the single largest 
 consumer of memory in most applications. We
 discuss when to use a Java \class{String} to represent data, and when not to.
+
 \paragraph{External vs. Internal Datatype Forms}
 Character strings are the universal data type, in that all data can be
 represented in string form.  For example, I am now typing the integer 347 as a
@@ -78,9 +79,11 @@ boolean and an enumerated type.
 Common wisdom is that using \class{StringBuffer} is more efficient than
 \class{String} for performing string concatenation. For example, a simple way
 to create a concatenated string:
+
 \begin{shortlisting}
 	String str = "Beginning  " + "Middle " +  "End";
 \end{shortlisting}
+
 However, since \class{String}s are immutable, this code results in several
 temporary \class{String}s being created, copied, and discarded.  It turns out
 that the following code is more efficient:
@@ -229,7 +232,7 @@ This creates a relatively small object (24 bytes) that stores the current date
 and time in milliseconds since January 1, 1970. The class \class{Date} itself
 supports little other functionality, since most of its original methods have
 been deprecated. You can print a \class{Date} object using the default
-\method{toString} function. Interestingly, printing a \class{Date} has the funny
+\code{toString} function. Interestingly, printing a \class{Date} has the funny
 side effect of creating another object inside the \class{Date} object, which
 doesn't go away!
 
@@ -265,13 +268,12 @@ create many dates in your application, you should not store them as
 \class{GregorianCalendars}. Instead, you should store your dates as \class{Date}
 objects, and use just one or two instances of a \class{GregorianCalendar} for
 operating on the dates:
+
 \begin{shortlisting}
      static calendar = new GregorianCalendar();
      ..
 	 Date now = calendar.getTime();
 	 calendar.setTime(now);   // a single instance of a 
-
-
 \end{shortlisting}
 
 \section{BigInteger and BigDecimal}
@@ -284,8 +286,8 @@ A \class{BigInteger} provides
 arbitrary-precison integer arithmetic functions, which exactly mimics the
 functions of the standard integer. 
 A \class{BigInteger} is immutable and almost always requires two objects (a
-BigInteger plus an int[]),\ for a minimum of 48 bytes total.  The cost can be more,
-depending on the number of digits.  The formula for the total size is 
+\class{BigInteger} plus an \class{int[]}), for a minimum of 48 bytes total.  The
+cost can be more, depending on the number of digits.  The formula for the total size is 
 44 + 4*(number of ints needed to represent the integer). 
 Because of the cost, unless you need the extra digits, you should just use an integer or long.
 
@@ -301,20 +303,20 @@ memory cost of the representation.
 \class{BigDecimal} has two forms: a compact form and an
 inflated form. Most of the time, \class{BigDecimal} uses the compact form,
 which is a single 32-byte object that can store a number whose significand's
-absolute value is less than or equal to Long.MAX_VALUE.  
+absolute value is less than or equal to \code{Long.MAX_VALUE}.
 All 18-digit decimal numbers will fit in that, and some 19-digit.  Bigger than
 that, the inflated form is required. In the inflated form, \class{BigDecimal}
 delegates the storage of the significand to a \class{BigInteger}, which almost always means two additional
-objects, bringing the total for BigDecimal to 80 bytes at a minimum.
+objects, bringing the total for BigDecimal to 80 bytes at a
+minimum.  
 
-Unfortunately, sometimes a \class{BigDecimal} will become
-inflated, since certain arithmetic methods will cause a \class{BigDecimal} to
-switch to its inflated form in order to perform the operation, and once inflated,
+Unfortunately, sometimes a \class{BigDecimal} will become inflated,
+since certain arithmetic methods will cause a \class{BigDecimal} to switch to its inflated form in order to perform the operation, and once inflated,
 there's no switching back.  The cases are too numerous to predict, so if there's
 a concern it's best to look at the heap and see what happens based on actual usage in the 
 application.
 
-Similarly, calling \method{toString()} on a \class{BigDecimal} causes it to
+Similarly, calling \code{toString()} on a \class{BigDecimal} causes it to
 save its string representation, in case it is needed again.
 This is another example of a performance optimization that 
 costs space, built into the library.  This operation adds an extra two objects
