@@ -487,9 +487,9 @@ and \textit{variable}. Together they determine the cost of the collection
 for a given number of entries.
 
 Fixed overhead is the minimum space needed, no
-matter how many entries are stored in the collection. Small collections with a large fixed
-overhead have a high memory bloat factor. The fixed overhead is amortized
-if the collection grows. 
+matter how many entries are stored in the collection. In a
+collection with few entries, a large fixed overhead matters more. The fixed
+overhead is amortized if the collection grows.
 
 Variable overhead is the memory needed, on average, to
 store a new entry in the collection. Collections with a large variable
@@ -554,9 +554,9 @@ these entities.  The \textsl{Entity-Collection (EC) Diagram} shows the costs
 associated with the different parts of a complex data structure. These diagrams
 help you to compare the memory efficiency of different representation choices.
 \item By classifying the overhead of a collection as either \textsl{fixed} or
-\textsl{variable}, you can predict how much memory you will need to store very
-large collections. Being able to predict scalability is critical to meeting the
-requirements of larges applications.
+\textsl{variable}, you can predict how much memory you will need to store
+collections of different sizes. Being able to predict scalability is critical to
+meeting the requirements of large applications.
 \end{itemize}
 These are the basic tools used in the rest of this book. To estimate the cost of
 an entity, you will need to know how many bytes each primitive type needs, what
