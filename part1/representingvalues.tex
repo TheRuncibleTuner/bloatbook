@@ -16,7 +16,7 @@ String is the most common non-trivial datatype found in Java programs, and the s
 consumer of memory in most applications. We
 discuss when to use a Java \class{String} to represent data, and when not to.
 
-\paragraph{External vs. Internal Datatype Forms}
+\subsection{External vs. Internal Datatype Forms}
 Character strings are the universal data type, in that all data can be
 represented in string form.  For example, I am now typing the integer 347 as a
 string of characters in this paragraph, and it is stored in a file as a sequence
@@ -74,7 +74,7 @@ The \class{String} is by far the costliest representation, with a bloat factor o
 boolean and an enumerated type.
 \class{String}s are simply a very expensive way to represent scalar values.
 
-\paragraph{StringBuffer vs. String}
+\subsection{StringBuffer vs. String}
 
 Common wisdom is that using \class{StringBuffer} is more efficient than
 \class{String} for performing string concatenation. For example, a simple way
@@ -94,7 +94,9 @@ that the following code is more efficient:
 \end{shortlisting}
 \class{String}s are immutable, concatenating \class{String}s involves allocating a temporary
 \code{char} array, copying the \class{String}s into it, and then constructing
-a result \class{String}. A \class{StringBuffer}, on the other hand, is mutable.
+a result \class{String}. A \class{StringBuffer}\footnote{This discussion
+applies equally to \class{StringBuffer} and \class{StringBuilder}. For
+simplicity we'll say \class{StringBuffer} to mean either one.}, on the other hand, is mutable.
 
 However, long-lived \class{StringBuffer}s can waste memory. Usually a
 \class{StringBuffer} will have significant empty space, since they double in
