@@ -86,9 +86,8 @@ be updated over time.
 
 Using long-lived \class{StringBuffer}s to store stable character strings 
 can waste memory\footnote{This discussion
-applies equally to \class{StringBuffer} and \class{StringBuilder}. For
-simplicity we'll say \class{StringBuffer} to mean either one.}. That's because
-\class{StringBuffer}s were designed for building string data over time. They
+applies equally to \class{StringBuffer} and \class{StringBuilder}.}. That's
+because \class{StringBuffer}s were designed for building string data over time. They
 allocate excess capacity to reduce the time needed for reallocating the
 character array and copying the data.  \class{StringBuffer}s will usually
 have significant empty space, since they double in size whenever they need to be reallocated. 
