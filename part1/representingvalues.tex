@@ -16,7 +16,8 @@ String is the most common non-trivial datatype found in Java programs, and the s
 consumer of memory in most applications. We
 discuss when to use a Java \class{String} to represent data, and when not to.
 
-\subsection{External vs. Internal Datatype Forms}
+%\subsection{External vs. Internal Datatype Forms}
+\subsection{Scalars vs. Character Strings}
 Character strings are the universal data type, in that all data can be
 represented in string form.  For example, I am now typing the integer 347 as a
 string of characters in this paragraph, and it is stored in a file as a sequence
@@ -32,9 +33,9 @@ any kind of operations on the data, you will need to convert it to use
 available datatype operators. If these conversions are performed
 repeatedly, then there may be lots of temporaries generated needlessly.  Second,
 representing data with specific data types leads to better type checking to avoid bugs. 
-Finally, specific data types provide a simple form of documentation.
-In addition, the overhead of a string representation is much higher than
-the overhead of scalars and even of boxed forms.
+Third, specific data types provide a simple form of documentation.
+Last but not least, the memory overhead of a string representation is much
+higher than the overhead of scalars and even of boxed forms.
 
 \begin{table}
   \centering
@@ -44,19 +45,19 @@ integer & int anint = 47; & 4 \\
 \midrule
 & Integer anint = new Integer(47); & 20 (4+16)  \\
 \midrule
-& String anint = new String(``47''); & 52 (4+48) \\
+& String anint = new String(``47''); & 44 (4+40) \\
 \midrule
 \midrule
 boolean & boolean abool = true; & 1\\
 \midrule
 & Boolean abool = new Boolean(true): & 20 (4+16) \\
 \midrule
-& String abool = new String(``T''); & 52 (4+48) \\
+& String abool = new String(``T''); & 44 (4+40) \\
 \midrule \midrule
 enumerated type & enum Gender \{MASCULINE, FEMININE, NEUTER\}; &\\
 & Gender agender = MASCULINE; & 4 \\
 \midrule
-& String agender = new String(``masculine''); & 68 (4+64) \\
+& String agender = new String(``masculine''); & 60 (4+56) \\
 \bottomrule \bottomrule
 \end{tabular}
 \caption{The cost of different ways to represent an integer, a boolean, and an
@@ -66,45 +67,33 @@ additional delegated objects.}
 \end{table}
 
 Table~\ref{tab:data-sizes} shows three examples of the cost of different
-representations of the same value. (See Chapter~\ref{chapter:delegation} for
-details on these costs.) In the first example, an integer 47 can be
-represented as a 4 byte field, a boxed object, or a Java \class{String}. 
-The \class{String} is by far the costliest representation, with a bloat factor of
-92\%, or 13 times the memory of the scalar representation.  Similarly for the other two examples, a
-boolean and an enumerated type.
-\class{String}s are simply a very expensive way to represent scalar values.
+representations of the same value. In the first example, an integer 47 can be
+represented as a 4-byte scalar field, a boxed scalar, or a Java \class{String}. 
+The \class{String} is by far the costliest representation, requiring 11 times
+the memory of the scalar representation, with a bloat factor of 95\%. Similarly for the other two examples,
+a boolean and an enumerated type. In Java, \class{String}s are a very
+expensive way to represent scalar values, much more so than in many other
+languages.
 
 \subsection{StringBuffer vs. String}
+Java provides a few different datatypes for character strings, to cover the most
+common use cases. \code{String}s are immutable, meant for string data that never
+changes once initialized. \code{StringBuffer}s and
+\code{StringBuilder}s, on the other hand, can continue to be updated over time.
 
-Common wisdom is that using \class{StringBuffer} is more efficient than
-\class{String} for performing string concatenation. For example, a simple way
-to create a concatenated string:
-
-\begin{shortlisting}
-	String str = "Beginning  " + "Middle " +  "End";
-\end{shortlisting}
-
-However, since \class{String}s are immutable, this code results in several
-temporary \class{String}s being created, copied, and discarded.  It turns out
-that the following code is more efficient:
-\begin{shortlisting}
-	StringBuffer str = new StringBuffer ("Beginning ");
-	str.append("Middle ");
-    str.append("End");
-\end{shortlisting}
-\class{String}s are immutable, concatenating \class{String}s involves allocating a temporary
-\code{char} array, copying the \class{String}s into it, and then constructing
-a result \class{String}. A \class{StringBuffer}\footnote{This discussion
+Using long-lived \class{StringBuffer}s to store stable character strings 
+can waste memory\footnote{This discussion
 applies equally to \class{StringBuffer} and \class{StringBuilder}. For
-simplicity we'll say \class{StringBuffer} to mean either one.}, on the other hand, is mutable.
-
-However, long-lived \class{StringBuffer}s can waste memory. Usually a
-\class{StringBuffer} will have significant empty space, since they double in
-size whenever they need to be reallocated. Typically, after a string is built up in the
-\class{StringBuffer}, it is stable, at which point it should be converted 
-to a \class{String}, so that the \class{StringBuffer} can be
+simplicity we'll say \class{StringBuffer} to mean either one.}. That's because
+\class{StringBuffer}s were designed for building string data over time. They
+allocate excess capacity to reduce the time needed for reallocating the
+character array and copying the data.  \class{StringBuffer}s will usually
+have significant empty space, since they double in size whenever they need to be reallocated. 
+Typically, after a string is built up in the \class{StringBuffer}, it is stable, at which point
+it should be converted to a \class{String}, so that the \class{StringBuffer} can be
 garbage collected. Using \class{StringBuffer}s to facilitate
-building a \class{String} is fine, but they should be used only as temporaries.
+building a \class{String} is fine, but they should only be used as temporaries
+in this case.
 
 \section{Representing Bit Flags}
 \label{sec:bit-flags}
