@@ -2,8 +2,8 @@
 \label{chapter:representing-values}
 
 So far, we have been concerned with the wasteful overhead that can result when
-modeling your entities as classes and fields. But what about the field data itself?
-Java gives you a number of different ways to represent common datatypes, such
+modeling your entities as classes and fields. But what about the field data
+itself? Java gives you a number of different ways to represent common datatypes, such
 as strings, numbers, dates, and bit flags. Depending on which
 representation you choose, the overhead costs can vary quite a bit. 
 These costs, hidden in the implementation, are not obvious, and can be
@@ -12,9 +12,10 @@ In this chapter, we look at the costs of different representations for the most
 commmon datatypes.
 
 \section{Character Strings}
-String is the most common non-trivial datatype found in Java programs, and the single largest 
-consumer of memory in most applications. We
-discuss when to use a Java \class{String} to represent data, and when not to.
+\code{String}s are the most common non-trivial data type found in Java
+programs. They are the single largest consumer of memory in most applications,
+typically taking up 40-50\% of the heap. We discuss when to use a Java \class{String} to
+represent data, and when not to.
 
 %\subsection{External vs. Internal Datatype Forms}
 \subsection{Scalars vs. Character Strings}
@@ -70,16 +71,18 @@ Table~\ref{tab:data-sizes} shows three examples of the cost of different
 representations of the same value. In the first example, an integer 47 can be
 represented as a 4-byte scalar field, a boxed scalar, or a Java \class{String}. 
 The \class{String} is by far the costliest representation, requiring 11 times
-the memory of the scalar representation, with a bloat factor of 95\%. Similarly for the other two examples,
-a boolean and an enumerated type. In Java, \class{String}s are a very
-expensive way to represent scalar values, much more so than in many other
-languages.
+the memory of the scalar representation. It has a bloat factor of 95\%.
+The effect is similar in the other two examples, a boolean and an enumerated
+type. The blowup in memory cost for the \class{String} representation is a
+factor of 44 and 15, respectively. In Java, \class{String}s are a very expensive way to
+represent scalar values, much more so than in many other languages.
 
 \subsection{StringBuffer vs. String}
-Java provides a few different datatypes for character strings, to cover the most
-common use cases. \code{String}s are immutable, meant for string data that never
-changes once initialized. \code{StringBuffer}s and
-\code{StringBuilder}s, on the other hand, can continue to be updated over time.
+Java provides a few different datatypes for character strings, each one
+addressing a common use case. \code{String}s are immutable, meant for
+string data that never changes once initialized. \code{StringBuffer}s and
+\code{StringBuilder}s, on the other hand, are for string data that continues to
+be updated over time.
 
 Using long-lived \class{StringBuffer}s to store stable character strings 
 can waste memory\footnote{This discussion
@@ -91,8 +94,8 @@ character array and copying the data.  \class{StringBuffer}s will usually
 have significant empty space, since they double in size whenever they need to be reallocated. 
 Typically, after a string is built up in the \class{StringBuffer}, it is stable, at which point
 it should be converted to a \class{String}, so that the \class{StringBuffer} can be
-garbage collected. Using \class{StringBuffer}s to facilitate
-building a \class{String} is fine, but they should only be used as temporaries
+garbage collected. Using a \class{StringBuffer} to facilitate
+building a \class{String} is fine, but it should only be used as a temporary
 in this case.
 
 \section{Representing Bit Flags}
