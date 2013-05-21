@@ -2,7 +2,7 @@
 \label{chapter:representing-values}
 
 So far, we have been concerned with the wasteful overhead that can result when
-modeling your entities as classes and fields. But what about the field data
+modeling entities as classes and fields. But what about the field data
 itself? Java gives you a number of different ways to represent common datatypes, such
 as strings, numbers, dates, and bit flags. Depending on which
 representation you choose, the overhead costs can vary quite a bit. 
@@ -12,7 +12,7 @@ In this chapter, we look at the costs of different representations for the most
 commmon datatypes.
 
 \section{Character Strings}
-\code{String}s are the most common non-trivial data type found in Java
+\code{Strings} are the most common non-trivial data type found in Java
 programs. They are the single largest consumer of memory in most applications,
 typically taking up 40-50\% of the heap. We discuss when to use a Java \class{String} to
 represent data, and when not to.
@@ -64,32 +64,32 @@ enumerated type & enum Gender \{MASCULINE, FEMININE, NEUTER\}; &\\
 \caption{The cost of different ways to represent an integer, a boolean, and an
 enumerated type. The size column shows both the field size and the cost of
 additional delegated objects.}
-\label{tab:data-sizes}
+\label{tab:scalar-data-sizes}
 \end{table}
 
-Table~\ref{tab:data-sizes} shows three examples of the cost of different
+Table~\ref{tab:scalar-data-sizes} shows three examples of the cost of different
 representations of the same value. In the first example, an integer 47 can be
 represented as a 4-byte scalar field, a boxed scalar, or a Java \class{String}. 
 The \class{String} is by far the costliest representation, requiring 11 times
 the memory of the scalar representation. It has a bloat factor of 95\%.
 The effect is similar in the other two examples, a boolean and an enumerated
 type. The blowup in memory cost for the \class{String} representation is a
-factor of 44 and 15, respectively. In Java, \class{String}s are a very expensive way to
+factor of 44 and 15, respectively. In Java, \class{Strings} are a very expensive way to
 represent scalar values, much more so than in many other languages.
 
 \subsection{StringBuffer vs. String}
 Java provides a few different datatypes for character strings, each one
-addressing a common use case. \code{String}s are immutable, meant for
-string data that never changes once initialized. \code{StringBuffer}s and
-\code{StringBuilder}s, on the other hand, are for string data that continues to
+addressing a common use case. \code{Strings} are immutable, meant for
+string data that never changes once initialized. \code{StringBuffers} and
+\code{StringBuilders}, on the other hand, are for string data that continues to
 be updated over time.
 
-Using long-lived \class{StringBuffer}s to store stable character strings 
+Using long-lived \class{StringBuffers} to store stable character strings 
 can waste memory\footnote{This discussion
 applies equally to \class{StringBuffer} and \class{StringBuilder}.}. That's
-because \class{StringBuffer}s were designed for building string data over time. They
+because \class{StringBuffers} were designed for building string data over time. They
 allocate excess capacity to reduce the time needed for reallocating the
-character array and copying the data.  \class{StringBuffer}s will usually
+character array and copying the data.  \class{StringBuffers} will usually
 have significant empty space, since they double in size whenever they need to be reallocated. 
 Typically, after a string is built up in the \class{StringBuffer}, it is stable, at which point
 it should be converted to a \class{String}, so that the \class{StringBuffer} can be
@@ -97,15 +97,16 @@ garbage collected. Using a \class{StringBuffer} to facilitate
 building a \class{String} is fine, but it should only be used as a temporary
 in this case.
 
-\section{Representing Bit Flags}
+\section{Bit Flags}
 \label{sec:bit-flags}
 
 A value that can be represented by a single bit seems pretty innocuous from a
-memory point of view. However, there are different ways to represent bit flags
-in Java, and so it's worth devoting a section to the cost implications of
-bit flags. As an example, let's consider a business, open seven days a
-week, where employees are assigned to work on different fixed days.  We compare three
-different ways of representing work days as bit flags in an employee record.
+memory point of view. However, when an entity contains a number of bit
+fields, then it's worth looking at the cost implications of
+the different ways you can represent these fields. As an example, let's
+consider a business, open seven days a week, where employees are 
+assigned to work on different fixed days.  We compare three different ways of representing
+work days as bit flags in an employee record.
  
 First, you can represent bit flags as boolean fields in an object. For example
 employee working days can be directly stored in an employee record:
@@ -121,16 +122,17 @@ employee working days can be directly stored in an employee record:
     }
     
 \end{shortlisting}
-Each boolean field takes one byte, so each employee contains at least seven
+
+Each boolean field takes one byte, so each employee requires at least seven
 bytes to store workday information. 
 
 Alternatively, you can represent bit flags very compactly as actual bits, and
-manipulate the bits via accessor methods. There is more code involved,
-but it is isolated in these few methods. Seven days of the week can be stored as
-bits in a single byte field:
+manipulate the bits indirectly via accessor and update methods. There is more
+code involved, but it is isolated in these few methods. Seven days of the week can be stored as
+bits in a single \code{byte} field:
 
 \begin{shortlisting}
-	class Employee {
+	public class Employee {
 	
 		public final static byte Monday = 0x01;
 		public final static byte Tuesday = 0x02;
@@ -155,12 +157,13 @@ bits in a single byte field:
 \end{shortlisting}
 
 While compact, these representations are awkward from a coding and
-stylistic point of view. A better practice is to represent bit flag values
-using an enumerated type, and to represent bit flag fields using Java
-\class{EnumSet}s:
+stylistic point of view. A better practice is to represent each bit flag
+as a constant in an \code{enum} type, and to store the values of the group
+of flags as an \code{EnumSet}.
+
 \begin{shortlisting}
 
-    class Employee {
+    public class Employee {
  
 		public enum Day {MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};
     	
@@ -179,23 +182,45 @@ using an enumerated type, and to represent bit flag fields using Java
 \end{shortlisting}
 
 Since an \class{EnumSet} is an object, this representation is going to
-cost more because of delegation. On the Sun JVM, the storage is pretty
-well optimized. If the underlying Enum type has less than 64 elements, then an
-\class{EnumSet} is represented by one object of size 24 bytes. If the
-\code{enum} type has more than 64 elements, then an \class{EnumSet} is two objects, a wrapper plus a
-\class{long[]} array. The total cost is 40 bytes plus enough 8-byte
-\class{long}s in the array to hold the bit flags. In our example, the cost of storing workdays is 28 bytes per employee:
-4 bytes for the reference field and 24 bytes for the \class{EnumSet}. This is considerably
-more expensive than storing the bit flags as either bits or booleans. 
+cost more, in part because of delegation. On the \oracle \jre, the
+storage is pretty well optimized. If the underlying \code{enum} type has up to 64 constants,
+then an \class{EnumSet} requires just a single object of size 24 bytes. If
+the \code{enum} type has more than 64 constants, then an \class{EnumSet} requires
+two objects, a wrapper plus a \class{long[]} array. The total cost in that case
+is 40 bytes plus enough 8-byte \class{longs} in the array to hold the bit flags. 
+In our example, the cost of storing workdays is 28 bytes per employee:
+4 bytes for the reference field and 24 bytes for the \class{EnumSet}. 
+This is considerably more expensive than storing the bit flags as either bits or
+booleans. That is, unless your entity has a large number of bit flags
+that form a natural grouping. The crossover point in cost, versus a boolean
+representation, is 28 flags\footnote{On a \jre that doesn't pack \code{boolean}
+fields tightly, such as the \ibm \jre, the crossover point is much lower.}.
 
-When possible, sharing can optimize the cost of 
- \class{EnumSet}s considerably. Suppose
+The \code{EnumSet} representation allows for sharing in some cases, which can 
+reduce the cost considerably. Suppose
 that there are 1000 employees. The cost of storing the workdays for these
 employees using an \class{EnumSet} is 28,000 bytes. 
 Now suppose 900 employees work Monday
 through Friday. These employees can share an \class{EnumSet} representing
-these normal working days, reducing the cost to 6,424 bytes.  See \autoref{chapter:sharing-immutable-data}
+these normal working days, reducing the cost to 6,424 bytes. See \autoref{chapter:sharing-immutable-data}
 for more on sharing data.
+
+\begin{table}
+  \centering
+\begin{tabular}{llr} \toprule \toprule
+Representation & Size \\ \midrule \midrule
+bits in a byte & 1 \\
+\midrule
+boolean fields & 7 \\
+\midrule
+\code{EnumSet} & 28 (4+24) \\
+\bottomrule \bottomrule
+\end{tabular}
+\caption{The cost of different ways of storing the seven bit flags in our
+example, representing days of the week.
+The size column shows both the field size and the cost of additional delegated objects.}
+\label{tab:bit-flag-sizes}
+\end{table}
 
 
 \section{Dates}
@@ -286,8 +311,8 @@ Because of the cost, unless you need the extra digits, you should just use an in
 
 Like \class{BigInteger}, the Java class \class{BigDecimal} performs
 arbitrary-precision floating point arithmetic. Primarily,
-\class{BigDecimal}s are important for accounting and financial applications that
-involve currency, where precision and rounding accuracy are critical. With \class{BigDecimal}s,
+\class{BigDecimals} are important for accounting and financial applications that
+involve currency, where precision and rounding accuracy are critical. With \class{BigDecimals},
 you can set both the scale, which is the number of digits to the right of the
 decimal point, and the rounding method. How to do this is beyond our scope and
 covered elsewhere\footnote{do we really need it??}, since our focus is on the
@@ -331,14 +356,14 @@ representations unless you need the functionality.
 \begin{itemize}
   \item  Don't use \class{String} to store data that can be natuarlly
   represented in a more compact data form, such as integer or boolean.
-  \item Storing strings in \class{StringBuffer}s can waste a lot of space
+  \item Storing strings in \class{StringBuffers} can waste a lot of space
   if they are sized much bigger than the data they store.
   \item Even simple bit flags can cause bloat. If you generate lots of objects
   with bitflags, you should make sure you choose the most efficient
   representation.
-  \item Beware of storing dates as \class{GregorianCalendar}s.  A
+  \item Beware of storing dates as \class{GregorianCalendars}.  A
   \class{GregorianCalendar} should only be used and reused as a converter
-  object, to perform operations on \class{Date}s.
+  object, to perform operations on \class{Dates}.
   \item \class{BigInteger} and \class{BigDecimal} provide arbitrary precision
   arithmetic on integers and decimals, and are needed when this functionality is
   needed. Otherwise, using them just consume a lot of space and time.
