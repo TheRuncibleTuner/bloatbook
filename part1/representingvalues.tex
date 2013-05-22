@@ -238,7 +238,7 @@ The simplest and most compact way is to represent a time and date as a
 \end{shortlisting}
 The method call \code{System.currentTimeMillis()} returns the current 
 date and time in milliseconds since January 1, 1970.  This representation is
-perfect for timestamping, performance timings, and relative time
+perfect for time~stamping, performance timings, and relative time
 comparisons, however, it is clearly limited.  
 
 For more functionality, you can use the \class{java.util.Date} class:
@@ -256,10 +256,12 @@ If you should call one of \code{Date's} deprecated methods, such as
 a large (96-byte) internal object, bringing the total cost to 120 bytes for
 the two objects. Unfortunately, the \code{toString()} method, which is not
 deprecated, causes this same effect. So beware of calling \code{toString()},
-explicitly or implicitly, to format dates, as in:
+explicitly or implicitly, to format long-lived dates, as in:
 
 \begin{shortlisting}
-	log.println("Timestamp: " + logEvent[i].date);
+	static LogEvent log[]; 
+	..
+	log.println("Timestamp: " + log[i].date);
 \end{shortlisting}
 
 The recommended way to parse and format \code{Dates} is 
