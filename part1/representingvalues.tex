@@ -207,7 +207,7 @@ for more on sharing data.
 
 \begin{table}
   \centering
-\begin{tabular}{llr} \toprule \toprule
+\begin{tabular}{lr} \toprule \toprule
 Representation & Size \\ \midrule \midrule
 bits in a byte & 1 \\
 \midrule
@@ -217,8 +217,7 @@ boolean fields & 7 \\
 \bottomrule \bottomrule
 \end{tabular}
 \caption{The cost of different ways of storing the seven bit flags in our
-example, representing days of the week.
-The size column shows both the field size and the cost of additional delegated objects.}
+example, representing days of the week.}
 \label{tab:bit-flag-sizes}
 \end{table}
 
@@ -248,31 +247,41 @@ For more functionality, you can use the \class{java.util.Date} class:
 \end{shortlisting}
 This creates a relatively small object (24 bytes) that stores the current date
 and time in milliseconds since January 1, 1970. The class \class{Date} itself
-supports little other functionality, since most of its original methods have
-been deprecated. You can print a \class{Date} object using the default
-\code{toString} function. Interestingly, printing a \class{Date} has the funny
-side effect of creating another object inside the \class{Date} object, which
-doesn't go away!
+supports little other functionality itself. Most of its original methods, for
+parsing, formatting and conversion of dates, have been deprecated and moved to
+supporting classes.  
 
-So how do you get around this lack of functionality?
-Because of the semantic richness of dates, Java provides other classes that
-support various calendar functions, that operate on \class{Date} objects. For
-example, \class{SimpleDateFormat} will print a \class{Date} according to a
-specified format:
+If you should call one of \code{Date's} deprecated methods, such as
+\code{getYear()}, \code{Date} will create and retain
+a large (96-byte) internal object, bringing the total cost to 120 bytes for
+the two objects. Unfortunately, the \code{toString()} method, which is not
+deprecated, causes this same effect. So beware of using \code{toString()},
+explicitly or implicitly, to format dates, as in:
+
+\begin{shortlisting}
+	log.println("Timestamp: " + logEvent[i].date);
+\end{shortlisting}
+
+The recommended way to access this functionality is through the
+\code{DateFormat} classes, for parsing and formatting dates, and using 
+\code{Calendar} classes for working in human-oriented units such as years,
+months, and hours.  For example:
+
 \begin{shortlisting}
     SimpleDateFormat dateFormat =  new SimpleDateFormat("dd/MM/yy"); 
     System.out.println(dateFormat.format(new Date())); 
 \end{shortlisting}
 
-For other date-related functions, you can use 
+and:
+
 \class{GregorianCalendar}, which implements the very rich \class{Calendar}
 interface and serves as a wrapper for \class{Date}:
 \begin{shortlisting}
 
 	GregorianCalendar calendar = new GregorianCalendar();
     Date now = calendar.getTime();
-    int year       = calendar.get(Calendar.YEAR);
-	int month      = calendar.get(Calendar.MONTH); 
+    int year = calendar.get(Calendar.YEAR);
+	int month = calendar.get(Calendar.MONTH); 
 	calendar.add(Calendar.MONTH, 3); 
 	..
     
@@ -293,6 +302,24 @@ operating on the dates:
 	 Date now = calendar.getTime();
 	 calendar.setTime(now);   // a single instance of a 
 \end{shortlisting}
+
+\begin{table}
+  \centering
+\begin{tabular}{lrl} \toprule \toprule
+Representation & Size & Comments \\ \midrule \midrule
+long & 8 & When minimal functionality is needed \\
+\midrule
+\code{Date} & 28 (24 + 4) & Expands if deprecated methods or \code{toString}
+are called \\
+\midrule
+\code{Calendar} & 428 (424+4) & Not recommended for long-lived storage
+of dates\\
+\bottomrule \bottomrule
+\end{tabular}
+\caption{The cost of different ways of storing a date field.}
+\label{tab:date-sizes}
+\end{table}
+
 
 \section{BigInteger and BigDecimal}
 
