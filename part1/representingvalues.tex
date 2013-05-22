@@ -226,12 +226,12 @@ example, representing days of the week.}
 
 Dates are very common in applications, but representing a date as a data type
 can be complex. The complexity comes from the need to represent
-universal time  and support conversions, arithmetic operations, and external
+universal time and to support conversions, arithmetic operations, and external
 representations. In Java, there are different ways of representing times and
-dates, and as usual, the more functionality you want, the more memory the
+dates, and the more functionality you want, the more memory the
 representation takes up.
 
-The simplest and most compact way is to represent a time and date is as a
+The simplest and most compact way is to represent a time and date as a
 \code{long} integer:
 \begin{shortlisting}
     long timeNow = System.currentTimeMillis();
@@ -247,61 +247,64 @@ For more functionality, you can use the \class{java.util.Date} class:
 \end{shortlisting}
 This creates a relatively small object (24 bytes) that stores the current date
 and time in milliseconds since January 1, 1970. The class \class{Date} itself
-supports little other functionality itself. Most of its original methods, for
-parsing, formatting and conversion of dates, have been deprecated and moved to
+supports little other functionality itself. Most of its original methods for
+parsing, formatting and conversion have been deprecated and moved to
 supporting classes.  
 
 If you should call one of \code{Date's} deprecated methods, such as
 \code{getYear()}, \code{Date} will create and retain
 a large (96-byte) internal object, bringing the total cost to 120 bytes for
 the two objects. Unfortunately, the \code{toString()} method, which is not
-deprecated, causes this same effect. So beware of using \code{toString()},
+deprecated, causes this same effect. So beware of calling \code{toString()},
 explicitly or implicitly, to format dates, as in:
 
 \begin{shortlisting}
 	log.println("Timestamp: " + logEvent[i].date);
 \end{shortlisting}
 
-The recommended way to access this functionality is through the
-\code{DateFormat} classes, for parsing and formatting dates, and using 
-\code{Calendar} classes for working in human-oriented units such as years,
-months, and hours.  For example:
+The recommended way to parse and format \code{Dates} is 
+to use a \code{DateFormat} object, for example:
 
 \begin{shortlisting}
     SimpleDateFormat dateFormat =  new SimpleDateFormat("dd/MM/yy"); 
-    System.out.println(dateFormat.format(new Date())); 
+    System.out.println(dateFormat.format(date)); 
 \end{shortlisting}
 
-and:
+To work with human-oriented date and time units, such as
+years, months, and hours, use a \code{Calendar}. For example:
 
-\class{GregorianCalendar}, which implements the very rich \class{Calendar}
-interface and serves as a wrapper for \class{Date}:
 \begin{shortlisting}
 
 	GregorianCalendar calendar = new GregorianCalendar();
-    Date now = calendar.getTime();
-    int year = calendar.get(Calendar.YEAR);
+	
+	// Compute a date 3 months out from the given date
+    calendar.setTime(myDate);
 	int month = calendar.get(Calendar.MONTH); 
 	calendar.add(Calendar.MONTH, 3); 
+	newDate = calendar.getDate();
 	..
     
 \end{shortlisting}
 
-Now we have functionality, but at what cost? It turns out that a
-\class{GregorianCalendar}, created with the default constructor requires six
-objects, totalling 424 bytes. This doesn't include the many temporaries
-thrown off during the initialization process. This means that if you need to
-create many dates in your application, you should not store them as
-\class{GregorianCalendars}. Instead, you should store your dates as \class{Date}
-objects, and use just one or two instances of a \class{GregorianCalendar} for
-operating on the dates:
+This functionality can come at a high cost in space and time if not
+used carefully. It turns out that \class{SimpleDateFormat} and
+\class{GregorianCalendar} each have lengthy initialization sequences and
+require a lot of storage.
+A \class{GregorianCalendar} created with the default constructor, for
+example, requires six objects, totaling 424 bytes. This doesn't include the many
+temporaries thrown off the initialization process.  This means that if you are
+operating on a large number of \code{Date}s over time, it's best to maintain a small number of
+formatting and calendar objects and reuse them.  Keep in mind that neither
+\class{SimpleDateFormat} nor \class{GregorianCalendar} is thread safe, so for
+concurrent applications it's useful to maintain separate objects for each
+thread, either via local variables or thread-local storage.
 
-\begin{shortlisting}
-     static calendar = new GregorianCalendar();
-     ..
-	 Date now = calendar.getTime();
-	 calendar.setTime(now);   // a single instance of a 
-\end{shortlisting}
+Since \class{GregorianCalendar} stores the \class{Date} you are currently
+working on, some applications use \class{GregorianCalendar} as their
+storage format for date fields. This is an extremely expensive
+representation, at 424 + 4 bytes per date!  This is not recommended for
+long-lived storage of more than a few dates.
+
 
 \begin{table}
   \centering
