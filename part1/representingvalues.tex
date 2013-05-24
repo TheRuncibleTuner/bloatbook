@@ -239,20 +239,21 @@ The simplest and most compact way is to represent a time and date as a
 The method call \code{System.currentTimeMillis()} returns the current 
 date and time in milliseconds since January 1, 1970.  This representation is
 perfect for time~stamping, performance timings, and relative time
-comparisons, however, it is clearly limited.  
+comparisons. However, it is clearly limited.  
 
-For more functionality, you can use the \class{java.util.Date} class:
+For more functionality and more precise typing you can use the
+\class{Date} class:
 \begin{shortlisting}
     Date date = new Date();
 \end{shortlisting}
 This creates a relatively small object (24 bytes) that stores the current date
-and time in milliseconds since January 1, 1970. The class \class{Date} itself
+and time in milliseconds since January 1, 1970. The class \class{Date}
 supports little other functionality itself. Most of its original methods for
 parsing, formatting and conversion have been deprecated and moved to
-supporting classes.  
+supporting classes. 
 
 If you should call one of \code{Date's} deprecated methods, such as
-\code{getYear()}, \code{Date} will create and retain
+\code{getYear()}, the date will create and retain
 a large (96-byte) internal object, bringing the total cost to 120 bytes for
 the two objects. Unfortunately, the \code{toString()} method, which is not
 deprecated, causes this same effect. So beware of calling \code{toString()},
@@ -265,7 +266,7 @@ explicitly or implicitly, to format long-lived dates, as in:
 \end{shortlisting}
 
 The recommended way to parse and format \code{Dates} is 
-to use a \code{DateFormat} object, for example:
+to use a \code{DateFormat} object. For example:
 
 \begin{shortlisting}
     SimpleDateFormat dateFormat =  new SimpleDateFormat("dd/MM/yy"); 
@@ -273,7 +274,7 @@ to use a \code{DateFormat} object, for example:
 \end{shortlisting}
 
 To work with human-oriented date and time units, such as
-years, months, and hours, use a \code{Calendar}. For example:
+months, days of the week, and hours, use a \code{Calendar}. For example:
 
 \begin{shortlisting}
 
@@ -290,12 +291,12 @@ years, months, and hours, use a \code{Calendar}. For example:
 
 This functionality can come at a high cost in space and time if not
 used carefully. It turns out that \class{SimpleDateFormat} and
-\class{GregorianCalendar} each have lengthy initialization sequences and
-require a lot of storage.
+\class{GregorianCalendar} each require a lot of storage and have lengthy
+initialization sequences.
 A \class{GregorianCalendar} created with the default constructor, for
 example, requires six objects, totaling 424 bytes. This doesn't include the many
-temporaries thrown off the initialization process.  This means that if you are
-operating on a large number of \code{Date}s over time, it's best to maintain a small number of
+temporaries thrown off during the initialization process.  This means that if
+you are operating on a large number of \code{Date}s over time, it's best to maintain a small number of
 formatting and calendar objects and reuse them.  Keep in mind that neither
 \class{SimpleDateFormat} nor \class{GregorianCalendar} is thread safe, so for
 concurrent applications it's useful to maintain separate objects for each
@@ -317,7 +318,7 @@ long & 8 & When minimal functionality is needed \\
 \code{Date} & 28 (24 + 4) & Expands if deprecated methods or \code{toString}
 are called \\
 \midrule
-\code{Calendar} & 428 (424+4) & Not recommended for long-lived storage
+\code{Calendar} & 428 (424+4) & Not recommended for storage
 of dates\\
 \bottomrule \bottomrule
 \end{tabular}
@@ -329,7 +330,7 @@ of dates\\
 \section{BigInteger and BigDecimal}
 
 It is rare that an integer is too big to be represented as an \class{int} or
-\class{long}. However, there are rare occasions when a  \class{BigInteger} is
+\class{long}. However, there are occasions when a  \class{BigInteger} is
 needed. For example, for example, the largest prime
 just discovered is over 17 million digits long.
 A \class{BigInteger} provides 
