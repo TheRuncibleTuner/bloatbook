@@ -329,28 +329,31 @@ of dates\\
 
 \section{BigInteger and BigDecimal}
 
-It is rare that an integer is too big to be represented as an \class{int} or
-\class{long}. However, there are occasions when a  \class{BigInteger} is
+\paragraph{BigInteger} It is rare that an integer is too big to be represented
+as an \class{int} or \class{long}. However, there are occasions when a  \class{BigInteger} is
 needed. In one extreme example, the largest prime
 just discovered is over 17 million digits long!
 A \class{BigInteger} provides 
-arbitrary-precison integer arithmetic functions, and exactly mimics the
-functions of the standard integer. 
-A \class{BigInteger} is immutable and almost always requires two objects (a
+arbitrary-precison integer arithmetic functions. It is immutable, and exactly
+mimics the functions of the standard integer. 
+A \class{BigInteger} almost always requires two objects (a
 \class{BigInteger} plus an \class{int[]}), for a minimum of 48 bytes total.  The
 cost can be more, depending on the number of digits.  The formula for the total size is 
 44 + 4*(number of ints needed to represent the integer). 
 Because of the cost, unless you need the extra digits, you should just use an
 \code{int} or \code{long}.
 
-Like \class{BigInteger}, the Java class \class{BigDecimal} performs
-arbitrary-precision floating point arithmetic. Primarily,  
-\class{BigDecimal}s are important for accounting
-and financial applications that involve currency, where precision and rounding
-accuracy are critical. Java's \code{float} and \code{double} do not
-provide adequate functionality in this regard. With \class{BigDecimals}, you can
-control both the scale, which is the number of digits to the right of the
-decimal point, and the rounding method.
+\paragraph{BigDecimal} Like \class{BigInteger}, the Java class
+\class{BigDecimal} performs arbitrary-precision
+floating point arithmetic, and is immutable.
+Primarily, \class{BigDecimal}s are critical for many accounting
+and financial applications that involve currency, for two reasons. First, Java's
+\code{float} and \code{double} can lose accuracy in computations.
+\class{BigDecimal} provides accuracy to an arbitrary number of digits. 
+It allows you to control the scale, which is the number of digits to the right
+of the decimal place. Second, \class{BigDecimal} provides for a number of
+different kinds of rounding behavior, a requirement of many of these
+applications.
 
 \class{BigDecimal} has two forms: a compact form and an
 inflated form. Most of the time, \class{BigDecimal} uses the compact form,
@@ -362,20 +365,21 @@ delegates the storage of the significand to a \class{BigInteger}, which almost a
 objects, bringing the total for BigDecimal to 80 bytes at a
 minimum.  
 
-Unfortunately, certain arithmetic methods will cause a \class{BigDecimal} to
-switch to its inflated form in order to perform the operation, and once
+Unfortunately, certain arithmetic methods will cause a
+\class{BigDecimal} to switch to its inflated form in order to perform the operation, and once
 inflated, there's no switching back.  That's true for \class{BigDecimals} that
-are the ``\code{this}'' object, as well as some that are innocently passed as
-arguments. The cases are too numerous to predict, so if there's a concern it's
+are the ``\code{this}'' object, as well as for some that are innocently passed
+as arguments. It can also occur indirectly as the result of some formatting
+operations. The cases are too numerous to predict, so if there's a concern it's
 best to look at the heap and see what happens based on actual usage in the application.
 
 In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
 save its string representation, in case it is needed again.
-This is another example of a premature performance optimization, built into the
-library, that costs space. The result is an extra two objects attached to the
-\class{BigDecimal}.
+This is an example of a built-in performance optimization in the library, one 
+that you may not need in your application. The result is an extra two objects
+attached to the \class{BigDecimal}.
 
-In summary, a \class{BigDecimal} will take one
+In summary, a \class{BigDecimal} will require one
 object under most circumstances, but can take up to five. 
 %Since it is hard to %predict, you just have to beware.
 
