@@ -335,25 +335,27 @@ needed. In one extreme example, the largest prime
 just discovered is over 17 million digits long!
 A \class{BigInteger} provides 
 arbitrary-precison integer arithmetic functions. It is immutable, and exactly
-mimics the functions of the standard integer. 
-A \class{BigInteger} almost always requires two objects (a
-\class{BigInteger} plus an \class{int[]}), for a minimum of 48 bytes total.  The
-cost can be more, depending on the number of digits.  The formula for the total size is 
-44 + 4*(number of ints needed to represent the integer). 
-Because of the cost, unless you need the extra digits, you should just use an
-\code{int} or \code{long}.
+mimics the functions of the standard integer, while providing some additional
+mathematical functions as well. A \class{BigInteger} almost always requires two
+objects (a \class{BigInteger} plus an \class{int[]}), for a minimum of 48 bytes total.  The
+cost can be more, depending on the number of digits.  The formula for the total
+size in bytes is 44 + 4 times the number of \class{ints} needed to represent the
+integer\footnote{If the value is 0, and you use one of the constructors
+that takes a \class{String} as argument, the constructor will arrange to share a
+singleton \class{int[]}, making the total cost only 32 bytes.}.
+Because of the cost, unless you need the extra digits, it's best to just use an \code{int} or \code{long}.
 
 \paragraph{BigDecimal} Like \class{BigInteger}, the Java class
 \class{BigDecimal} performs arbitrary-precision
 floating point arithmetic, and is immutable.
 Primarily, \class{BigDecimal}s are critical for many accounting
 and financial applications that involve currency, for two reasons. First, Java's
-\code{float} and \code{double} can lose accuracy in computations.
-\class{BigDecimal} provides accuracy to an arbitrary number of digits. 
+\code{float} and \code{double} can lose precision in computations.
+\class{BigDecimal} provides precision to an arbitrary number of digits. 
 It allows you to control the scale, which is the number of digits to the right
-of the decimal place. Second, \class{BigDecimal} provides for a number of
-different kinds of rounding behavior, a requirement of many of these
-applications.
+of the decimal place. Second, \class{BigDecimal} gives you a choice
+among a variety of rounding
+methods, a requirement of many of these applications.
 
 \class{BigDecimal} has two forms: a compact form and an
 inflated form. Most of the time, \class{BigDecimal} uses the compact form,
@@ -368,7 +370,7 @@ minimum.
 Unfortunately, certain arithmetic methods will cause a
 \class{BigDecimal} to switch to its inflated form in order to perform the operation, and once
 inflated, there's no switching back.  That's true for \class{BigDecimals} that
-are the ``\code{this}'' object, as well as for some that are innocently passed
+are the \code{this} object, as well as for some that are innocently passed
 as arguments. It can also occur indirectly as the result of some formatting
 operations. The cases are too numerous to predict, so if there's a concern it's
 best to look at the heap and see what happens based on actual usage in the application.
@@ -383,6 +385,23 @@ In summary, a \class{BigDecimal} will require one
 object under most circumstances, but can take up to five. 
 %Since it is hard to %predict, you just have to beware.
 
+\begin{table}
+  \centering
+\begin{tabular}{lrl} \toprule \toprule
+Type & Size for common case & Exceptions \\ \midrule \midrule
+\class{BigInteger} & 2 objects, minimum 48 bytes & If value is 0 and use certain
+constructors, will be 1 32-byte object.
+\\
+\midrule
+\class{BigDecimal} & 1 32-byte object & Inflates to 3 objects, minimum of 80
+bytes, if certain operations are called\\
+& & Retains 2-object formatted version on \code{toString} and some formatting
+calls\\
+\bottomrule \bottomrule
+\end{tabular}
+\caption{The cost of \code{BigInteger} and \code{BigDecimal}.}
+\label{tab:BigInteger-BigDecimal-sizes}
+\end{table}
 \section{Summary} 
 
 There are common data types just beyond simple primitives that can
