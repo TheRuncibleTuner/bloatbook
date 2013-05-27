@@ -388,14 +388,14 @@ object under most circumstances, but can take up to five.
 \begin{table}
   \centering
 \begin{tabular}{lrl} \toprule \toprule
-Type & Size for common case & Exceptions \\ \midrule \midrule
+Type & Common case & Exceptions \\ \midrule \midrule
 \class{BigInteger} & 2 objects, minimum 48 bytes & If value is 0 and use certain
 constructors, will be 1 32-byte object.
 \\
 \midrule
 \class{BigDecimal} & 1 32-byte object & Inflates to 3 objects, minimum of 80
 bytes, if certain operations are called\\
-& & Retains 2-object formatted version on \code{toString} and some formatting
+& & Retains formatted \class{String} on \code{toString()} and some formatting
 calls\\
 \bottomrule \bottomrule
 \end{tabular}
