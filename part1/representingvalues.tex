@@ -337,20 +337,20 @@ A \class{BigInteger} provides
 arbitrary-precison integer arithmetic functions. It is immutable, and exactly
 mimics the functions of the standard integer, while providing some additional
 mathematical functions as well. A \class{BigInteger} almost always requires two
-objects (a \class{BigInteger} plus an \class{int[]}), for a minimum of 48 bytes total.  The
-cost can be more, depending on the number of digits.  The formula for the total
+objects,a \class{BigInteger} plus an \class{int[]}, for a minimum of 48 bytes
+total.  The cost can be more, depending on the number of digits.  The formula for the total
 size in bytes is 44 + 4 times the number of \class{ints} needed to represent the
 integer\footnote{If the value is 0, and you use one of the constructors
 that takes a \class{String} as argument, the constructor will arrange to share a
 singleton \class{int[]}, making the total cost only 32 bytes.}.
 Because of the cost, unless you need the extra digits, it's best to just use an \code{int} or \code{long}.
 
-\paragraph{BigDecimal} Like \class{BigInteger}, the Java class
+\paragraph{BigDecimal} Like \class{BigInteger},
 \class{BigDecimal} performs arbitrary-precision
-floating point arithmetic, and is immutable.
-Primarily, \class{BigDecimal}s are critical for many accounting
+arithmetic (floating point in this case), and is immutable.
+Primarily, \class{BigDecimal} is critical for many accounting
 and financial applications that involve currency, for two reasons. First, Java's
-\code{float} and \code{double} can lose precision in computations.
+\code{float} and \code{double} lose precision in computations, whereas
 \class{BigDecimal} provides precision to an arbitrary number of digits. 
 It allows you to control the scale, which is the number of digits to the right
 of the decimal place. Second, \class{BigDecimal} gives you a choice
@@ -378,8 +378,8 @@ best to look at the heap and see what happens based on actual usage in the appli
 In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
 save its string representation, in case it is needed again.
 This is an example of a built-in performance optimization in the library, one 
-that you may not need in your application. The result is an extra two objects
-attached to the \class{BigDecimal}.
+that may not be needed in your application. The result is an
+extra two objects attached to the \class{BigDecimal}.
 
 In summary, a \class{BigDecimal} will require one
 object under most circumstances, but can take up to five. 
@@ -387,19 +387,20 @@ object under most circumstances, but can take up to five.
 
 \begin{table}
   \centering
-\begin{tabular}{lrl} \toprule \toprule
-Type & Common case & Exceptions \\ \midrule \midrule
-\class{BigInteger} & 2 objects, minimum 48 bytes & If value is 0 and use certain
-constructors, will be 1 32-byte object.
-\\
+\begin{tabular}{ll} \toprule \toprule
+Type & Cost \\ \midrule \midrule
+\class{BigInteger} & Common case: 2 objects, minimum 48 bytes\\
+& If value is 0 and use certain constructors, will be 1 32-byte object\\
 \midrule
-\class{BigDecimal} & 1 32-byte object & Inflates to 3 objects, minimum of 80
-bytes, if certain operations are called\\
-& & Retains formatted \class{String} on \code{toString()} and some formatting
-calls\\
+\class{BigDecimal} & Common case: 1 32-byte object\\
+& If certain operations are called, inflates to 3 objects,
+minimum of 80 bytes\\
+& On \code{toString()} and some formatting
+calls retains formatted \class{String}\\
 \bottomrule \bottomrule
 \end{tabular}
-\caption{The cost of \code{BigInteger} and \code{BigDecimal}.}
+\caption{The memory costs of \code{BigInteger} and \code{BigDecimal}. Common
+cases and exceptions.}
 \label{tab:BigInteger-BigDecimal-sizes}
 \end{table}
 \section{Summary} 
