@@ -358,7 +358,7 @@ among a variety of rounding
 methods, a requirement of many of these applications.
 
 \class{BigDecimal} has two forms: a compact form and an
-inflated form. \class{BigDecimal} attempts uses the compact
+inflated form. \class{BigDecimal} attempts to use the compact
 form when it can, which is a single 32-byte object that can store a number whose
 significand's absolute value is less than or equal to \code{Long.MAX\_VALUE}.
 All 18-digit decimal numbers will fit in that, and some 19-digit.  Bigger than
@@ -377,8 +377,8 @@ best to look at the heap and see what happens based on actual usage in the appli
 
 In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
 save its string representation in case it is needed again. The same thing occurs
-some cases when formatting using \class{DecimalFormat}. This is an example of a
-built-in performance optimization in the library, one that may not be needed
+in some cases when formatting using \class{DecimalFormat}. This is an example of
+a built-in performance optimization in the library, one that may not be needed
 in your application. The result is an
 extra two objects attached to the \class{BigDecimal}.
 
