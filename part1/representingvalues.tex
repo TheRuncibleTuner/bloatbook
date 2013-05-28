@@ -358,27 +358,28 @@ among a variety of rounding
 methods, a requirement of many of these applications.
 
 \class{BigDecimal} has two forms: a compact form and an
-inflated form. Most of the time, \class{BigDecimal} uses the compact form,
-which is a single 32-byte object that can store a number whose significand's
-absolute value is less than or equal to \code{Long.MAX\_VALUE}.
+inflated form. \class{BigDecimal} attempts uses the compact
+form when it can, which is a single 32-byte object that can store a number whose
+significand's absolute value is less than or equal to \code{Long.MAX\_VALUE}.
 All 18-digit decimal numbers will fit in that, and some 19-digit.  Bigger than
 that, the inflated form is required. In the inflated form, \class{BigDecimal}
 delegates the storage of the significand to a \class{BigInteger}, which almost always means two additional
 objects, bringing the total for BigDecimal to 80 bytes at a
 minimum.  
 
-Unfortunately, certain arithmetic methods will cause a
-\class{BigDecimal} to switch to its inflated form in order to perform the operation, and once
-inflated, there's no switching back.  That's true for \class{BigDecimals} that
-are the \code{this} object, as well as for some that are innocently passed
-as arguments. It can also occur indirectly as the result of some formatting
-operations. The cases are too numerous to predict, so if there's a concern it's
+Unfortunately, certain arithmetic operations will cause a
+\class{BigDecimal} to switch to its inflated form in order to perform the
+operation, and once inflated, there's no switching back.  That's true for
+\class{BigDecimals} that are the \code{this} object, as well as for some that are innocently passed
+as arguments. This can also occur indirectly as the result of some constructors
+and formatting operations. The cases are too numerous to predict, so if there's a concern it's
 best to look at the heap and see what happens based on actual usage in the application.
 
 In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
-save its string representation, in case it is needed again.
-This is an example of a built-in performance optimization in the library, one 
-that may not be needed in your application. The result is an
+save its string representation in case it is needed again. The same thing occurs
+some cases when formatting using \class{DecimalFormat}. This is an example of a
+built-in performance optimization in the library, one that may not be needed
+in your application. The result is an
 extra two objects attached to the \class{BigDecimal}.
 
 In summary, a \class{BigDecimal} will require one
