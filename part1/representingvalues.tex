@@ -394,7 +394,7 @@ Type & Cost \\ \midrule \midrule
 & If value is 0 and use certain constructors, will be 1 32-byte object\\
 \midrule
 \class{BigDecimal} & Common case: 1 32-byte object\\
-& If certain operations are called, inflates to 3 objects,
+& Can switch to 3-object inflated form,
 minimum of 80 bytes\\
 & On \code{toString()} and some formatting
 calls retains formatted \class{String}\\
@@ -414,19 +414,21 @@ functionality, and the main lesson is not to use expensive representations
 unless you need the functionality.
 
 \begin{itemize}
-  \item  Don't use \class{String} to store data that can be naturally
-  represented in a more compact data form, such as integer or boolean.
-  \item Storing strings in \class{StringBuffers} or \class{StringBuilders} can
-  waste a lot of space if they are sized much bigger than the data they store.
-  \item Even simple bit flags can cause bloat. If you generate lots of objects
-  with bitflags, you should make sure you choose the most efficient
-  representation.
+  \item  Avoid using \class{String} to store data that can be naturally
+  represented in a more compact data form, such as \code{int} or
+  \code{boolean}.
+  \item Storing long-lived strings in \class{StringBuffers} or
+  \class{StringBuilders} can waste a lot of space, since they are often sized much bigger than the data they store.
+  \item Even simple bit flags can cause bloat if you have a lot of these
+  fields per object.
   \item Beware of storing dates as \class{GregorianCalendars}.  A
-  \class{GregorianCalendar} should only be used and reused as a converter
+  \class{GregorianCalendar} should only be used (and reused) as a converter
   object, to perform operations on \class{Dates}.
-  \item \class{BigInteger} and \class{BigDecimal} provide arbitrary precision
-  arithmetic on integers and decimals, and are needed when this functionality is
-  needed. Otherwise, using them just consume a lot of space and time.
+  \item Use \class{BigInteger} and \class{BigDecimal} only when their
+  functionality is really needed.
+  \item When using \class{Date} and \class{BigDecimal}, watch out for methods
+  such as \code{toString()}, that cause hidden objects to be created and
+  retained behind the scenes.
 \end{itemize}
 
 
