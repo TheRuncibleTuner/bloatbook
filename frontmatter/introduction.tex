@@ -269,13 +269,14 @@ effective use of memory.
 %of errors such as memory leaks. 
 It is organized by
 %the most 
-common design problems that have an impact on memory usage. For each problem we point out
-traps, provide solutions, and help you compare the costs of alternative
-designs.
+common design problems that are likely to have an impact on memory usage.
+For each design topic we point out traps, provide solutions, and help you
+compare the costs of alternatives.
 %examples
 %tradeoffs
 %We guide you in estimating memory costs of your own classes and
 %off-the-shelf libraries in the context of typical usage. 
+
 The book is also designed to give you a comprehensive
 approach to memory issues. When read as a whole it can be helpful in seeing the range of topics that need to
 be considered, especially early in design. At the same time, most chapters and sections are written to stand
@@ -283,24 +284,20 @@ on their own, so that you can pick and choose what you need when you need it. Th
 where you'll get the most benefit right away for a particular part of your system or stage of development. 
 This approach fits nicely with different styles of development, including agile.
 
-\paragraph{Estimation}The book devotes a lot of attention to estimating memory
-costs. The estimation techniques will help you make better choices in your designs, and to focus your
+\paragraph{Estimation}A lot of the book is about estimating memory costs. 
+Estimating memory usage early, either from source code
+or by measuring a running system or prototype, will let you
+make better choices in your designs.  It will also help you focus your
 optimization efforts where they matter most.
-The approach separates the problem into two parts. First,
-what does a data structure cost at a particular size, and how much room is there for improvement?
-Second, how will it scale up?
+The approach separates the problem into a few parts. First,
+what does a data structure cost at a particular size? Second, how much room
+is there for improvement? And finally, how will it scale up?
 
-It's easy to make things
-worse when optimizing, if you're not careful, since there are so many hidden memory costs
-in Java. At relevant points we give you formulas to
-determine whether an optimization is worthwhile given the characteristics of your data.
-
-\paragraph{Java mechanisms}Throughout the book we look at some
-elements of Java that have an impact on memory. We look inside some library
-classes such as strings and collections, to give you insight into how these and
-similar classes make use of memory.
-We also look at lifetime management mechanisms, such as weak and soft references,
-and show how best to use them.
+It's also very possible to waste memory when trying to optimize, if
+you're not careful, since there are so many hidden memory costs in Java. At relevant
+points we give you formulas to estimate the savings (or waste), based on
+the characteristics of your data. That way you can determine whether an
+optimization is worthwhile.
 
 \paragraph{Requirements}In practice, many problems that look like implementation
 errors are actually caused by an incomplete understanding of requirements. Throughout the book we
@@ -309,6 +306,13 @@ collections will grow larger as various aspects of load increase?  Asking these
 questions can help you choose efficient representations that are specialized for your application's use cases.
 They can also help you predict scalability, and avoid lifetime management bugs
 like memory leaks.
+
+\paragraph{Java mechanisms}Throughout the book we look at some
+lower-level aspects of Java that have an impact on memory. We'll look
+inside some library classes such as strings and collections, to give you insight
+into how these and similar classes make use of memory.
+We'll also show you how to make the best use of lifetime management mechanisms,
+such as weak and soft references and thread-local storage.
 
 
 % probably overkill:
@@ -322,17 +326,18 @@ like memory leaks.
 
 \paragraph{Roadmap}\autoref{part:1} is about designing and implementing
 memory-efficient data models.
+
 \autoref{chapter:memory-health}, on \nameref{chapter:memory-health}, lays the
 foundation with two concepts that are used throughout the book. If you read one chapter first,
 this is the one to focus on.
 It shows you how to compute an accounting metric,
-the \emph{Bloat Factor}, which measures the density of actual data in your
+the \emph{bloat factor}, which measures the density of actual data in your
 data models. Memory spent on everything else, such as
 Java's internal object headers, is the overhead of the representation.
-Poor designs waste more space on these overheads, and thus have a high bloat factor. \autoref{chapter:memory-health} also
-introduces a diagramming technique,
-the \emph{Entity-Collection Diagram}, that makes it easy to see memory costs and overheads in a design,
-and to compare design alternatives.
+Poor designs waste more space on these overheads, and thus have a high bloat
+factor. This chapter also introduces a diagramming technique,
+the \emph{Entity-Collection diagram}, that makes it easy to see memory costs and
+overheads in a design, and to compare design alternatives.
 It separates out the two kinds of memory consumers:
 % highlights the major elements of the data model implementation, so that the
 % costs and scaling consequences of the design are easily visible.
@@ -340,14 +345,16 @@ It separates out the two kinds of memory consumers:
 % options and their costs.
 %
 % the implementation of
-the application's \emph{entities}, such as the
+the application's entities, such as the
 business objects, and the choice of collections used to access them. Entities and collections have
 different patterns in the way they use memory, and they require different solutions.
 
 Chapters~\ref{chapter:delegation} through
 \ref{chapter:representing-values} cover the design of
-entities. \autoref{chapter:delegation} is about estimating memory costs. It covers the basic costs of fields
-and objects, and the costs of constructing entities from multiple classes.
+entities. \autoref{chapter:delegation} gives you the nuts and bolts of
+estimating the memory costs of classes. You may benefit from reading this chapter early as
+well. It covers the basic costs of fields and objects, and of constructing
+entities from multiple classes.
 \autoref{chapter:field-patterns} covers efficient patterns for laying out classes from fields.
 \autoref{chapter:representing-values} compares alternative representations for common field datatypes. 
 \autoref{chapter:sharing-immutable-data} provides techniques for
