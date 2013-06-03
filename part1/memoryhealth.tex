@@ -69,7 +69,7 @@ representation.
 \begin{example}{An 8-Character String}
  You learned in the quiz in \autoref{chapter:introduction} that an 8-character
  string occupies 56 bytes, which seems surprisingly high. The actual character data takes up 16
- bytes, since Java supports the international character set, which uses 2-bytes
+ bytes, since Java supports the international character set, which uses 2 bytes
  per character. So it costs 16 bytes to represent the eight characters
  themselves. The other 40 bytes are pure overhead. This structure has a
  \emph{bloat factor} of 71\%. The actual data occupies only 29\%. These numbers
@@ -390,8 +390,8 @@ Eliminating overhead means eliminating objects altogether. This is not a
 recommended practice, unless memory is extremely tight, and there is no other
 choice. It is nonetheless an interesting exercise to compare a best case
 design with the other designs. The most space-efficient design uses two parallel
-arrays of doubles. One array stores all of the sample timestamps, and the second
-stores all of the values. These arrays can be stored in a wrapper class that
+arrays of \code{doubles}. One array stores all of the sample timestamps, and the
+second stores all of the values. These arrays can be stored in a wrapper class that
 implements a map interface.
 
 This design requires a bit more code, but, again, it is not excessive. Like the
@@ -425,10 +425,10 @@ ease of programming and memory efficiency.
 
 The evaluation of the three monitoring system designs was based on only 100
 samples. In a real scenario, a monitoring system might have to handle hundreds
-of thousands, or millions, of samples. Stress testing is usually performed late
+of thousands or millions of samples. Stress testing is usually performed late
 in a development cycle, when it is very costly to fix a memory footprint
-problem. Using a memory health approach, it possible to predict how well a data
-structure design will scale much earlier.
+problem. Using a memory health approach, it is possible to predict much
+earlier how well a data structure design will scale.
  
 \begin{figure}
   \centering
@@ -444,7 +444,7 @@ small data sizes. The graph in Figure~\ref{fig:scalable-health-treemap}
 shows how the \code{TreeMap} design scales as the number of samples increase.
 The graph is split into two parts: the percentage of overhead and the percentage
 of data. For a single sample, the overhead is 86\%. As more samples are added,
-the bloat factor drops to 75\%. Unfortunately, with 100,000 samples, and
+the bloat factor drops to 75\%. Unfortunately, with 100,000 samples and
 1,000,000 samples, the bloat factor is still 75\%. The \code{TreeMap} design is
 not only bloated, but it also does not scale. It is constantly bloated.
 
@@ -468,7 +468,7 @@ the \code{TreeMap}'s \emph{variable overhead}, the additional
 space needed to store each entry. In this case it's 32 bytes,
 the cost of an internal node object. Each sample also adds its own overhead,
 namely the JVM overhead in the two \code{Double} objects. When the map becomes large enough,
-the per-entry overhead --- from the \code{TreeMap} and the
+the overhead per entry --- from the \code{TreeMap} and the
 \code{Double}s --- dominates, and hovers around 75\%.
 
 The bloat factor is larger when the \code{TreeMap} is small. That's because for
@@ -489,7 +489,7 @@ for a given number of entries.
 Fixed overhead is the minimum space needed, no
 matter how many entries are stored in the collection. In a
 collection with few entries, a large fixed overhead matters more. The fixed
-overhead is amortized if the collection grows.
+overhead is amortized as the collection grows.
 
 Variable overhead is the memory needed, on average, to
 store a new entry in the collection. Collections with a large variable
@@ -544,7 +544,7 @@ time to measure the cost and health of your data design can pinpoint problems
 early on. This chapter described three conceptual tools to help evaluate the
 memory efficiency of a design.
 \begin{itemize}
-\item The \textsl{memory bloat factor} measures how much of your the memory
+\item The \textsl{memory bloat factor} measures how much of the memory
 usage of your design is real data, and how much is an artifact of the way you
 have chosen to represent it. This metric tells you how much room there is for
 improvement, and if in fact you are paying a reasonable price for what you are
