@@ -49,9 +49,9 @@ additional integer to store the number of array elements. Additionally,  the
 \jre requires objects to be aligned on specific address boundaries, for example,
 addresses that are multiples of 8. To show how implementations differ,
 Table~\ref{tab:object-overhead} gives object header and alignment costs imposed
-by two \jres, Sun \javasix (Update 14) and IBM \javasix (Service Release 4),
+by two \jres, \oracle \javasix (Update 14) and \ibm \javasix (Service Release 4),
 both for 32-bit architectures. \footnote{Unless otherwise noted, all of the
-numbers throughout the book are based on the Sun \jre for 32-bit architectures.
+numbers throughout the book are based on the \oracle \jre for 32-bit architectures.
 Appendix~\ref{chapter:jre-comparison} gives information needed to estimate
 sizes in various environments.}
 \begin{table}
@@ -59,17 +59,17 @@ sizes in various environments.}
  %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/object-overhead.pdf}
  % \includegraphics{eight-char-string}
  \begin{tabular}{lll} \toprule
- 	& Sun \javasix (u14) & IBM \javasix (SR4) \\ \midrule
+ 	& \oracle \javasix (u14) & \ibm \javasix (SR4) \\ \midrule
  	Object header size & 8 bytes & 12 bytes \\
  	Array header size & 12 bytes & 16 bytes \\
  	Object alignment & 8 byte boundary & 8 byte boundary \\
  	Minimum field alignment & 1 byte boundary & 4 byte boundary \\
  	\bottomrule
  \end{tabular}
-  \caption{Object overhead used by the Sun and IBM \jres for 32-bit architectures.}
+  \caption{Object overhead used by the \oracle and \ibm \jres for 32-bit architectures.}
   \label{tab:object-overhead}
 \end{table} 
-   %The Sun JVM allocates 8 bytes per object header, and the IBM JVM allocates 12 bytes per header. 
+   %The \oracle JVM allocates 8 bytes per object header, and the \ibm JVM allocates 12 bytes per header. 
    
 The simplest objects are the boxed scalars, which are objects with a single
 primitive data type field. Since both of these \jres align objects on
@@ -81,7 +81,7 @@ scalars.
   \centering
 %\includegraphics[width=.70\textwidth]{part1/Figures/modelingdatatypes/boxed-scalar-sizes.pdf}
 	\begin{tabular}{lccccccc} \toprule
-    	& & \multicolumn{3}{c}{Sun \javasix (u14)} & \multicolumn{3}{c}{IBM
+    	& & \multicolumn{3}{c}{\oracle \javasix (u14)} & \multicolumn{3}{c}{\ibm
     	\javasix (SR4)} \\ \cmidrule(r){3-5} \cmidrule(l){6-8}
     	%
     	Class & \shortstack[c]{Data\\size} & Header & \shortstack{Align-\\ment
@@ -141,18 +141,18 @@ class SimpleEmployee {
 If the fields are laid out one after the other with no fill, then the
 field \class{salary} would have to begin on a 5-byte boundary, which is not allowed for
 \class{doubles}. To avoid adding 3 more bytes of padding, the \jre could rearrange the fields
-to take up the smallest amount of space. In fact, the Sun \jre does a good job rearranging and
-packing fields, and the IBM \jre does not. This means that field sizes depend on the specific \jre also. 
+to take up the smallest amount of space. In fact, the \oracle \jre does a good job rearranging and
+packing fields, and the \ibm \jre does not. This means that field sizes depend on the specific \jre also. 
 
-Using the Sun \jre, you can assume each field is the size of its primitive data type because the fields are packed. The size of a
+Using the \oracle \jre, you can assume each field is the size of its primitive data type because the fields are packed. The size of a
 \class{SimpleEmployee} object is 32 bytes:
 
 \begin{shortlisting}               
 8 + (4+4+1+8+2+4) = 31 bytes, rounds up to 32 bytes
 \end{shortlisting} 
 
-In contrast, using the IBM \jre, all fields in non-array objects are either 4 or
-8 bytes. Here is the \class{SimpleEmployee} class with field sizes adjusted
+In contrast, using the \ibm \jre, all fields in non-array objects are either 4
+or 8 bytes. Here is the \class{SimpleEmployee} class with field sizes adjusted
 accordingly.
 \begin{shortlisting} 
 class SimpleEmployee {
@@ -189,7 +189,7 @@ possible size, or align fields on word boundaries. Array data is always packed. 
 For objects with only a small amount of primitive data, the overhead is relatively high. 
 But as the amount of primitive data increases, the bloat factor decreases. 
 The overhead cost consists of a fixed object header cost and a bounded alignment cost,
-which are amortized when the object is big.  For example, for the Sun \jre, the bloat factors for the boxed
+which are amortized when the object is big.  For example, for the \oracle \jre, the bloat factors for the boxed
 scalars range from 94\% for a \class{Boolean} down to 50\% for a
 \class{Double}.  The bloat factor for a \class{SimpleEmployee} is 28\%.  The
 bloat factor for an array of 100 \code{char}s is insignificant.  
@@ -248,7 +248,7 @@ class Employee {
 On 32-bit architectures, a pointer is 4 bytes. 
 You can calculate the size of any object as described in
 Section~\ref{sec:CostOfObjects}.
-Assuming the Sun \jre, the size of an \c{Employee} object is 32 bytes:
+Assuming the \oracle \jre, the size of an \c{Employee} object is 32 bytes:
 \begin{shortlisting}
 8 + (4+4+4+4+1+2+4) = 31, rounds up to 32 bytes
 \end{shortlisting}
@@ -307,7 +307,7 @@ The size of a \code{String} can be computed by adding:
 \item The size of the \code{char[]} = 12 bytes + 2 * number of characters,
 then round up to a multiple of 8
 \end{itemize}
-This is for the Sun \jre on the 32-bit architecture.}
+This is for the \oracle \jre on the 32-bit architecture.}
 
 Because of the design of Java, there is a basic delegation cost that is hard to eliminate.
 This is the cost of object-oriented programming in Java. While it is hard to avoid this basic
@@ -471,8 +471,8 @@ architectures.
   \label{fig:8-char-string-64-bit}
 \end{figure}
 
-Fortunately, in practice things are not always so bad. Both the Sun and the
-IBM \jres have implemented a scheme for compressing addresses that avoids this blowup, provided that the heap is
+Fortunately, in practice things are not always so bad. Both the \oracle and the
+\ibm \jres have implemented a scheme for compressing addresses that avoids this blowup, provided that the heap is
 less than 32 gigabytes. Address compression is implemented by stealing a few unused bits from 32-bit pointers.
 Objects are laid out just like in a 32-bit
 address space. During execution, 32-bit compressed addresses are converted into

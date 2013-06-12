@@ -6,7 +6,7 @@ size of their applications vs. the maximum address space issues.  Otherwise the
 tables will be too large. That will also make the text more
 problem-oriented.  We need three tables:
 \begin{itemize}
-\item Object-level overheads: (32 vs. 64 vs. compressed) x (Sun vs. IBM),
+\item Object-level overheads: (32 vs. 64 vs. compressed) x (\oracle vs. \ibm),
 showing (object header size, array header size, object alignment size, bytes per
 reference) 
 \item Field-level overheads, in two parts.
@@ -15,11 +15,11 @@ reference)
   \item b. Show the field-packing rules for each each JRE (may be a bullet list
 rather than a table)
 \end{itemize}
-\item Addressable bytes: (Sun vs. IBM) x (OS), showing bytes.  Some slots will
+\item Addressable bytes: (\oracle vs. \ibm) x (OS), showing bytes.  Some slots will
 be blank.
 \end{itemize}
 
-The majority of the body of this book focuses on the Sun 32-bit \jre. This
+The majority of the body of this book focuses on the \oracle 32-bit \jre. This
 appendix provides supplementary material regarding the sizing criteria used by
 other \jres, and how various configuration choices affect these parameters.
 
@@ -32,7 +32,7 @@ other \jres, and how various configuration choices affect these parameters.
 \toprule
 Platform & \shortstack{Bytes per\\Reference} & \shortstack{Bytes per\\Header} & Alignment & \shortstack{Addressible\\Bytes} \\
 \cmidrule(r){1-1} \cmidrule(r){2-5}
-IBM zOS 31-bit &  4 & 12    & 8 & 1.3GB \\ 
+\ibm zOS 31-bit &  4 & 12    & 8 & 1.3GB \\ 
 Windows 32-bit &  4 & 8--12 & 8 & 1.8GB \\
 AIX 32-bit     &  4 & 12    & 8 & 2.5-3.25GB\\ 
 Solaris 32-bit &  4 & 8     & 8 & 3.5GB \\ 
@@ -68,8 +68,8 @@ heap, the story is similar.
 \toprule
 Provider & Command-line Argument \\
 \cmidrule(r){1-1} \cmidrule(r){2-2}
-IBM & -Xcompressedrefs \\
-Sun & -XX:+UseCompressedOops \\
+\ibm & -Xcompressedrefs \\
+\oracle & -XX:+UseCompressedOops \\
 JRockit & -XXcompressedrefs \\
 \bottomrule
 \end{tabular}
@@ -91,7 +91,7 @@ references}. When using compressed references, references and object headers
 consume as much as they would on a 32-bit platform, which is nice. There are two
 downsides. One is that the maximum heap size is far lower than it would be with
 full 64-bit pointers, though still higher than with a 32-bit \jre. For example,
-the Sun and IBM \javasix \jres support heap sizes of only up to 32GB; in some
+the \oracle and \ibm \javasix \jres support heap sizes of only up to 32GB; in some
 cases, the limit is 25 or 28GB. The other downside is a potential, though small,
 decrease in performance. THe hardware expects 64-bit pointers, but the heap only
 stores 32 bits. Therefore, each memory operation may require an extra shift
@@ -112,13 +112,13 @@ boundaries.
 Many \jres will automatically enable this support for compressed references. You
 should consult the documentation of your specific \jre provider to know whether
 this is the case.\footnote{On \javaseven, 64-bit
-Sun \jres have this enabled by default, as long as your heap size is smaller
+\oracle \jres have this enabled by default, as long as your heap size is smaller
 than 32 gigabytes.}
 
-%Address compression is available in the Sun \javasix (Update 14) release,
+%Address compression is available in the \oracle \javasix (Update 14) release,
 %enabled with the option -XX:+UseCompressedOops.
 
-%It is available in IBM \javasix (Service Release 4) with the
+%It is available in \ibm \javasix (Service Release 4) with the
 %option -Xcompressedrefs.
 
 \section{Identity Hashcode in Object Headers}

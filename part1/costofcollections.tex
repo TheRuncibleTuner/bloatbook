@@ -32,7 +32,7 @@ Describe container object, entries and arrays, and each entry overhead. fDescrib
 per entry costs. Give the figures for empty collections.
 
 And juust a quick look at the cost of the empty collections. What strikes me – 
-these are the number from both sun and IBM. What strikes me is that the smallest number 
+these are the number from both \oracle and IBM. What strikes me is that the smallest number 
 here is 48, so there’s certainly no single digit anything in Java, but 48 is a pretty high number 
 for something that’s empty, if you are going to have a lot of them, and also, there’s a little
  bit of variation, both having to do with whether you’ve made the size default or not, and also 
@@ -45,7 +45,7 @@ LinkedList simpler, So you are actually paying 3 entry cost for a 2 element coll
 ArrayLists, the default size is 10. For some reason, the latest J9, in these Harmony classes, 
 which are open source, they’ve upped it to 12, and I’m not quite sure why they’ve done that. 
 Actually that’s not really true. The default size initially for an empty collection is 0, 
-so they’re still allocating the array with 0 size. Where as the Sun and older JVM’s are always 
+so they’re still allocating the array with 0 size. Where as the \oracle and older JVM’s are always 
 allocating 10 element collection. But on the Harmony classes, the new J9, after you add the first 
 element, they jump it to 12.
 

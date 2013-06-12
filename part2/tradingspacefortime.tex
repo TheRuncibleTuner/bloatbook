@@ -58,7 +58,7 @@ softly reachable objects that have been least recently used. Most, if not all,
 \javafive and \javasix \jres use a rough approximation a least recently used
 (LRU) eviction policy. Early \jres tended to make poor decisions, when choosing
 how to clear soft references. One such \jre would wait until the heap was
-exhausted, at which point it would clear all soft references. On early Sun
+exhausted, at which point it would clear all soft references. On early \oracle
 \jres, a soft reference behaves like a weak reference, which means that such
 softly referenced objects will probably be collected in the very near future,
 independent of demand for memory, or how recently used the referenced objects
@@ -71,9 +71,9 @@ references by various \jres.
 \toprule
 soft reference clipping policy & \jre versions \\
 \cmidrule(r){1-1} \cmidrule(l){2-2} \\
-LRU heuristic & IBM 1.4 and higher, Sun 1.3.1 and higher \\
-clip all when memory is tight & IBM prior to 1.4 \\
-treat as weak references & Sun prior to 1.3.1 \\
+LRU heuristic & \ibm 1.4 and higher, \oracle 1.3.1 and higher \\
+clip all when memory is tight & \ibm prior to 1.4 \\
+treat as weak references & \oracle prior to 1.3.1 \\
 \bottomrule
 \end{tabular}
 \caption{Depending on your \jre, you may not be able to employ soft references
@@ -84,13 +84,13 @@ of soft references in an LRU-like fashion.}
 
 \paragraph{Be Cautious with Soft References}
 Most contemporary \jres measure freshness relative to the amount of free memory.
-For example, the Sun \jres, after version 1.3.1, the default behavior is to clip
+For example, the \oracle \jres, after version 1.3.1, the default behavior is to clip
 all soft references that haven't been used for 1 second, for each megabyte of
 free heap. This means that, if you have 500MB of free heap, any cache entries
 that haven't been used in 6 minutes will be evicted after the next garbage
 collection. This is true, even if the total size of your heap is 600MB: despite
 the heap being 83\% unoccupied, the \jre will begin to evict some cache entries.
-This value can be tweaked, at least on Sun \jres, via the command-line argument
+This value can be tweaked, at least on \oracle \jres, via the command-line argument
 \code{-XX:SoftRefLRUPolicyMSPerMB}. This value is in milliseconds, so passing
 5000 would change the above eviction example from 6 minutes to 30 minutes (since
 the default is 1000 milliseconds per megabyte of heap).
@@ -113,18 +113,18 @@ blindly.
 \begin{framedlisting}
 <refs soft="27801" weak="3" phantom="0" ... />
 \end{framedlisting}
-\caption{Verbose garbage collection data from an IBM \jre tells you
+\caption{Verbose garbage collection data from an \ibm \jre tells you
 if a misuse of references is causing a pile-up of reference objects.}
 \label{fig:verbose-gc-output}
 \end{wrapfigure}
 You should monitor the behavior of soft references in your application. On an
-IBM JVM, you can see whether soft references are piling up: enable verbose
+\ibm JVM, you can see whether soft references are piling up: enable verbose
 garbage collection (by adding \code{-verbose:gc} to the command
 line\index{Verbose Garbage Collection}), and track the output of the form shown
 in \autoref{fig:verbose-gc-output}. If the LRU heuristic is not working well,
 then you will observe a ragged sawtooth pattern in the number of soft
 references. If so, then you must not depend on soft references for implementing
-your caches! On Sun \jres, you should also monitor the hit rate of you caches,
+your caches! On \oracle \jres, you should also monitor the hit rate of you caches,
 relative to the value of the \code{-XX:SoftRefLRUPolicyMSPerMB} tuning
 parameter.
 

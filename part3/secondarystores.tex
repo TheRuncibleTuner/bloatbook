@@ -101,7 +101,7 @@ the creation of 70 new objects.
 %run with a 1.5 gigabyte Java heap, and have one hundred thousand more more
 %loaded classes, you run the risk of exhausting the 2 gigabyte limit that most
 %32-bit operating systems have, for each process. On many 32-bit versions of the
-%Windows operating system, and on 31-bit IBM mainframes, the address space limit
+%Windows operating system, and on 31-bit \ibm mainframes, the address space limit
 %is even lower than 2 gigabytes. It might also be that you have a need to
 %perform relational queries against your Java data structures, and are
 %considering storing them in a relational store to avoid having to implement the
@@ -431,9 +431,9 @@ IntBuffer allocateAnonymousInts(int numBytes) {
 }
 \end{shortlisting}
 When using anonymous maps, you must be aware of the default limits on these
-native allocations. With Sun \jres, you can configure the maximum allowed number
+native allocations. With \oracle \jres, you can configure the maximum allowed number
 of bytes allocated in this way via the command line argument
 \code{-XX:MaxDirectMemorySize}; this option takes the same arguments as the
-\code{-Xmx} setting. With IBM \jres, you do not need to specify a maximum value.
+\code{-Xmx} setting. With \ibm \jres, you do not need to specify a maximum value.
 
 

@@ -217,7 +217,7 @@ the {\tt -oss} command-line parameter.
 Sometimes, the JIT compiler is clever enough to observe that a call to {\tt new}
 can safely be allocated on the stack. This optimization is called \emph{stack
 allocation} of objects\index{Stack Allocation}. It is enabled, by default, as of
-Sun \javasix Update 21 and IBM \javasix Service Release 2. When this
+\oracle \javasix Update 21 and \ibm \javasix Service Release 2. When this
 optimization is possible, objects created and used \emph{only} as local variables will be stored
 on a stack frame; it is as if you were using C {\tt struct}s.
 % \begin{shortlisting} class G {
@@ -241,7 +241,7 @@ via stack allocation, you should not depend upon this optimization.
 It is a tricky thing for the JIT compiler to do correctly, and
 so the compiler is very conservative in its application.\footnote{If you are
 curious, the best you can do is to analyze performance both with and without the
-underlying anlaysis. On Sun JVMs, you can disable the analysis by adding {\tt
+underlying anlaysis. On \oracle JVMs, you can disable the analysis by adding {\tt
 -XX:-DoEscapeAnalysis} to your application's command line.}
 
 
@@ -359,10 +359,10 @@ The \jre stores information about classes, including executable code and string
 constants, in memory areas that are separate from those for instances of
 classes. Some \jres create a distinct heap for this data, one that can be sized
 like the other heaps. Other \jres store this data in an undifferentiated part of
-the general native heap. The Sun \jre is in the former camp, while the IBM and
-JRockit \jres are in the latter camp. The Sun \jres call this heap the
+the general native heap. The \oracle \jre is in the former camp, while the \ibm and
+JRockit \jres are in the latter camp. The \oracle \jres call this heap the
 \emph{permspace} heap. This name came about because the heap contains objects
-and other data that are, at least for the most part, immortal. On Sun \jres, you
+and other data that are, at least for the most part, immortal. On \oracle \jres, you
 can size the permspace heap via the command-line parameter {\tt
 -XX:MaxPermSize}.
 
@@ -609,7 +609,7 @@ become increasingly frequent.
 
 If your application exhausts the Java heap, you will observe an
 \class{OutOfMemoryError} exception thrown\index{java.lang.OutOfMemoryError}. On
-Sun JVMs, you will sometimes see a variant of this: \code{GC overhead limit
+\oracle JVMs, you will sometimes see a variant of this: \code{GC overhead limit
 exceeded}\index{GC overhead limit exceeded}. On all JVMs, it is possible that
 the runtime will enter a nasty state where it is spending all of its time
 reclaiming memory.
@@ -629,12 +629,12 @@ universal way to do this, one that works on any JVM, is to enable verbose
 garbage collection\index{Verbose Garbage Collection}. This requires modifying
 your application's command line, and therefore restarting it, if this option is
 not already enabled. Each \jre provider offers good alternatives to verbose
-garbage collection. If you are using a Sun JDK build of the \jre, then you can
-use the \code{jstat} tool\index{Sun jstat tool}.\footnote{The \code{jstat} tool
+garbage collection. If you are using a \oracle JDK build of the \jre, then you can
+use the \code{jstat} tool\index{\oracle jstat tool}.\footnote{The \code{jstat} tool
 is only available with JDK builds. It is neither available with JRE builds, nor
-with any builds prior \javafive.} If you are using an IBM \jre, then you can
+with any builds prior \javafive.} If you are using an \ibm \jre, then you can
 request \code{javacores}, which contain a small historical window of  garbage
-collection events\index{IBM Javacores}. Neither of these require modifying your
+collection events\index{\ibm Javacores}. Neither of these require modifying your
 application command line, and so are very nice alternatives. In any case, by
 inspecting the resulting output, you will observe that the collector is active
 99\% or more of the time.
@@ -1236,7 +1236,7 @@ make a partial effort to clip soft references in a least-recently used (LRU)
 fashion: soft references that haven't been traversed in a while will be clipped
 before those that are frequently used. This is why soft references can form the
 basis for cache implementations. In reality, no contemporary \jre uses a true
-LRU policy for clipping soft references. For example, with Sun \jres, it is
+LRU policy for clipping soft references. For example, with \oracle \jres, it is
 possible that all soft references that haven't been used in 6 minutes will be
 automatically cleared, even though the heap has 500MB of space free, out of a
 600MB heap. \autoref{sec:soft-reference-details} has more details on this
