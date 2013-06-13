@@ -1,8 +1,17 @@
 \chapter{A Comparison of Sizings on \jres}
 \label{chapter:jre-comparison}
 
-TODO:  Let's make a clear separation of information readers need to estimate the
-size of their applications vs. the maximum address space issues.  Otherwise the
+[GSS: The following is the section structure we want to appear in the TOC.  It
+doesn't match the text right now but will eventually.]
+\section{Sizing Criteria}
+\subsection{Object-level costs}
+\subsection{Field-level costs}
+\subsection{Address space}
+\section{Memory Costs of Commonly-used Classes}
+
+
+TODO: (Sizing Criteria) Let's make a clear separation of information readers
+need to estimate the size of their applications vs. the maximum address space issues.  Otherwise the
 tables will be too large. That will also make the text more
 problem-oriented.  We need three tables:
 \begin{itemize}
@@ -22,8 +31,6 @@ be blank.
 The majority of the body of this book focuses on the \oracle 32-bit \jre. This
 appendix provides supplementary material regarding the sizing criteria used by
 other \jres, and how various configuration choices affect these parameters.
-
-\section{Sizing Criteria}
 
 
 \begin{table}
@@ -76,8 +83,9 @@ JRockit & -XXcompressedrefs \\
 \caption{Options for specifying that you wish the \jre to use compressed references. This is only relevant for 64-bit \jres.}
 \end{wraptable}
 
-\section{Compressed references}
-\index{Compressed References}
+[GSS: Compressed References discussion below.  Will be moved elsewhere].
+%\section{Compressed references}
+%\index{Compressed References}
 
 TODO: This duplicates discussion we have in the Objects and Delagation Chapter.
 - let's move info that we really need to that chapter, unless it's very
@@ -121,7 +129,10 @@ than 32 gigabytes.}
 %It is available in \ibm \javasix (Service Release 4) with the
 %option -Xcompressedrefs.
 
-\section{Identity Hashcode in Object Headers}
+
+[GSS: Identity Hashcode discussion below.  This should be more of a footnote
+than a whole section. ]
+%\section{Identity Hashcode in Object Headers}
 
 Depending on the \jre, the object header may actually be 4 bytes smaller than
 indicated in \autoref{tab:sizing-criteria}. Some \jres leave room for the

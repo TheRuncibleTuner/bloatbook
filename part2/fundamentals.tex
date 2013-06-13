@@ -4,7 +4,7 @@
 %  
 
 
-\chapter{Memory Management Basics}
+\chapter{Lifetime Management}
 \label{chapter:lifetime-fundamentals}
 
 [NOTE: Section 12.1 has way too much detail.  I think the whole section could be
@@ -1135,8 +1135,21 @@ within the data structure you no longer need.
 
 \section{The Advanced Ways of Keeping an Object Alive}
 \label{sec:advanced-lifetime-features}
-%Sometimes, you need an object to stay alive, or not, in a way that has nothing
-%to do with whether it is reachable from local variables or static fields. For
+
+[(GSS) These next 3 section headers are for the table of contents to show what
+we are likely to have in a final version.  The placement of these headers
+isn't right relative to the rest of the section. These are just section names
+that I'd like to stand out in the TOC for the reviewers to see. They're
+common cases, and we reference some of them in the first half of the
+book.]
+\subsection{Example.  Correlated Lifetime: Sharing Pools}
+\label{sec:advanced-lifetime-sharing-pools}
+\subsection{Example.  Correlated Lifetime: Annotations}
+\label{sec:advanced-lifetime-annotations}
+\subsection{Example.  Time-space Tradeoffs: Caches}
+\label{sec:advanced-lifetime-caches}
+% Sometimes, you need an object to stay
+% alive, or not, in a way that has nothing to do with whether it is reachable from local variables or static fields. For
 %example, to implement the correlated lifetime policy described in
 %\autoref{sec:correlated-lifetime}, using only the mechanisms presented so far,
 %is difficult. 
