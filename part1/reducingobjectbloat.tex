@@ -450,7 +450,9 @@ are large. This can happen when delegated classes inherit from a large base clas
 is combined with inheriting from large base classes, memory costs multiply and can become prohibitive.
 
 %\begin{example}{Keeping track of updates} 
-A frequent data management requirement is to track creation and update information, that is, when data is created or updated and by whom.  Here is a base class, taken from a real application, that stores create and update information.  
+A frequent data management requirement is to track creation and update information, that is,
+when data is created or updated and by whom.  Here is a base class, taken from a real application,
+that stores creation and update information.  
 \begin{shortlisting}
 class UpdateInfo {
      Date creationDate;
@@ -460,7 +462,8 @@ class UpdateInfo {
 }
 \end{shortlisting}
 You can track changes by subclassing from \class{UpdateInfo}. Update tracking is
-a \textit{cross-cutting feature}, since it can apply to any class in a data model.
+a \textit{cross-cutting feature}, since it can apply to any class in the data
+model.
 %\end{example}
 
 Returning to the original, unoptimized
@@ -499,8 +502,8 @@ updates to \class{ContactPerson}. However, if the program hits a scalabity
 problem, it may not be possible to be this casual with memory. Also, an alternate
 design may be available that gives the desired functionality in a more memory-efficient way. In this
 example, you could implement an update log instead of tracking updates in the objects themselves. Assuming
-updates are sparse, this is a much better solution. It is very easy define a subclass without looking closely
-at the memory size of its superclasses, especially if the inheritance chain is
+updates are sparse, this is a much better solution. It is very easy to define a
+subclass without looking closely at the memory size of its superclasses, especially if the inheritance chain is
 long.
 
 
@@ -542,7 +545,7 @@ Figure~\ref{fig:substring}. The offset and length fields in the substring
 This scheme optimizes the time to create a substring, since there is no new
 character array and no copying. However, every string pays the price of the offset
 and length field, whether or not they are used. In practice, most Java applications
-have far more strings than substrings\cite{}, so a lot of memory is
+have far more strings than substrings \cite{reference}, so a lot of memory is
 wasted. Even when there are many substrings,
 if the original strings go away, you have a different footprint problem, namely,
 saving character arrays which are too big.
@@ -611,10 +614,10 @@ for another, and can easily make things worse, depending on the context.
 So it's important to look at how your data will be used, and to estimate
 and then measure the effect of any optimizations. It's also a good idea to
 design your APIs so that classes can be easily refactored
-later on:
+later on, by:
 
 \begin{itemize}
-  \item Expose interfaces rather than concrete classes.
-  \item Expose factory methods rather than constructors.
+  \item Exposing interfaces rather than concrete classes.
+  \item Exposing factory methods rather than constructors.
 \end{itemize}
 
