@@ -391,7 +391,8 @@ can flatten this structure somewhat.
 preferred contact method. Removing this delegation involves moving the fields
 of \class{EmergencyContact} into other classes, and eliminating the \class{EmergencyContact} class.
 Here are the refactored classes:
-\begin{shortlisting}
+
+\begin{nospanshortlisting}
 class EmployeeWithEmergencyContact {
     ...
     ContactPerson contact;
@@ -406,7 +407,7 @@ class ContactPerson {
     PhoneNumber work;
     ContactMethod preferredMethod;
 }
-\end{shortlisting}
+\end{nospanshortlisting}
 This change eliminates an object from
 Figure~\ref{fig:employee-status-fine-grained}, but it only recovers 8 bytes,
 since a 16 byte object is removed and \class{ContactPerson} is 8 bytes bigger.
