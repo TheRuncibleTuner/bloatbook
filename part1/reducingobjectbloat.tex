@@ -168,19 +168,19 @@ design can come out ahead if there are a small number of major awards.
 You can do a similar analysis as you would for side objects to decide if this
 approach is worth it.
 A hash entry typically takes more memory than a side object (see
-Section~\ref{sec:}).
+Section~\ref{sec:large-collections}).
 Therefore, a side table will start wasting
 memory at a lower fill rate than would a side object approach.
 Whenever you add a new table like this you also have to be careful not to
 introduce a memory leak. If products are no longer needed and are garbage
 collected, the corresponding entries in the table must be cleaned up.
-This topic is discussed at length in Section~\ref{}.
+This topic is discussed at length in Section~\ref{sec:advanced-lifetime-annotations}.
 
 \paragraph{Subclassing} The least expensive way to model rarely used fields
 is to move them to a subclass. Unlike the optimizations we've discussed,
 subclassing costs no extra space. It can have
-some disadvantages from a software engineering standpoint, though, when compared with
-delegation or a side table approach. It can make your code less flexible, making
+some disadvantages from a software engineering standpoint, however, when
+compared with delegation or a side table approach. It can make your code less flexible, making
 it more difficult to add or rearrange functionality later on. Since Java
 supports only single inheritance, defining a subclass for rarely used
 fields will prevent you from having subclasses for
