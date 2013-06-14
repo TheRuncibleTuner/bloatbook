@@ -42,23 +42,23 @@ higher than the overhead of scalars and even of boxed forms.
   \centering
 \begin{tabular}{llr} \toprule \toprule
 & Example & Size \\ \midrule \midrule
-integer & int anint = 47; & 4 \\
+integer & int anInt = 47; & 4 \\
 \midrule
-& Integer anint = new Integer(47); & 20 (4+16)  \\
+& Integer anInt = new Integer(47); & 20 (4+16)  \\
 \midrule
-& String anint = new String(``47''); & 44 (4+40) \\
+& String anInt = new String(``47''); & 44 (4+40) \\
 \midrule
 \midrule
-boolean & boolean abool = true; & 1\\
+boolean & boolean aBool = true; & 1\\
 \midrule
-& Boolean abool = new Boolean(true): & 20 (4+16) \\
+& Boolean aBool = new Boolean(true): & 20 (4+16) \\
 \midrule
-& String abool = new String(``T''); & 44 (4+40) \\
+& String aBool = new String(``T''); & 44 (4+40) \\
 \midrule \midrule
 enumerated type & enum Gender \{MASCULINE, FEMININE, NEUTER\}; &\\
-& Gender agender = MASCULINE; & 4 \\
+& Gender aGender = MASCULINE; & 4 \\
 \midrule
-& String agender = new String(``masculine''); & 60 (4+56) \\
+& String aGender = new String(``masculine''); & 60 (4+56) \\
 \bottomrule \bottomrule
 \end{tabular}
 \caption{The cost of different ways to represent an integer, a boolean, and an
@@ -94,8 +94,8 @@ have significant empty space, since they double in size whenever they need to be
 Typically, after a string is built up in the \class{StringBuffer}, it is stable, at which point
 it should be converted to a \class{String}, so that the \class{StringBuffer} can be
 garbage collected. Using a \class{StringBuffer} to facilitate
-building a \class{String} is fine, but it should only be used as a temporary
-in this case.
+building a \class{String} is fine, as long as it is only used as a
+temporary.
 
 \section{Bit Flags}
 \label{sec:bit-flags}
@@ -156,7 +156,7 @@ bits in a single \code{byte} field:
 		       
 \end{shortlisting}
 
-While compact, these representations are awkward from a coding and
+While compact, this representation is awkward from a coding and
 stylistic point of view. A better practice is to represent each bit flag
 as a constant in an \code{enum} type, and to store the values of the group
 of flags as an \code{EnumSet}.
