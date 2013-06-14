@@ -269,7 +269,8 @@ The recommended way to parse and format \code{Dates} is
 to use a \code{DateFormat} object. For example:
 
 \begin{shortlisting}
-    SimpleDateFormat dateFormat =  new SimpleDateFormat("dd/MM/yy"); 
+    SimpleDateFormat dateFormat = 
+    	new SimpleDateFormat("dd/MM/yy"); 
     System.out.println(dateFormat.format(date)); 
 \end{shortlisting}
 
@@ -299,8 +300,8 @@ temporaries thrown off during the initialization process.  This means that if
 you are operating on a large number of \code{Date}s over time, it's best to maintain a small number of
 formatting and calendar objects and reuse them.  Keep in mind that neither
 \class{SimpleDateFormat} nor \class{GregorianCalendar} is thread safe, so for
-concurrent applications it's useful to maintain separate objects for each
-thread, either via local variables or thread-local storage.
+concurrent applications it's useful to maintain a separate object for each
+thread, either via a local variable or thread-local storage.
 
 Since \class{GregorianCalendar} stores the \class{Date} you are currently
 working on, some applications use \class{GregorianCalendar} as their
@@ -337,7 +338,7 @@ A \class{BigInteger} provides
 arbitrary-precison integer arithmetic functions. It is immutable, and exactly
 mimics the functions of the standard integer, while providing some additional
 mathematical functions as well. A \class{BigInteger} almost always requires two
-objects,a \class{BigInteger} plus an \class{int[]}, for a minimum of 48 bytes
+objects, a \class{BigInteger} plus an \class{int[]}, for a minimum of 48 bytes
 total.  The cost can be more, depending on the number of digits.  The formula for the total
 size in bytes is 44 + 4 times the number of \class{ints} needed to represent the
 integer\footnote{If the value is 0, and you use one of the constructors
@@ -375,23 +376,12 @@ as arguments. This can also occur indirectly as the result of some constructors
 and formatting operations. The cases are too numerous to predict, so if there's a concern it's
 best to look at the heap and see what happens based on actual usage in the application.
 
-In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
-save its string representation in case it is needed again. The same thing occurs
-in some cases when formatting using \class{DecimalFormat}. This is an example of
-a built-in performance optimization in the library, one that may not be needed
-in your application. The result is an
-extra two objects attached to the \class{BigDecimal}.
-
-In summary, a \class{BigDecimal} will require one
-object under most circumstances, but can take up to five. 
-%Since it is hard to %predict, you just have to beware.
-
 \begin{table}
   \centering
 \begin{tabular}{ll} \toprule \toprule
 Type & Cost \\ \midrule \midrule
 \class{BigInteger} & Common case: 2 objects, minimum 48 bytes\\
-& If value is 0 and use certain constructors, will be 1 32-byte object\\
+& If value is 0, with certain constructors will be 1 32-byte object\\
 \midrule
 \class{BigDecimal} & Common case: 1 32-byte object\\
 & Can switch to 3-object inflated form,
@@ -404,6 +394,19 @@ calls retains formatted \class{String}\\
 cases and exceptions.}
 \label{tab:BigInteger-BigDecimal-sizes}
 \end{table}
+
+In addition, calling \code{toString()} on a \class{BigDecimal} causes it to
+save its string representation in case it is needed again. The same thing occurs
+in some cases when formatting using \class{DecimalFormat}. This is an example of
+a performance optimization built into the library, one that may not be needed
+in your application. The result is an
+extra two objects attached to the \class{BigDecimal}.
+
+In summary, a \class{BigDecimal} will require one
+object under most circumstances, but can take up to five. 
+%Since it is hard to %predict, you just have to beware.
+
+
 \section{Summary} 
 
 There are common data types just beyond simple primitives that can
@@ -427,7 +430,7 @@ unless you need the functionality.
   \item Use \class{BigInteger} and \class{BigDecimal} only when their
   functionality is really needed.
   \item When using \class{Date} and \class{BigDecimal}, watch out for methods
-  such as \code{toString()}, that cause hidden objects to be created and
+  such as \code{toString()} that cause hidden objects to be created and
   retained behind the scenes.
 \end{itemize}
 
