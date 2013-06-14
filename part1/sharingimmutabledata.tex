@@ -485,20 +485,20 @@ changes later, should you find that sharing is not worthwhile.
 Before implementing a sharing scheme, we can estimate the
 space savings to make sure it's worth
 the effort, and to make sure it doesn't cause a net gain in
-memory usage. Here is a sample analysis of sharing \class{String}s.
+memory usage. Here is a sample analysis of sharing \class{Strings}.
 This style of analysis can be applied to other types of shared data.
 
 First, we'll need to estimate
 a few properties of the data we are considering sharing. For this example,
-we'll start with a set of one million \class{String}s, and make the
+we'll start with a set of one million \class{Strings}, and make the
 simplifying assumption that they are all the same size, ten characters each.
-Without any sharing, this data would require 64 bytes per \class{String},
-or 61 Mbytes in total. Next, we'll need the overhead
+Without any sharing, this data would require 56 bytes per \class{String},
+or 53 Mbytes in total. Next, we'll need the overhead
 of the sharing mechanism, in this case Java's built-in string interning. The
 \jre stores its map of shared strings in native memory. We'll assume that the
 native map costs 20 bytes on average for each distinct value\footnote{This is
 an approximation, for illustration purposes, of what
-a native weak hash map might cost on a 32-byte \jre.}. 
+a native weak hash map might cost on a 32-bit \jre.}. 
 
 Finally, we'll look at the degree of duplication in the data set. One
 useful measure is the ratio of distinct values to the total number of items in the set. 
@@ -523,9 +523,9 @@ varies based on this ratio. Each data point compares not sharing
 (the left bar) against
 interning (the right bar). There is considerable savings with even
 a moderate amount of duplication. For example, when distinct values
-are 50\% of the total number of \class{String}s, on average 2 identical
-\class{String}s per value, 21 Mbytes are saved. When the
-percent is above 76\%, however, memory is wasted, since there isn't enough
+are 50\% of the total number of \class{Strings}, on average 2 identical
+\class{Strings} per value, 17 Mbytes are saved. When the
+percent is above 74\%, however, memory is wasted, since there isn't enough
 duplication to justify the extra overhead.
 
 \callout{callout:sharing-savings}{Estimating the Savings from Sharing}{
