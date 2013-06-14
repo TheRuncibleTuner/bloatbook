@@ -22,7 +22,7 @@ Duplicate strings are one of the
 most common sources of memory waste, since even
 small strings incur a large overhead. It is not uncommon to
 see heaps with tens of thousands of copies of strings such as \code{"Y"} or
-\code{"N"}. At 48 bytes a piece, these quickly add up.
+\code{"N"}. At 40 bytes a piece, these quickly add up.
 Fortunately, it is not hard to eliminate string duplication.
 
 One technique is to represent strings as  
@@ -59,8 +59,8 @@ Compare that to the following:
 
 The \jre shares the \code{String} literal wherever it appears in
 the code, even across classes. More important, in this example, is that now all
-documents will share a single \code{String}. A more maintainable
-approach is to make the sharing explicit, by defining a \code{final
+instances of \class{Document} will share a single \code{String}. A more
+maintainable approach is to make the sharing explicit, by defining a \code{final
 static} constant:
 
 \begin{shortlisting}
@@ -125,7 +125,7 @@ are always shared constants.
 		public enum PropertyName = 
 			{format, comments, creationDate, ... };
 		..
-		protected Map<PropertyMap, String> properties; 
+		protected Map<PropertyName, String> properties; 
 		..
 		void handleNextEntry() {
 			PropertyName propertyName = 
@@ -138,15 +138,14 @@ are always shared constants.
 The code reads in a property name, and returns a pointer to a shared \code{enum}
 constant. \code{enum} types automatically provide for
 efficient lookup by name, in addition to giving you type safety. In our
-example, using an \code{enum} type would also allow us to save even more memory,
+example, using an \code{enum} type would also allow us to save even more memory
 by switching from a \code{HashMap} to the smaller \code{EnumMap} to store each document's metadata.
 
 Using literals to avoid duplication is only possible when values are known in advance.
 \autoref{sec:sharing-pools} introduces the notion of a sharing pool for
-sharing dynamic data. \autoref{sec:sharing-strings} describes
-string interning, Java's built-in way to share strings.
+sharing dynamic data.
 
-\section{Sharing Pools}
+\section{The Sharing Pool Concept}
 \label{sec:sharing-pools}
 
 Suppose an application generates a lot of duplicated data and the values
@@ -269,7 +268,7 @@ pool for sharing \class{Strings}. To share a new
 everything is taken care of automatically. Both the \class{String}
 object and its underlying character array are shared. Since
 \class{Strings} are immutable, sharing is safe.
-However, the rule about not using \code{==} still holds on shared
+However, the rule about not using \code{==} still holds for shared
 \class{Strings}.  Remember that only some
 \class{Strings} will be shared in any application, namely those specific
 instances that you choose to intern.
@@ -298,11 +297,11 @@ new \class{String} is a duplicate, and a previously saved \class{String} is
 returned instead. 
 
 There is a memory overhead cost for each shared
-\class{String}, so interning \class{String}s indiscriminately will waste memory.
+\class{String}, so interning \class{Strings} indiscriminately will waste memory.
 In this example there is likely to be a lot of duplication
-among the property values. Rather than interning the value \class{String}s for
-all the properites, however, we could add interning for just those
-properties with the most duplication. For example, the document format
+among some of the property values but not others. Rather than interning the
+value \class{Strings} for all the properties, we could add interning
+for just those properties with the most duplication. For example, the document format
 property would be a good candidate for interning, since it would have only
 a few distinct values.
 On the other hand, a timestamp property would be a poor candidate. In this way
@@ -310,7 +309,7 @@ we would get the maximum benefit from sharing, while keeping the overhead to a
 minimum. 
 
 The \jre maintains a map in native memory to keep track of the interned
-\class{String}s.
+\class{Strings}.
 The interned \class{Strings} themselves are stored in a separate heap known as
 the \emph{perm space}. 
 Exceeding the size of the perm space will result in an exception:
@@ -324,7 +323,7 @@ internal string pool, so there is no danger of a memory leak.
 
 The built-in interning mechanism is synchronized, and can incur a latency cost
 in a multithreaded environment, when new \class{Strings} are interned.
-The book Effective Java\cite{EffectiveJavaBook}, pp. xxx-yyy, gives an example
+The book Effective Java\cite{EffectiveJavaBook} gives an example
 of how to build a concurrent sharing mechanism for \class{Strings}.
 
  %    * Literal strings within the same class in the same package represent
@@ -351,8 +350,8 @@ The idea is  that the most commonly
 used integers (at least in many applications) will be shared. There is a
 parameter to change the upper limit of the range -- see
 \autoref{chapter:jre-options} for details. Note that
-behind the scenes, Java's autoboxing feature uses these same pools
-to share some of the instances it creates.
+Java's autoboxing feature uses these same pools
+to share some of the instances it creates behind the scenes.
 
 %For example,
 %the code in \autoref{fig:integer-sharing-pool} stores \class{Integers} from 1
@@ -412,7 +411,7 @@ There are two common styles of implementing your own sharing pool, depending on
 the complexity of the data being shared.  We illustrate both in this section. 
 For the purposes of this discussion we assume that the set of shared data is
 always needed throughout the run, so there is no need to worry about garbage collection. In
-\autoref{sec:sharing-pools-safety} we revisit these two examples, and show how
+\autoref{sec:advanced-lifetime-sharing-pools} we revisit these two examples, and show how
 to implement sharing pools with garbage collection.  
 We leave the addition of concurrent access as an exercise. 
 
@@ -470,7 +469,7 @@ that it exists in the pool, we can instead use the type name as the key, as
 shown on the right. That way callers of the sharing pool only have to create a
 \code{String} in order to find or retrieve the \class{Type}. In this example we save the creation of
 one object for each new instance of the structure created.  For more complex
-structures the savings can be much greater.
+structures the savings will be much greater.
 
 \paragraph{} Whichever of these two approaches you use, it's a good idea to hide
 the use of the sharing pool behind a factory method. That will make it easier to make
