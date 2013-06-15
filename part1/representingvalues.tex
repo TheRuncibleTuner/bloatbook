@@ -297,8 +297,8 @@ initialization sequences.
 A \class{GregorianCalendar} created with the default constructor, for
 example, requires six objects, totaling 424 bytes. This doesn't include the many
 temporaries thrown off during the initialization process.  This means that if
-you are operating on a large number of \code{Date}s over time, it's best to maintain a small number of
-formatting and calendar objects and reuse them.  Keep in mind that neither
+you are operating on a large number of \code{Dates} over time, it's best to
+maintain a small number of formatting and calendar objects and reuse them.  Keep in mind that neither
 \class{SimpleDateFormat} nor \class{GregorianCalendar} is thread safe, so for
 concurrent applications it's useful to maintain a separate object for each
 thread, either via a local variable or thread-local storage.

@@ -522,7 +522,7 @@ properties).
 This means that there remains quite a bit more bloat to be squeezed out. If you
 know that the number of parents and children will be typically no more than two,
 then you can use a smaller initial size for the edge lists. If you update the
-constructor call for the \class{ArrayList}s to request an initial capacity of
+constructor call for the \class{ArrayLists} to request an initial capacity of
 two elements, then the total unit cost of the nodes drops to 160 bytes. You can
 now fit 6.7 million nodes in a gigabyte heap, and the remaining maximum room for
 improvement is now 10x (15x with edge properties).

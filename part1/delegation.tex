@@ -193,10 +193,10 @@ object alignment cost, which become less significant when there is more data.
 For example, for the \oracle \jre, the bloat factors for the boxed scalars range from 94\%
 for a \class{Boolean} down to 50\% for a
 \class{Double}.  The bloat factor for a \class{SimpleEmployee} is 28\%.  The
-bloat factor for an array of 100 \code{char}s is insignificant.  
+bloat factor for an array of 100 \code{chars} is insignificant.  
 An exception to this rule is when objects
-have a lot of fields, such as \code{boolean}s, that carry very little data, on a 
-\jre that doesn't pack fields tightly.
+have a lot of fields, such as \code{booleans}, that carry very little data, on
+a \jre that doesn't pack fields tightly.
 These objects will have a high bloat factor. In that case, the more fields, the
 more overhead.
 

@@ -95,7 +95,7 @@ input. \code{getNextString()} returns a new
 	}
 \end{shortlisting}
 
-The \class{String}s stored in each map are created dynamically.
+The \class{Strings} stored in each map are created dynamically.
 In applications of this kind, there is usually a lot of repetition of both
 property names and values. If there are just a few distinct property names in all of the input pairs, these
 property names will be duplicated many times in the heap.
@@ -116,7 +116,7 @@ When reading in the property names, we could check against these
 literals, and share them as the keys in each map. 
 Alternatively, a better stylistic choice would be to encode them as an
 enumerated type. Like \class{String} literals, the \jre maintains a
-single copy of each \code{enum} constant. Unlike \class{String}s,
+single copy of each \code{enum} constant. Unlike \class{Strings},
 you never have the option to allocate \code{enum} instances dynamically; they
 are always shared constants. 
 
@@ -434,7 +434,7 @@ HashMap<Annotation, Annotation> canonicalizingMap;
 \end{wrapfigure}
 
 Interestingly, none of the common collection classes meet this requirement
-out of the box. A \class{HashSet} can store \class{Annotation}s uniquely, but
+out of the box. A \class{HashSet} can store \class{Annotations} uniquely, but
 retrieving an existing \class{Annotation} is not easy. The \class{HashSet}
 can let you know whether an equivalent item already
 exists in the set, but can not return that item quickly. To get the
@@ -510,7 +510,7 @@ there are more distinct values, so less duplication.
 \centering
 \includegraphics[width=\textwidth]{part1/Figures/modelingdatatypes/sharingpool_consumptionchart.pdf}
 	\caption{Comparing the memory consumed by
-	one million ten-character \class{String}s, stored individually vs. with
+	one million ten-character \class{Strings}, stored individually vs. with
 	interning.
 	The chart shows how the savings (or waste) varies with the degree of
 	distinctness of the data. 10\%
@@ -577,7 +577,7 @@ techniques available:
 
 \begin{itemize}
   \item To share a small number of values that are known at compile time, use
-  \class{String} literals, \code{enum} constants or \code{final static}s.
+  \class{String} literals, \code{enum} constants or \code{final statics}.
   \item The \jre maintains a sharing
   pool for \class{Strings}. Use \class{String} interning to make use of this
   sharing pool.
