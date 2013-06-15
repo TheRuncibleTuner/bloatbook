@@ -120,7 +120,7 @@ wrapper objects, but a \class{HashSet} has two of them.
 \class{HashMap} itself uses a \emph{chaining}
 design. Its internal structure is an array of hash buckets, with initial size of
 16 by default.  Each bucket is a linked
-list of \class{HashMap\$Entry} objects. Each entry object
+list of \class{HashMap.Entry} objects. Each entry object
 points to an element of the user's data, in other words, to a key and value.
 
  \begin{figure}
@@ -149,14 +149,14 @@ treat excess capacity as a variable cost, as we discuss in the next chapter.
 }
 \footnote{\class{HashSet} often has another
 fixed cost, not shown in our figures.  The first time you iterate over
-the set, a 16-byte \class{HashMap\$KeySet} is created and retained for the lifetime of
-the set.}.
+the set, a 16-byte \class{HashMap.KeySet} is created and retained for the
+lifetime of the set.}.
 The fixed cost of an \class{ArrayList} is considerably
 lower, a total of 80 bytes. That includes its wrapper object and default
 10-element array. Fixed costs matter most in
 small collections. As collections grow they become less significant.
 
-A \class{HashSet} maintains a \class{HashMap\$Entry} object for 
+A \class{HashSet} maintains a \class{HashMap.Entry} object for 
 each entry, at 24 bytes each. This is its
 variable cost, that is, the incremental cost of storing an
 entry. It is much higher than that of an \class{ArrayList}, which
