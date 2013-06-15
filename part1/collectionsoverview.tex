@@ -3,7 +3,7 @@
 
 Collections are the glue that bind together your data. 
 Whether providing random or sequential access, or
-enabling look up by value, collections are an essential part of any design.
+enabling lookup by value, collections are an essential part of any design.
 In Java, collections are easy to use, and, just as easily, to misuse
 when it comes to space. Like much else in Java, they don't come with a price tag
 showing how much memory they need. In fact, collections
@@ -34,8 +34,7 @@ We will also look at the internal design of a few collection classes.
 %
 
 \begin{description}
-\item[Chapter~\ref{chapter:brief-introduction-collections}.  Collections: An
-Introduction]
+\item[Chapter~\ref{chapter:brief-introduction-collections}. \nameref{chapter:brief-introduction-collections}]
 Collections serve a number of very
 different purposes in your application, each with its own best practices as well
 as traps. The current chapter
@@ -43,10 +42,9 @@ is a short introduction to issues that are common to
 any use of collections. It includes a summary of collection resources
 that are available in the standard and some open source alternative
 frameworks.
-\item[Chapter~\ref{chapter:representing-relationships}.
-One-to-Many Relationships] An important use of collections is to
-implement one-to-many relationships. These enable quick navigation from an
-object to related objects via references. This chapter covers the patterns and pitfalls of
+\item[Chapter~\ref{chapter:representing-relationships}. \nameref{chapter:representing-relationships}]
+An important use of collections is
+to implement one-to-many relationships. These enable quick navigation from an object to related objects via references. This chapter covers the patterns and pitfalls of
 implementing these relationships. At runtime, each relationship
 becomes a large number of collection instances, with many containing just a few elements.
 %In a product catalog, for example, each product object would have one
@@ -56,10 +54,9 @@ The main issues to watch for
 are: keeping the cost of small and empty collections to a minimum, sizing
 collections properly, and paying only for features you really need.
 
-\item[Chapter~\ref{chapter:tables-indexes}. Indexes and Other Large Collection
-Structures] A collection can serve as the jumping off
-point for accessing a large number of objects. For example, your application
-might maintain a list of all the objects of one type, or have an index for
+\item[Chapter~\ref{chapter:tables-indexes}. \nameref{chapter:tables-indexes}]
+A collection can serve as the jumping off point for accessing a large number of
+objects. For example, your application might maintain a list of all the objects of one type, or have an index for
 looking up objects by unique key. This chapter shows how to analyze the memory
 costs of these structures. The main
 issue is understanding which costs will be amortized as the structure grows, and
@@ -68,10 +65,10 @@ such as a multikey map, where there is a choice between a single collection and 
 % large structures
 % compare design alternatives
 
-\item[Chapter~\ref{chapter:dynamic-records}. Attribute Maps and Dynamic
-Records] Many applications need to represent data whose shape is not
-known at compile time. For example, your application may read property-value
-pairs from a configuration file, or retrieve records from a database
+\item[Chapter~\ref{chapter:dynamic-records}. \nameref{chapter:dynamic-records}]
+Many applications need to represent data whose shape is not known at compile
+time. For example, your application may read property-value pairs from a configuration file,
+or retrieve records from a database
 using a dynamic query. Since Java does not let you define new classes on the
 fly, collections are a natural, though inefficient way to represent
 these dynamic records. This chapter looks at the common cases where dynamic records
@@ -106,7 +103,7 @@ Like other building blocks in Java, the memory costs of the standard collections
 are high overall. The very smallest commonly-used collection, an
 \emph{empty} \class{ArrayList}, takes up 40 bytes, and that's only when it's been carefully
 initialized. By default it takes 80 bytes. That may not sound like a lot by
-itself, but when deeply nested in a design, that could easily be multiplied
+itself, but when deeply nested in a design, that cost could easily be multiplied
 by hundreds of thousands or millions of instances.  
 
 There is much in the standard collections that is not under your control.
@@ -263,13 +260,14 @@ shows one example
 	\class{IdentityHashMap} & Lower-cost map when using an object reference as key
 	& \autoref{sec:identity-maps}
 	\\
-	\class{EnumMap} & Compact map when keys are \class{Enum}s & \autoref{chapter:dynamic-records}
+	\class{EnumMap} & Compact map when keys are \class{Enums} &
+	\autoref{sec:records-known-attribute-universe}
 	\\
 	\class{EnumSet} & Compact representation of a set of flags &
 	Section~\ref{sec:bit-flags}
 	\\
 	\class{WeakHashMap} & Supports one common scenario for managing object lifetime
-	using weak references. & \autoref{chapter:lifetime-fundamentals}
+	using weak references. & \autoref{sec:advanced-lifetime-annotations}
 	\\
 	Java 1 collections & Some classes in the earlier, Java
 1 libraries, like Vector and Hashtable, are a lower-cost choice 
@@ -277,11 +275,11 @@ in some contexts where synchronized collections are needed &
 Section~\ref{sec:synchronized-collections}
 	\\
 	\class{ConcurrentHashMap} & Hash map when contention is a concern. Avoid use at
-	too fine a granularity. & \autoref{chapter:tables-indexes}
+	too fine a granularity. & \autoref{sec:concurrency-multilevel-indexes}
 	\\
 	\bottomrule
 	\end{tabular}
-	\caption{Some useful resources in the Java standard library}
+	\caption{Some useful collection resources in the Java standard library}
 	\label{tab:lesser-known-collections}
 \end{table}
 
@@ -340,7 +338,7 @@ has not been under active development for a few years. Its API has
 not been updated to take advantage of generics.
 
 \item[GNU Trove] The GNU Trove framework has time and space efficiency as
-its main goal.
+its main goals.
 From a memory standpoint its highlights are: collections of primitives that
 avoid the need for boxed scalars;  map
 and set implementations that are lighter weight than the standard ones; and
@@ -370,25 +368,25 @@ your product, service or internal system.
 	Primitive collections & fastutil, Trove & \autoref{sec:primitive-maps}
 	\\
 	\\
-	Lighter-weight maps and sets of objects & fastutil, Trove &
+	Lighter-weight maps and sets & fastutil, Trove &
 	\autoref{sec:large-collections}
 	\\
 	\\
 	Immutable collections & Guava & \autoref{sec:immutable-collections}
 	\\
 	\\
-	Small collections & fastutil, Commons & \autoref{sec:load-vs-use}, 
-	\autoref{chapter:tables-indexes}
+	Small collections & fastutil & \autoref{sec:load-vs-use}
 	\\
 	\\
-	Customized linked list storage & Trove & \autoref{sec:large-collections}
+	Customized storage in entry-based collections & Trove, Commons &
+	\autoref{sec:large-collections}
 	\\
 	\\
-	Maps with weak/soft references & Commons, Guava &
-	\autoref{chapter:lifetime-fundamentals}
+	Maps with weak/soft references & Guava, Commons &
+	\autoref{sec:advanced-lifetime-features}
 	\\
 	\\
-	Caches and pools & Guava & \autoref{chapter:lifetime-fundamentals}
+	Caches and pools & Guava & \autoref{sec:advanced-lifetime-features}
 	\\
 	\bottomrule
 	\end{tabular}
