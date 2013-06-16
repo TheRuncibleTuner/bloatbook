@@ -10,7 +10,7 @@ important part of most data models, it is not uncommon for Java applications to
 need hundreds of thousands, or even millions, of collections.
 Therefore, simple decisions, like which collection class to choose,
 when to create collections, and how to initialize them,
-can make a big difference on memory cost.
+can make a big difference in memory cost.
 This chapter shows how to lower memory costs when implementing
 relationships with collections.
  
@@ -143,7 +143,7 @@ The fixed cost is the memory needed before any entries are added.
 For a \class{HashSet} the fixed cost consists of two wrapper objects, taking 56 bytes, plus
 the array's \jre overhead and 16 slots, bringing the total to 136 bytes. We are including the
 array's empty slots as a fixed cost since they are allocated right from the start
-\footnote{Once a collection grows beyond its initial size, we'll treat
+\footnote{Once a collection grows beyond its initial size, we'll
 treat excess capacity as a variable cost, as we discuss in the next chapter.
 %This is because growth policies allocate excess capacity
 %in proportion to the size of the collection
@@ -306,7 +306,7 @@ for small collections as well.
 	 	 Collection & \multicolumn{3}{c}{with n entries}\\
 	 	 & fixed & variable & comments \\
 	 	 \midrule
-	 	ArrayList & 36 \footnotemark[1] & 4 & for any n \\
+	 	ArrayList & 36  & 4 & for any n \footnotemark[1] \\
 	 	\midrule
  		HashMap &  64 & 24 & capacity = 2, holds up to 1 \\
  		        &  72 & 24 & capacity = 4, holds up to 3 \\
@@ -573,7 +573,7 @@ then there is no way to update this reference once an actual collection is
 allocated. Instead, you can provide access and update methods to the relationship,
 so that the implementation remains hidden.
 You will also need to code to interfaces, delaying the use of a concrete class
-until a collections is actually allocated. In this example, \code{Product}
+until a collection is actually allocated. In this example, \code{Product}
 declares a \code{List} of suppliers, so that it can point to either the shared
 empty list, or to an \class{ArrayList} once it's populated.
 This is, of course, a good practice in general, so that the implementation can
@@ -665,8 +665,8 @@ to handle this problem is to use a hybrid representation. For example, you can
 use \class{ArrayLists} for smaller collections, and \class{HashSets} for larger
 collections. 
 
-One catch is that you usually will not know in advance which collections in the
-relationship will end up being small and which will grow to be large. Therefore
+One catch is that you will not usually know in advance which collections
+in the relationship will end up being small and which will grow to be large. Therefore
 one or more conversion operations will be necessary at some point if a
 collection grows large enough. 
 
@@ -736,14 +736,15 @@ A singleton list and set take only 16 bytes each. Singleton collections
 can be created via factory methods in \class{Collections}. In our
 example, we first initialize the relationship with a shared
 reference to a static empty set, in case there are no alternate suppliers. The method
-\code{addAlternateSupplier} creates a singleton set to hold the first alternate supplier, if one is added. 
+\code{addAlternateSupplier} creates a singleton list to hold the first alternate
+supplier, if one is added.
 The singleton collections are immutable, in other words, they cannot be modified once they are
 initialized. In your application, though, if you expect there to be
 deletions and they are infrequent, it's easy enough to write code that simply
 deletes the singleton collection until it's needed again.
 
 \paragraph{Converting to larger representations}
-If an additional alternate supplier is added, \code{addAlternateSupplier}
+If another alternate supplier is added, the code
 replaces the singleton list with an \class{ArrayList}. We can choose a
 threshold, say six entries, to be the maximum number of alternate
 suppliers the \class{ArrayList} representation should hold.  If more
@@ -917,8 +918,8 @@ purpose.
 
 As with unmodifiable views, when using this feature for a relationship, the
 view layer adds a fixed cost (see \autoref{tab:specialized-collections-small}) that will
-be multiplied by the number of instances of the relationship. The memory cost
-of using synchronized behavior at this scale can quickly add up. For a
+be multiplied by the number of collection instances. The
+memory cost of using synchronized behavior at this scale can quickly add up. For a
 relationship that will have infrequent accesses and updates from concurrent
 threads, where latency is not an issue, adding synchronized behavior is a good
 choice. It is a much less expensive choice than using
@@ -956,26 +957,25 @@ initial capacity. There is no Java 1 analogue to \code{HashSet} or
 	 	\midrule
 	 	UnmodifiableList & - & - & 16 & - & add'l cost \\
 	 	UnmodifiableSet & - & - & 16 & - & add'l cost \\
-	 	UnmodifiableMap & - & - & 24 \footnotemark[3] & - & add'l cost \\
+	 	UnmodifiableMap & - & - & 24 & - & add'l cost \footnotemark[8]\\
 	 	\midrule
 	 	SynchronizedList & - & - & 24  & - & add'l cost \\	 	
 	 	SynchronizedSet & - & - & 16  & - & add'l cost \\	 	
-	 	SynchronizedMap & - & - & 32 \footnotemark[4] & - & add'l cost \\	 	
+	 	SynchronizedMap & - & - & 32  & - & add'l cost \footnotemark[9]\\	 	
 	 	\midrule
 	 	\multicolumn{5}{l}{Guava:} \\
 	 	\midrule
-	 	ImmutableList & 40 & 56 & 36 \footnotemark[1] & 4 & for any n \\
-	 	ImmutableSet & 64 & 96 & 64 \footnotemark[2] & 8 & for any n \\
-	 	ImmutableSortedSet & 40 & 56 & 36 \footnotemark[1] & 4 & for any n \\
+	 	ImmutableList & 40 & 56 & 36  & 4 & for any n \footnotemark[6]\\
+	 	ImmutableSet & 64 & 96 & 64  & 8 & for any n \footnotemark[7]\\
+	 	ImmutableSortedSet & 40 & 56 & 36 & 4 & for any n \footnotemark[6] \\
 	 	 \midrule
 	 	\multicolumn{5}{l}{fastutil:} \\
 	 	\midrule
-	 	ObjectArraySet & 32 & 48 & 28 \footnotemark[1] & 4
-	 	& for any n \\
+	 	ObjectArraySet & 32 & 48 & 28 & 4 & for any n \footnotemark[6] \\
 	 	\midrule
 	 	\multicolumn{5}{l}{Java 1 collections:} \\
 	 	\midrule
-	 	Vector & 40 & 56 & 36 \footnotemark[1]  & 4 & for any n\\ 	
+	 	Vector & 40 & 56 & 36 & 4 & for any n \footnotemark[6] \\ 	
 	 	\bottomrule
 	 	\end{tabular}
 	 	
@@ -984,16 +984,17 @@ initial capacity. There is no Java 1 analogue to \code{HashSet} or
 	\label{tab:specialized-collections-small}
 \end{table}
 
-\footnotetext[1]{Round total cost up to nearest 8 bytes.}
-\footnotetext[2]{Round total cost up to nearest 16 bytes.}
-\footnotetext[3]{There is an additional fixed cost if you iterate over the keys
+\footnotetext[6]{Round total cost up to nearest 8 bytes.}
+\footnotetext[7]{Round total cost up to nearest 16 bytes.}
+\footnotetext[8]{There is an additional fixed cost if you iterate over the keys
 or values (not the entries). An unmodifiable view is created over the key set or
 values collection, and will persist for the lifetime of the original
 collection.} 
-\footnotetext[4]{There is an additional fixed cost if you iterate over the keys,
+\footnotetext[9]{There is an additional fixed cost if you iterate over the keys,
 entries, or values. A synchronized view is created over the key set,
 entry set, or values collection, and will persist for the lifetime of the
 original collection.}
+
 
 \FloatBarrier
 
@@ -1001,7 +1002,7 @@ original collection.}
 
 When collections are used to represent relationships, they often result in many
 small collection instances. Their cost is dominated by fixed-size
-overhead; variable overhead matters as well. To mitigate high memory costs
+overhead. Variable overhead matters as well. To mitigate high memory costs
 for relationships:
 %implemented with collections:
 \begin{itemize}
