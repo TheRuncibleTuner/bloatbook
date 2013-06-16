@@ -299,6 +299,7 @@ for small collections as well.
 	\label{tab:small-collections-minimum-samples}
 \end{table}
 
+\begin{savenotes}
 \begin{table}
 \centering
  		\begin{tabular}{l||rrl}
@@ -306,7 +307,7 @@ for small collections as well.
 	 	 Collection & \multicolumn{3}{c}{with n entries}\\
 	 	 & fixed & variable & comments \\
 	 	 \midrule
-	 	ArrayList & 36  & 4 & for any n \footnotemark[1] \\
+	 	ArrayList & 36  & 4 & for any n \footnote{Round total cost up to nearest 8 bytes.} \\
 	 	\midrule
  		HashMap &  64 & 24 & capacity = 2, holds up to 1 \\
  		        &  72 & 24 & capacity = 4, holds up to 3 \\
@@ -322,7 +323,7 @@ for small collections as well.
 	\label{tab:small-collections-minimum-fixed-var}
 \end{table}
 
-\footnotetext[1]{Round total cost up to nearest 8 bytes.}
+\end{savenotes}
 
 \section{Properly Sizing Collections}
 \label{sec:proper-size}
@@ -940,7 +941,7 @@ smaller default capacity and more flexibility in setting the
 initial capacity. There is no Java 1 analogue to \code{HashSet} or
 \code{LinkedList}.
 
-
+\begin{savenotes}
 \begin{table}
 \centering
  		\begin{tabular}{l||r||r||rrl}
@@ -957,25 +958,39 @@ initial capacity. There is no Java 1 analogue to \code{HashSet} or
 	 	\midrule
 	 	UnmodifiableList & - & - & 16 & - & add'l cost \\
 	 	UnmodifiableSet & - & - & 16 & - & add'l cost \\
-	 	UnmodifiableMap & - & - & 24 & - & add'l cost \footnotemark[8]\\
+	 	UnmodifiableMap & - & - & 24 & - & add'l cost \footnote{There is an additional fixed cost
+	 	if you iterate over the keys
+        or values (not the entries). An unmodifiable view is created over the
+        key set or values collection, and will persist for the lifetime of the
+        original collection.} \\
 	 	\midrule
 	 	SynchronizedList & - & - & 24  & - & add'l cost \\	 	
 	 	SynchronizedSet & - & - & 16  & - & add'l cost \\	 	
-	 	SynchronizedMap & - & - & 32  & - & add'l cost \footnotemark[9]\\	 	
+	 	SynchronizedMap & - & - & 32  & - & add'l cost \footnote{There is an additional fixed cost
+		if you iterate over the keys,
+	    entries, or values. A synchronized view is created over the key set,
+        entry set, or values collection, and will persist for the lifetime of
+        the original collection.}\\	 	
 	 	\midrule
 	 	\multicolumn{5}{l}{Guava:} \\
 	 	\midrule
-	 	ImmutableList & 40 & 56 & 36  & 4 & for any n \footnotemark[6]\\
-	 	ImmutableSet & 64 & 96 & 64  & 8 & for any n \footnotemark[7]\\
-	 	ImmutableSortedSet & 40 & 56 & 36 & 4 & for any n \footnotemark[6] \\
+	 	ImmutableList & 40 & 56 & 36  & 4 & for any n \footnote{Round total cost up
+	 	to nearest 8 bytes}\\
+	 	ImmutableSet & 64 & 96 & 64  & 8 & for any n  \footnote{Round total cost up
+	 	to nearest 16 bytes}\\
+	 	ImmutableSortedSet & 40 & 56 & 36 & 4 & for any n  \footnote{Round total cost
+	 	up to nearest 8 bytes}
+	 	\\
 	 	 \midrule
 	 	\multicolumn{5}{l}{fastutil:} \\
 	 	\midrule
-	 	ObjectArraySet & 32 & 48 & 28 & 4 & for any n \footnotemark[6] \\
+	 	ObjectArraySet & 32 & 48 & 28 & 4 & for any n  \footnote{Round total cost up
+	 	to nearest 8 bytes} \\
 	 	\midrule
 	 	\multicolumn{5}{l}{Java 1 collections:} \\
 	 	\midrule
-	 	Vector & 40 & 56 & 36 & 4 & for any n \footnotemark[6] \\ 	
+	 	Vector & 40 & 56 & 36 & 4 & for any n  \footnote{Round total cost up
+	 	to nearest 8 bytes} \\ 	
 	 	\bottomrule
 	 	\end{tabular}
 	 	
@@ -983,17 +998,7 @@ initial capacity. There is no Java 1 analogue to \code{HashSet} or
 	minimally-sized collections, when applicable.}
 	\label{tab:specialized-collections-small}
 \end{table}
-
-\footnotetext[6]{Round total cost up to nearest 8 bytes.}
-\footnotetext[7]{Round total cost up to nearest 16 bytes.}
-\footnotetext[8]{There is an additional fixed cost if you iterate over the keys
-or values (not the entries). An unmodifiable view is created over the key set or
-values collection, and will persist for the lifetime of the original
-collection.} 
-\footnotetext[9]{There is an additional fixed cost if you iterate over the keys,
-entries, or values. A synchronized view is created over the key set,
-entry set, or values collection, and will persist for the lifetime of the
-original collection.}
+\end{savenotes}
 
 
 \FloatBarrier
