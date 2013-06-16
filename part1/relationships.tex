@@ -292,7 +292,8 @@ for small collections as well.
  	 	\bottomrule
  	 	\end{tabular}
 	\caption{The effect of capacity on the cost of some small collections,
-	comparing the default capacity with the minimum to accomodate the number of entries.
+	comparing the default capacity with the minimum to accommodate the number of
+	entries.
 	For \class{HashMap} and \class{HashSet}, 1 entry requires a capacity of 2, and 4 entries requires a capacity
 	of 8.}
 	\label{tab:small-collections-minimum-samples}
@@ -317,7 +318,7 @@ for small collections as well.
 	 	\bottomrule
  	 	\end{tabular}
 	\caption{Fixed and variable costs of some common collection classes when capacity is set
-	to the minimum to accomodate the number of entries.}
+	to the minimum to accommodate the number of entries.}
 	\label{tab:small-collections-minimum-fixed-var}
 \end{table}
 
@@ -744,7 +745,7 @@ deletes the singleton collection until it's needed again.
 \paragraph{Converting to larger representations}
 If an additional alternate supplier is added, \code{addAlternateSupplier}
 replaces the singleton list with an \class{ArrayList}. We can choose a
-threshhold, say six entries, to be the maximum number of alternate
+threshold, say six entries, to be the maximum number of alternate
 suppliers the \class{ArrayList} representation should hold.  If more
 alternate suppliers are added beyond that, the representation is switched
 to the more costly \class{HashSet}.

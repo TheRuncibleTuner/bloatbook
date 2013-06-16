@@ -81,7 +81,7 @@ Figure~\ref{fig:eight-char-string} shows why the bloat factor is so high.
 Strings have all three kinds of overhead -- JVM overhead, pointers, and
 bookkeeping fields. Every Java string is really two objects: a {\tt String} that
 serves as a wrapper, and a {\tt char} array with the actual characters. Two
-objects means two object headers, plus the pointer glueing the two objects
+objects means two object headers, plus the pointer gluing the two objects
 together. The {\tt String} object is entirely overhead, containing no real data.
 Part of its cost is three bookkeeping fields: a length and an offset, which have
 meaning only when this string is the result of a substring operation, and a
@@ -217,7 +217,7 @@ uses a node to summarize the collections that implement a relation.
    value, each represented as a double. The samples arrive out of
    order. The task is to display samples in chronological order, after all of
    the data has been collected. At that point the user may also perform an
-   occassional lookup of a sample by timestamp. The
+   occasional lookup of a sample by timestamp. The
    solution requires a data structure to store the samples.
 \end{example}
 

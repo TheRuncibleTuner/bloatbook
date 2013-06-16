@@ -18,7 +18,8 @@ know either the size of an object or how it is laid out in memory. The \jre,
 not the programmer, manages storage, and the \jre has the freedom to implement
 its own storage policy. However, knowing the sizes of objects is necessary for understanding
 memory requirements and scalability. Fortunately, it is not hard to estimate the size of an object,
-and a good estimate of the most prevelant classes is usually sufficient for making intelligent design choices.
+and a good estimate of the most prevalent classes is usually sufficient for
+making intelligent design choices.
 You need to know just a few basics, starting with the number of bytes needed to store primitive data types.
 These sizes are defined in the Java language specification~\cite{JavaSpec}, and are given in Table~\ref{tab:primitive-sizes}.
 Fields can also be reference fields, pointing to other objects. Their size
@@ -275,7 +276,7 @@ The memory layout for a specific employee ``John Doe" is shown in Figure~\ref{fi
 
 
 
-A comparion of an \class{Employee} object with a
+A comparison of an \class{Employee} object with a
 \class{SimpleEmployee} object from Section~\ref{sec:CostOfObjects} shows that
 the size has increased from 32 to 144 bytes, and the bloat factor has increased
 from 28\% to 65\%.
@@ -335,7 +336,8 @@ the costs are.
 
 %\begin{example}{Employee emergency contact} 
 \paragraph{Example} Suppose an emergency contact is needed for each employee.
-An emergency contact is a person along with a preferred method to reach her.  The preferred method can be email, cell phone, work phone, or home phone. All contact information for
+An emergency contact is a person along with a preferred method to reach her. 
+The preferred method can be email, cell phone, work phone, or home phone. All contact information for
 the emergency contact person must be stored, just in case the preferred method does not work in an actual emergency. 
 %\end{example}
 Here are class definitions for an emergency contact, written in a highly delegated style that is not uncommon in real applications. 

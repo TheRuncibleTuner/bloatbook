@@ -54,8 +54,8 @@ For products with no alternate supplier, eight bytes are saved per product,
 since three fields are replaced by one. Of course, products with an alternate
 supplier pay a delegation cost: an extra pointer and object header, totaling 12
 bytes. An interesting question is how
-much total memory is actually saved? The answer depends on the percentage of products that have an alternate supplier and
-need
+much total memory is actually saved? The answer depends on the percentage of products that have
+an alternate supplier and need
 a side object, which we'll call the \emph{fill rate}. The higher the fill rate, the less memory is 
 saved. In fact, if the fill rate is too high, memory is wasted.
 
@@ -498,7 +498,7 @@ do not need such a fine-grained data model, and the update tracking functionalit
 The solution in Figure~\ref{fig:big-base-class} provides a very fine
 granularity of functionality. An argument can be made in favor of this
 solution, since you lose functionality and flexibility if you only track
-updates to \class{ContactPerson}. However, if the program hits a scalabity
+updates to \class{ContactPerson}. However, if the program hits a scalability
 problem, it may not be possible to be this casual with memory. Also, an alternate
 design may be available that gives the desired functionality in a more memory-efficient way. In this
 example, you could implement an update log instead of tracking updates in the objects themselves. Assuming
