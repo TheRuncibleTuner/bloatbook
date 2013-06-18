@@ -1,94 +1,0 @@
-\chapter{Why Memory Costs are Important}
-If you are reading this book, you may already know that it is not unusual forJava programs to run out of memory. If you do think that Java memory costs isnot an important design issue, hopefully this chapter will convince youotherwise. This is a topic that requires counting bytes, which may seem like astrange activity for a Java programmer, accustomed to rapid assembly ofapplications from assorted libraries. At its core, programming is an engineeringdiscipline, and there is no escaping the fact that the consumption of any finiteresource must be measured and managed.
-
-\section{Quiz}
-To start you thinking about counting bytes, here is a quiz to test how good youare at estimating sizes of Java objects. Assume a 32-bit JVM.
-\begin{verbatim}
-
-   Question 1: What is the size ratio in bytes Integer to int?
-   
-      a. 1:1
-      b. 1.33:1
-      c. 2:1
-      d. 4:1
-      e. 8:1
-   
-   Question 2: How many bytes in an 8-character string?
-
-      a. 8 bytes
-      b. 16 bytes
-      c. 20 bytes
-      d. 40 bytes
-      e. 56 bytes
- 
-   
-   Question 3: Which statement is true about a HashSet compared to 
-               a HashMap with the same number of entries?
-               
-      a. It has fewer data fields and less overhead.
-      b. It has the same number of data fields and more overhead.
-      c. It has the same number of data fields and the same overhead.
-      d. It has more data fields and it has less overhead.
-                  
-                       
-   Question 4: Arrange the following 2-element collections in size order:
-    
-      ArrayList, HashSet, LinkedList, HashMap
-          
-   Question 5: How many collections are there in a typical heap?
-   
-      a. between five and ten
-      b. tens
-      c. hundreds
-      d. thousands
-      e. one or more orders of magnitude bigger than above
-
-   Question 6: What is the size of an empty ConcurrentHashMap?
-   (Extra Credit)
-      a. 17 bytes
-      b. 170 bytes
-      c. 1700 bytes
-      d. 17000 bytes
-      e. 500 bytes
-           
-
-ANSWERS: 1d, 2e, 3b, 
-         4 ArrayList LinkedList HashMap HashSet, 
-         5e, 6c                 
-\end{verbatim}
-
-If you look inside a typical Java heap, it is mostly filled with the kinds ofobjects used in the quiz --- boxed scalars, strings, and collections. Every timea program instantiates a class, there is an object created in the heap, and asshown by the 4:1 size ratio of \texttt{Integer} to \texttt{int}, objects are notcheap.
-
-Strings often consume half of the heap and are surprisingly costly. If you are aC programmer, you might think that an 8-character string should consume 9 bytesof memory, 8 bytes for characters and 1 byte to indicate the end of the string.What could possibly be taking up 56 bytes? Part of the cost is because Java usesth 16-bit Unicode character set, but this accounts for only 16 of the 56 bytes.The rest is various kinds of overhead.
-After strings, collections are the most common types of objects in the heap. Intypical real programs, having 100's of thousands and even millions of collectioninstances in a heap is not at all unusual. If there are a million collections inthe heap, then the collection choice matters. One collection type might use 20bytes more than another, which may seem insignificant, but in a productionexecution, the wrong choice can add close to 20 megabytes.
-
-\texttt{ConcurrentHashMap}, compared to the more common collections in thestandard library, is surprisingly expensive. If you are used to creatinghundreds of \texttt{HashMaps}, then you might think that it is not a problem tocreate hundreds of \texttt{ConcurrentHashMaps}. There is certainly nothing inthe API to warn you that \texttt{HashMaps} and \texttt{ConcurrentHashMaps} arecompletely different when it comes to memory usage. This example shows whyunderstanding memory costs are important.
-The quiz gives some sense of how surprising the sizes are for the Java basicobjects, like \texttt{Integers}, strings, and collections. When code is layeredwith multiple abstractions, memory costs become more and more difficult topredict.
-
-
-\section{Magnitude of the Problem}
-Over the past ten years, we have worked with developers, testers, andperformance analysts to help fix memory-related problems in large Javaapplications. Typically, there is an out-of-memory error, which ends up beingeither a memory leak or a scalability problem. A memory leak is a common, nastykind of lifetime management bug that can be extremely hard to track down. Ascalability problem, on the other hand, is not really a bug, but a design flaw.The application by design is too big to fit into memory. For example a webapplication may not scale to the required number of users because the size of asingle user session is too big. Fixing a scalability problem may requireextensive code refactoring.
-  Memory-related problems often show up late in the development cycle, during loadtesting or even after deployment, when fixing the problem can be very costly.When you are about to go into production, you do not want to discover that youcan only support a few hundred users, especially when the heap is already a fewgigabytes. This book provides tools and techniques to help avoid memory-relatedproblems early on.
-We believe that the problems are getting worse, and the need for these tools andtechniques is becoming more and more pressing. First, Java heap sizes havesteadily been increasing.  Ten years ago, a 500MB heap was considered big. Nowit is not unusual to see applications that are having trouble fitting into 2 to3 gigabyte heaps, and developers are looking at 64-bit architectures to be ableto run with even larger heaps.  These huge heaps are particulary alarming whencompared to the task at hand. For example, it is hard to justify a simpletransaction using 500K session states, which we have seen in a real application.
-Secondly, the technology landscape is changing. While processor speeds have beendoubling every two years following Moore's law, a physical limit has now beenreached preventing further processor speedup. Instead, the number of processorcores on a chip is expected double every two years. However, memory bandwidthand cache sizes will not grow proportionally. Larger heaps combined withrelatively less bandwidth is a recipe for a big performance hit going forward.Additionally, the rapidly growing number of small embedded processors requiresmuch more efficient use of memory.
-Lastly, there is the green argument. If your application is not scaling, you mayneed to add more servers, which in turn can increase your power consumption andelectric bill. This is a big problem for ever-growing data centers.
-
-
-2.4 The Iceberg Effect
-
-The one comon thread is that it is incredibly easy to build applications in Javathat use a lot of memory,
-So what's going on? What's not going on is that stupid programmers are writingstupid code; that's not what's happening.  And sometimes we hear, oh, that mustjust be bad programmers, but in fact, we have very good programmers writing thiskind of code for many, many good reasons. A lot of the problems we look at aremistakes made, or just where people couldn't know the cost, or they haven'tconsidered cost, and are just not analyzing until it's too late.
-So first of all, just the number of abstractions people are dealing with, andthat's one of the basic problems here, is that, people are assembling code now,rather than building it, and this is something that we've been dreaming of foryears, that people take reusable components off the shelf, and they glue themtogether, and they have a system. And in fact the framework designers are doingthat themselves.  We call it the iceberg effect, where I code something, I writesome application code, it calls some framework, or a bunch of frameworks, andhidden underneath here are is sort of the all the programmer sees is the tip ofthe iceberg, and the consequences are completely hidden, in terms of what thecosts are, and that is something that people have been encouraged to beprogramming in this style. They shouldn't be thinking about performance,certainly not in terms of letting it mess up their good design, and even whenthey do want to think about performance, sometimes it's very, very hard to lookinside these things.  Especially, at the risk of mixing metaphors here, theframework developers are dealing with the same issues themselves, whereframeworks themselves are assembling code as well from other frameworks, and soon down the line, eventually from libraries. In fact, as we will see in some ofour examples, inside the Java library themselves, the low level libraries arecalling other low level libraries.  String buffer uses ;;  Hashset interms ofhashmap, and so forth.  This is true for memory and performance.
-
-2.5 Common myths about memory
-
-In addition to the technical reality of dealing with all of this assembly, thereare some myths out there that are standing in the way.  One set of myths saysthat things are fine, everything is cheap; there was an article on developerworks, called "Go ahead, make a mess",  and this idea that objects are free, atleast temporaries are, and everything will be taken care of for you. The JIT isgoing to clean things up, the garbage collector will elp, all of this greatresearch on garbage collection and jit optimization, and you shouldn't have toworry about that; just code whatever the best design is from a maintainabilitystandpoint, or whatever other standpoint, and the performance will magically betaken care of.
-In fact, in the memory space, the JIT is doing, all of the commercial JITs thatwe know of are doing absolutely nothing in terms of storage optimization, sothat every single object, with all of its fields, ends up as an object in theheap, taking up space.  We'll look into the detail of what that means. Andsimilarly the garbage collector, yes it is cleaning up temporary objects. Buteven for temporaries there are other costs.
-The construction of the objects in the first place; garbage collectors are onlydealing with shortlived objects, and footprint problems are a problem oflong-lived objects, which garbage collectors are not addressing at all.
-Another common myth is that the frameworks must already be optimized, becausethese were written by experts, and I cant tell you how often when we areanalyzing a trace, where people say, "Oh, I thought that it would have beenoptimized, that's why I used it." And oftentimes attention wasn't given tofootprint. There has been very, very little attention to optimizations forfootprint.  When optimizations are done it's usually done for speed, certainlyin the standard libraries, that's been the case.
-Also, even if people who wrote the frameworks did try to pay attention tofootprint, they often have a hard time predicting what the usage of theirframework is going to be. Sometimes they guess wrong, sometimes don't know whereto start.  So it's very unlikely that the framework has been optimized for yourparticular use case.
-Many developers know things are bad, but not how had, and we see this over andover again. In fact, I just came back, about a month ago, working with a groupof IBM rational developers in Ottowa, a very strong group of people, very goodengineers, who were quite aware of how memory contrained they were, and eventhey were surprised still when we looked at the actual cost, to see just howcostly things were. They were even more than they thought.
-Then there are the people who just give up - I know Java is expensive, it'salways expensive, there is nothing I can do about it, it's just a cost of objectoriente programming in Java, and if I try to do anything, it's going to break mygood design. And so, hopefully, one of the things we want to achieve is to raiseawareness of cost. So that it's not a lost cause, there is some hope.  It'spossible to make informed tradeoffs, can't fix all problems. Identify placeswhere good engineering can help by the developer, and then where people aregoing to hit a wall.
-So there are lots and lots of problems to solve here. This is an area thathasn't been addressed much at all.  There are just a few little pockets ofresearch. Will stimulate some nice ideas. I really encourage you to interruptand start discussion.
-Finally, this is an issue for performance, not just for memory. There's a falsedichotomy in a lot of people's minds that say well, if you have a lot offootprint it must be buying you something in terms of performance. But inreality, that is not always the case. In fact, sometimes bad memory usage willresult in poor performance as well, even something as simple as I am using somuch of my heap for long-lived objects, then I have very little headroom fortemporaries.  And so my garbage collector has to run much more often.
-Or I don't have enough room to size the caches for things I get from thedatabase as large as I like, so I go back to the database more than I like, sothis can have a huge performance cost. So these problems are very interrelated.
