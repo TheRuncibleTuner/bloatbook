@@ -3,18 +3,19 @@
 \label{chapter:tables-indexes}
 
 In a relational database system, data is neatly organized for you into tables.
-While you may suggest a few fields to index, the structures that
+While you may suggest which fields to index, the structures that
 allow you to access your data are taken care of for you.  In object-oriented
 programming languages you have more freedom. You have a sea of interconnected
-objects, and you are responsible for designing the structures that are the entry
+objects, and are responsible for designing the structures that are the entry
 points into various groupings of these objects.
 In this chapter we look at the memory considerations when
 designing large structures for accessing your
 data. We'll
 look briefly at large collections that just gather data in one place, such as a
 list of all the objects of one type. The bulk of the chapter is about
-indexes, also known as maps, that let you look up data by value. We'll first look at the costs of large collections,
-and at ways to keep them to a minimum for the task at hand. In the second half
+indexes, also known as maps, that let you look up data by value. 
+In the first few sections, we'll look at the costs of large
+collections, and at ways to keep them to a minimum for the task at hand. In the latter part
 of the chapter we'll look at the cost tradeoffs when you need to
 design more complex access structures made of multiple levels of collections.  
 
@@ -66,8 +67,9 @@ design more complex access structures made of multiple levels of collections.
 \section{Large Collections}
 \label{sec:large-collections}
 
-Just as with small collections, choosing the right collection for the task
-can make a big difference in the memory overhead of large collections.  Suppose
+\paragraph{Choosing the Right Collection for the Task} Just as with small
+collections, choosing the right collection for the task can make a big difference
+in the memory overhead of large collections.  Suppose
 you need to maintain a collection of all the orders processed for the day.  At
 the end of the day these orders are posted in bulk to a remote database. The orders
 contain their own timestamps, so we don't really care about maintaining the
@@ -104,9 +106,7 @@ along with a sampling from open source libraries.
 %a larger part of the overhead, whereas here it's only the differences in
 %variable costs that matter.  
 
-\paragraph{Excess Capacity}
-
-As we saw in the previous chapter, many collection
+\paragraph{Excess Capacity} As we saw in the previous chapter, many collection
 classes allocate excess capacity for performance reasons, mainly to accomodate
 growth. One difference between small and large collections is the way
 excess capacity is computed.  In the very smallest collections, excess capacity
@@ -125,7 +125,7 @@ holds the pointer.
 Collections grow in jumps, which makes predicting the size of a collection a
 little tricky.  For that reason, Table\ref{} shows
 a range of variable costs for each collection.  You can use the minimum
-number if you expect no spare capacity, or in the case of hashtable-based maps
+number if you expect no spare capacity, or in the case of hash-based maps
 and sets, no spare capacity beyond what is required for reasonable operation.
 The maximum number gives you a worst case, if you added just that one extra element that caused
 the jump. Slightly less than the midpoint of the range will give you an estimate of the
@@ -156,15 +156,21 @@ first place.
 %in the previous chapter, where the initial 
 %capacity is so much larger than the number of elements stored.
 
-\paragraph{Array-based Hash Maps and Hash Sets}
+\paragraph{Delegation costs}
+[TODO: discussion/example of map with a scalar key that requires boxing.  We'll
+need to introduce a term (formal or informal) like ``per-entry overhead'' that
+talks about the total overhead (variable collection overhead + delegation cost) of storing an entry
+in a collection.]
 
-There are two primary ways that hash tables are implemented. Most of the maps and sets
-in the standard libraries use a technique known as \emph{chaining} (also
-known as open hashing). Figure~\ref{} in the previous chapter shows a typical
-implementation. There is a separate entry object for element in the collection.
-Each entry object points to a key and a value, and may contain
-additional information such as a cached hash code. There is a linked list of
-entry objects for each hash bucket.
+\section{Inside Large Collections}
+\paragraph{Array-based Hash Maps and Hash Sets}
+There are two primary ways that hash tables are implemented. Most of the
+hash-based maps and sets in the standard libraries use a technique known as
+\emph{chaining} (also known as open hashing). Figure~\ref{fig:inside-hashset} in the previous chapter
+shows a typical implementation, where there is a separate entry
+object for each element in the collection. Each entry object points to a key and a value, and
+may contain additional information such as a cached hash code. There is a linked list of entry objects
+for each hash bucket.
 
 The other main technique is known as \emph{open addressing} (for added
 confusion, it is also known as closed hashing).  In this technique,
@@ -176,10 +182,10 @@ Figure~\ref{} shows a typical implementation. There are many variations in
 practice.
 
 Generally speaking, for larger collections, open addressing hash tables use less
-memory --- at least in Java, where the cost of an entry object is so high. 
+memory --- at least in Java, where the overhead of each entry object is so high. 
 fastutil and Trove are examples of open source frameworks that provide open
-addressing maps and sets that save space. The sets in these frameworks
-save even more space for a different reason: they are specialized for the task,
+addressing maps and sets that save space. The sets in
+these frameworks save even more space for a different reason: they are specialized for the task,
 rather than delegating their work to a more general map. So unlike in the Java
 standard libraries, you are paying only for a value, not a key and value, per
 entry.
@@ -200,10 +206,10 @@ entire variable cost when making decisions on which framework to use (see Table
 ~\ref{}).  For example, fastutil's object to object open addressing
 hash map maintains only 9 bytes of data for each element, compared to the standard
 \class{HashMap}'s 28. When you add in the greater cost of excess capacity that
-difference is reduced to approximately 1:2.  <or example here instead, with absolute numbers>
+difference is reduced to approximately 1:2. [or example here instead, with
+absolute numbers]
 
 \paragraph{Sharing the Costs in Entry-based Collections}
-
 Some alternative frameworks provide another approach to reducing space in
 entry-based collections. The idea is that your objects become
 the collection's entry objects, thus saving a delegation overhead. The downside
@@ -212,7 +218,7 @@ One example is in the Apache Commons framework, which lets you subclass its map
 and map entries. If you have a key with two fields, for example, you would
 normally have to wrap those fields into a key object. Now 
 you could include those fields in a custom map entry instead, and save a
-delegation cost. <figure here?>  This introduces a reliability and maintenance
+delegation cost. [figure here?]  This introduces a reliability and maintenance
 problem, however, since it relies on subclassing a fairly complex class. You must now make sure
 your code doesn't break anything in current and future versions of Commons's
 hash map implementation.
@@ -231,8 +237,8 @@ not stored in a list.
 \label{sec:identity-maps}
 The Java standard library does provide one hash map class that uses an open
 addressing implementation. The \class{IdentityMap} class can save you space
-if you have the need for a large map that fits its requirements.  The idea is that
-it uses the identity of the key object, 
+if you have the need for a large map that fits its requirements.  
+It uses the identity of the key object 
 rather than its contents for comparisons. In
 other words, it uses \code{==} against the key your provide, rather than the
 \code{.equals()} method. This breaks the \class{Map} contract, but there are a
@@ -248,13 +254,16 @@ standard map, I could map the product's unique key, say SKU,
 
 \section{Multikey Maps}
 \subsection{Example: Evaluating Three Alternative Designs}
+[Main point: which design is best is not obvious. Requires analysis.]
 
-\section{Concurrency and Multilevel Indexes}
+\section{Multilevel Indexes and Concurrency}
 \label{sec:concurrency-multilevel-indexes}
+[This section is optional]
 
 \section{Multivalue Maps}
 
 \section{Summary}
+
 
 
 
